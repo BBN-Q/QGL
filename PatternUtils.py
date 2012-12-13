@@ -1,12 +1,12 @@
 import numpy as np
 
-def delayChannel(linkList, delay):
+def delay(linkList, delay):
     pass
 
-def modulateChannel(linkList, SSBFreq):
+def modulate(linkList, SSBFreq):
     pass
 
-def alignPulseBlock(LLEntry, width, alignment="center"):
+def align(pulseBlock, alignment="center"):
     pass
 
 def correctMixer(wfLib, T):
