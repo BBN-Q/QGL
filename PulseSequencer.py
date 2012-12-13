@@ -21,10 +21,11 @@ class Pulse(object):
         shape - numpy array pulse shape
         frameChange - accumulated phase from the pulse
     '''
-    def __init__(self, label, qubits, shape, frameChange):
+    def __init__(self, label, qubits, shape, phase, frameChange):
         self.label = label
         self.qubits = qubits
         self.shape = shape # for now, do this since we are gettern objects from PatternGen rather than lists
+        self.phase = phase
         self.frameChange = frameChange
 
     # adding pulses concatenates the pulse shapes
@@ -45,7 +46,7 @@ class Pulse(object):
     def promote(self):
         # promote a Pulse to a PulseBlock
         pb =  PulseBlock()
-        pb.pulses = {self.qubits: self.shape}
+        pb.pulses = {self.qubits: self}
         return pb
 
 class PulseBlock(object):
@@ -88,7 +89,7 @@ class PulseBlock(object):
     #The maximum number of points needed for any channel on this block
     @property
     def maxPts(self):
-         return max( map(len, self.pulses.values()) )
+        return max([len(p.shape) for p in self.pulses.values()])
 
 class PulseSequence(object):
     '''

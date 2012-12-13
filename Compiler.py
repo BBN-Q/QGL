@@ -17,22 +17,31 @@ def APSChannels():
     return {chanStr:{'LLs':[], 'WFLibrary':{0:np.zeros(1)}} for chanStr in  ['ch1','ch2','ch3','ch4']}
 
 class LLElement(object):
-    def __init__(self):
-        self.key = None
-        self.length = 0
+    def __init__(self, pulse=None):
         self.repeat = 1
         self.isTimeAmp = False
         self.hasTrigger = False
-        self.triggerDelay = 0
-        self.linkListRepeat = 0
+        self.triggerDelay1 = 0
+        self.triggerDelay2 = 0
+        
+        if pulse is None:
+            self.key = None
+            self.length = 0
+            self.phase = 0
+            self.frameChange = 0
+        else:
+            self.key = hash_pulse(pulse)
+            self.length = len(pulse.shape)
+            self.phase = pulse.phase
+            self.frameChange = pulse.frameChange
+            
 
-def create_padding_LL():
+def create_padding_LL(length):
     tmpLL = LLElement()
     tmpLL.isTimeAmp = True
     tmpLL.key = 'TAZKey'
+    tmpLL.length = length
     return tmpLL
-
-
 
 def compile_sequence(seq, wfLib = {} ):
     '''
@@ -52,14 +61,58 @@ def compile_sequence(seq, wfLib = {} ):
         if chan not in wfLib:
             wfLib[chan] = {"TAZKey":  np.zeros(1, dtype=np.complex)}
 
-
     for block in seq:
         #Align the block 
         blockLength = block.maxPts
         for chan in channels:
             if chan in block.pulses.keys():
                 # add aligned LL entry
+                wf, LLentry = align(block.pulses[chan], blockLength, block.alignment)
+                if hash_pulse(wf) not in wfLib:
+                    wfLib[chan][hash_pulse(wf)] = wf
+                logicalLLs[chan] += LLentry
             else:
                 # add identity
+                logicalLLs[chan] += create_padding_LL(blockLength)
 
-        
+    return logicalLLs, wfLib
+
+def align(pulse, blockLength, alignment, cutoff=12):
+    entry = LLElement(pulse)
+    entry.length = blockLength
+    entry.key = hash_pulse(pulse)
+    entry.phase = pulse.phase
+    entry.frameChange = pulse.frameChange
+    padLength = blockLength - pulse.shape.size
+    shape = pulse.shape
+    if padLength == 0:
+        # can do everything with a single LLentry
+        return shape, [entry]
+    if (padLength < cutoff) and (alignment == "left" or alignment == "right"):
+        # pad the shape on one side
+        if alignment == "left":
+            shape = np.hstack((shape, np.zeros(padLength)))
+        else: #right alignment
+            shape = np.hstack((np.zeros(padLength), shape))
+        entry.key = hash_pulse(shape)
+        return shape, [entry]
+    elif (padLength < 2*cutoff and alignment == "center"):
+        # pad the shape on each side
+        shape = np.hstack(( np.zeros(np.floor(padLength/2)), shape, np.zeros(np.ceil(padLength/2)) ))
+        entry.key = hash_pulse(shape)
+        return shape, [entry]
+    else:
+        #split the entry into the shape and one or more TAZ
+        if alignment == "left":
+            padEntry = create_padding_LL(padLength)
+            return shape, [entry, padEntry]
+        elif alignment == "right":
+            padEntry = create_padding_LL(padLength)
+            return shape, [padEntry, entry]
+        else:
+            padEntry1 = create_padding_LL(np.floor(padLength/2))
+            padEntry2 = create_padding_LL(np.ceil(padLength/2))
+            return shape, [padEntry1, entry, padEntry2]
+
+def hash_pulse(pulse):
+    return hash(tuple(pulse.shape))
