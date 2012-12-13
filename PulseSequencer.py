@@ -24,7 +24,7 @@ class Pulse(object):
     def __init__(self, label, qubits, shape, phase, frameChange):
         self.label = label
         self.qubits = qubits
-        self.shape = shape # for now, do this since we are gettern objects from PatternGen rather than lists
+        self.shape = shape.astype(np.complex) # for now, do this since we are gettern objects from PatternGen rather than lists
         self.phase = phase
         self.frameChange = frameChange
 
