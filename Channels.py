@@ -116,7 +116,7 @@ class Qubit(LogicalChannel):
     '''
     The main class for generating qubit pulses.  
     '''
-    def __init__(self, name=None, physicalChannel=None, freq=None, piAmp=0.0, pi2Amp=0.0, shapeFun=PulseShapes.gaussian, pulseLength=0.0, bufferTime=0.0, dragScaling=0, cutoff=2, **kwargs):
+    def __init__(self, name=None, physicalChannel=PhysicalChannel(), freq=None, piAmp=0.0, pi2Amp=0.0, shapeFun=PulseShapes.gaussian, pulseLength=0.0, bufferTime=0.0, dragScaling=0, cutoff=2, **kwargs):
         super(Qubit, self).__init__(name=name, channelType=ChannelTypes.quadratureMod, physicalChannel=physicalChannel)
         self.shapeFun = shapeFun
         self.pulseLength = pulseLength
