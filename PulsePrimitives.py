@@ -25,9 +25,17 @@ def _memoize(pulseFunc):
         return cache[args]
     return cacheWrap
 
-def Id(qubit, **kwargs):
-    ''' A delay or do-nothing in the form of a pulse i.e. it will take pulseLength+2*bufferTime. '''
-    shape = PulseShapes.delay(**overrideDefaults(qubit, kwargs))
+def Id(qubit, *args, **kwargs):
+    '''
+    A delay or do-nothing in the form of a pulse i.e. it will take pulseLength+2*bufferTime.
+    Accepts the following pulse signatures:
+        Id(qubit, [kwargs])
+        Id(qubit, delay, [kwargs])
+    '''
+    params = overrideDefaults(qubit, kwargs)
+    if len(args) > 0:
+        params['pulseLength'] = args[0]
+    shape = PulseShapes.delay(**params)
     return Pulse("Id", (qubit), shape, 0.0)
 
 def Xtheta(qubit, amp=0, **kwargs):
