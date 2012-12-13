@@ -10,11 +10,10 @@ Created on Jan 19, 2012
 
 import sys
 import json
+import PulseShapes
 
 from PySide import QtGui, QtCore
-
 from operator import itemgetter
-
 from math import tan,cos,pi
 
 class ChannelTypes(object):
@@ -47,17 +46,17 @@ class LogicalChannel(object):
 
     # add __eq__ method to make hashable
     def __eq__(self, other):
-        # return self.name == other.name and self.channelType == other.channelType and self.physicalChannel == other.physicalChannel
         return id(self) == id(other)
 
 class PhysicalChannel(object):
     '''
     The main class for actual AWG channels.
     '''
-    def __init__(self, name=None, AWGName=None, channelType=None):
+    def __init__(self, name=None, AWGName=None, channelType=None, samplingRate=1.0e9):
         self.name = name
         self.channelType = channelType
         self.AWGName = AWGName
+        self.samplingRate = samplingRate
 
     @property
     def isLogical():
@@ -69,7 +68,6 @@ class PhysicalChannel(object):
 
     # add __eq__ method to make hashable
     def __eq__(self, other):
-        # return self.name == other.name and self.channelType == other.channelType and self.AWGName == other.AWGName
         return id(self) == id(other)
 
 
@@ -118,17 +116,15 @@ class Qubit(LogicalChannel):
     '''
     The main class for generating qubit pulses.  
     '''
-    def __init__(self, name=None, physicalChannel=None, freq=None, piAmp=0.0, pi2Amp=0.0, pulseType='gauss', pulseLength=0.0, bufferTime=0.0, dragScaling=0, cutoff=2, **kwargs):
+    def __init__(self, name=None, physicalChannel=None, freq=None, piAmp=0.0, pi2Amp=0.0, shapeFun=PulseShapes.gaussian, pulseLength=0.0, bufferTime=0.0, dragScaling=0, cutoff=2, **kwargs):
         super(Qubit, self).__init__(name=name, channelType=ChannelTypes.quadratureMod, physicalChannel=physicalChannel)
-        self.pulseType = pulseType
+        self.shapeFun = shapeFun
         self.pulseLength = pulseLength
         self.bufferTime = bufferTime
         self.piAmp = piAmp
         self.pi2Amp = pi2Amp
         self.dragScaling = dragScaling
-        self.cutoff = cutoff
-        self.pulseCache = {}
-        
+        self.cutoff = cutoff        
         
 class Generator(object):
     '''
