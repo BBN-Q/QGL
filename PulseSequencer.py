@@ -46,7 +46,6 @@ class Pulse(object):
         # promote a Pulse to a PulseBlock
         pb =  PulseBlock()
         pb.pulses = {self.qubits: self.shape}
-        pb.channels = [self.qubits]
         return pb
 
 class PulseBlock(object):
@@ -60,7 +59,6 @@ class PulseBlock(object):
         #How multiple channels are aligned.
         self.alignment = 'left'
         self.pulses = {}
-        self.channels = []
 
     #Overload the multiplication operator to combine pulse blocks
     def __mul__(self, rhs):
@@ -70,14 +68,12 @@ class PulseBlock(object):
         # should bundle this behavior into a __copy__ method
         result = copy(self)
         result.pulses = copy(self.pulses)
-        result.channels = copy(self.channels)
         
         for (k, v) in rhs.pulses.items():
             if k in result.pulses.keys():
                 raise NameError("Attempted to multiply pulses acting on the same space")
             else:
                 result.pulses[k] = v
-        result.channels += rhs.channels
         return result
 
     #PulseBlocks don't need to be promoted, so just return self
@@ -87,7 +83,7 @@ class PulseBlock(object):
     #A list of the channels used in this block
     @property
     def channelNames(self):
-        return [channel.name for channel in self.channels]
+        return [channel.name for channel in self.pulses.keys()]
 
     #The maximum number of points needed for any channel on this block
     @property
