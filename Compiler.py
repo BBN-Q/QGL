@@ -4,8 +4,6 @@ functions for compiling lists of pulses/pulseBlocks down to the hardware level.
 
 import numpy as np
 
-TAZKey = hash(tuple(np.zeros(1, dtype=np.complex)))
-
 def TekChannels():
     '''
     The set of empty channels for a Tektronix AWG
@@ -37,45 +35,47 @@ class LLElement(object):
             self.phase = pulse.phase
             self.frameChange = pulse.frameChange
 
-def compile(seqs):
-    if isinstance(seqs[0], list):
-        # nested sequences
-        wfLib = {}
-        linkLists = []
-        for seq in seqs:
-            miniLL, wfLib = compile_sequence(seq, wfLib)
-            linkLists.append(miniLL)
-    else:
-        miniLL, wfLib = compile_sequence(seq)
-        linkLists = [miniLL]
-    
+def compile_to_hardware(seqs):
+    linkLists, wfLib = compile_sequences(seq)
     # map logical to physical channels
-    
+
     # aligns channels to fixed points
     # delays
     # mixer corrects
     # fills empty channels with zeros
-    
+
     # convert to hardware formats
 
-def create_padding_LL(length):
-    tmpLL = LLElement()
-    tmpLL.isTimeAmp = True
-    tmpLL.key = 'TAZKey'
-    tmpLL.length = length
-    return tmpLL
+def compile_sequences(seqs):
+    '''
+    Main function to convert sequences to miniLL's and waveform libraries.
+    '''
+    if isinstance(seqs[0], list):
+        # nested sequences
+        wfLib = {}
+        # use seqs[0] as prototype for finding channels (assume every miniLL operates on the same set of channels)
+        miniLL, wfLib = compile_sequence(seqs[0], wfLib)
+        linkLists = {chan: [LL] for chan, LL in miniLL.items()}
+        for seq in seqs[1:]:
+            miniLL, wfLib = compile_sequence(seq, wfLib)
+            for chan in linkLists.keys():
+                linkLists[chan].append(miniLL[chan])
+    else:
+        miniLL, wfLib = compile_sequence(seq)
+        linkLists = {chan: [LL] for chan, LL in miniLL.items()}
+
+    return linkLists, wfLib
 
 def compile_sequence(seq, wfLib = {} ):
     '''
-    Main function to convert sequences to miniLL's and waveform libraries.
+    Converts a single sequence into a miniLL and waveform library.
+    Returns a single-entry list of a miniLL and the updated wfLib
     '''
     # normalize sequence to PulseBlocks
     seq = [p.promote() for p in seq]
 
     #Find the set of logical channels used here and initialize them
-    channels = set([])
-    for step in seq:
-        channels |= set(step.pulses.keys())
+    channels = find_unique_channels(seq)
 
     logicalLLs = {}        
     for chan in channels:
@@ -86,6 +86,9 @@ def compile_sequence(seq, wfLib = {} ):
     for block in seq:
         #Align the block 
         blockLength = block.maxPts
+        # drop length 0 blocks
+        if blockLength == 0:
+            continue
         for chan in channels:
             if chan in block.pulses.keys():
                 # add aligned LL entry
@@ -118,7 +121,29 @@ def compile_sequence(seq, wfLib = {} ):
             entry.key = shapeHash
             curFrame += entry.frameChange
 
-    return logicalLLs
+    # for chan in logicalLLs.keys():
+    #     # convert to single-element list
+    #     logicalLLs[chan] = [logicalLLs[chan]]
+
+    return logicalLLs, wfLib
+
+def find_unique_channels(seq):
+    channels = set([])
+    for step in seq:
+        channels |= set(step.pulses.keys())
+    return channels
+
+def hash_pulse(shape):
+    return hash(tuple(shape))
+
+TAZKey = hash_pulse(np.zeros(1, dtype=np.complex))
+
+def create_padding_LL(length):
+    tmpLL = LLElement()
+    tmpLL.isTimeAmp = True
+    tmpLL.key = TAZKey
+    tmpLL.length = length
+    return tmpLL
 
 def align(pulse, blockLength, alignment, cutoff=12):
     entry = LLElement(pulse)
@@ -156,6 +181,3 @@ def align(pulse, blockLength, alignment, cutoff=12):
             padEntry1 = create_padding_LL(np.floor(padLength/2))
             padEntry2 = create_padding_LL(np.ceil(padLength/2))
             return shape, [padEntry1, entry, padEntry2]
-
-def hash_pulse(shape):
-    return hash(tuple(shape))
