@@ -4,6 +4,8 @@ functions for compiling lists of pulses/pulseBlocks down to the hardware level.
 
 import numpy as np
 
+TAZKey = hash(tuple(np.zeros(1, dtype=np.complex)))
+
 def TekChannels():
     '''
     The set of empty channels for a Tektronix AWG
@@ -79,7 +81,7 @@ def compile_sequence(seq, wfLib = {} ):
     for chan in channels:
         logicalLLs[chan] = []
         if chan not in wfLib:
-            wfLib[chan] = {"TAZKey":  np.zeros(1, dtype=np.complex)}
+            wfLib[chan] = {TAZKey:  np.zeros(1, dtype=np.complex)}
 
     for block in seq:
         #Align the block 
@@ -101,18 +103,22 @@ def compile_sequence(seq, wfLib = {} ):
         for entry in miniLL:
             # frame update
             shape = np.copy(wfLib[chan][entry.key])
+
+            # See if we can turn into a TA pair
             # fragile: if you buffer a square pulse it will not be constant valued
             if np.all(shape == shape[0]):
                 entry.isTimeAmp = True
+                shape = shape[:1]
+
             shape *= np.exp(1j*(entry.phase+curFrame))
             # TODO SSB modulate
             shapeHash = hash(tuple(shape))
-            if shapeHash not in wfLib:
-                wfLib[shapeHash] = shape
+            if shapeHash not in wfLib[chan]:
+                wfLib[chan][shapeHash] = shape
             entry.key = shapeHash
             curFrame += entry.frameChange
 
-    return logicalLLs, wfLib
+    return logicalLLs
 
 def align(pulse, blockLength, alignment, cutoff=12):
     entry = LLElement(pulse)
