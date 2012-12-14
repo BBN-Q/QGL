@@ -3,46 +3,50 @@ functions for compiling lists of pulses/pulseBlocks down to the hardware level.
 '''
 
 import numpy as np
+import json
+import AWG
 
-def TekChannels():
-    '''
-    The set of empty channels for a Tektronix AWG
-    '''
-    return {'ch1':[], 'ch2':[], 'ch3':[], 'ch4':[], 'ch1m1':[], 'ch1m2':[], 'ch2m1':[], 'ch2m2':[], 'ch3m1':[], 'ch3m2':[] , 'ch4m1':[], 'ch4m2':[]}
+def get_channel_name(chanKey):
+    ''' Takes in a channel key and returns a channel name '''
+    if type(chanKey) != tuple:
+        return chanKey.name
+    else:
+        return "".join([chan.name for chan in chanKey])
 
-def APSChannels():
-    '''
-    The set of empty channels for a BBN APS.
-    '''
-    return {chanStr:{'LLs':[], 'WFLibrary':{0:np.zeros(1)}} for chanStr in  ['ch1','ch2','ch3','ch4']}
+def setup_awg_channels(logicalChannels, channelMap):
+    awgNames = set([])
+    for chan in logicalChannels:
+        awgNames.add(channelMap[get_channel_name(chan)]['awg'])
+    return {name: getattr(AWG, channelMap[name]['type'])().channels() for name in awgNames}
 
-class LLElement(object):
-    def __init__(self, pulse=None):
-        self.repeat = 1
-        self.isTimeAmp = False
-        self.hasTrigger = False
-        self.triggerDelay1 = 0
-        self.triggerDelay2 = 0
-        
-        if pulse is None:
-            self.key = None
-            self.length = 0
-            self.phase = 0
-            self.frameChange = 0
-        else:
-            self.key = hash_pulse(pulse.shape)
-            self.length = len(pulse.shape)
-            self.phase = pulse.phase
-            self.frameChange = pulse.frameChange
+def map_logical_to_physical(linkLists, wfLib, channelMap):
+    physicalChannels = {chan: channelMap[get_channel_name(chan)]['IQkey'] for chan in linkLists.keys()}
+    awgData = setup_awg_channels(linkLists.keys(), channelMap)
+    
+    for chan in linkLists.keys():
+        awgName, awgChan = physicalChannels[chan].split('_')
+        awgData[awgName]['ch'+awgChan] = {'linkList': linkLists[chan], 'wfLib': wfLib[chan]}
+    
+    return awgData
 
-def compile_to_hardware(seqs):
-    linkLists, wfLib = compile_sequences(seq)
+def compile_to_hardware(seqs, channelMapPath="../qlab/experiments/muWaveDetection/cfg/Qubit2ChannelMap.json", alignMode="right"):
+    linkLists, wfLib = compile_sequences(seqs)
+
+    # align channels
+    # this horrible line finds the longest miniLL across all channels
+    longestLL = max([sum([entry.length*entry.repeat for entry in miniLL]) for LL in linkLists.values() for miniLL in LL])
+    for chan, LL in linkLists.items():
+        align(LL, alignMode, longestLL+500)
+    
+    with open(channelMapPath, 'r') as f:
+        channelMap = json.load(f)
+
     # map logical to physical channels
+    awgData = map_logical_to_physical(linkLists, wfLib, channelMap)
 
-    # aligns channels to fixed points
-    # delays
-    # mixer corrects
-    # fills empty channels with zeros
+    # delay
+    # mixer correct
+    # fill empty channels with zeros
 
     # convert to hardware formats
 
@@ -121,10 +125,6 @@ def compile_sequence(seq, wfLib = {} ):
             entry.key = shapeHash
             curFrame += entry.frameChange
 
-    # for chan in logicalLLs.keys():
-    #     # convert to single-element list
-    #     logicalLLs[chan] = [logicalLLs[chan]]
-
     return logicalLLs, wfLib
 
 def find_unique_channels(seq):
@@ -135,6 +135,25 @@ def find_unique_channels(seq):
 
 def hash_pulse(shape):
     return hash(tuple(shape))
+
+class LLElement(object):
+    def __init__(self, pulse=None):
+        self.repeat = 1
+        self.isTimeAmp = False
+        self.hasTrigger = False
+        self.triggerDelay1 = 0
+        self.triggerDelay2 = 0
+
+        if pulse is None:
+            self.key = None
+            self.length = 0
+            self.phase = 0
+            self.frameChange = 0
+        else:
+            self.key = hash_pulse(pulse.shape)
+            self.length = len(pulse.shape)
+            self.phase = pulse.phase
+            self.frameChange = pulse.frameChange
 
 TAZKey = hash_pulse(np.zeros(1, dtype=np.complex))
 
