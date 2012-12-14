@@ -114,7 +114,7 @@ def show(seq):
         stepLength = step.maxPts
         for q in qubits:
             if q in step.pulses.keys():
-                concatShapes[q] = np.append(concatShapes[q], step.pulses[q])
+                concatShapes[q] = np.append(concatShapes[q], step.pulses[q].shape)
             else:
                 concatShapes[q] = np.append(concatShapes[q], np.zeros(stepLength))
     
