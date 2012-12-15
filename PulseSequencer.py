@@ -91,10 +91,11 @@ class PulseBlock(object):
     def maxPts(self):
         return max([len(p.shape) for p in self.pulses.values()])
 
-class PulseSequence(object):
-    '''
-    A collection of pulse blocks which forms a sequence.
-    '''
+def align(pulseBlock, mode="center"):
+    # make sure we have a PulseBlock
+    pulseBlock = pulseBlock.promote()
+    pulseBlock.alignment = mode
+    return pulseBlock
 
 AWGFreq = 1e9
 
