@@ -5,6 +5,9 @@ functions for compiling lists of pulses/pulseBlocks down to the hardware level.
 import numpy as np
 import json
 import AWG
+import PatternUtils
+
+SEQUENCE_PADDING = 500
 
 def get_channel_name(chanKey):
     ''' Takes in a channel key and returns a channel name '''
@@ -29,26 +32,41 @@ def map_logical_to_physical(linkLists, wfLib, channelMap):
     
     return awgData
 
-def compile_to_hardware(seqs, channelMapPath="../qlab/experiments/muWaveDetection/cfg/Qubit2ChannelMap.json", alignMode="right"):
+def compile_to_hardware(seqs, channelMapPath="../qlab/experiments/muWaveDetection/cfg/Qubit2ChannelMap.json",
+    paramMapPath="../qlab/experiments/muWaveDetection/cfg/pulseParams.json", alignMode="right"):
     linkLists, wfLib = compile_sequences(seqs)
 
     # align channels
     # this horrible line finds the longest miniLL across all channels
     longestLL = max([sum([entry.length*entry.repeat for entry in miniLL]) for LL in linkLists.values() for miniLL in LL])
     for chan, LL in linkLists.items():
-        align(LL, alignMode, longestLL+500)
+        PatternUtils.align(LL, alignMode, longestLL+SEQUENCE_PADDING)
     
     with open(channelMapPath, 'r') as f:
         channelMap = json.load(f)
+    with open(paramMapPath, 'r') as f:
+        paramMap = json.load(f)
 
     # map logical to physical channels
     awgData = map_logical_to_physical(linkLists, wfLib, channelMap)
 
-    # delay
-    # mixer correct
-    # fill empty channels with zeros
+    # for each physical channel need to:
+    # 1) delay
+    # 2) mixer correct
+    # 3) fill empty channels with zeros
+    for awgName, awg in awgData.items():
+        for chan in awg.keys():
+            if not awg[chan]:
+                awg[chan] = {'linkList': create_padding_LL(SEQUENCE_PADDING),
+                             'wfLib': np.zeros(1, dtype=np.complex)}
+            else:
+                # construct IQkey using existing convention
+                IQkey = awgName + '_' + chan[2:]
+                awg[chan] = {'linkList': PatternUtils.delay(awg[chan]['linkList'], paramMap[IQkey]['delay']),
+                             'wfLib': PatternUtils.correctMixer(awg[chan]['wfLib'], paramMap[IQkey]['T'])}
 
     # convert to hardware formats
+    return awgData
 
 def compile_sequences(seqs):
     '''
@@ -65,7 +83,7 @@ def compile_sequences(seqs):
             for chan in linkLists.keys():
                 linkLists[chan].append(miniLL[chan])
     else:
-        miniLL, wfLib = compile_sequence(seq)
+        miniLL, wfLib = compile_sequence(seqs)
         linkLists = {chan: [LL] for chan, LL in miniLL.items()}
 
     return linkLists, wfLib

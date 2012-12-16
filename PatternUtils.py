@@ -1,16 +1,16 @@
 import numpy as np
-import create_padding_LL from Compiler
+import Compiler
 
 def delay(linkList, delay):
-    pass
+    return linkList
 
 def modulate(linkList, SSBFreq):
-    pass
+    return linkList
 
 def align(linkList, mode, length):
     for miniLL in linkList:
-        miniLL_length = sum([entry.lengthU*entry.repeat for entry in miniLL])
-        paddingEntry = create_padding_LL(length - miniLL_length)
+        miniLL_length = sum([entry.length*entry.repeat for entry in miniLL])
+        paddingEntry = Compiler.create_padding_LL(length - miniLL_length)
         if mode == 'left':
             miniLL.append(paddingEntry)
         elif mode == 'right':
@@ -19,7 +19,7 @@ def align(linkList, mode, length):
             raise NameError("Unknown aligment mode")
 
 def correctMixer(wfLib, T):
-    pass
+    return wfLib
 
 def split_multiple_triggers():
 	'''
