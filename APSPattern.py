@@ -5,6 +5,7 @@ Module for writing hdf5 APS files from LL's and patterns
 import h5py
 import numpy as np
 from warnings import warn
+from itertools import chain
 
 #Some constants
 ADDRESS_UNIT = 4 #everything is done in units of 4 timesteps
@@ -83,7 +84,7 @@ def preprocess_APS(miniLL, wfLib):
                 warn("Unable to handle too short LL element, dropping.")
                 entryct += 1
 
-    #Update the miniLL in place
+    #Update the miniLL 
     return newMiniLL
 
 def create_wf_vector(wfLib):
@@ -114,34 +115,39 @@ def create_wf_vector(wfLib):
     return wfVec, offsets
 
 def create_LL_data(LLs, offsets):
+    '''
+    Helper function to create LL data vectors from a list of miniLL's and an offset dictionary
+    keyed on the wf keys.
+    '''
 
-    for miniLLct, miniLL in enumerate(AWGData[chanStr]['LLs']):
-        LLlength = len(miniLL)
-        #The minimum miniLL length is two 
-        assert LLlength >= 3, 'Oops! mini LL''s needs to have at least three elements.'
-        assert LLlength < MAX_BANK_SIZE, 'Oops! mini LL''s cannot have length greater than {0}, you have {1} entries'.format(MAX_BANK_SIZE, len(miniLL))
-        #If we need to allocate a new bank
-        if entryct + len(miniLL) > MAX_BANK_SIZE:
-            #Fix the final entry as we no longer have to indicate the next enty is the start of a miniLL
-            tmpBank['offset'][entryct-1] -= ELL_FIRST_ENTRY
-            #Write the current bank to file
-            write_bank_to_file(FID, tmpBank, '/{0}/linkListData/bank{1}'.format(chanStrs2[chanct], bankct), entryct)
-            #Allocate a new bank
-            tmpBank = create_empty_bank()
-            bankct += 1
-            #Reset the entry count
-            entryct = 0
-        
-        #Otherwise enter each LL entry into the bank arrays
-        for ct, LLentry in enumerate(miniLL):
-            tmpBank['offset'][entryct] = calc_offset(LLentry, offsets, entryct==0 or (ct==LLlength-1 and miniLLct<numMiniLLs-1) , ct==LLlength-2)
-            tmpBank['count'][entryct] = LLentry.length//ADDRESS_UNIT-1
-            tmpBank['trigger'][entryct] = calc_trigger(LLentry)
-            tmpBank['repeat'][entryct] = LLentry.repeat-1
-            entryct += 1
+    #Preallocate the bank data and do some checking for miniLL lengths
+    seqLengths = np.array([len(miniLL) for miniLL in LLs])
+    assert np.all(seqLengths >= 3), 'Oops! mini LL''s needs to have at least three elements.'
+    assert np.all(seqLengths < MAX_BANK_SIZE), 'Oops! mini LL''s cannot have length greater than {0}, you have {1} entries'.format(MAX_BANK_SIZE, len(miniLL))
+    numEntries = sum(seqLengths)
+    LLData = {label: np.zeros(numEntries, dtype=np.uint16) for label in ['addr','count', 'trigger1', 'trigger2', 'repeat']}
+
+    #Loop over all entries
+    TAPairEntries = []
+    for ct, entry in enumerate(chain.from_iterable(LLs)):
+        LLData['addr'][ct] = offsets[entry.key]
+        LLData['count'][ct] = entry.length//ADDRESS_UNIT-1
+        LLData['trigger1'][ct], LLData['trigger2'][ct] = calc_trigger(entry)
+        LLData['repeat'][ct] = entry.repeat-1
+        if entry.isTAPair:
+            TAPairEntries.append(ct)
 
 
-def write_APS_file(LL12, wfLib12, LL34, wfLib34, chanData34, fileName):
+    #Add in the miniLL start/stop and TA pair flags on the upper bits of the repeat entries
+    startPts = np.hstack((0, seqLengths))
+    endPts = np.hstack((seqLengths-1, numEntries-1)
+    LLData['repeat'][startPts] += 2**START_MINILL_BIT + 2**WAIT_TRIG_BIT
+    LLData['repeat'][endPts] += 2**END_MINILL_BIT
+    LLData['repeat'][TAPairEntries] += 2**TA_PAIR_BIT
+    
+    return LLData
+
+def write_APS_file(LLs12, wfLib12, LLs34, wfLib34, chanData34, fileName, miniLLRepeat):
     '''
     Main function to pack channel LLs into an APS h5 file.
 
@@ -150,8 +156,12 @@ def write_APS_file(LL12, wfLib12, LL34, wfLib34, chanData34, fileName):
     with h5py.File(fileName, 'w') as FID:  
     
         #List of which channels we have data for
-        # channelDataFor = []
-
+        #TODO: actually handle incomplete channel data
+        channelDataFor = [1,2,3,4]
+        FID['/'].attrs['Version'] = 2.0
+        FID['/'].attrs['channelDataFor'] = np.uint16(channelDataFor)
+        FID['/'].attrs['miniLLRepeat'] = np.uint16(miniLLRepeat)
+   
         #Create the waveform vectors
         wfVecs = []
         offsets = []
@@ -168,50 +178,26 @@ def write_APS_file(LL12, wfLib12, LL34, wfLib34, chanData34, fileName):
         wfVecs.append(wfVec)
         offsets.append(offsets)
 
+        LLData = [LLs12, LLs34]
         #Create the groups and datasets
         for chanct in range(4):
-            chanStr = '/ch{0}'.format(chanct+1)
+            chanStr = '/chan_{0}'.format(chanct+1)
             chanGroup = FID.create_group(chanStr)
-
+            chanGroup.attrs['isIQMode'] = np.uint8(1)
             #Write the waveformLib to file
             FID.create_dataset('{0}/waveformLib'.format(chanStr), data=waveformLib)
 
             #For A channels (1 & 3) we write link list data
             if np.mod(chanct,2) == 0:
-                chanGroup.attrs['isLinkListData'] = np.int16(1)
+                chanGroup.attrs['isLinkListData'] = np.uint8(1)
+                groupStr = chanStr+'/linkListData'
+                LLGroup = FID.create_group(groupStr)
+                LLDataVecs = create_LL_data(LLData[chanct//2])
+                LLGroup.attrs['length'] = np.uint16(LLDataVecs['addr'].size)
+                for key,dataVec in LLDataVecs.items():
+                    FID.create_dataset(groupStr+'/' + key, data=dataVec)
 
 
-
-                
-        # #Loop over the channels
-        # for chanct, chanStr in enumerate(chanStrs):
-        #     if chanStr in AWGData:
-        #         channelDataFor.append(chanct+1)
-    
-        #         if AWGData[chanStr]['WFLibrary']:
-                    
-                
-        #         #Create the LL data group
-        #         LLGroup = FID.create_group('/'+chanStrs2[chanct] + '/linkListData')
-                
-        #         #Create the necessary number of banks as we step through the mini LL
-        #         entryct = 0
-        #         tmpBank = create_empty_bank()
-        #         bankct = 1
-        #         numMiniLLs = len(AWGData[chanStr]['LLs'])
-                        
-        #         #Write the final bank
-        #         write_bank_to_file(FID, tmpBank, '/{0}/linkListData/bank{1}'.format(chanStrs2[chanct], bankct), entryct)
-                
-        #         LLGroup.attrs['numBanks'] = np.uint16(bankct)
-        #         LLGroup.attrs['repeatCount'] = np.uint16(0)
-                    
-                        
-            
-        # FID['/'].attrs['Version'] = 2.0
-        # FID['/'].attrs['channelDataFor'] = np.int16(channelDataFor)
-    
-    
 def read_APS_file(fileName):
     '''
     Helper function to read back in data from a H5 file and reconstruct the sequence
