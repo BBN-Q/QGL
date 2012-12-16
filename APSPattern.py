@@ -42,7 +42,6 @@ def preprocess_APS(miniLL, wfLib):
             
             #For short TA pairs we see if we can add them to the next waveform
             if curEntry.key == TAZKey and not nextEntry.key == TAZKey:
-                print("Got here")
                 #Concatenate the waveforms                
                 paddedWF = np.hstack((wfLib[curEntry.key]*np.ones(curEntry.length), wfLib[nextEntry.key]))
                 #Hash the result to generate a new unique key and add
@@ -110,9 +109,12 @@ def create_wf_vector(wfLib):
         idx += wf.size
                     
     #Trim the waveform 
-    wfVec = waveformLib[0:idx] 
+    wfVec = wfVec[0:idx] 
 
     return wfVec, offsets
+
+def calc_trigger(entry):
+    return 0,0
 
 def create_LL_data(LLs, offsets):
     '''
@@ -123,7 +125,7 @@ def create_LL_data(LLs, offsets):
     #Preallocate the bank data and do some checking for miniLL lengths
     seqLengths = np.array([len(miniLL) for miniLL in LLs])
     assert np.all(seqLengths >= 3), 'Oops! mini LL''s needs to have at least three elements.'
-    assert np.all(seqLengths < MAX_BANK_SIZE), 'Oops! mini LL''s cannot have length greater than {0}, you have {1} entries'.format(MAX_BANK_SIZE, len(miniLL))
+    assert np.all(seqLengths < MAX_LL_ENTRIES), 'Oops! mini LL''s cannot have length greater than {0}, you have {1} entries'.format(MAX_BANK_SIZE, len(miniLL))
     numEntries = sum(seqLengths)
     LLData = {label: np.zeros(numEntries, dtype=np.uint16) for label in ['addr','count', 'trigger1', 'trigger2', 'repeat']}
 
@@ -134,24 +136,31 @@ def create_LL_data(LLs, offsets):
         LLData['count'][ct] = entry.length//ADDRESS_UNIT-1
         LLData['trigger1'][ct], LLData['trigger2'][ct] = calc_trigger(entry)
         LLData['repeat'][ct] = entry.repeat-1
-        if entry.isTAPair:
+        if entry.isTimeAmp:
             TAPairEntries.append(ct)
 
 
     #Add in the miniLL start/stop and TA pair flags on the upper bits of the repeat entries
-    startPts = np.hstack((0, seqLengths))
-    endPts = np.hstack((seqLengths-1, numEntries-1)
+    startPts = np.hstack((0, np.cumsum(seqLengths[:-1])))
+    endPts = np.cumsum(seqLengths)-1
     LLData['repeat'][startPts] += 2**START_MINILL_BIT + 2**WAIT_TRIG_BIT
     LLData['repeat'][endPts] += 2**END_MINILL_BIT
     LLData['repeat'][TAPairEntries] += 2**TA_PAIR_BIT
     
     return LLData
 
-def write_APS_file(LLs12, wfLib12, LLs34, wfLib34, chanData34, fileName, miniLLRepeat):
+def write_APS_file(LLs12, wfLib12, LLs34, wfLib34, fileName, miniLLRepeat=0):
     '''
     Main function to pack channel LLs into an APS h5 file.
 
     '''
+
+    #Preprocess the LL data to handle APS restrictions
+    for ct, miniLL in enumerate(LLs12):
+        LLs12[ct] = preprocess_APS(miniLL, wfLib12)
+    for ct, miniLL in enumerate(LLs34):
+        LLs34[ct] = preprocess_APS(miniLL, wfLib34)
+
     #Open the HDF5 file
     with h5py.File(fileName, 'w') as FID:  
     
@@ -165,18 +174,18 @@ def write_APS_file(LLs12, wfLib12, LLs34, wfLib34, chanData34, fileName, miniLLR
         #Create the waveform vectors
         wfVecs = []
         offsets = []
-        wfVec, offsets = create_wf_vector({key:wf.real for key,wf in wfLib12})
+        wfVec, tmpOffsets = create_wf_vector({key:wf.real for key,wf in wfLib12.items()})
         wfVecs.append(wfVec)
-        offsets.append(offsets)
-        wfVec, offsets = create_wf_vector({key:wf.imag for key,wf in wfLib12})
+        offsets.append(tmpOffsets)
+        wfVec, tmpOffsets = create_wf_vector({key:wf.imag for key,wf in wfLib12.items()})
         wfVecs.append(wfVec)
-        offsets.append(offsets)
-        wfVec, offsets = create_wf_vector({key:wf.real for key,wf in wfLib34})
+        offsets.append(tmpOffsets)
+        wfVec, tmpOffsets = create_wf_vector({key:wf.real for key,wf in wfLib34.items()})
         wfVecs.append(wfVec)
-        offsets.append(offsets)
-        wfVec, offsets = create_wf_vector({key:wf.imag for key,wf in wfLib34})
+        offsets.append(tmpOffsets)
+        wfVec, tmpOffsets = create_wf_vector({key:wf.imag for key,wf in wfLib34.items()})
         wfVecs.append(wfVec)
-        offsets.append(offsets)
+        offsets.append(tmpOffsets)
 
         LLData = [LLs12, LLs34]
         #Create the groups and datasets
@@ -185,14 +194,14 @@ def write_APS_file(LLs12, wfLib12, LLs34, wfLib34, chanData34, fileName, miniLLR
             chanGroup = FID.create_group(chanStr)
             chanGroup.attrs['isIQMode'] = np.uint8(1)
             #Write the waveformLib to file
-            FID.create_dataset('{0}/waveformLib'.format(chanStr), data=waveformLib)
+            FID.create_dataset('{0}/waveformLib'.format(chanStr), data=wfVecs[chanct])
 
             #For A channels (1 & 3) we write link list data
             if np.mod(chanct,2) == 0:
                 chanGroup.attrs['isLinkListData'] = np.uint8(1)
                 groupStr = chanStr+'/linkListData'
                 LLGroup = FID.create_group(groupStr)
-                LLDataVecs = create_LL_data(LLData[chanct//2])
+                LLDataVecs = create_LL_data(LLData[chanct//2], offsets[chanct])
                 LLGroup.attrs['length'] = np.uint16(LLDataVecs['addr'].size)
                 for key,dataVec in LLDataVecs.items():
                     FID.create_dataset(groupStr+'/' + key, data=dataVec)

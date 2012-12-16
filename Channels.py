@@ -75,22 +75,22 @@ class PhysicalMarkerChannel(PhysicalChannel):
     '''
     An digital output channel on an AWG.
     '''
-    def __init__(self, name=None, AWGName=None, channel=None, channelShift=0.0, **kwargs):
+    def __init__(self, name=None, AWGName=None, channel=None, delay=0.0, **kwargs):
         super(PhysicalMarkerChannel, self).__init__(name=name, AWGName=AWGName, channelType=ChannelTypes.marker)
         self.channelType = ChannelTypes.marker
-        self.channelShift = channelShift
+        self.delay = delay
         self.channel = channel
         
 class QuadratureChannel(PhysicalChannel):
     '''
     Something used to implement a standard qubit channel with two analog channels and a microwave gating channel.
     '''
-    def __init__(self, name=None, AWGName=None, carrierGen=None, IChannel=None, QChannel=None, channelShift=0.0, ampFactor=1.0, phaseSkew=0.0, **kwargs):
+    def __init__(self, name=None, AWGName=None, carrierGen=None, IChannel=None, QChannel=None, delay=0.0, ampFactor=1.0, phaseSkew=0.0, **kwargs):
         super(QuadratureChannel, self).__init__(name=name, AWGName=AWGName, channelType=ChannelTypes.quadratureMod)
         self.carrierGen = carrierGen
         self.IChannel = IChannel
         self.QChannel = QChannel
-        self.channelShift = channelShift
+        self.delay = delay
         self.ampFactor = ampFactor
         self.phaseSkew = phaseSkew
 
@@ -130,12 +130,12 @@ class Generator(object):
     '''
     Although not quite a channel, it is tightly linked to channels.
     '''
-    def __init__(self, name=None, gateChannel=None, gateBuffer=0.0, gateMinWidth=0.0, gateChannelShift=0.0):
+    def __init__(self, name=None, gateChannel=None, gateBuffer=0.0, gateMinWidth=0.0, gateDelay=0.0):
         self.name = name
         self.gateChannel = gateChannel
         self.gateBuffer = gateBuffer
         self.gateMinWidth = gateMinWidth
-        self.gateChannelShift = gateChannelShift
+        self.gateDelay = gateDelay
         
         
 def save_channel_info(channelDict, fileName=None):
@@ -353,29 +353,32 @@ class ChannelView(QtGui.QWidget):
 
 if __name__ == '__main__':
     channelDict = {}
-    channelDict['q1'] = {'name':'q1', 'channelType':'quadratureMod', 'isLogical':True, 'isPhysical':False, 'isGenerator':False, 'piAmp':1.0, 'pi2Amp':0.5, 'pulseType':'drag', 'pulseLength':40e-9, 'bufferTime':2e-9, 'dragScaling':1, 'physicalChannel':'TekAWG2-12', 'frequency':5}
+    channelDict['q1'] = {'name':'q1', 'channelType':'quadratureMod', 'isLogical':True, 'isPhysical':False, 'isGenerator':False, 'piAmp':1.0, 'pi2Amp':0.5, 'pulseType':'drag', 'pulseLength':40e-9, 'bufferTime':2e-9, 'dragScaling':1, 'physicalChannel':'BBNAPS1-12', 'frequency':5}
     channelDict['q2'] = {'name':'q2', 'channelType':'quadratureMod', 'isLogical':True, 'isPhysical':False, 'isGenerator':False, 'piAmp':1.0, 'pi2Amp':0.5, 'pulseType':'drag', 'pulseLength':40e-9, 'bufferTime':2e-9, 'dragScaling':1, 'physicalChannel':'TekAWG2-34', 'frequency':5}
     channelDict['CR'] = {'name':'CR', 'channelType':'quadratureMod', 'isLogical':True, 'isPhysical':False, 'isGenerator':False, 'piAmp':1.0, 'pi2Amp':0.5, 'pulseType':'drag', 'pulseLength':40e-9, 'bufferTime':2e-9, 'dragScaling':1, 'physicalChannel':'TekAWG1-12', 'frequency':5}
 
     channelDict['measChannel'] = {'name':'measChannel', 'channelType':'marker', 'isLogical':True, 'isPhysical':False, 'isGenerator':False, 'physicalChannel':'TekAWG1-ch3m1' }
     channelDict['digitizerTrig'] = {'name':'digitizerTrig','channelType':'marker', 'isLogical':True, 'isPhysical':False, 'isGenerator':False, 'physicalChannel':'TekAWG1-ch3m2'}
 
-    channelDict['TekAWG1-12'] = {'name':'TekAWG1-12', 'channelType':'quadratureMod', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG1', 'IChannel':'ch1', 'QChannel':'ch2', 'channelShift':0e-9,  'correctionT':[[1,0],[0,1]], 'ampFactor':1.0, 'phaseSkew':0.0, 'carrierGen':'QPC1-1691'}
-    channelDict['TekAWG1-34'] = {'name':'TekAWG1-34', 'channelType':'quadratureMod', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG1', 'IChannel':'ch3', 'QChannel':'ch4', 'channelShift':0e-9,  'correctionT':[[1,0],[0,1]], 'ampFactor':1.0, 'phaseSkew':0.0, 'carrierGen':'Agilent1'}
-    channelDict['TekAWG1-ch1m1'] = {'name':'TekAWG1-ch1m1', 'channelType':'marker', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG1', 'channel':'ch1m1', 'channelShift':0e-9 }    
-    channelDict['TekAWG1-ch2m1'] = {'name':'TekAWG1-ch2m1', 'channelType':'marker', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG1', 'channel':'ch2m1', 'channelShift':0e-9 }
-    channelDict['TekAWG1-ch3m1'] = {'name':'TekAWG2-ch3m1', 'channelType':'marker', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG2', 'channel':'ch3m1', 'channelShift':0e-9 }    
-    channelDict['TekAWG1-ch3m2'] = {'name':'TekAWG2-ch3m2', 'channelType':'marker', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG2', 'channel':'ch3m2', 'channelShift':0e-9 }
+    channelDict['TekAWG1-12'] = {'name':'TekAWG1-12', 'channelType':'quadratureMod', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG1', 'IChannel':'ch1', 'QChannel':'ch2', 'delay':0e-9,  'correctionT':[[1,0],[0,1]], 'ampFactor':1.0, 'phaseSkew':0.0, 'carrierGen':'QPC1-1691'}
+    channelDict['TekAWG1-34'] = {'name':'TekAWG1-34', 'channelType':'quadratureMod', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG1', 'IChannel':'ch3', 'QChannel':'ch4', 'delay':0e-9,  'correctionT':[[1,0],[0,1]], 'ampFactor':1.0, 'phaseSkew':0.0, 'carrierGen':'Agilent1'}
+    channelDict['TekAWG1-ch1m1'] = {'name':'TekAWG1-ch1m1', 'channelType':'marker', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG1', 'channel':'ch1m1', 'delay':0e-9 }    
+    channelDict['TekAWG1-ch2m1'] = {'name':'TekAWG1-ch2m1', 'channelType':'marker', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG1', 'channel':'ch2m1', 'delay':0e-9 }
+    channelDict['TekAWG1-ch3m1'] = {'name':'TekAWG2-ch3m1', 'channelType':'marker', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG2', 'channel':'ch3m1', 'delay':0e-9 }    
+    channelDict['TekAWG1-ch3m2'] = {'name':'TekAWG2-ch3m2', 'channelType':'marker', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG2', 'channel':'ch3m2', 'delay':0e-9 }
   
-    channelDict['BBNAPS1-12'] = {'name':'BBNAPS1-12', 'channelType':'quadratureMod', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'BBNAPS1', 'IChannel':'ch1', 'QChannel':'ch2', 'channelShift':0e-9, 'correctionT':[[1,0],[0,1]], 'ampFactor':1.0, 'phaseSkew':0.0, 'carrierGen':'QPC1-1691'}
-    channelDict['BBNAPS1-34'] = {'name':'BBNAPS1-34', 'channelType':'quadratureMod', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'BBNAPS1', 'IChannel':'ch3', 'QChannel':'ch4', 'channelShift':0e-9, 'correctionT':[[1,0],[0,1]], 'ampFactor':1.0, 'phaseSkew':0.0, 'carrierGen':'Agilent1'}
+    channelDict['BBNAPS1-12'] = {'name':'BBNAPS1-12', 'channelType':'quadratureMod', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'BBNAPS1', 'IChannel':'ch1', 'QChannel':'ch2', 'delay':0e-9, 'correctionT':[[1,0],[0,1]], 'ampFactor':1.0, 'phaseSkew':0.0, 'carrierGen':'QPC1-1691'}
+    channelDict['BBNAPS1-34'] = {'name':'BBNAPS1-34', 'channelType':'quadratureMod', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'BBNAPS1', 'IChannel':'ch3', 'QChannel':'ch4', 'delay':0e-9, 'correctionT':[[1,0],[0,1]], 'ampFactor':1.0, 'phaseSkew':0.0, 'carrierGen':'Agilent1'}
 
-    channelDict['TekAWG2-12'] = {'name':'TekAWG2-12', 'channelType':'quadratureMod', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG2', 'IChannel':'ch1', 'QChannel':'ch2', 'channelShift':0e-9,  'correctionT':[[1,0],[0,1]], 'ampFactor':1.0, 'phaseSkew':0.0, 'carrierGen':'QPC1-1691'}
-    channelDict['TekAWG2-34'] = {'name':'TekAWG2-34', 'channelType':'quadratureMod', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG2', 'IChannel':'ch3', 'QChannel':'ch4', 'channelShift':0e-9,  'correctionT':[[1,0],[0,1]], 'ampFactor':1.0, 'phaseSkew':0.0, 'carrierGen':'Agilent1'}
+    channelDict['TekAWG2-12'] = {'name':'TekAWG2-12', 'channelType':'quadratureMod', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG2', 'IChannel':'ch1', 'QChannel':'ch2', 'delay':0e-9,  'correctionT':[[1,0],[0,1]], 'ampFactor':1.0, 'phaseSkew':0.0, 'carrierGen':'QPC1-1691'}
+    channelDict['TekAWG2-34'] = {'name':'TekAWG2-34', 'channelType':'quadratureMod', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG2', 'IChannel':'ch3', 'QChannel':'ch4', 'delay':0e-9,  'correctionT':[[1,0],[0,1]], 'ampFactor':1.0, 'phaseSkew':0.0, 'carrierGen':'Agilent1'}
 
 
-    channelDict['QPC1-1691'] = {'name':'QPC1-1691', 'channelType':'generator', 'isLogical':False, 'isPhysical':False, 'isGenerator':True, 'gateChannel':'TekAWG1-ch1m1', 'gateChannelShift':-50.0e-9, 'gateBuffer':20e-9, 'gateMinWidth':100e-9, 'frequency':5}    
-    channelDict['Agilent1'] = {'name':'Agilent1', 'channelType':'generator', 'isLogical':False, 'isPhysical':False, 'isGenerator':True, 'gateChannel':'TekAWG1-ch2m1', 'gateChannelShift':0.0, 'gateBuffer':20e-9, 'gateMinWidth':100e-9, 'frequency':5}    
+    channelDict['QPC1-1691'] = {'name':'QPC1-1691', 'channelType':'generator', 'isLogical':False, 'isPhysical':False, 'isGenerator':True, 'gateChannel':'TekAWG1-ch1m1', 'gateDelay':-50.0e-9, 'gateBuffer':20e-9, 'gateMinWidth':100e-9, 'frequency':5}    
+    channelDict['Agilent1'] = {'name':'Agilent1', 'channelType':'generator', 'isLogical':False, 'isPhysical':False, 'isGenerator':True, 'gateChannel':'TekAWG1-ch2m1', 'gateDelay':0.0, 'gateBuffer':20e-9, 'gateMinWidth':100e-9, 'frequency':5}    
+
+    channelDict['TekAWG1'] = {'type':'Tek5000'}
+    channelDict['BBNAPS1'] = {'type':'BBNAPS'}
 
     save_channel_info(channelDict, 'ChannelParams.json')
 

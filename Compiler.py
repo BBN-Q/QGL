@@ -6,7 +6,9 @@ import numpy as np
 import json
 import AWG
 import PatternUtils
+import config
 
+from APSPattern import  write_APS_file
 SEQUENCE_PADDING = 500
 
 def get_channel_name(chanKey):
@@ -19,21 +21,22 @@ def get_channel_name(chanKey):
 def setup_awg_channels(logicalChannels, channelMap):
     awgNames = set([])
     for chan in logicalChannels:
-        awgNames.add(channelMap[get_channel_name(chan)]['awg'])
+        awgNames.add(channelMap[channelMap[get_channel_name(chan)]['physicalChannel']]['AWGName'])
     return {name: getattr(AWG, channelMap[name]['type'])().channels() for name in awgNames}
 
 def map_logical_to_physical(linkLists, wfLib, channelMap):
-    physicalChannels = {chan: channelMap[get_channel_name(chan)]['IQkey'] for chan in linkLists.keys()}
+    physicalChannels = {chan: channelMap[get_channel_name(chan)]['physicalChannel'] for chan in linkLists.keys()}
     awgData = setup_awg_channels(linkLists.keys(), channelMap)
     
     for chan in linkLists.keys():
-        awgName, awgChan = physicalChannels[chan].split('_')
+        awgName, awgChan = physicalChannels[chan].split('-')
         awgData[awgName]['ch'+awgChan] = {'linkList': linkLists[chan], 'wfLib': wfLib[chan]}
     
     return awgData
 
-def compile_to_hardware(seqs, channelMapPath="../qlab/experiments/muWaveDetection/cfg/Qubit2ChannelMap.json",
-    paramMapPath="../qlab/experiments/muWaveDetection/cfg/pulseParams.json", alignMode="right"):
+
+
+def compile_to_hardware(seqs, fileName=None, alignMode="right"):
     linkLists, wfLib = compile_sequences(seqs)
 
     # align channels
@@ -42,13 +45,11 @@ def compile_to_hardware(seqs, channelMapPath="../qlab/experiments/muWaveDetectio
     for chan, LL in linkLists.items():
         PatternUtils.align(LL, alignMode, longestLL+SEQUENCE_PADDING)
     
-    with open(channelMapPath, 'r') as f:
-        channelMap = json.load(f)
-    with open(paramMapPath, 'r') as f:
-        paramMap = json.load(f)
+    with open(config.ChannelParams, 'r') as f:
+        channelParams = json.load(f)
 
     # map logical to physical channels
-    awgData = map_logical_to_physical(linkLists, wfLib, channelMap)
+    awgData = map_logical_to_physical(linkLists, wfLib, channelParams)
 
     # for each physical channel need to:
     # 1) delay
@@ -57,15 +58,19 @@ def compile_to_hardware(seqs, channelMapPath="../qlab/experiments/muWaveDetectio
     for awgName, awg in awgData.items():
         for chan in awg.keys():
             if not awg[chan]:
-                awg[chan] = {'linkList': create_padding_LL(SEQUENCE_PADDING),
-                             'wfLib': np.zeros(1, dtype=np.complex)}
+                awg[chan] = {'linkList': [[create_padding_LL(SEQUENCE_PADDING//3), create_padding_LL(SEQUENCE_PADDING//3), create_padding_LL(SEQUENCE_PADDING//3)]],
+                             'wfLib': {TAZKey:np.zeros(1, dtype=np.complex)}}
             else:
                 # construct IQkey using existing convention
-                IQkey = awgName + '_' + chan[2:]
-                awg[chan] = {'linkList': PatternUtils.delay(awg[chan]['linkList'], paramMap[IQkey]['delay']),
-                             'wfLib': PatternUtils.correctMixer(awg[chan]['wfLib'], paramMap[IQkey]['T'])}
+                IQkey = awgName + '-' + chan[2:]
+                awg[chan] = {'linkList': PatternUtils.delay(awg[chan]['linkList'], channelParams[IQkey]['delay']),
+                             'wfLib': PatternUtils.correctMixer(awg[chan]['wfLib'], channelParams[IQkey]['correctionT'])}
 
-    # convert to hardware formats
+        # convert to hardware formats
+        if channelParams[awgName]['type'] == 'BBNAPS':
+            write_APS_file(awg['ch12']['linkList'], awg['ch12']['wfLib'], awg['ch34']['linkList'], awg['ch34']['wfLib'], fileName+'-'awgName+'.h5')
+
+
     return awgData
 
 def compile_sequences(seqs):
