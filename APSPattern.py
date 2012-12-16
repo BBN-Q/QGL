@@ -132,7 +132,7 @@ def create_LL_data(LLs, offsets):
     #Loop over all entries
     TAPairEntries = []
     for ct, entry in enumerate(chain.from_iterable(LLs)):
-        LLData['addr'][ct] = offsets[entry.key]
+        LLData['addr'][ct] = offsets[entry.key]//ADDRESS_UNIT
         LLData['count'][ct] = entry.length//ADDRESS_UNIT-1
         LLData['trigger1'][ct], LLData['trigger2'][ct] = calc_trigger(entry)
         LLData['repeat'][ct] = entry.repeat-1
@@ -216,13 +216,15 @@ def read_APS_file(fileName):
     START_MINILL_MASK = 2**START_MINILL_BIT;
     TA_PAIR_MASK = 2**TA_PAIR_BIT;
     REPEAT_MASK = 2**10-1
-            
     
+    chanStrs = ['ch1','ch2', 'ch3', 'ch4']
+    chanStrs2 = ['chan_1', 'chan_2', 'chan_3', 'chan_4']
+    mrkStrs = ['ch1m1', 'ch2m1', 'ch3m1', 'ch4m1']
+
     with h5py.File(fileName, 'r') as FID:
-        chanct = 0
         for chanct, chanStr in enumerate(chanStrs2):
             #If we're in IQ mode then the Q channel gets its linkListData from the I channel
-            if FID[chanStr].attrs['isIQMode'][0]:
+            if FID[chanStr].attrs['isIQMode']:
                 tmpChan = 2*(chanct//2)
                 curLLData = FID[chanStrs2[tmpChan]]['linkListData']
             else:
@@ -233,11 +235,11 @@ def read_APS_file(fileName):
             tmpRepeat = curLLData['repeat'].value
             tmpTrigger1 = curLLData['trigger1'].value
             tmpTrigger2 = curLLData['trigger2'].value
-            numEntries = curLLData.attrs['length'][0]
+            numEntries = curLLData.attrs['length']
    
             #Pull out and scale the waveform data
             wfLib =(1.0/MAX_WAVEFORM_VALUE)*FID[chanStr]['waveformLib'].value.flatten()
-            
+
             #Initialize the lists of sequences
             AWGData[chanStrs[chanct]] = []
             AWGData[mrkStrs[chanct]] = []
@@ -250,12 +252,12 @@ def read_APS_file(fileName):
                     AWGData[mrkStrs[chanct]].append(np.array([], dtype=np.bool))
                 #If it is a TA pair or regular pulse
                 curRepeat = (tmpRepeat[entryct] & REPEAT_MASK)+1
-                if TA_PAIR_MASK & curLLData['repeat'][entryct][0]:
+                if TA_PAIR_MASK & tmpRepeat[entryct]:
                     AWGData[chanStrs[chanct]][-1] = np.hstack((AWGData[chanStrs[chanct]][-1], 
                                                     np.tile(wfLib[tmpAddr[entryct]*ADDRESS_UNIT:tmpAddr[entryct]*ADDRESS_UNIT+4], curRepeat*(tmpCount[entryct]+1))))
                 else:
                     AWGData[chanStrs[chanct]][-1] = np.hstack((AWGData[chanStrs[chanct]][-1], 
-                                                    np.tile(wfLib[tmpAddr[entryct]*ADDRESS_UNIT:tmpAddr[entryct]*ADDRESS_UNIT+4*(tmpCount[entryct]+1)], curRepeat)))
+                                                    np.tile(wfLib[tmpAddr[entryct]*ADDRESS_UNIT:tmpAddr[entryct]*ADDRESS_UNIT+ADDRESS_UNIT*(tmpCount[entryct]+1)], curRepeat)))
                 #Add the trigger pulse
                 tmpPulse = np.zeros(ADDRESS_UNIT*curRepeat*(tmpCount[entryct]+1), dtype=np.bool)
                 if chanct//2 == 0:
