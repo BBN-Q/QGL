@@ -242,7 +242,7 @@ class ChannelInfoView(QtGui.QMainWindow):
         hSplitter.addWidget(tmpWidget)
         self.channelWidgets = {}
         for tmpChanName, tmpChan in self.channelDict.items():
-            self.channelWidgets[tmpChanName] = ChannelView(tmpChan)
+            self.channelWidgets[tmpChanName] = ChannelView(tmpChan, self)
             hSplitter.addWidget(self.channelWidgets[tmpChanName])
             self.channelWidgets[tmpChanName].hide()
         
@@ -301,6 +301,9 @@ class ChannelInfoView(QtGui.QMainWindow):
         save_channel_info(self.channelDict, self.fileName)  
         
     def add_channel(self):
+        print(self.physicalChannelListModel.stringList())
+        self.physicalChannelListModel.removeRows(0,1)
+        print(self.physicalChannelListModel.stringList())
         msgBox = QtGui.QMessageBox()
         msgBox.setText("Not implemented yet!")
         msgBox.exec_()
@@ -312,21 +315,33 @@ class ChannelInfoView(QtGui.QMainWindow):
         
         
 class ChannelView(QtGui.QWidget):
-    def __init__(self, channel):
+    def __init__(self, channel, parent = None):
         super(ChannelView, self).__init__()
         self.channel = channel
         
+        #Some hidden fields
         skipFields = ['channelType', 'name', 'isLogical', 'isPhysical', 'isGenerator', 'correctionT']
 
         #Create the layout as a vbox of hboxes
         form = QtGui.QFormLayout()
         self.GUIhandles = {}
-        #Do the channelType on top
+        #Do the channelType on top for information purposes
         form.addRow('channelType', QtGui.QLabel(channel['channelType']))
+
+        #Helper function to update         
+            
         
         for key,value in sorted(channel.items(), key=itemgetter(0)):
             if key not in skipFields:
-                if isinstance(value, basestring):
+                #For physical channels we'll pop up a combo box
+                if key == 'physicalChannel':
+                    chanType = parent.channelDict[value]['channelType']
+                    tmpModel = QtGui.QStringListModel()
+                    parent.physicalChannelListModel.rowsRemoved.connect(lambda a,b,c : tmpModel.removeRow(b))
+                    tmpModel.setStringList( [tmpChan for tmpChan in parent.physicalChannelListModel.stringList() if parent.channelDict[tmpChan]['channelType'] == chanType] )
+                    tmpWidget = QtGui.QComboBox()
+                    tmpWidget.setModel(tmpModel)
+                elif isinstance(value, basestring):
                     tmpWidget = QtGui.QLineEdit(value)
                 else:
                     tmpWidget = QtGui.QLineEdit(str(value))
