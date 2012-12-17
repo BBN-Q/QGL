@@ -62,7 +62,7 @@ class PulseSeqPlotWindow(QtGui.QWidget):
                             tmpWFs[chanStr].append(PulseSequencer.LL2sequence(miniLL, tmpAWG[chanStr]['WFLibrary']))
                     self.AWGWFs[tmpAWGName] = tmpWFs
         
-        numSeqs = max([len(tmpChan) for tmpAWG in self.AWGWFs.values() for tmpChan in tmpAWG])
+        numSeqs = max([len(tmpChan) for tmpAWG in self.AWGWFs.values() for tmpChan in tmpAWG.values()])
         
         #Create the GUI
         self.resize(1000,700)
@@ -184,7 +184,7 @@ class PulseSeqPlotWindow(QtGui.QWidget):
 
         for tmpChanStr, tmpLine in self.lines.items():
             if curSegNum < len(tmpLine['awgData']):
-                tmpLine['handle'].set_ydata(tmpLine['awgData'][curSegNum] + tmpLine['vertShift'])
+                tmpLine['handle'].set_data(np.arange(tmpLine['awgData'][curSegNum].size), tmpLine['awgData'][curSegNum] + tmpLine['vertShift'])
         
         self.canvas.draw()
         
