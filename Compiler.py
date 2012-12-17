@@ -35,7 +35,6 @@ def map_logical_to_physical(linkLists, wfLib, channelMap):
     return awgData
 
 
-
 def compile_to_hardware(seqs, fileName=None, alignMode="right"):
     linkLists, wfLib = compile_sequences(seqs)
 
@@ -45,6 +44,7 @@ def compile_to_hardware(seqs, fileName=None, alignMode="right"):
     for chan, LL in linkLists.items():
         PatternUtils.align(LL, alignMode, longestLL+SEQUENCE_PADDING)
     
+    # load channel parameters
     with open(config.ChannelParams, 'r') as f:
         channelParams = json.load(f)
 
@@ -58,13 +58,21 @@ def compile_to_hardware(seqs, fileName=None, alignMode="right"):
     for awgName, awg in awgData.items():
         for chan in awg.keys():
             if not awg[chan]:
-                awg[chan] = {'linkList': [[create_padding_LL(SEQUENCE_PADDING//3), create_padding_LL(SEQUENCE_PADDING//3), create_padding_LL(SEQUENCE_PADDING//3)]],
+                awg[chan] = {'linkList': [[create_padding_LL(SEQUENCE_PADDING//2), create_padding_LL(SEQUENCE_PADDING//2)]],
                              'wfLib': {TAZKey:np.zeros(1, dtype=np.complex)}}
             else:
                 # construct IQkey using existing convention
                 IQkey = awgName + '-' + chan[2:]
                 awg[chan] = {'linkList': PatternUtils.delay(awg[chan]['linkList'], channelParams[IQkey]['delay']),
                              'wfLib': PatternUtils.correctMixer(awg[chan]['wfLib'], channelParams[IQkey]['correctionT'])}
+
+                # add gate pulses
+                awg[chan]['linkList'] = PatternUtils.gatePulses(
+                    awg[chan]['linkList'],
+                    channelParams[IQkey]['bufferDelay'], 
+                    channelParams[IQkey]['bufferPadding'],
+                    channelParams[IQkey]['bufferReset'],
+                    channelParams[IQkey]['samplingRate'])
 
         # convert to hardware formats
         if channelParams[awgName]['type'] == 'BBNAPS':
@@ -159,13 +167,14 @@ def find_unique_channels(seq):
 def hash_pulse(shape):
     return hash(tuple(shape))
 
+TAZKey = hash_pulse(np.zeros(1, dtype=np.complex))
+
 class LLElement(object):
     def __init__(self, pulse=None):
         self.repeat = 1
         self.isTimeAmp = False
-        self.hasTrigger = False
-        self.triggerDelay1 = 0
-        self.triggerDelay2 = 0
+        self.markerDelay1 = None
+        self.markerDelay2 = None
 
         if pulse is None:
             self.key = None
@@ -177,8 +186,14 @@ class LLElement(object):
             self.length = len(pulse.shape)
             self.phase = pulse.phase
             self.frameChange = pulse.frameChange
+    
+    @property
+    def hasMaker(self):
+        return self.markerDelay1 or self.markerDelay2
 
-TAZKey = hash_pulse(np.zeros(1, dtype=np.complex))
+    @property
+    def isZero(self):
+        return self.key == TAZKey
 
 def create_padding_LL(length):
     tmpLL = LLElement()

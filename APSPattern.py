@@ -9,7 +9,7 @@ from itertools import chain
 
 #Some constants
 ADDRESS_UNIT = 4 #everything is done in units of 4 timesteps
-MIN_ENTRY_LENGTH = 16
+MIN_ENTRY_LENGTH = 12
 MIN_LL_ENTRY_COUNT = 2 #minimum length of mini link list
 MAX_WAVEFORM_PTS = 2**15 #maximum size of waveform memory
 MAX_WAVEFORM_VALUE = 2**13-1 #maximum waveform value i.e. 14bit DAC
