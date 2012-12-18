@@ -26,7 +26,14 @@ class LogicalChannel(object):
     '''
     def __init__(self, name=None, physicalChannel=None):
         self.name = name
-        self.physicalChannel = physicalChannel
+        self._physicalChannel = physicalChannel
+
+    @property
+    def physicalChannel(self):
+        if self._physicalChannel:
+            return ChannelDict[self._physicalChannel]
+        else:
+            return PhysicalChannel()
     
 class PhysicalChannel(object):
     '''
@@ -34,11 +41,19 @@ class PhysicalChannel(object):
     '''
     def __init__(self, name=None, AWG=None):
         self.name = name
-        self.AWG = AWG
+        self._AWG = AWG
+
+    @property
+    def AWG(self):
+        if self._AWG:
+            return ChannelDict[self._AWG]
+        else:
+            # create a default AWG object
+            return AWG()
 
     @property
     def samplingRate(self):
-        return ChannelDict[self.AWG].samplingRate
+        return self.AWG.samplingRate
 
 
 class PhysicalMarkerChannel(PhysicalChannel):
@@ -92,7 +107,7 @@ class Qubit(LogicalChannel):
     '''
     The main class for generating qubit pulses.  Effectively a logical "QuadratureChannel".
     '''
-    def __init__(self, name=None, physicalChannel=None, freq=None, piAmp=1.0, pi2Amp=0.5, shapeFun=PulseShapes.gaussian, pulseLength=0.0, bufferTime=0.0, dragScaling=0, cutoff=2, **kwargs):
+    def __init__(self, name=None, physicalChannel=None, piAmp=1.0, pi2Amp=0.5, shapeFun=PulseShapes.gaussian, pulseLength=20.0e-9, bufferTime=0.0, dragScaling=0, cutoff=2, **kwargs):
         super(Qubit, self).__init__(name=name, physicalChannel=physicalChannel)
         self.shapeFun = shapeFun
         self.pulseLength = pulseLength
@@ -117,9 +132,10 @@ class AWG(object):
     '''
     Although not quite a channel, it is tightly linked to channels.
     '''
-    def __init__(self, name=None, model=None):
+    def __init__(self, name=None, model=None, samplingRate=1.2e9):
         self.name = name
         self.model = model
+        self.samplingRate = samplingRate
 
 def save_channel_info(fileName=None):
     '''

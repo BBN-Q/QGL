@@ -4,7 +4,7 @@ All generic pulse shapes are defined here.
 
 import numpy as np
 
-def gaussian(pulseLength=0, cutoff=2, samplingRate=1e9, **params):
+def gaussian(amp=1, pulseLength=0, cutoff=2, samplingRate=1e9, **params):
     '''
     A simple gaussian shaped pulse. 
     cutoff is how many sigma the pulse goes out
@@ -13,15 +13,15 @@ def gaussian(pulseLength=0, cutoff=2, samplingRate=1e9, **params):
     numPts = np.round(pulseLength*samplingRate)
     xPts = np.linspace(-cutoff, cutoff, numPts)
     xStep = xPts[1] - xPts[0]
-    return np.exp(-0.5*(xPts**2)) - np.exp(-0.5*((xPts[-1]+xStep)**2))
+    return amp * (np.exp(-0.5*(xPts**2)) - np.exp(-0.5*((xPts[-1]+xStep)**2)))
         
-def square(pulseLength=0, samplingRate=1e9, **params):
+def square(amp=1, pulseLength=0, samplingRate=1e9, **params):
     '''
     A simple rectangular shaped pulse. 
     '''
     #Round to how many points we need
     numPts = np.round(pulseLength*samplingRate)
-    return np.ones(numPts)
+    return amp * np.ones(numPts)
         
 def delay(pulseLength=0, samplingRate=1e9, **params):
     '''
@@ -33,7 +33,7 @@ def delay(pulseLength=0, samplingRate=1e9, **params):
     return np.zeros(numPts, dtype=np.complex)
 
 
-def drag(pulseLength=0, cutoff=2, dragScaling=0.5, samplingRate=1e9, **params):
+def drag(amp=1, pulseLength=0, cutoff=2, dragScaling=0.5, samplingRate=1e9, **params):
     '''
     A gaussian pulse with a drag correction on the quadrature channel.
     '''
@@ -46,9 +46,9 @@ def drag(pulseLength=0, cutoff=2, dragScaling=0.5, samplingRate=1e9, **params):
     #The pulse length is 2*cutoff xPts
     derivScale = 1/(pulseLength/2/cutoff*samplingRate)
     QQuad = dragScaling*derivScale*xPts*IQuad
-    return IQuad+1j*QQuad
+    return amp * (IQuad+1j*QQuad)
         
-def gaussOn(pulseLength=0, cutoff=2, samplingRate=1e9, **params):
+def gaussOn(amp=1, pulseLength=0, cutoff=2, samplingRate=1e9, **params):
     '''
     A half-gaussian pulse going from zero to full
     '''
@@ -56,9 +56,9 @@ def gaussOn(pulseLength=0, cutoff=2, samplingRate=1e9, **params):
     numPts = np.round(pulseLength*samplingRate)
     xPts = np.linspace(-cutoff, 0, numPts)
     xStep = xPts[1] - xPts[0]
-    return np.exp(-0.5*(xPts**2)) - np.exp(-0.5*((xPts[0]-xStep)**2))
+    return amp * (np.exp(-0.5*(xPts**2)) - np.exp(-0.5*((xPts[0]-xStep)**2)))
 
-def gaussOff(pulseLength=0, cutoff=2, samplingRate=1e9, **params):
+def gaussOff(amp=1, pulseLength=0, cutoff=2, samplingRate=1e9, **params):
     '''
     A half-gaussian pulse going from zero to full
     '''
@@ -66,4 +66,4 @@ def gaussOff(pulseLength=0, cutoff=2, samplingRate=1e9, **params):
     numPts = np.round(pulseLength*samplingRate)
     xPts = np.linspace(0, cutoff, numPts)
     xStep = xPts[1] - xPts[0]
-    return np.exp(-0.5*(xPts**2)) - np.exp(-0.5*((xPts[-1]+xStep)**2))
+    return amp * (np.exp(-0.5*(xPts**2)) - np.exp(-0.5*((xPts[-1]+xStep)**2)))

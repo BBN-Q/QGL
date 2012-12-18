@@ -114,8 +114,8 @@ def Y90m(qubit):
 # @_memoize
 def CNOT(source, target):
     # construct (source, target) channel and pull parameters from there
-    twoQChannel = Channels.Qubit(source.name + target.name)
-    shape = source.shapeFun(amp=twoQChannel.piAmp, **overrideDefaults(twoQChannel, {}))
+    twoQChannel = Channels.QubitFactory(source.name + target.name)
+    shape = twoQChannel.shapeFun(amp=twoQChannel.piAmp, **overrideDefaults(twoQChannel, {}))
     return Pulse("CNOT", (source, target), shape, 0.0, 0.0)
 
 ## Measurement operators
@@ -132,7 +132,7 @@ def MEAS(qubit, *args, **kwargs):
     for q in args:
         channelName += q.name
     # probably should have a "Measurement" logical channel type
-    measChannel = Channels.Qubit(channelName)
+    measChannel = Channels.QubitFactory(channelName)
     params = overrideDefaults(measChannel, kwargs)
     # measurement channels should have just an "amp" parameter
     shape = measChannel.shapeFun(amp=measChannel.piAmp, **params)
