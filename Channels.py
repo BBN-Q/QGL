@@ -49,7 +49,8 @@ class LogicalChannel(Channel):
     The main class from which we will generate sequences. 
     At some point it needs to be assigned to a physical channel.
     '''
-    def __init__(self, name=None, AWGName=None, channelType=None, samplingRate=1.2e9):
+    def __init__(self, name=None, physicalChannel=None):
+        super(LogicalChannel, self).__init__(name=name)
         self.name = name
         self.physicalChannel = physicalChannel
 
