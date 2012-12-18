@@ -124,7 +124,7 @@ def create_LL_data(LLs, offsets):
 
     #Preallocate the bank data and do some checking for miniLL lengths
     seqLengths = np.array([len(miniLL) for miniLL in LLs])
-    assert np.all(seqLengths >= 3), 'Oops! mini LL''s needs to have at least three elements.'
+    assert np.all(seqLengths >= MIN_LL_ENTRY_COUNT), 'Oops! mini LL''s needs to have at least three elements.'
     assert np.all(seqLengths < MAX_LL_ENTRIES), 'Oops! mini LL''s cannot have length greater than {0}, you have {1} entries'.format(MAX_BANK_SIZE, len(miniLL))
     numEntries = sum(seqLengths)
     LLData = {label: np.zeros(numEntries, dtype=np.uint16) for label in ['addr','count', 'trigger1', 'trigger2', 'repeat']}

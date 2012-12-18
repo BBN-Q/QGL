@@ -7,6 +7,7 @@ import json
 import AWG
 import PatternUtils
 import config
+from Channels import ChannelDict
 
 from APSPattern import  write_APS_file
 SEQUENCE_PADDING = 500
@@ -18,15 +19,15 @@ def get_channel_name(chanKey):
     else:
         return "".join([chan.name for chan in chanKey])
 
-def setup_awg_channels(logicalChannels, channelMap):
-    awgNames = set([])
+def setup_awg_channels(logicalChannels):
+    awgs = set([])
     for chan in logicalChannels:
-        awgNames.add(channelMap[channelMap[get_channel_name(chan)]['physicalChannel']]['AWGName'])
-    return {name: getattr(AWG, channelMap[name]['type'])().channels() for name in awgNames}
+        awgs.add(ChannelDict[get_channel_name(chan)].physicalChannel.AWG)
+    return {awg.name: getattr(AWG, awg.model)().channels() for awg in awgs}
 
-def map_logical_to_physical(linkLists, wfLib, channelMap):
-    physicalChannels = {chan: channelMap[get_channel_name(chan)]['physicalChannel'] for chan in linkLists.keys()}
-    awgData = setup_awg_channels(linkLists.keys(), channelMap)
+def map_logical_to_physical(linkLists, wfLib):
+    physicalChannels = {chan: ChannelDict[get_channel_name(chan)].physicalChannel.name for chan in linkLists.keys()}
+    awgData = setup_awg_channels(linkLists.keys())
     
     for chan in linkLists.keys():
         awgName, awgChan = physicalChannels[chan].split('-')
@@ -43,13 +44,9 @@ def compile_to_hardware(seqs, fileName=None, alignMode="right"):
     longestLL = max([sum([entry.length*entry.repeat for entry in miniLL]) for LL in linkLists.values() for miniLL in LL])
     for chan, LL in linkLists.items():
         PatternUtils.align(LL, alignMode, longestLL+SEQUENCE_PADDING)
-    
-    # load channel parameters
-    with open(config.ChannelParams, 'r') as f:
-        channelParams = json.load(f)
 
     # map logical to physical channels
-    awgData = map_logical_to_physical(linkLists, wfLib, channelParams)
+    awgData = map_logical_to_physical(linkLists, wfLib)
 
     # for each physical channel need to:
     # 1) delay
@@ -63,19 +60,19 @@ def compile_to_hardware(seqs, fileName=None, alignMode="right"):
             else:
                 # construct IQkey using existing convention
                 IQkey = awgName + '-' + chan[2:]
-                awg[chan] = {'linkList': PatternUtils.delay(awg[chan]['linkList'], channelParams[IQkey]['delay']),
-                             'wfLib': PatternUtils.correctMixer(awg[chan]['wfLib'], channelParams[IQkey]['correctionT'])}
+                awg[chan] = {'linkList': PatternUtils.delay(awg[chan]['linkList'], ChannelDict[IQkey].delay),
+                             'wfLib': PatternUtils.correctMixer(awg[chan]['wfLib'], ChannelDict[IQkey].correctionT)}
 
                 # add gate pulses
-                awg[chan]['linkList'] = PatternUtils.gatePulses(
-                    awg[chan]['linkList'],
-                    channelParams[IQkey]['bufferDelay'], 
-                    channelParams[IQkey]['bufferPadding'],
-                    channelParams[IQkey]['bufferReset'],
-                    channelParams[IQkey]['samplingRate'])
+                # awg[chan]['linkList'] = PatternUtils.gatePulses(
+                #     awg[chan]['linkList'],
+                #     channelParams[IQkey]['bufferDelay'], 
+                #     channelParams[IQkey]['bufferPadding'],
+                #     channelParams[IQkey]['bufferReset'],
+                #     channelParams[IQkey]['samplingRate'])
 
         # convert to hardware formats
-        if channelParams[awgName]['type'] == 'BBNAPS':
+        if ChannelDict[awgName].model == 'BBNAPS':
             write_APS_file(awg['ch12']['linkList'], awg['ch12']['wfLib'], awg['ch34']['linkList'], awg['ch34']['wfLib'], fileName+'-'+awgName+'.h5')
 
 
