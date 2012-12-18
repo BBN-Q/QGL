@@ -19,55 +19,59 @@ import config
 
 ChannelDict = {}
 
-class ChannelTypes(object):
+class Channel(object):
     '''
-    Enumerate the possible types:
-    direct - goes straight to something i.e. no modulated carrier
-    digital - a logical digital channel usually assigned to a marker channel
-    amplitudeMod - an amplitude modulated carrier
-    quadratureMod - a quadrature modulated carrier
+    Channel superclass
     '''
-    (direct, marker, amplitudeMod, quadratureMod) = range(4)
-    (logical, physical) = range(2)
-    
-class LogicalChannel(object):
-    '''
-    The main class from which we will generate sequences.  At some point it needs to be assigned to a physical channel.
-    '''
-    def __init__(self, name=None, channelType=None, physicalChannel=None):
+    def __init__(self, name=None):
         self.name = name
-        self.channelType = channelType
-        self.physicalChannel = physicalChannel
-        
+
     @property
-    def isLogical():
-        return True
-        
+    def isLogical(self):
+        return False
     @property
-    def isPhysical():
+    def isPhysical(self):
+        return False
+    @property
+    def isGenerator(self):
+        return False
+    @property
+    def isAWG(self):
         return False
 
     # add __eq__ method to make hashable
     def __eq__(self, other):
         return id(self) == id(other)
 
-class PhysicalChannel(object):
+class LogicalChannel(Channel):
+    '''
+    The main class from which we will generate sequences. 
+    At some point it needs to be assigned to a physical channel.
+    '''
+    def __init__(self, name=None, physicalChannel=None):
+        super(LogicalChannel, self).__init__(name=name)
+        self.name = name
+        self.physicalChannel = physicalChannel
+
+    @property
+    def isLogical(self):
+        return True
+    
+class PhysicalChannel(Channel):
     '''
     The main class for actual AWG channels.
     '''
-    def __init__(self, name=None, AWGName=None, channelType=None, samplingRate=1.0e9):
-        self.name = name
-        self.channelType = channelType
-        self.AWGName = AWGName
-        self.samplingRate = samplingRate
+    def __init__(self, name=None, AWG=None):
+        super(PhysicalChannel, self).__init__(name=name)
+        self.AWG = AWG
 
     @property
-    def isLogical():
-        return False
-        
-    @property
-    def isPhysical():
+    def isPhysical(self):
         return True
+
+    @property
+    def samplingRate(self):
+        return ChannelDict[self.AWG].samplingRate
 
     # add __eq__ method to make hashable
     def __eq__(self, other):
@@ -78,9 +82,8 @@ class PhysicalMarkerChannel(PhysicalChannel):
     '''
     An digital output channel on an AWG.
     '''
-    def __init__(self, name=None, AWGName=None, channel=None, delay=0.0, **kwargs):
-        super(PhysicalMarkerChannel, self).__init__(name=name, AWGName=AWGName, channelType=ChannelTypes.marker)
-        self.channelType = ChannelTypes.marker
+    def __init__(self, name=None, AWG=None, channel=None, delay=0.0, **kwargs):
+        super(PhysicalMarkerChannel, self).__init__(name=name, AWG=AWG)
         self.delay = delay
         self.channel = channel
         
@@ -88,8 +91,8 @@ class PhysicalQuadratureChannel(PhysicalChannel):
     '''
     Something used to implement a standard qubit channel with two analog channels and a microwave gating channel.
     '''
-    def __init__(self, name=None, AWGName=None, carrierGen=None, IChannel=None, QChannel=None, delay=0.0, ampFactor=1.0, phaseSkew=0.0, **kwargs):
-        super(PhysicalQuadratureChannel, self).__init__(name=name, AWGName=AWGName, channelType=ChannelTypes.quadratureMod)
+    def __init__(self, name=None, AWG=None, carrierGen=None, IChannel=None, QChannel=None, delay=0.0, ampFactor=1.0, phaseSkew=0.0, **kwargs):
+        super(PhysicalQuadratureChannel, self).__init__(name=name, AWG=AWG)
         self.carrierGen = carrierGen
         self.IChannel = IChannel
         self.QChannel = QChannel
@@ -106,7 +109,7 @@ class LogicalMarkerChannel(LogicalChannel):
     A class for digital channels for gating sources or triggering other things.
     '''
     def __init__(self, name=None, physicalChannel=None, **kwargs):
-        super(LogicalMarkerChannel, self).__init__(name=name, channelType=ChannelTypes.marker, physicalChannel=physicalChannel)        
+        super(LogicalMarkerChannel, self).__init__(name=name, physicalChannel=physicalChannel)        
     
     def gatePulse(self, length, delay=0):
         tmpBlock = PulseSequencer.PulseBlock()
@@ -119,8 +122,8 @@ class Qubit(LogicalChannel):
     '''
     The main class for generating qubit pulses.  
     '''
-    def __init__(self, name=None, physicalChannel=PhysicalChannel(), freq=None, piAmp=0.0, pi2Amp=0.0, shapeFun=PulseShapes.gaussian, pulseLength=0.0, bufferTime=0.0, dragScaling=0, cutoff=2, **kwargs):
-        super(Qubit, self).__init__(name=name, channelType=ChannelTypes.quadratureMod, physicalChannel=physicalChannel)
+    def __init__(self, name=None, physicalChannel=None, freq=None, piAmp=0.0, pi2Amp=0.0, shapeFun=PulseShapes.gaussian, pulseLength=0.0, bufferTime=0.0, dragScaling=0, cutoff=2, **kwargs):
+        super(Qubit, self).__init__(name=name, physicalChannel=physicalChannel)
         self.shapeFun = shapeFun
         self.pulseLength = pulseLength
         self.bufferTime = bufferTime
@@ -129,26 +132,33 @@ class Qubit(LogicalChannel):
         self.dragScaling = dragScaling
         self.cutoff = cutoff        
         
-class Generator(object):
+class Generator(Channel):
     '''
     Although not quite a channel, it is tightly linked to channels.
     '''
     def __init__(self, name=None, gateChannel=None, gateBuffer=0.0, gateMinWidth=0.0, gateDelay=0.0):
-        self.name = name
+        super(Generator, self).__init__(name=name)
         self.gateChannel = gateChannel
         self.gateBuffer = gateBuffer
         self.gateMinWidth = gateMinWidth
         self.gateDelay = gateDelay
 
-class AWG(object):
+    @property
+    def isGenerator(self):
+        return True
+
+class AWG(Channel):
     '''
     Although not quite a channel, it is tightly linked to channels.
     '''
     def __init__(self, name=None, model=None):
-        self.name = name
+        super(AWG, self).__init__(name=name)
         self.model = model
         
-        
+    @property
+    def isAWG(self):
+        return True
+
 def save_channel_info(fileName=None):
     '''
     Helper function to save a channelInfo dictionary to a JSON file or string.
@@ -205,36 +215,33 @@ def json_deserializer(jsonDict):
         return class_(**jsonDict)
 
 
-
 '''  
 *****************************************************************************
 GUI Stuff.
 *****************************************************************************
 '''
 class ChannelInfoView(QtGui.QMainWindow):
-    def __init__(self, fileName):
+    def __init__(self):
         super(ChannelInfoView, self).__init__()
         
-        #Load the channel information from the file
-        self.fileName = fileName
-        self.channelDict = load_channel_dict(fileName)
+        global ChannelDict
         
         #Create an item view for the logical channels
-        self.logicalChannelListModel = QtGui.QStringListModel([tmpKey for tmpKey in self.channelDict.keys() if self.channelDict[tmpKey]['isLogical']])
+        self.logicalChannelListModel = QtGui.QStringListModel([tmpKey for tmpKey, tmpChan in ChannelDict.items() if tmpChan.isLogical])
         self.logicalChannelListModel.sort(0)
         self.logicalChannelListView = QtGui.QListView()
         self.logicalChannelListView.setModel(self.logicalChannelListModel)
         self.logicalChannelListView.clicked.connect(lambda(idx): self.update_channelView(idx, self.logicalChannelListModel))
         
         #Create an item view for the physical channels
-        self.physicalChannelListModel = QtGui.QStringListModel([tmpKey for tmpKey in self.channelDict.keys() if self.channelDict[tmpKey]['isPhysical']])
+        self.physicalChannelListModel = QtGui.QStringListModel([tmpKey for tmpKey, tmpChan in ChannelDict.items() if tmpChan.isPhysical])
         self.physicalChannelListModel.sort(0)
         self.physicalChannelListView = QtGui.QListView()
         self.physicalChannelListView.setModel(self.physicalChannelListModel)
         self.physicalChannelListView.clicked.connect(lambda(idx): self.update_channelView(idx, self.physicalChannelListModel))
 
         #Create an item view for the physical channels
-        self.generatorListModel = QtGui.QStringListModel([tmpKey for tmpKey in self.channelDict.keys() if self.channelDict[tmpKey]['isGenerator']])
+        self.generatorListModel = QtGui.QStringListModel([tmpKey for tmpKey, tmpChan in ChannelDict.items() if tmpChan.isGenerator])
         self.generatorListModel.sort(0)
         self.generatorListView = QtGui.QListView()
         self.generatorListView.setModel(self.generatorListModel)
@@ -264,10 +271,10 @@ class ChannelInfoView(QtGui.QMainWindow):
         hSplitter = QtGui.QSplitter()
         hSplitter.addWidget(tmpWidget)
         self.channelWidgets = {}
-        for tmpChanName, tmpChan in self.channelDict.items():
-            self.channelWidgets[tmpChanName] = ChannelView(tmpChan, self)
-            hSplitter.addWidget(self.channelWidgets[tmpChanName])
-            self.channelWidgets[tmpChanName].hide()
+        for chanName, chan in ChannelDict.items():
+            self.channelWidgets[chanName] = ChannelView(chan, self)
+            hSplitter.addWidget(self.channelWidgets[chanName])
+            self.channelWidgets[chanName].hide()
         
         self.setCentralWidget(hSplitter)
 
@@ -343,23 +350,23 @@ class ChannelView(QtGui.QWidget):
         self.channel = channel
         
         #Some hidden fields
-        skipFields = ['channelType', 'name', 'isLogical', 'isPhysical', 'isGenerator', 'correctionT']
+        skipFields = ['name']
 
         #Create the layout as a vbox of hboxes
         form = QtGui.QFormLayout()
         self.GUIhandles = {}
         #Do the channelType on top for information purposes
-        form.addRow('channelType', QtGui.QLabel(channel['channelType']))
+        form.addRow('channelType', QtGui.QLabel(self.channel.__class__.__name__))
 
         #Helper function to update         
-        for key,value in sorted(channel.items(), key=itemgetter(0)):
+        for key,value in sorted(channel.__dict__.items(), key=itemgetter(0)):
             if key not in skipFields:
-                #For physical channels we'll pop up a combo box
+                #For the physical channel field we'll pop up a combo box
                 if key == 'physicalChannel':
-                    chanType = parent.channelDict[value]['channelType']
+                    chanType = ChannelDict[value].__class__
                     tmpModel = QtGui.QStringListModel()
                     parent.physicalChannelListModel.rowsRemoved.connect(lambda a,b,c : tmpModel.removeRow(b))
-                    tmpModel.setStringList( [tmpChan for tmpChan in parent.physicalChannelListModel.stringList() if parent.channelDict[tmpChan]['channelType'] == chanType] )
+                    tmpModel.setStringList( [tmpChan for tmpChan in parent.physicalChannelListModel.stringList() if ChannelDict[tmpChan].__class__ == chanType] )
                     tmpWidget = QtGui.QComboBox()
                     tmpWidget.setModel(tmpModel)
                 elif isinstance(value, basestring):
@@ -392,10 +399,11 @@ if __name__ == '__main__':
     ChannelDict['q1'] = Qubit(name='q1', piAmp=1.0, pi2Amp=0.5, pulseType='drag', pulseLength=40e-9, bufferTime=2e-9, dragScaling=1, physicalChannel='BBNAPS1-12', carrierGen='QPC1-1691')
     ChannelDict['q2'] = Qubit(name='q2', piAmp=1.0, pi2Amp=0.5, pulseType='drag', pulseLength=40e-9, bufferTime=2e-9, dragScaling=1, physicalChannel='BBNAPS1-34', carrierGen='Agilent1')
 
-    ChannelDict['digitizerTrig'] = LogicalMarkerChannel(name='digitizerTrig', physicalChannel='BBNAPS1-ch2m1')
+    ChannelDict['digitizerTrig'] = LogicalMarkerChannel(name='digitizerTrig', physicalChannel='BBNAPS1-2m1')
 
-    ChannelDict['BBNAPS1-12'] = PhysicalQuadratureChannel(name='BBNAPS1-12', AWG='BBNAPS1', IChannel='ch1', QChannel='ch2', delay=0e-9, correctionT=[[1,0],[0,1]])
-    ChannelDict['BBNAPS1-12'] = PhysicalQuadratureChannel(name='BBNAPS1-12', AWG='BBNAPS1', IChannel='ch1', QChannel='ch2', delay=0e-9, correctionT=[[1,0],[0,1]])
+    ChannelDict['BBNAPS1-12'] = PhysicalQuadratureChannel(name='BBNAPS1-12', AWG='BBNAPS1', IChannel='ch1', QChannel='ch2', delay=0e-9, ampFactor=1, phaseSkew=0)
+    ChannelDict['BBNAPS1-34'] = PhysicalQuadratureChannel(name='BBNAPS1-34', AWG='BBNAPS1', IChannel='ch3', QChannel='ch4', delay=0e-9, ampFactor=1, phaseSkew=0)
+    ChannelDict['BBNAPS1-2m1'] = PhysicalMarkerChannel(name='BBNAPS1-2m1', AWG='BBNAPS1')
 
     ChannelDict['QPC1-1691'] = Generator(name='QPC1-1691', gateChannel='TekAWG1-ch1m1', gateDelay=-50.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)   
     ChannelDict['Agilent1'] = Generator(name='Agilent1', gateChannel='TekAWG1-ch1m1', gateDelay=-50.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)   
@@ -404,20 +412,21 @@ if __name__ == '__main__':
     ChannelDict['BBNAPS1'] = AWG(name='BBNAPS1', model='BBNAPS')
 
     save_channel_info()
+    update_channel_info()
 
-    # #Look to see if iPython's event loop is running
-    # app = QtCore.QCoreApplication.instance()
-    # if app is None:
-    #     app = QtGui.QApplication(sys.argv)
+    #Look to see if iPython's event loop is running
+    app = QtCore.QCoreApplication.instance()
+    if app is None:
+        app = QtGui.QApplication(sys.argv)
 
-    # channelWindow = ChannelInfoView('ChannelParams.json')
-    # channelWindow.show()
+    channelWindow = ChannelInfoView()
+    channelWindow.show()
 
-    # try: 
-    #     from IPython.lib.guisupport import start_event_loop_qt4
-    #     start_event_loop_qt4(app)
-    # except ImportError:
-    #     sys.exit(app.exec_())
+    try: 
+        from IPython.lib.guisupport import start_event_loop_qt4
+        start_event_loop_qt4(app)
+    except ImportError:
+        sys.exit(app.exec_())
 
 
     
