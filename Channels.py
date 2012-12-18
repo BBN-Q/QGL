@@ -15,6 +15,9 @@ import PulseShapes
 from PySide import QtGui, QtCore
 from operator import itemgetter
 from math import tan,cos,pi
+import config
+
+ChannelDict = {}
 
 class ChannelTypes(object):
     '''
@@ -81,12 +84,12 @@ class PhysicalMarkerChannel(PhysicalChannel):
         self.delay = delay
         self.channel = channel
         
-class QuadratureChannel(PhysicalChannel):
+class PhysicalQuadratureChannel(PhysicalChannel):
     '''
     Something used to implement a standard qubit channel with two analog channels and a microwave gating channel.
     '''
     def __init__(self, name=None, AWGName=None, carrierGen=None, IChannel=None, QChannel=None, delay=0.0, ampFactor=1.0, phaseSkew=0.0, **kwargs):
-        super(QuadratureChannel, self).__init__(name=name, AWGName=AWGName, channelType=ChannelTypes.quadratureMod)
+        super(PhysicalQuadratureChannel, self).__init__(name=name, AWGName=AWGName, channelType=ChannelTypes.quadratureMod)
         self.carrierGen = carrierGen
         self.IChannel = IChannel
         self.QChannel = QChannel
@@ -136,18 +139,25 @@ class Generator(object):
         self.gateBuffer = gateBuffer
         self.gateMinWidth = gateMinWidth
         self.gateDelay = gateDelay
+
+class AWG(object):
+    '''
+    Although not quite a channel, it is tightly linked to channels.
+    '''
+    def __init__(self, name=None, model=None):
+        self.name = name
+        self.model = model
         
         
-def save_channel_info(channelDict, fileName=None):
+def save_channel_info(fileName=None):
     '''
     Helper function to save a channelInfo dictionary to a JSON file or string.
     '''
     #Convert the channel into a dictionary
     if fileName is None:
-        return json.dumps(channelDict, sort_keys=True, indent=2)
-    else:
-        with open(fileName,'w') as FID:
-            json.dump(channelDict, FID, sort_keys=True, indent=2)
+        fileName = config.channelParamsFile
+    with open(fileName,'w') as FID:
+        json.dump(ChannelDict, FID, sort_keys=True, indent=2, default=json_serializer)
     
 def load_channel_dict(fileName=None):
     '''
@@ -156,34 +166,47 @@ def load_channel_dict(fileName=None):
     with open(fileName,'r') as FID:
         return json.load(FID)
         
-def load_channel_info(fileName=None):
+def update_channel_info(fileName=None):
     '''
     Helper function to load a channel info file into channel and channelInfo objects
     '''
-    channels = {}
-    #First load the file into a dictionary
-    channelDicts = load_channel_dict(fileName)
-    for channelName, channelDict in channelDicts.items():
-        channelType = channelDict['channelType']
-        #Deal with logical channels
-        if channelDict['isLogical']:
-            if channelType == 'quadratureMod':
-                #Create the qubit channel
-                channelFunc = QubitChannel
-            elif channelType == 'marker':
-                #Create the marker channel
-                channelFunc = LogicalMarkerChannel
-        else:
-            if channelType == 'quadratureMod':
-                channelFunc = QuadratureChannel
-            elif channelType == 'marker':
-                channelFunc = PhysicalMarkerChannel
+    global ChannelDict
+    if fileName is None:
+        fileName = config.channelParamsFile
+    with open(fileName,'r') as FID:
+        ChannelDict = json.load(FID, object_hook=json_deserializer)
 
-        channels[channelName] = channelFunc(**channelDict)
+def json_serializer(obj):
+    '''
+    Helper function to flatten the channel classes to a dictionary for json serialization.
+    We just keep the class name and the properties
+    '''
+    jsonDict = {'__class__': obj.__class__.__name__}
+    jsonDict.update(obj.__dict__)
+    #Deal with shape function handles specially
+    if 'shapeFun' in jsonDict:
+        jsonDict['shapeFun'] = jsonDict['shapeFun'].__name__
+    return jsonDict
 
-    return channels, channelDicts
-    
-'''    
+def json_deserializer(jsonDict):
+    '''
+    Helper function to convert a json representation of a channel back into an object.
+    '''
+    #Extract the class name from the dictionary
+    #If there is no class then assume top level dictionary
+    if '__class__' not in jsonDict:
+        return jsonDict
+    else:
+        className = jsonDict.pop('__class__')
+        class_ = getattr(sys.modules[__name__], className)
+        #Deal with shape functions
+        if 'shapeFun' in jsonDict:
+            jsonDict['shapeFun'] = getattr(PulseShapes, jsonDict['shapeFun'])
+        return class_(**jsonDict)
+
+
+
+'''  
 *****************************************************************************
 GUI Stuff.
 *****************************************************************************
@@ -329,8 +352,6 @@ class ChannelView(QtGui.QWidget):
         form.addRow('channelType', QtGui.QLabel(channel['channelType']))
 
         #Helper function to update         
-            
-        
         for key,value in sorted(channel.items(), key=itemgetter(0)):
             if key not in skipFields:
                 #For physical channels we'll pop up a combo box
@@ -367,49 +388,36 @@ class ChannelView(QtGui.QWidget):
     
 
 if __name__ == '__main__':
-    channelDict = {}
-    channelDict['q1'] = {'name':'q1', 'channelType':'quadratureMod', 'isLogical':True, 'isPhysical':False, 'isGenerator':False, 'piAmp':1.0, 'pi2Amp':0.5, 'pulseType':'drag', 'pulseLength':40e-9, 'bufferTime':2e-9, 'dragScaling':1, 'physicalChannel':'BBNAPS1-12', 'frequency':5}
-    channelDict['q2'] = {'name':'q2', 'channelType':'quadratureMod', 'isLogical':True, 'isPhysical':False, 'isGenerator':False, 'piAmp':1.0, 'pi2Amp':0.5, 'pulseType':'drag', 'pulseLength':40e-9, 'bufferTime':2e-9, 'dragScaling':1, 'physicalChannel':'TekAWG2-34', 'frequency':5}
-    channelDict['CR'] = {'name':'CR', 'channelType':'quadratureMod', 'isLogical':True, 'isPhysical':False, 'isGenerator':False, 'piAmp':1.0, 'pi2Amp':0.5, 'pulseType':'drag', 'pulseLength':40e-9, 'bufferTime':2e-9, 'dragScaling':1, 'physicalChannel':'TekAWG1-12', 'frequency':5}
 
-    channelDict['measChannel'] = {'name':'measChannel', 'channelType':'marker', 'isLogical':True, 'isPhysical':False, 'isGenerator':False, 'physicalChannel':'TekAWG1-ch3m1' }
-    channelDict['digitizerTrig'] = {'name':'digitizerTrig','channelType':'marker', 'isLogical':True, 'isPhysical':False, 'isGenerator':False, 'physicalChannel':'TekAWG1-ch3m2'}
+    ChannelDict['q1'] = Qubit(name='q1', piAmp=1.0, pi2Amp=0.5, pulseType='drag', pulseLength=40e-9, bufferTime=2e-9, dragScaling=1, physicalChannel='BBNAPS1-12', carrierGen='QPC1-1691')
+    ChannelDict['q2'] = Qubit(name='q2', piAmp=1.0, pi2Amp=0.5, pulseType='drag', pulseLength=40e-9, bufferTime=2e-9, dragScaling=1, physicalChannel='BBNAPS1-34', carrierGen='Agilent1')
 
-    channelDict['TekAWG1-12'] = {'name':'TekAWG1-12', 'channelType':'quadratureMod', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG1', 'IChannel':'ch1', 'QChannel':'ch2', 'delay':0e-9,  'correctionT':[[1,0],[0,1]], 'ampFactor':1.0, 'phaseSkew':0.0, 'carrierGen':'QPC1-1691'}
-    channelDict['TekAWG1-34'] = {'name':'TekAWG1-34', 'channelType':'quadratureMod', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG1', 'IChannel':'ch3', 'QChannel':'ch4', 'delay':0e-9,  'correctionT':[[1,0],[0,1]], 'ampFactor':1.0, 'phaseSkew':0.0, 'carrierGen':'Agilent1'}
-    channelDict['TekAWG1-ch1m1'] = {'name':'TekAWG1-ch1m1', 'channelType':'marker', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG1', 'channel':'ch1m1', 'delay':0e-9 }    
-    channelDict['TekAWG1-ch2m1'] = {'name':'TekAWG1-ch2m1', 'channelType':'marker', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG1', 'channel':'ch2m1', 'delay':0e-9 }
-    channelDict['TekAWG1-ch3m1'] = {'name':'TekAWG2-ch3m1', 'channelType':'marker', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG2', 'channel':'ch3m1', 'delay':0e-9 }    
-    channelDict['TekAWG1-ch3m2'] = {'name':'TekAWG2-ch3m2', 'channelType':'marker', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG2', 'channel':'ch3m2', 'delay':0e-9 }
-  
-    channelDict['BBNAPS1-12'] = {'name':'BBNAPS1-12', 'channelType':'quadratureMod', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'BBNAPS1', 'IChannel':'ch1', 'QChannel':'ch2', 'delay':0e-9, 'correctionT':[[1,0],[0,1]], 'ampFactor':1.0, 'phaseSkew':0.0, 'carrierGen':'QPC1-1691'}
-    channelDict['BBNAPS1-34'] = {'name':'BBNAPS1-34', 'channelType':'quadratureMod', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'BBNAPS1', 'IChannel':'ch3', 'QChannel':'ch4', 'delay':0e-9, 'correctionT':[[1,0],[0,1]], 'ampFactor':1.0, 'phaseSkew':0.0, 'carrierGen':'Agilent1'}
+    ChannelDict['digitizerTrig'] = LogicalMarkerChannel(name='digitizerTrig', physicalChannel='BBNAPS1-ch2m1')
 
-    channelDict['TekAWG2-12'] = {'name':'TekAWG2-12', 'channelType':'quadratureMod', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG2', 'IChannel':'ch1', 'QChannel':'ch2', 'delay':0e-9,  'correctionT':[[1,0],[0,1]], 'ampFactor':1.0, 'phaseSkew':0.0, 'carrierGen':'QPC1-1691'}
-    channelDict['TekAWG2-34'] = {'name':'TekAWG2-34', 'channelType':'quadratureMod', 'isLogical':False, 'isPhysical':True, 'isGenerator':False, 'AWGName':'TekAWG2', 'IChannel':'ch3', 'QChannel':'ch4', 'delay':0e-9,  'correctionT':[[1,0],[0,1]], 'ampFactor':1.0, 'phaseSkew':0.0, 'carrierGen':'Agilent1'}
+    ChannelDict['BBNAPS1-12'] = PhysicalQuadratureChannel(name='BBNAPS1-12', AWG='BBNAPS1', IChannel='ch1', QChannel='ch2', delay=0e-9, correctionT=[[1,0],[0,1]])
+    ChannelDict['BBNAPS1-12'] = PhysicalQuadratureChannel(name='BBNAPS1-12', AWG='BBNAPS1', IChannel='ch1', QChannel='ch2', delay=0e-9, correctionT=[[1,0],[0,1]])
 
+    ChannelDict['QPC1-1691'] = Generator(name='QPC1-1691', gateChannel='TekAWG1-ch1m1', gateDelay=-50.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)   
+    ChannelDict['Agilent1'] = Generator(name='Agilent1', gateChannel='TekAWG1-ch1m1', gateDelay=-50.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)   
 
-    channelDict['QPC1-1691'] = {'name':'QPC1-1691', 'channelType':'generator', 'isLogical':False, 'isPhysical':False, 'isGenerator':True, 'gateChannel':'TekAWG1-ch1m1', 'gateDelay':-50.0e-9, 'gateBuffer':20e-9, 'gateMinWidth':100e-9, 'frequency':5}    
-    channelDict['Agilent1'] = {'name':'Agilent1', 'channelType':'generator', 'isLogical':False, 'isPhysical':False, 'isGenerator':True, 'gateChannel':'TekAWG1-ch2m1', 'gateDelay':0.0, 'gateBuffer':20e-9, 'gateMinWidth':100e-9, 'frequency':5}    
+    ChannelDict['TekAWG1'] = AWG(name='TekAWG1', model='Tek5000')
+    ChannelDict['BBNAPS1'] = AWG(name='BBNAPS1', model='BBNAPS')
 
-    channelDict['TekAWG1'] = {'type':'Tek5000'}
-    channelDict['BBNAPS1'] = {'type':'BBNAPS'}
+    save_channel_info()
 
-    save_channel_info(channelDict, 'ChannelParams.json')
+    # #Look to see if iPython's event loop is running
+    # app = QtCore.QCoreApplication.instance()
+    # if app is None:
+    #     app = QtGui.QApplication(sys.argv)
 
-    #Look to see if iPython's event loop is running
-    app = QtCore.QCoreApplication.instance()
-    if app is None:
-        app = QtGui.QApplication(sys.argv)
+    # channelWindow = ChannelInfoView('ChannelParams.json')
+    # channelWindow.show()
 
-    channelWindow = ChannelInfoView('ChannelParams.json')
-    channelWindow.show()
-
-    try: 
-        from IPython.lib.guisupport import start_event_loop_qt4
-        start_event_loop_qt4(app)
-    except ImportError:
-        sys.exit(app.exec_())
+    # try: 
+    #     from IPython.lib.guisupport import start_event_loop_qt4
+    #     start_event_loop_qt4(app)
+    # except ImportError:
+    #     sys.exit(app.exec_())
 
 
     
