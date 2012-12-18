@@ -39,9 +39,10 @@ class PhysicalChannel(object):
     '''
     The main class for actual AWG channels.
     '''
-    def __init__(self, name=None, AWG=None):
+    def __init__(self, name=None, AWG=None, generator=None):
         self.name = name
         self._AWG = AWG
+        self._generator = generator
 
     @property
     def AWG(self):
@@ -55,13 +56,19 @@ class PhysicalChannel(object):
     def samplingRate(self):
         return self.AWG.samplingRate
 
+    @property
+    def generator(self):
+        if self._generator:
+            return ChannelDict[self._generator]
+        else:
+            return Generator()
 
 class PhysicalMarkerChannel(PhysicalChannel):
     '''
     An digital output channel on an AWG.
     '''
-    def __init__(self, name=None, AWG=None, channel=None, delay=0.0, **kwargs):
-        super(PhysicalMarkerChannel, self).__init__(name=name, AWG=AWG)
+    def __init__(self, name=None, AWG=None, generator=None, channel=None, delay=0.0, **kwargs):
+        super(PhysicalMarkerChannel, self).__init__(name=name, AWG=AWG, generator=generator)
         self.delay = delay
         self.channel = channel
         
@@ -69,9 +76,8 @@ class PhysicalQuadratureChannel(PhysicalChannel):
     '''
     Something used to implement a standard qubit channel with two analog channels and a microwave gating channel.
     '''
-    def __init__(self, name=None, AWG=None, carrierGen=None, IChannel=None, QChannel=None, delay=0.0, ampFactor=1.0, phaseSkew=0.0, **kwargs):
-        super(PhysicalQuadratureChannel, self).__init__(name=name, AWG=AWG)
-        self.carrierGen = carrierGen
+    def __init__(self, name=None, AWG=None, generator=None, IChannel=None, QChannel=None, delay=0.0, ampFactor=1.0, phaseSkew=0.0, **kwargs):
+        super(PhysicalQuadratureChannel, self).__init__(name=name, AWG=AWG, generator=generator)
         self.IChannel = IChannel
         self.QChannel = QChannel
         self.delay = delay
@@ -162,7 +168,9 @@ def json_serializer(obj):
     We just keep the class name and the properties
     '''
     jsonDict = {'__class__': obj.__class__.__name__}
-    jsonDict.update(obj.__dict__)
+    #Strip leading underscores off private properties
+    newDict = { key.lstrip('_'):value for key,value in obj.__dict__.items()}
+    jsonDict.update(newDict)
     #Deal with shape function handles specially
     if 'shapeFun' in jsonDict:
         jsonDict['shapeFun'] = jsonDict['shapeFun'].__name__
@@ -186,16 +194,16 @@ def json_deserializer(jsonDict):
 
 if __name__ == '__main__':
     # create a channel params file
-    ChannelDict['q1'] = Qubit(name='q1', piAmp=1.0, pi2Amp=0.5, shapeFun=PulseShapes.drag, pulseLength=40e-9, bufferTime=2e-9, dragScaling=1, physicalChannel='BBNAPS1-12', carrierGen='QPC1-1691')
-    ChannelDict['q2'] = Qubit(name='q2', piAmp=1.0, pi2Amp=0.5, shapeFun=PulseShapes.gaussian, pulseLength=40e-9, bufferTime=2e-9, dragScaling=1, physicalChannel='BBNAPS1-34', carrierGen='Agilent1')
-    ChannelDict['M-q1'] = Qubit(name='M-q1', piAmp=1.0, pi2Amp=1.0, shapeFun=PulseShapes.square, pulseLength=1e-6, bufferTime=2e-9, dragScaling=0, physicalChannel='BBNAPS2-34', carrierGen='Agilent2')
+    ChannelDict['q1'] = Qubit(name='q1', piAmp=1.0, pi2Amp=0.5, shapeFun=PulseShapes.drag, pulseLength=40e-9, bufferTime=2e-9, dragScaling=1, physicalChannel='BBNAPS1-12')
+    ChannelDict['q2'] = Qubit(name='q2', piAmp=1.0, pi2Amp=0.5, shapeFun=PulseShapes.gaussian, pulseLength=40e-9, bufferTime=2e-9, dragScaling=1, physicalChannel='BBNAPS1-34')
+    ChannelDict['M-q1'] = Qubit(name='M-q1', piAmp=1.0, pi2Amp=1.0, shapeFun=PulseShapes.square, pulseLength=1e-6, bufferTime=2e-9, dragScaling=0, physicalChannel='BBNAPS2-34')
 
     ChannelDict['digitizerTrig'] = LogicalMarkerChannel(name='digitizerTrig', physicalChannel='BBNAPS1-2m1')
 
-    ChannelDict['BBNAPS1-12'] = PhysicalQuadratureChannel(name='BBNAPS1-12', AWG='BBNAPS1', IChannel='ch1', QChannel='ch2', delay=0e-9, ampFactor=1, phaseSkew=0)
-    ChannelDict['BBNAPS1-34'] = PhysicalQuadratureChannel(name='BBNAPS1-34', AWG='BBNAPS1', IChannel='ch3', QChannel='ch4', delay=0e-9, ampFactor=1, phaseSkew=0)
-    ChannelDict['BBNAPS2-12'] = PhysicalQuadratureChannel(name='BBNAPS2-12', AWG='BBNAPS2', IChannel='ch1', QChannel='ch2', delay=0e-9, ampFactor=1, phaseSkew=0)
-    ChannelDict['BBNAPS2-34'] = PhysicalQuadratureChannel(name='BBNAPS2-34', AWG='BBNAPS2', IChannel='ch3', QChannel='ch4', delay=0e-9, ampFactor=1, phaseSkew=0)
+    ChannelDict['BBNAPS1-12'] = PhysicalQuadratureChannel(name='BBNAPS1-12', AWG='BBNAPS1', generator='QPC1-1691', IChannel='ch1', QChannel='ch2', delay=0e-9, ampFactor=1, phaseSkew=0)
+    ChannelDict['BBNAPS1-34'] = PhysicalQuadratureChannel(name='BBNAPS1-34', AWG='BBNAPS1', generator='QPC1-1691', IChannel='ch3', QChannel='ch4', delay=0e-9, ampFactor=1, phaseSkew=0)
+    ChannelDict['BBNAPS2-12'] = PhysicalQuadratureChannel(name='BBNAPS2-12', AWG='BBNAPS2', generator='Agilent1', IChannel='ch1', QChannel='ch2', delay=0e-9, ampFactor=1, phaseSkew=0)
+    ChannelDict['BBNAPS2-34'] = PhysicalQuadratureChannel(name='BBNAPS2-34', AWG='BBNAPS2', generator='Agilent1', IChannel='ch3', QChannel='ch4', delay=0e-9, ampFactor=1, phaseSkew=0)
     ChannelDict['BBNAPS1-2m1'] = PhysicalMarkerChannel(name='BBNAPS1-2m1', AWG='BBNAPS1')
 
     ChannelDict['QPC1-1691'] = Generator(name='QPC1-1691', gateChannel='TekAWG1-ch1m1', gateDelay=-50.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)

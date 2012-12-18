@@ -64,12 +64,12 @@ def compile_to_hardware(seqs, fileName=None, alignMode="right"):
                              'wfLib': PatternUtils.correctMixer(awg[chan]['wfLib'], ChannelDict[IQkey].correctionT)}
 
                 # add gate pulses
-                # awg[chan]['linkList'] = PatternUtils.gatePulses(
-                #     awg[chan]['linkList'],
-                #     channelParams[IQkey]['bufferDelay'], 
-                #     channelParams[IQkey]['bufferPadding'],
-                #     channelParams[IQkey]['bufferReset'],
-                #     channelParams[IQkey]['samplingRate'])
+                awg[chan]['linkList'] = PatternUtils.gatePulses(
+                    awg[chan]['linkList'],
+                    ChannelDict[IQkey].generator.gateDelay, 
+                    ChannelDict[IQkey].generator.gateBuffer,
+                    ChannelDict[IQkey].generator.gateMinWidth,
+                    ChannelDict[IQkey].samplingRate)
 
         # convert to hardware formats
         if ChannelDict[awgName].model == 'BBNAPS':

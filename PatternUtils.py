@@ -63,7 +63,7 @@ def gatePulses(linkList, delay=0, gateBuffer=0, bufferReset=0, samplingRate=1.2e
             elif state == 1 and miniLL[ct+1].isZero and (miniLL[ct+1].length*miniLL[ct+1].repeat) > bufferReset:
                 # Time from beginning of pulse LL entry that trigger needs to go
                 # low to end gate pulse
-                endDelay = fix(entryWidth + gateBuffer + delay);
+                endDelay = np.fix(entryWidth + gateBuffer + delay);
                 if endDelay < 0:
                     endDelay = 0
                     warn("gatePulses warning: fixed buffer pulse to start of pulse")

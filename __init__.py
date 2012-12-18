@@ -1,5 +1,5 @@
 import Channels
-from Channels import Qubit
+from Channels import QubitFactory
 from PulsePrimitives import *
 from PulseSequencer import Pulse, show, align
 import Compiler
