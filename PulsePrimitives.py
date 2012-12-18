@@ -1,4 +1,5 @@
 import PulseShapes
+import Channels
 
 from scipy.constants import pi
 from PulseSequencer import Pulse
@@ -112,7 +113,27 @@ def Y90m(qubit):
 ## two-qubit primitivies
 # @_memoize
 def CNOT(source, target):
-    # TODO construct the (source, target) channel and pull parameters from there
-    # something like: channel = Qubit((source, target))
-    shape = source.shapeFun(amp=source.piAmp, **overrideDefaults(source, {}))
+    # construct (source, target) channel and pull parameters from there
+    twoQChannel = Channels.Qubit(source.name + target.name)
+    shape = source.shapeFun(amp=twoQChannel.piAmp, **overrideDefaults(twoQChannel, {}))
     return Pulse("CNOT", (source, target), shape, 0.0, 0.0)
+
+## Measurement operators
+# @_memoize
+def MEAS(qubit, *args, **kwargs):
+    '''
+    MEAS(q1, ...) constructs a measurement pulse.
+    Use the single-argument form for an individual readout channel, e.g.
+        MEAS(q1)
+    Use the multi-argument form for joint readout, e.g.
+        MEAS(q1, q2)
+    '''
+    channelName = "M-" + qubit.name
+    for q in args:
+        channelName += q.name
+    # probably should have a "Measurement" logical channel type
+    measChannel = Channels.Qubit(channelName)
+    params = overrideDefaults(measChannel, kwargs)
+    # measurement channels should have just an "amp" parameter
+    shape = measChannel.shapeFun(amp=measChannel.piAmp, **params)
+    return Pulse(channelName, measChannel, shape, 0.0, 0.0)

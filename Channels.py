@@ -11,6 +11,7 @@ Created on Jan 19, 2012
 import sys
 import json
 import PulseShapes
+import config
 
 from PySide import QtGui, QtCore
 from operator import itemgetter
@@ -48,8 +49,7 @@ class LogicalChannel(Channel):
     The main class from which we will generate sequences. 
     At some point it needs to be assigned to a physical channel.
     '''
-    def __init__(self, name=None, physicalChannel=None):
-        super(LogicalChannel, self).__init__(name=name)
+    def __init__(self, name=None, AWGName=None, channelType=None, samplingRate=1.2e9):
         self.name = name
         self.physicalChannel = physicalChannel
 
@@ -124,15 +124,31 @@ class Qubit(LogicalChannel):
     '''
     def __init__(self, name=None, physicalChannel=None, freq=None, piAmp=0.0, pi2Amp=0.0, shapeFun=PulseShapes.gaussian, pulseLength=0.0, bufferTime=0.0, dragScaling=0, cutoff=2, **kwargs):
         super(Qubit, self).__init__(name=name, physicalChannel=physicalChannel)
-        self.shapeFun = shapeFun
-        self.pulseLength = pulseLength
-        self.bufferTime = bufferTime
-        self.piAmp = piAmp
-        self.pi2Amp = pi2Amp
-        self.dragScaling = dragScaling
-        self.cutoff = cutoff        
-        
-class Generator(Channel):
+        if name is not None:
+            # try to look up data in parameter file
+            with open(config.ChannelParams) as f:
+                channelParams = json.load(f)
+            if name in channelParams.keys():
+                qubitParams = channelParams[name]
+            else:
+                raise NameError("Did not find '{0}' in channel parameter file".format(name))
+            self.shapeFun = getattr(PulseShapes, qubitParams['pulseType'])
+            self.pulseLength = qubitParams['pulseLength']
+            self.bufferTime = qubitParams['bufferTime']
+            self.piAmp = qubitParams['piAmp']
+            self.pi2Amp = qubitParams['pi2Amp']
+            self.dragScaling = qubitParams['dragScaling']
+            self.cutoff = qubitParams['cutoff']
+        else:
+            self.shapeFun = shapeFun
+            self.pulseLength = pulseLength
+            self.bufferTime = bufferTime
+            self.piAmp = piAmp
+            self.pi2Amp = pi2Amp
+            self.dragScaling = dragScaling
+            self.cutoff = cutoff
+
+class Generator(object):
     '''
     Although not quite a channel, it is tightly linked to channels.
     '''
