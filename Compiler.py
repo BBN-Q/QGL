@@ -147,7 +147,7 @@ def compile_sequence(seq, wfLib = {} ):
 
             shape *= np.exp(1j*(entry.phase+curFrame))
             # TODO SSB modulate
-            shapeHash = hash(tuple(shape))
+            shapeHash = hash_pulse(shape)
             if shapeHash not in wfLib[chan]:
                 wfLib[chan][shapeHash] = shape
             entry.key = shapeHash
@@ -162,6 +162,8 @@ def find_unique_channels(seq):
     return channels
 
 def hash_pulse(shape):
+    # if we need more speed, this version is about 10x faster in my tests on arrays of lenght 2000
+    #return hashlib.sha1(shape.view(np.uint8)).hexdigest()
     return hash(tuple(shape))
 
 TAZKey = hash_pulse(np.zeros(1, dtype=np.complex))
