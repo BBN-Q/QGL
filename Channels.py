@@ -27,10 +27,10 @@ class Channel(object):
         self.name = name
 
     def __repr__(self):
-        return json.dumps(self, sort_keys=True, indent=2, default=json_serializer)
+        return "{0}: {1}".format(self.__class__.__name__, self.name)
 
     def __str__(self):
-        return "{0} Channel: {1}".format(self.__class__.__name__, self.name)
+        return json.dumps(self, sort_keys=True, indent=2, default=json_serializer)
 
 class LogicalChannel(Channel):
     '''

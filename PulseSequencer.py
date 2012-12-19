@@ -6,13 +6,9 @@ Quantum Gate Language Module
 
 from copy import copy
 import json
-
 import numpy as np
 import matplotlib.pyplot as plt
-
-# from Channels import Qubit
-# from PulsePrimitives import *
-# import PulseSequencePlotter
+import Compiler
 
 class Pulse(object):
     '''
@@ -116,32 +112,28 @@ def align(pulseBlock, mode="center"):
 AWGFreq = 1e9
 
 def show(seq):
-    # normalize sequence to PulseBlocks
-    seq = [p.promote() for p in seq]
-    # find set of used channels
-    qubits = set([])
-    for step in seq:
-        qubits |= set(step.pulses.keys())
+    #compile
+    linkList, wfLib = Compiler.compile_sequence(seq)
 
-    # initialize empty arrays for each qubit
-    concatShapes = {q: np.array([], dtype=np.complex128) for q in qubits}
-
-    # now loop through steps and push on the pulse shape, or an Id operation if none specified
-    for step in seq:
-        stepLength = step.maxPts
-        for q in qubits:
-            if q in step.pulses.keys():
-                concatShapes[q] = np.append(concatShapes[q], step.pulses[q].shape)
+    # build a concatenated waveform for each channel
+    channels = linkList.keys()
+    concatShapes = {q: np.array([], dtype=np.complex128) for q in channels}
+    for q in channels:
+        for entry in linkList[q]:
+            if entry.isTimeAmp:
+                concatShapes[q] = np.append(concatShapes[q], wfLib[q][entry.key][0]*np.ones(entry.length*entry.repeat))
             else:
-                concatShapes[q] = np.append(concatShapes[q], np.zeros(stepLength))
+                concatShapes[q] = np.append(concatShapes[q], np.tile(wfLib[q][entry.key], (1, entry.repeat)) )
     
     # plot
-    for (ct,q) in enumerate(qubits):
-        plt.subplot(len(qubits),1,ct+1)
-        waveformToPlot = concatShapes[q]
-        p = plt.plot(np.linspace(0,len(waveformToPlot)/AWGFreq,len(waveformToPlot)), np.real(waveformToPlot), 'r')
-        p = plt.plot(np.linspace(0,len(waveformToPlot)/AWGFreq,len(waveformToPlot)), np.imag(waveformToPlot), 'b')
+    for (ct,chan) in enumerate(channels):
+        plt.subplot(len(channels),1,ct+1)
+        waveformToPlot = concatShapes[chan]
+        xpts = np.linspace(0,len(waveformToPlot)/AWGFreq,len(waveformToPlot))
+        p = plt.plot(xpts, np.real(waveformToPlot), 'r')
+        p = plt.plot(xpts, np.imag(waveformToPlot), 'b')
         plt.ylim((-1.05,1.05))
+        plt.title(repr(chan))
     plt.show(p)
 
 
