@@ -136,4 +136,4 @@ def MEAS(qubit, *args, **kwargs):
     params = overrideDefaults(measChannel, kwargs)
     # measurement channels should have just an "amp" parameter
     shape = measChannel.shapeFun(amp=measChannel.piAmp, **params)
-    return Pulse(channelName, measChannel, shape, 0.0, 0.0)
+    return Pulse("MEAS", measChannel, shape, 0.0, 0.0)

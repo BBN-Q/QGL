@@ -19,13 +19,26 @@ import config
 
 ChannelDict = {}
 
-class LogicalChannel(object):
+class Channel(object):
+    '''
+    Every channel has a name and some printers.
+    '''
+    def __init__(self, name=None):
+        self.name = name
+
+    def __repr__(self):
+        return json.dumps(self, sort_keys=True, indent=2, default=json_serializer)
+
+    def __str__(self):
+        return "{0} Channel: {1}".format(self.__class__.__name__, self.name)
+
+class LogicalChannel(Channel):
     '''
     The main class from which we will generate sequences. 
     At some point it needs to be assigned to a physical channel.
     '''
     def __init__(self, name=None, physicalChannel=None):
-        self.name = name
+        super(LogicalChannel, self).__init__(name)
         self._physicalChannel = physicalChannel
 
     @property
@@ -35,12 +48,12 @@ class LogicalChannel(object):
         else:
             return PhysicalChannel()
     
-class PhysicalChannel(object):
+class PhysicalChannel(Channel):
     '''
     The main class for actual AWG channels.
     '''
     def __init__(self, name=None, AWG=None, generator=None):
-        self.name = name
+        super(PhysicalChannel, self).__init__(name)
         self._AWG = AWG
         self._generator = generator
 
@@ -123,23 +136,23 @@ class Qubit(LogicalChannel):
         self.dragScaling = dragScaling
         self.cutoff = cutoff
 
-class Generator(object):
+class Generator(Channel):
     '''
     Although not quite a channel, it is tightly linked to channels.
     '''
     def __init__(self, name=None, gateChannel=None, gateBuffer=0.0, gateMinWidth=0.0, gateDelay=0.0):
-        self.name = name
+        super(Generator, self).__init__(name)
         self.gateChannel = gateChannel
         self.gateBuffer = gateBuffer
         self.gateMinWidth = gateMinWidth
         self.gateDelay = gateDelay
 
-class AWG(object):
+class AWG(Channel):
     '''
     Although not quite a channel, it is tightly linked to channels.
     '''
     def __init__(self, name=None, model=None, samplingRate=1.2e9):
-        self.name = name
+        super(AWG, self).__init__(name)
         self.model = model
         self.samplingRate = samplingRate
 
