@@ -187,7 +187,7 @@ class LLElement(object):
             self.frameChange = pulse.frameChange
     
     @property
-    def hasMaker(self):
+    def hasMarker(self):
         return self.markerDelay1 or self.markerDelay2
 
     @property

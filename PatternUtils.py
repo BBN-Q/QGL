@@ -44,7 +44,7 @@ def gatePulses(linkList, delay=0, gateBuffer=0, bufferReset=0, samplingRate=1.2e
 
     # Time from end of previous LL entry that trigger needs to go
     # high to gate pulse
-    startDelay = np.fix(gateBuffer - delay)
+    startDelay = round(gateBuffer - delay)
     for miniLL in linkList:
         # we need to pad the miniLL with an extra entry if the last entry is not a zero
         if not miniLL[-1].isZero:

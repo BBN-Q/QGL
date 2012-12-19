@@ -117,8 +117,24 @@ def create_wf_vector(wfLib):
 
     return wfVec, offsets
 
-def calc_trigger(entry):
-    return 0,0
+def calc_marker_delay(entry):
+    #The firmware cannot handle 0 delay markers so push out one clock cycle
+    if entry.markerDelay1:
+        if entry.markerDelay1 < ADDRESS_UNIT:
+            entry.markerDelay1 = ADDRESS_UNIT
+        markerDelay1 = entry.markerDelay1//ADDRESS_UNIT
+    else:
+        markerDelay1 = 0
+
+    if entry.markerDelay2:
+        if entry.markerDelay2 < ADDRESS_UNIT:
+            entry.markerDelay2 = ADDRESS_UNIT
+        markerDelay2 = entry.markerDelay2//ADDRESS_UNIT
+    else:
+        markerDelay2 = 0
+
+    return markerDelay1, markerDelay2
+
 
 def create_LL_data(LLs, offsets):
     '''
@@ -138,7 +154,7 @@ def create_LL_data(LLs, offsets):
     for ct, entry in enumerate(chain.from_iterable(LLs)):
         LLData['addr'][ct] = offsets[entry.key]//ADDRESS_UNIT
         LLData['count'][ct] = entry.length//ADDRESS_UNIT-1
-        LLData['trigger1'][ct], LLData['trigger2'][ct] = calc_trigger(entry)
+        LLData['trigger1'][ct], LLData['trigger2'][ct] = calc_marker_delay(entry)
         LLData['repeat'][ct] = entry.repeat-1
         if entry.isTimeAmp:
             TAPairEntries.append(ct)
@@ -217,8 +233,9 @@ def read_APS_file(fileName):
     '''
     AWGData = {}
     #APS bit masks
-    START_MINILL_MASK = 2**START_MINILL_BIT;
-    TA_PAIR_MASK = 2**TA_PAIR_BIT;
+    START_MINILL_MASK = 2**START_MINILL_BIT
+    END_MINILL_MASK = 2**END_MINILL_BIT
+    TA_PAIR_MASK = 2**TA_PAIR_BIT
     REPEAT_MASK = 2**10-1
     
     chanStrs = ['ch1','ch2', 'ch3', 'ch4']
@@ -253,7 +270,17 @@ def read_APS_file(fileName):
                 #If we are starting a new entry push back an empty array
                 if START_MINILL_MASK & tmpRepeat[entryct]:
                     AWGData[chanStrs[chanct]].append(np.array([], dtype=np.float64))
-                    AWGData[mrkStrs[chanct]].append(np.array([], dtype=np.bool))
+                    triggerDelays = []
+                    
+                #Record the trigger delays
+                if chanct//2 == 0:
+                    if tmpTrigger1[entryct] > 0:
+                        triggerDelays.append(AWGData[chanStrs[chanct]][-1].size + ADDRESS_UNIT*tmpTrigger1[entryct])
+                else:
+                    if tmpTrigger2[entryct] > 0:
+                        triggerDelays.append(AWGData[chanStrs[chanct]][-1].size + ADDRESS_UNIT*tmpTrigger2[entryct])
+                
+
                 #If it is a TA pair or regular pulse
                 curRepeat = (tmpRepeat[entryct] & REPEAT_MASK)+1
                 if TA_PAIR_MASK & tmpRepeat[entryct]:
@@ -263,15 +290,10 @@ def read_APS_file(fileName):
                     AWGData[chanStrs[chanct]][-1] = np.hstack((AWGData[chanStrs[chanct]][-1], 
                                                     np.tile(wfLib[tmpAddr[entryct]*ADDRESS_UNIT:tmpAddr[entryct]*ADDRESS_UNIT+ADDRESS_UNIT*(tmpCount[entryct]+1)], curRepeat)))
                 #Add the trigger pulse
-                tmpPulse = np.zeros(ADDRESS_UNIT*curRepeat*(tmpCount[entryct]+1), dtype=np.bool)
-                if chanct//2 == 0:
-                    if tmpTrigger1[entryct] > 0:
-                        tmpPulse[4*tmpTrigger1[entryct]] = True
-                else:
-                    if tmpTrigger2[entryct] > 0:
-                        tmpPulse[4*tmpTrigger2[entryct]] = True
-                AWGData[mrkStrs[chanct]][-1] = np.hstack((AWGData[mrkStrs[chanct]][-1], tmpPulse)) 
-                
+                if END_MINILL_MASK & tmpRepeat[entryct]:
+                    triggerSeq = np.zeros(AWGData[chanStrs[chanct]][-1].size, dtype=np.bool)
+                    triggerSeq[triggerDelays] = True
+                    AWGData[mrkStrs[chanct]].append(triggerSeq)
     return AWGData
 
 
