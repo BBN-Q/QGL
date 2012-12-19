@@ -73,7 +73,7 @@ def compile_to_hardware(seqs, fileName=None, alignMode="right"):
 
         # convert to hardware formats
         if ChannelDict[awgName].model == 'BBNAPS':
-            write_APS_file(awg['ch12']['linkList'], awg['ch12']['wfLib'], awg['ch34']['linkList'], awg['ch34']['wfLib'], fileName+'-'+awgName+'.h5')
+            write_APS_file(awg['ch12']['linkList'], awg['ch12']['wfLib'], awg['ch34']['linkList'], awg['ch34']['wfLib'], config.AWGDir + fileName+'-'+awgName+'.h5')
 
 
     return awgData
