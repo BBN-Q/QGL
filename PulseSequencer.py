@@ -72,10 +72,10 @@ class PulseBlock(object):
         self.pulses = {}
 
     def __repr__(self):
-        return "Pulses " + ";".join([str(pulse) for pulse in self.pulses.values()]) + " alignment: {0}".format(self.alignment).encode('utf-8')
+        return u"\u2297 ".join([str(pulse) for pulse in self.pulses.values()]).encode('utf-8')
 
     def __str__(self):
-        return u"\u2297 ".join([str(pulse) for pulse in self.pulses.values()]).encode('utf-8')
+        return "Pulses " + ";".join([str(pulse) for pulse in self.pulses.values()]) + " alignment: {0}".format(self.alignment).encode('utf-8')
 
     #Overload the multiplication operator to combine pulse blocks
     def __mul__(self, rhs):
