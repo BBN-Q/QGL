@@ -22,7 +22,7 @@ from PySide import QtCore, QtGui
 
 import numpy as np
 
-import PulseSequencer
+from Channels import ChannelDict
 
 from APSPattern import read_APS_file
 from TekPattern import read_Tek_file
@@ -35,32 +35,7 @@ class PulseSeqPlotWindow(QtGui.QWidget):
     def __init__(self, AWGWFs=None):
         super(PulseSeqPlotWindow, self).__init__()
         
-        #See if we have files passed in
-        if isinstance(AWGWFs, list):
-            self.AWGWFs = {}
-            AWGFileNames = AWGWFs
-            for tmpFile in AWGFileNames:
-                #Ugly hack to see if we're loading a Tek or APS files
-                #Assume a naming convenction path/to/file/SequenceName-AWGName.h5
-                AWGName = (os.path.split(os.path.splitext(tmpFile)[0])[1]).split('-')[1]
-                if AWGName[:6] == 'TekAWG':
-                    self.AWGWFs[AWGName] = read_Tek_file(tmpFile)
-                elif AWGName[:6] == 'BBNAPS':
-                    self.AWGWFs[AWGName] = read_APS_file(tmpFile)
-                else:
-                    raise NameError('Unknown AWG Type for {0}: we currently only handle TekAWG and BBNAPS.'.format(tmpFile))
-            
-        else:
-            self.AWGWFs = AWGWFs
-            #Convert the BBNAPS LLs into pulse sequence waveforms
-            for tmpAWGName, tmpAWG in AWGWFs.items():
-                if tmpAWGName[:6] == 'BBNAPS':
-                    tmpWFs = {}
-                    for chanStr in tmpAWG.keys():
-                        tmpWFs[chanStr] = []
-                        for miniLL in tmpAWG[chanStr]['LLs']:
-                            tmpWFs[chanStr].append(PulseSequencer.LL2sequence(miniLL, tmpAWG[chanStr]['WFLibrary']))
-                    self.AWGWFs[tmpAWGName] = tmpWFs
+        self.AWGWFs = AWGWFs
         
         numSeqs = max([len(tmpChan) for tmpAWG in self.AWGWFs.values() for tmpChan in tmpAWG.values()])
         
@@ -196,6 +171,10 @@ class PulseSeqPlotWindow(QtGui.QWidget):
         
 
 def plot_pulse_seqs(AWGWFs):
+    '''
+    Helper function to plot direct awg waveforms.
+    Expects a dictionary keyed on AWG's.
+    '''
     
     #Look to see if iPython's event loop is running
     app = QtCore.QCoreApplication.instance()
@@ -214,6 +193,26 @@ def plot_pulse_seqs(AWGWFs):
     #Need to a keep a reference to the window alive.
     return plotterWindow
 
+def plot_pulse_files(AWGFileNames):
+    '''
+    Helper function to plot AWG files
+    '''
+    assert isinstance(AWGFileNames, list), 'Please pass in a list of filenames.'
+    AWGWFs = {}
+    #Load each of the files using helper functions from APS/TekPattern
+    for tmpFile in AWGFileNames:
+        #Assume a naming convenction path/to/file/SequenceName-AWGName.h5
+        AWGName = (os.path.split(os.path.splitext(tmpFile)[0])[1]).split('-')[1]
+        #Look up the appropriate model in the ChannelDict
+        if ChannelDict[AWGName].model == 'Tek5000':
+            AWGWFs[AWGName] = read_Tek_file(tmpFile)
+        elif ChannelDict[AWGName].model == 'BBNAPS':
+            AWGWFs[AWGName] = read_APS_file(tmpFile)
+        else:
+            raise NameError('Unknown AWG Type for {0}: we currently only handle TekAWG and BBNAPS.'.format(tmpFile))
+
+    #Need to a keep a reference to the window alive.
+    return plot_pulse_seqs(AWGWFs)
 
 if __name__ == '__main__':
     
