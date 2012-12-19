@@ -117,19 +117,22 @@ def show(seq):
 
     # build a concatenated waveform for each channel
     channels = linkList.keys()
-    concatShapes = {q: np.array([], dtype=np.complex128) for q in channels}
+    concatShapes = {q: np.array([0], dtype=np.complex128) for q in channels}
     for q in channels:
         for entry in linkList[q]:
             if entry.isTimeAmp:
                 concatShapes[q] = np.append(concatShapes[q], wfLib[q][entry.key][0]*np.ones(entry.length*entry.repeat))
             else:
                 concatShapes[q] = np.append(concatShapes[q], np.tile(wfLib[q][entry.key], (1, entry.repeat)) )
+    # add an extra zero to make things look more normal
+    for q in channels:
+        concatShapes[q] = np.append(concatShapes[q], 0)
     
     # plot
     for (ct,chan) in enumerate(channels):
         plt.subplot(len(channels),1,ct+1)
         waveformToPlot = concatShapes[chan]
-        xpts = np.linspace(0,len(waveformToPlot)/AWGFreq,len(waveformToPlot))
+        xpts = np.linspace(0,len(waveformToPlot)/AWGFreq/1e-6,len(waveformToPlot))
         p = plt.plot(xpts, np.real(waveformToPlot), 'r')
         p = plt.plot(xpts, np.imag(waveformToPlot), 'b')
         plt.ylim((-1.05,1.05))
