@@ -205,6 +205,9 @@ def json_deserializer(jsonDict):
             jsonDict['shapeFun'] = getattr(PulseShapes, jsonDict['shapeFun'])
         return class_(**jsonDict)
 
+#Load the ChannelDict on import
+update_channel_info()
+
 if __name__ == '__main__':
     # create a channel params file
     ChannelDict['q1'] = Qubit(name='q1', piAmp=1.0, pi2Amp=0.5, shapeFun=PulseShapes.drag, pulseLength=40e-9, bufferTime=2e-9, dragScaling=1, physicalChannel='BBNAPS1-12')
