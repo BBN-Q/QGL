@@ -222,7 +222,7 @@ if __name__ == '__main__':
     options =  parser.parse_args(sys.argv[1:])
 
     if options.AWGFiles:
-        plot_pulse_seqs(options.AWGFiles)
+        plot_pulse_files(options.AWGFiles)
         
     else:
         AWGWFs = {}
