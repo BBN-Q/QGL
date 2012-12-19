@@ -5,6 +5,7 @@ Quantum Gate Language Module
 '''
 
 from copy import copy
+import json
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -27,6 +28,15 @@ class Pulse(object):
         self.shape = shape.astype(np.complex) # for now, do this since we are gettern objects from PatternGen rather than lists
         self.phase = phase
         self.frameChange = frameChange
+
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        if isinstance(self.qubits, tuple):
+            return '{0}({1})'.format(self.label, ','.join([qubit.name for qubit in self.qubits]))
+        else:
+            return '{0}({1})'.format(self.label, self.qubits.name)
 
     # adding pulses concatenates the pulse shapes
     def __add__(self, other):
@@ -60,6 +70,12 @@ class PulseBlock(object):
         #How multiple channels are aligned.
         self.alignment = 'left'
         self.pulses = {}
+
+    def __repr__(self):
+        return "Pulses " + ";".join([str(pulse) for pulse in self.pulses.values()]) + " alignment: {0}".format(self.alignment).encode('utf-8')
+
+    def __str__(self):
+        return u"\u2297 ".join([str(pulse) for pulse in self.pulses.values()]).encode('utf-8')
 
     #Overload the multiplication operator to combine pulse blocks
     def __mul__(self, rhs):
