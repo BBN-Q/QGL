@@ -212,7 +212,9 @@ if __name__ == '__main__':
     # create a channel params file
     ChannelDict['q1'] = Qubit(name='q1', piAmp=1.0, pi2Amp=0.5, shapeFun=PulseShapes.drag, pulseLength=40e-9, bufferTime=2e-9, dragScaling=1, physicalChannel='BBNAPS1-12')
     ChannelDict['q2'] = Qubit(name='q2', piAmp=1.0, pi2Amp=0.5, shapeFun=PulseShapes.gaussian, pulseLength=40e-9, bufferTime=2e-9, dragScaling=1, physicalChannel='BBNAPS1-34')
+    ChannelDict['q1q2'] = Qubit(name='q1q2', piAmp=1.0, pi2Amp=0.5, shapeFun=PulseShapes.gaussian, pulseLength=40e-9, bufferTime=2e-9, dragScaling=1, physicalChannel='BBNAPS2-12')
     ChannelDict['M-q1'] = Qubit(name='M-q1', piAmp=1.0, pi2Amp=1.0, shapeFun=PulseShapes.square, pulseLength=200e-9, bufferTime=2e-9, dragScaling=0, physicalChannel='BBNAPS2-34')
+    ChannelDict['M-q1q2'] = Qubit(name='M-q1q2', piAmp=1.0, pi2Amp=1.0, shapeFun=PulseShapes.square, pulseLength=200e-9, bufferTime=2e-9, dragScaling=0, physicalChannel='BBNAPS2-34')
 
     ChannelDict['digitizerTrig'] = LogicalMarkerChannel(name='digitizerTrig', physicalChannel='BBNAPS1-2m1')
 
