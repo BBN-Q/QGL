@@ -30,6 +30,10 @@ def align(linkList, mode, length):
             raise NameError("Unknown aligment mode")
 
 def correctMixer(wfLib, T):
+    for k, v in wfLib.items():
+        # To get the broadcast to work in numpy, need to do the multiplication one row at a time
+        iqWF = np.vstack((np.real(v), np.imag(v)))
+        wfLib[k] = T[0,:].dot(iqWF) + 1j*T[1,:].dot(iqWF)
     return wfLib
 
 def split_multiple_triggers():

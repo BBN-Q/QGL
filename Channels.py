@@ -12,6 +12,7 @@ import sys
 import json
 import PulseShapes
 import config
+import numpy as np
 
 from operator import itemgetter
 from math import tan,cos,pi
@@ -99,7 +100,7 @@ class PhysicalQuadratureChannel(PhysicalChannel):
 
     @property
     def correctionT(self):
-        return [[self.ampFactor, self.ampFactor*tan(self.phaseSkew*pi/180)], [0, 1/cos(self.phaseSkew*pi/180)]]
+        return np.array([[self.ampFactor, self.ampFactor*tan(self.phaseSkew*pi/180)], [0, 1/cos(self.phaseSkew*pi/180)]])
                 
 class LogicalMarkerChannel(LogicalChannel):
     '''
