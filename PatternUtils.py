@@ -3,7 +3,16 @@ import Compiler
 from warnings import warn
 from APSPattern import MIN_ENTRY_LENGTH
 
-def delay(linkList, delay):
+def delay(linkList, delay, samplingRate):
+    '''
+    Delays a mini link list by the given delay. Postives delays
+    shift right, negative delays shift left.
+    '''
+    # we assume that link lists are constructed with a padding element at the beginning that can be adjusted
+    assert linkList[0][0].isZero, 'Delay error: link list does not start with a padding element'
+    for miniLL in linkList:
+        miniLL[0].length += round(delay * samplingRate)
+        assert miniLL[0].length > 0, 'Delay error: Negative length padding element after delay.'
     return linkList
 
 def modulate(linkList, SSBFreq):

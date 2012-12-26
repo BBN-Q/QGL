@@ -60,7 +60,7 @@ def compile_to_hardware(seqs, fileName=None, alignMode="right"):
             else:
                 # construct IQkey using existing convention
                 IQkey = awgName + '-' + chan[2:]
-                awg[chan] = {'linkList': PatternUtils.delay(awg[chan]['linkList'], ChannelDict[IQkey].delay),
+                awg[chan] = {'linkList': PatternUtils.delay(awg[chan]['linkList'], ChannelDict[IQkey].delay, ChannelDict[IQkey].samplingRate),
                              'wfLib': PatternUtils.correctMixer(awg[chan]['wfLib'], ChannelDict[IQkey].correctionT)}
 
                 # add gate pulses
@@ -162,7 +162,7 @@ def find_unique_channels(seq):
     return channels
 
 def hash_pulse(shape):
-    # if we need more speed, this version is about 10x faster in my tests on arrays of lenght 2000
+    # if we need more speed, this version is about 10x faster in my tests on arrays of length 2000
     #return hashlib.sha1(shape.view(np.uint8)).hexdigest()
     return hash(tuple(shape))
 
