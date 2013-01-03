@@ -273,7 +273,7 @@ def read_APS_file(fileName):
                     triggerDelays = []
                     
                 #Record the trigger delays
-                if chanct//2 == 0:
+                if np.mod(chanct,2) == 0:
                     if tmpTrigger1[entryct] > 0:
                         triggerDelays.append(AWGData[chanStrs[chanct]][-1].size + ADDRESS_UNIT*tmpTrigger1[entryct])
                 else:
