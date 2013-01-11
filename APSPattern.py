@@ -251,11 +251,12 @@ def read_APS_file(fileName):
             else:
                 curLLData = FID[chanStr]['linkListData']
             #Pull out the LL data
-            tmpAddr = curLLData['addr'].value
-            tmpCount = curLLData['count'].value
-            tmpRepeat = curLLData['repeat'].value
-            tmpTrigger1 = curLLData['trigger1'].value
-            tmpTrigger2 = curLLData['trigger2'].value
+            #Matlab puts our column vectors so need to flatten too
+            tmpAddr = curLLData['addr'].value.flatten()
+            tmpCount = curLLData['count'].value.flatten()
+            tmpRepeat = curLLData['repeat'].value.flatten()
+            tmpTrigger1 = curLLData['trigger1'].value.flatten()
+            tmpTrigger2 = curLLData['trigger2'].value.flatten()
             numEntries = curLLData.attrs['length']
    
             #Pull out and scale the waveform data
