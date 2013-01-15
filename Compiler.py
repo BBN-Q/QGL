@@ -8,6 +8,7 @@ import AWG
 import PatternUtils
 import config
 from Channels import ChannelDict
+import Channels
 
 from APSPattern import  write_APS_file
 SEQUENCE_PADDING = 500
@@ -35,7 +36,6 @@ def map_logical_to_physical(linkLists, wfLib):
     
     return awgData
 
-
 def compile_to_hardware(seqs, fileName=None, alignMode="right"):
     linkLists, wfLib = compile_sequences(seqs)
 
@@ -48,35 +48,61 @@ def compile_to_hardware(seqs, fileName=None, alignMode="right"):
     # map logical to physical channels
     awgData = map_logical_to_physical(linkLists, wfLib)
 
+    #Add the digitizer trigger 
+    #TODO: move this to the measurement block.
+    # PatternUtils.add_digitizer_trigger(awgData, ChannelDict['trigChan'], 0)
+
     # for each physical channel need to:
     # 1) delay
     # 2) mixer correct
-    # 3) fill empty channels with zeros
     for awgName, awg in awgData.items():
-        for chan in awg.keys():
-            if not awg[chan]:
-                awg[chan] = {'linkList': [[create_padding_LL(SEQUENCE_PADDING//2), create_padding_LL(SEQUENCE_PADDING//2)]],
-                             'wfLib': {TAZKey:np.zeros(1, dtype=np.complex)}}
-            else:
+        #Add the slave trigger
+        #TODO: only add to slave devices 
+        PatternUtils.add_slave_trigger(awg)
+        for chanName, chanData in awg.items():
+            if chanData:
                 # construct IQkey using existing convention
-                IQkey = awgName + '-' + chan[2:]
-                awg[chan] = {'linkList': PatternUtils.delay(awg[chan]['linkList'], ChannelDict[IQkey].delay, ChannelDict[IQkey].samplingRate),
-                             'wfLib': PatternUtils.correctMixer(awg[chan]['wfLib'], ChannelDict[IQkey].correctionT)}
+                IQkey = awgName + '-' + chanName[2:]
+                chanObj = ChannelDict[IQkey]
+                #We handle marker and quadrature channels differently
+                #For now that is all we handle
+                if isinstance(chanObj, Channels.PhysicalQuadratureChannel):
+                    #Apply mixer corrections and channel delay 
+                    PatternUtils.delay(chanData['linkList'], chanObj.delay, chanObj.samplingRate)
+                    PatternUtils.correctMixer(chanData['wfLib'], chanObj.correctionT)
 
-                # add gate pulses
-                awg[chan]['linkList'] = PatternUtils.gatePulses(
-                    awg[chan]['linkList'],
-                    ChannelDict[IQkey].generator.gateDelay, 
-                    ChannelDict[IQkey].generator.gateBuffer,
-                    ChannelDict[IQkey].generator.gateMinWidth,
-                    ChannelDict[IQkey].samplingRate)
+                    # add gate pulses on the marker channel
+                    genObj = chanObj.generator
+                    markerKey = 'ch' + genObj.gateChannel.name.split('-')[1]
+                    awg[markerKey] = {'linkList':None, 'wfLib':None}
+                    awg[markerKey]['linkList'] = PatternUtils.create_gate_seqs(
+                        chanData['linkList'], genObj.gateBuffer, genObj.gateMinWidth, chanObj.samplingRate)
+                    PatternUtils.delay(awg[markerKey]['linkList'], genObj.gateDelay, genObj.gateChannel.samplingRate )
 
-        # convert to hardware formats
-        if ChannelDict[awgName].model == 'BBNAPS':
-            write_APS_file(awg['ch12']['linkList'], awg['ch12']['wfLib'], awg['ch34']['linkList'], awg['ch34']['wfLib'], config.AWGDir + fileName+'-'+awgName+'.h5')
+                elif isinstance(chanObj, Channels.PhysicalMarkerChannel):
+                    PatternUtils.delay(chanData['linkList'], genObj.gateDelay, genObj.gateChannel.samplingRate)
 
+                else:
+                    raise NameError('Unable to handle channel type.')
 
-    return awgData.keys()
+    #Loop back through to fill empty channels and write to file
+    fileList = []
+    for awgName, awg in awgData.items():
+        #If all the channels are empty then do not bother writing the file
+        if not all([chan is None for chan in awg.values()]):
+            for chan in awg.keys():
+                if not awg[chan]:
+                    awg[chan] = {'linkList': [[create_padding_LL(SEQUENCE_PADDING//2), create_padding_LL(SEQUENCE_PADDING//2)]],
+                                 'wfLib': {TAZKey:np.zeros(1, dtype=np.complex)}}
+
+            # convert to hardware formats
+            if ChannelDict[awgName].model == 'BBNAPS':
+                tmpFileName = config.AWGDir + fileName+'-'+awgName+'.h5'
+                write_APS_file(awg, tmpFileName )
+                fileList.append(tmpFileName)
+
+    #Return the filenames we wrote
+    return fileList
 
 def compile_sequences(seqs):
     '''
@@ -167,13 +193,15 @@ def hash_pulse(shape):
     return hash(tuple(shape))
 
 TAZKey = hash_pulse(np.zeros(1, dtype=np.complex))
+markerHighKey = hash_pulse([True])
 
 class LLElement(object):
+    '''
+    IQ LL elements for quadrature mod channels.
+    '''
     def __init__(self, pulse=None):
         self.repeat = 1
         self.isTimeAmp = False
-        self.markerDelay1 = None
-        self.markerDelay2 = None
 
         if pulse is None:
             self.key = None
@@ -194,10 +222,10 @@ class LLElement(object):
     def isZero(self):
         return self.key == TAZKey
 
-def create_padding_LL(length):
+def create_padding_LL(length, high=False):
     tmpLL = LLElement()
     tmpLL.isTimeAmp = True
-    tmpLL.key = TAZKey
+    tmpLL.key = markerHighKey if high else TAZKey
     tmpLL.length = length
     return tmpLL
 

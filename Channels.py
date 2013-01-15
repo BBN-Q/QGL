@@ -143,10 +143,14 @@ class Generator(Channel):
     '''
     def __init__(self, name=None, gateChannel=None, gateBuffer=0.0, gateMinWidth=0.0, gateDelay=0.0):
         super(Generator, self).__init__(name)
-        self.gateChannel = gateChannel
+        self._gateChannel = gateChannel
         self.gateBuffer = gateBuffer
         self.gateMinWidth = gateMinWidth
         self.gateDelay = gateDelay
+
+    @property
+    def gateChannel(self):
+        return ChannelDict[self._gateChannel]
 
 class AWG(Channel):
     '''

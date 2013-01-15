@@ -15,6 +15,7 @@ MAX_WAVEFORM_PTS = 2**15 #maximum size of waveform memory
 MAX_WAVEFORM_VALUE = 2**13-1 #maximum waveform value i.e. 14bit DAC
 MAX_LL_ENTRIES = 8192 #maximum number of LL entries in a bank
 MAX_REPEAT_COUNT = 2^10-1;
+MAX_TRIGGER_COUNT = 2^16-1
 
 #APS bit masks
 START_MINILL_BIT = 15;
@@ -169,17 +170,54 @@ def create_LL_data(LLs, offsets):
     
     return LLData
 
-def write_APS_file(LLs12, wfLib12, LLs34, wfLib34, fileName, miniLLRepeat=0):
+def merge_APS_markerData(IQLL, markerLL, markerNum):
+    '''
+    Helper function to merge two marker channels into an IQ channel.
+    '''
+
+    markerAttr = 'markerDelay' + str(markerNum)
+
+    #Step through the all the miniLL's together
+    for miniLL_IQ, miniLL_m in zip(IQLL, markerLL):
+        #Find the cummulative length for each entry of IQ channel
+        timePts = np.cumsum([0] + [tmpEntry.length*tmpEntry.repeat for tmpEntry in miniLL_IQ])
+
+        #Find the switching points of the marker channels
+        switchPts = []
+        curIndex = 0
+        for curEntry, nextEntry in zip(miniLL_m[:-1], miniLL_m[1:]):
+            curIndex += curEntry.length*curEntry.repeat
+            if curEntry.key != nextEntry.key:
+                switchPts.append(curIndex)
+        
+        curIQIdx = 0
+        for switchPt in switchPts:
+            #If the trigger count is too long we need to move to the next IQ entry
+            while (switchPt - timePts[curIQIdx]) > MAX_TRIGGER_COUNT:
+                curIQIdx += 1
+            #Push on the trigger count
+            setattr(miniLL_IQ[curIQIdx], markerAttr, switchPt - timePts[curIQIdx])
+
+    #Replace any remaining empty entries with None
+    for miniLL_IQ in IQLL:
+        for entry in miniLL_IQ:
+            if not hasattr(entry, markerAttr):
+                setattr(entry, markerAttr, None)
+
+def write_APS_file(awgData, fileName, miniLLRepeat=0):
     '''
     Main function to pack channel LLs into an APS h5 file.
-
     '''
 
+    #Merge the the marker data into the IQ linklists
+    merge_APS_markerData(awgData['ch12']['linkList'], awgData['ch1m1']['linkList'], 1)
+    merge_APS_markerData(awgData['ch12']['linkList'], awgData['ch2m1']['linkList'], 2)
+    merge_APS_markerData(awgData['ch34']['linkList'], awgData['ch3m1']['linkList'], 1)
+    merge_APS_markerData(awgData['ch34']['linkList'], awgData['ch4m1']['linkList'], 2)
+    
     #Preprocess the LL data to handle APS restrictions
-    for ct, miniLL in enumerate(LLs12):
-        LLs12[ct] = preprocess_APS(miniLL, wfLib12)
-    for ct, miniLL in enumerate(LLs34):
-        LLs34[ct] = preprocess_APS(miniLL, wfLib34)
+    LLs12 = [preprocess_APS(miniLL, awgData['ch12']['wfLib']) for miniLL in awgData['ch12']['linkList']]
+    LLs34 = [preprocess_APS(miniLL, awgData['ch34']['wfLib']) for miniLL in awgData['ch34']['linkList']]
 
     #Open the HDF5 file
     with h5py.File(fileName, 'w') as FID:  
@@ -192,20 +230,10 @@ def write_APS_file(LLs12, wfLib12, LLs34, wfLib34, fileName, miniLLRepeat=0):
         FID['/'].attrs['miniLLRepeat'] = np.uint16(miniLLRepeat)
    
         #Create the waveform vectors
-        wfVecs = []
-        offsets = []
-        wfVec, tmpOffsets = create_wf_vector({key:wf.real for key,wf in wfLib12.items()})
-        wfVecs.append(wfVec)
-        offsets.append(tmpOffsets)
-        wfVec, tmpOffsets = create_wf_vector({key:wf.imag for key,wf in wfLib12.items()})
-        wfVecs.append(wfVec)
-        offsets.append(tmpOffsets)
-        wfVec, tmpOffsets = create_wf_vector({key:wf.real for key,wf in wfLib34.items()})
-        wfVecs.append(wfVec)
-        offsets.append(tmpOffsets)
-        wfVec, tmpOffsets = create_wf_vector({key:wf.imag for key,wf in wfLib34.items()})
-        wfVecs.append(wfVec)
-        offsets.append(tmpOffsets)
+        wfInfo = []
+        for wfLib in (awgData['ch12']['wfLib'], awgData['ch34']['wfLib']):
+            wfInfo.append(create_wf_vector({key:wf.real for key,wf in wfLib.items()}))
+            wfInfo.append(create_wf_vector({key:wf.imag for key,wf in wfLib.items()}))
 
         LLData = [LLs12, LLs34]
         #Create the groups and datasets
@@ -214,14 +242,14 @@ def write_APS_file(LLs12, wfLib12, LLs34, wfLib34, fileName, miniLLRepeat=0):
             chanGroup = FID.create_group(chanStr)
             chanGroup.attrs['isIQMode'] = np.uint8(1)
             #Write the waveformLib to file
-            FID.create_dataset('{0}/waveformLib'.format(chanStr), data=wfVecs[chanct])
+            FID.create_dataset('{0}/waveformLib'.format(chanStr), data=wfInfo[chanct][0])
 
             #For A channels (1 & 3) we write link list data
             if np.mod(chanct,2) == 0:
                 chanGroup.attrs['isLinkListData'] = np.uint8(1)
                 groupStr = chanStr+'/linkListData'
                 LLGroup = FID.create_group(groupStr)
-                LLDataVecs = create_LL_data(LLData[chanct//2], offsets[chanct])
+                LLDataVecs = create_LL_data(LLData[chanct//2], wfInfo[chanct][1])
                 LLGroup.attrs['length'] = np.uint16(LLDataVecs['addr'].size)
                 for key,dataVec in LLDataVecs.items():
                     FID.create_dataset(groupStr+'/' + key, data=dataVec)
