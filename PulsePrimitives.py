@@ -5,15 +5,21 @@ from scipy.constants import pi
 from PulseSequencer import Pulse
 from functools import wraps
 
-def overrideDefaults(qubit, updateParams):
+def overrideDefaults(chan, updateParams):
     '''Helper function to update any parameters passed in and fill in the defaults otherwise.'''
-    paramsList = ['shapeFun','pulseLength','bufferTime','piAmp','pi2Amp','dragScaling','cutoff']
+    #The default parameter list depends on the channel type
+    if type(chan) == type(Channels.Qubit):
+        paramsList = ['shapeFun','pulseLength','bufferTime','piAmp','pi2Amp','dragScaling','cutoff']
+    elif type(chan) == type(Channels.Measurement):
+        paramsList = ['shapeFun','pulseLength', 'amp', 'cutoff']
+    else:
+        raise NameError('Unable to handle channel type.')
     #First get the default or updated values
-    updateValues = [updateParams[paramName] if paramName in updateParams else getattr(qubit, paramName) for paramName in paramsList]
+    updateValues = [updateParams[paramName] if paramName in updateParams else getattr(chan, paramName) for paramName in paramsList]
     #Return a dictionary        
     paramDict = {paramName:paramValue for paramName,paramValue in zip(paramsList, updateValues)}
     # pull in the samplingRate from the physicalChannel
-    paramDict['samplingRate'] = qubit.physicalChannel.samplingRate
+    paramDict['samplingRate'] = chan.physicalChannel.samplingRate
     return paramDict
 
 def _memoize(pulseFunc):
@@ -122,7 +128,7 @@ def CNOT(source, target):
 # @_memoize
 def MEAS(qubit, *args, **kwargs):
     '''
-    MEAS(q1, ...) constructs a measurement pulse.
+    MEAS(q1, ...) constructs a measurement pulse block of a measurment + digitizer trigger.
     Use the single-argument form for an individual readout channel, e.g.
         MEAS(q1)
     Use the multi-argument form for joint readout, e.g.
@@ -131,9 +137,8 @@ def MEAS(qubit, *args, **kwargs):
     channelName = "M-" + qubit.name
     for q in args:
         channelName += q.name
-    # probably should have a "Measurement" logical channel type
-    measChannel = Channels.QubitFactory(channelName)
+    measChannel = Channels.MeasFactory(channelName)
     params = overrideDefaults(measChannel, kwargs)
     # measurement channels should have just an "amp" parameter
     shape = measChannel.shapeFun(amp=measChannel.piAmp, **params)
-    return Pulse("MEAS", measChannel, shape, 0.0, 0.0)
+    return Pulse("MEAS", measChannel, shape, 0.0, 0.0) + Pulse("digitizerTrig", measChannel.trigChan, 'square', 0.0, 0.0)

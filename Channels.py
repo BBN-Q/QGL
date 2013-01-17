@@ -117,11 +117,19 @@ class LogicalMarkerChannel(LogicalChannel):
         return tmpBlock
 
 def QubitFactory(name, **kwargs):
+    ''' Return a saved qubit channel or create a new one. '''
     if name in ChannelDict and isinstance(ChannelDict[name], Qubit):
         return ChannelDict[name]
     else:
         return Qubit(name, **kwargs)
 
+def MeasFactory(name, measType='autodyne', **kwargs):
+    ''' Return a saved measurment channel or create a new one. '''
+    if name in ChannelDict and isinstance(ChannelDict[name], Measurement):
+        return ChannelDict[name]
+    else:
+        if measType == 'autodyne':
+            return Measurment
 
 class Qubit(LogicalChannel):
     '''
@@ -136,6 +144,26 @@ class Qubit(LogicalChannel):
         self.pi2Amp = pi2Amp
         self.dragScaling = dragScaling
         self.cutoff = cutoff
+
+class Measurement(LogicalChannel):
+    '''
+    A class for measurement channels. 
+    Measurments are special because they can be different types:
+    autodyne which needs an IQ pair or hetero/homodyne which needs just a marker channel. 
+    '''
+    def __init__(self, name=None, measType='autodyne', physicalChannel=None, trigChan=None, amp=1.0, shapeFun=PulseShapes.tanh, pulseLength=100e-9, **kwargs):
+        super(Measurement, self).__init__(name=name, physicalChannel=physicalChannel)
+        self.measType = measType
+        self._trigChan = trigChan
+        self.shapeFun = shapeFun
+        self.pulseLength = pulseLength
+        
+    @property
+    def trigChan(self):
+        if self._trigChan:
+            return ChannelDict[self._trigChan]
+        else:
+            return LogicalMarkerChannel()
 
 class Generator(Channel):
     '''
@@ -218,8 +246,8 @@ if __name__ == '__main__':
     ChannelDict['q1'] = Qubit(name='q1', piAmp=1.0, pi2Amp=0.5, shapeFun=PulseShapes.drag, pulseLength=40e-9, bufferTime=2e-9, dragScaling=1, physicalChannel='BBNAPS1-12')
     ChannelDict['q2'] = Qubit(name='q2', piAmp=1.0, pi2Amp=0.5, shapeFun=PulseShapes.gaussian, pulseLength=40e-9, bufferTime=2e-9, dragScaling=1, physicalChannel='BBNAPS1-34')
     ChannelDict['q1q2'] = Qubit(name='q1q2', piAmp=1.0, pi2Amp=0.5, shapeFun=PulseShapes.gaussian, pulseLength=40e-9, bufferTime=2e-9, dragScaling=1, physicalChannel='BBNAPS2-12')
-    ChannelDict['M-q1'] = Qubit(name='M-q1', piAmp=1.0, pi2Amp=1.0, shapeFun=PulseShapes.square, pulseLength=200e-9, bufferTime=2e-9, dragScaling=0, physicalChannel='BBNAPS2-34')
-    ChannelDict['M-q1q2'] = Qubit(name='M-q1q2', piAmp=1.0, pi2Amp=1.0, shapeFun=PulseShapes.square, pulseLength=200e-9, bufferTime=2e-9, dragScaling=0, physicalChannel='BBNAPS2-34')
+    ChannelDict['M-q1'] = Measurement(name='M-q1', measType='autodyne', amp=1.0, shapeFun=PulseShapes.tanh, pulseLength=200e-9, bufferTime=2e-9, physicalChannel='BBNAPS2-34', trigChan='digitizerTrig')
+    ChannelDict['M-q1q2'] = Measurement(name='M-q1q2', measType='autodyne', amp=1.0, shapeFun=PulseShapes.tanh, pulseLength=200e-9, bufferTime=2e-9, physicalChannel='BBNAPS2-34', trigChan='digitizerTrig')
 
     ChannelDict['digitizerTrig'] = LogicalMarkerChannel(name='digitizerTrig', physicalChannel='BBNAPS1-2m1')
 
@@ -227,9 +255,11 @@ if __name__ == '__main__':
     ChannelDict['BBNAPS1-34'] = PhysicalQuadratureChannel(name='BBNAPS1-34', AWG='BBNAPS1', generator='QPC1-1691', IChannel='ch3', QChannel='ch4', delay=0e-9, ampFactor=1, phaseSkew=0)
     ChannelDict['BBNAPS2-12'] = PhysicalQuadratureChannel(name='BBNAPS2-12', AWG='BBNAPS2', generator='Agilent1', IChannel='ch1', QChannel='ch2', delay=0e-9, ampFactor=1, phaseSkew=0)
     ChannelDict['BBNAPS2-34'] = PhysicalQuadratureChannel(name='BBNAPS2-34', AWG='BBNAPS2', generator='Agilent1', IChannel='ch3', QChannel='ch4', delay=0e-9, ampFactor=1, phaseSkew=0)
+    ChannelDict['BBNAPS1-1m1'] = PhysicalMarkerChannel(name='BBNAPS1-1m1', AWG='BBNAPS1')
     ChannelDict['BBNAPS1-2m1'] = PhysicalMarkerChannel(name='BBNAPS1-2m1', AWG='BBNAPS1')
+    ChannelDict['BBNAPS1-3m1'] = PhysicalMarkerChannel(name='BBNAPS1-3m1', AWG='BBNAPS1')
 
-    ChannelDict['QPC1-1691'] = Generator(name='QPC1-1691', gateChannel='TekAWG1-ch1m1', gateDelay=-50.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)
+    ChannelDict['QPC1-1691'] = Generator(name='QPC1-1691', gateChannel='BBNAPS1-ch1m1', gateDelay=-50.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)
     ChannelDict['Agilent1'] = Generator(name='Agilent1', gateChannel='TekAWG1-ch1m1', gateDelay=-50.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)
     ChannelDict['Agilent2'] = Generator(name='Agilent2', gateChannel='TekAWG2-ch3m1', gateDelay=-50.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)   
 

@@ -67,3 +67,11 @@ def gaussOff(amp=1, pulseLength=0, cutoff=2, samplingRate=1e9, **params):
     xPts = np.linspace(0, cutoff, numPts)
     xStep = xPts[1] - xPts[0]
     return amp * (np.exp(-0.5*(xPts**2)) - np.exp(-0.5*((xPts[-1]+xStep)**2)))
+
+def tanh(amp=1, pulseLength=0, cutoff=2, samplingRate=1e9, **params):
+    '''
+    A rounded square shape from the sum of two tanh shapes. 
+    '''
+    numPts = np.round(pulseLength*samplingRate)
+    xPts = np.arange(numPts)-cutoff
+    return 0.5*(np.tanh(xPts) + np.fliplr(np.tanh(xPts)))
