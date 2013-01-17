@@ -109,16 +109,14 @@ class LogicalMarkerChannel(LogicalChannel):
     '''
     A class for digital channels for gating sources or triggering other things.
     '''
-    def __init__(self, name=None, physicalChannel=None, **kwargs):
-        super(LogicalMarkerChannel, self).__init__(name=name, physicalChannel=physicalChannel)        
+    def __init__(self, name=None, physicalChannel=None, pulseParams=None, **kwargs):
+        super(LogicalMarkerChannel, self).__init__(name=name, physicalChannel=physicalChannel)    
+        #Setup some basic pulse parameters for a digital channel
+        if pulseParams:
+            self.pulseParams = pulseParams
+        else:
+            self.pulseParams = {'shapeFun': PulseShapes.square, 'length':100e-9}    
     
-    def gatePulse(self, length, delay=0):
-        tmpBlock = PulseSequencer.PulseBlock()
-        if delay>0:
-            tmpBlock.add_pulse(PatternGen.QId(delay), self)
-        tmpBlock.add_pulse(PatternGen.Square(length, amp=1), self)
-        return tmpBlock
-
 def QubitFactory(name, **kwargs):
     ''' Return a saved qubit channel or create a new one. '''
     if name in ChannelDict and isinstance(ChannelDict[name], Qubit):
@@ -250,7 +248,7 @@ if __name__ == '__main__':
     ChannelDict['q1'] = Qubit(name='q1',  physicalChannel='BBNAPS1-12', pulseParams={'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.drag, 'pulseLength':40e-9, 'bufferTime':2e-9, 'dragScaling':1})
     ChannelDict['q2'] = Qubit(name='q2', physicalChannel='BBNAPS1-34', pulseParams={'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.drag, 'pulseLength':40e-9, 'bufferTime':2e-9, 'dragScaling':1})
     ChannelDict['q1q2'] = Qubit(name='q1q2', physicalChannel='BBNAPS1-34', pulseParams={'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.drag, 'pulseLength':40e-9, 'bufferTime':2e-9, 'dragScaling':1})
-    ChannelDict['M-q1'] = Measurement(name='M-q1', measType='autodyne', physicalChannel='BBNAPS2-34', trigChan='digitizerTrig', pulseParams={'amp':1.0, 'shapeFun':PulseShapes.tanh, 'pulseLength':200e-9, 'bufferTime':2e-9})
+    ChannelDict['M-q1'] = Measurement(name='M-q1', measType='autodyne', physicalChannel='BBNAPS1-34', trigChan='digitizerTrig', pulseParams={'amp':1.0, 'shapeFun':PulseShapes.tanh, 'pulseLength':200e-9, 'bufferTime':2e-9})
     ChannelDict['M-q1q2'] = Measurement(name='M-q1q2', measType='autodyne', physicalChannel='BBNAPS2-34', trigChan='digitizerTrig', pulseParams={'amp':1.0, 'shapeFun':PulseShapes.tanh, 'pulseLength':200e-9, 'bufferTime':2e-9})
     
     ChannelDict['digitizerTrig'] = LogicalMarkerChannel(name='digitizerTrig', physicalChannel='BBNAPS1-2m1')

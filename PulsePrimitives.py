@@ -133,5 +133,5 @@ def MEAS(qubit, *args, **kwargs):
     measChannel = Channels.MeasFactory(channelName)
     params = overrideDefaults(measChannel, kwargs)
     # measurement channels should have just an "amp" parameter
-    shape = measChannel.shapeFun(amp=measChannel.piAmp, **params)
-    return Pulse("MEAS", measChannel, shape, 0.0, 0.0) + Pulse("digitizerTrig", measChannel.trigChan, 'square', 0.0, 0.0)
+    measShape = measChannel.pulseParams['shapeFun'](**params)
+    return Pulse("MEAS", measChannel, measShape, 0.0, 0.0) * Pulse("trig", measChannel.trigChan, measChannel.trigChan.pulseParams['shapeFun'](**measChannel.trigChan.pulseParams), 0.0, 0.0)

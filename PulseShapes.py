@@ -74,4 +74,5 @@ def tanh(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
     '''
     numPts = np.round(length*samplingRate)
     xPts = np.arange(numPts)-cutoff
-    return 0.5*(np.tanh(xPts) + np.fliplr(np.tanh(xPts)))
+    tanhPts = np.tanh(xPts)
+    return 0.5*(tanhPts + tanhPts[::-1])
