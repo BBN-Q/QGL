@@ -9,7 +9,7 @@ def overrideDefaults(chan, updateParams):
     '''Helper function to update any parameters passed in and fill in the defaults otherwise.'''
     #The default parameter list depends on the channel type so pull out of channel
     #First get the default or updated values
-    paramDict = chan.pulseParams
+    paramDict = chan.pulseParams.copy()
     paramDict.update(updateParams)
     # pull in the samplingRate from the physicalChannel
     paramDict['samplingRate'] = chan.physicalChannel.samplingRate
@@ -34,7 +34,7 @@ def Id(qubit, *args, **kwargs):
     '''
     params = overrideDefaults(qubit, kwargs)
     if len(args) > 0:
-        params['pulseLength'] = args[0]
+        params['length'] = args[0]
     shape = PulseShapes.delay(**params)
     return Pulse("Id", qubit, shape, 0, 0.0)
 
