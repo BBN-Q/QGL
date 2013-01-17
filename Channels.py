@@ -18,6 +18,9 @@ from operator import itemgetter
 from math import tan,cos,pi
 import config
 
+from warnings import warn
+from types import FunctionType
+
 ChannelDict = {}
 
 class Channel(object):
@@ -135,15 +138,11 @@ class Qubit(LogicalChannel):
     '''
     The main class for generating qubit pulses.  Effectively a logical "QuadratureChannel".
     '''
-    def __init__(self, name=None, physicalChannel=None, piAmp=1.0, pi2Amp=0.5, shapeFun=PulseShapes.gaussian, pulseLength=20.0e-9, bufferTime=0.0, dragScaling=0, cutoff=2, **kwargs):
+    def __init__(self, name=None, physicalChannel=None, pulseParams=None):
         super(Qubit, self).__init__(name=name, physicalChannel=physicalChannel)
-        self.shapeFun = shapeFun
-        self.pulseLength = pulseLength
-        self.bufferTime = bufferTime
-        self.piAmp = piAmp
-        self.pi2Amp = pi2Amp
-        self.dragScaling = dragScaling
-        self.cutoff = cutoff
+        defaultPulseParams = {'length':20e-9, 'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.gaussian, 'buffer':0.0, 'cutoff':2, 'dragScaling':0}
+        defaultPulseParams.update(pulseParams)
+        self.pulseParams = defaultPulseParams
 
 class Measurement(LogicalChannel):
     '''
@@ -151,12 +150,13 @@ class Measurement(LogicalChannel):
     Measurments are special because they can be different types:
     autodyne which needs an IQ pair or hetero/homodyne which needs just a marker channel. 
     '''
-    def __init__(self, name=None, measType='autodyne', physicalChannel=None, trigChan=None, amp=1.0, shapeFun=PulseShapes.tanh, pulseLength=100e-9, **kwargs):
+    def __init__(self, name=None, measType='autodyne', physicalChannel=None, trigChan=None, pulseParams=None):
         super(Measurement, self).__init__(name=name, physicalChannel=physicalChannel)
         self.measType = measType
         self._trigChan = trigChan
-        self.shapeFun = shapeFun
-        self.pulseLength = pulseLength
+        defaultPulseParams = {'length':20e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'buffer':0.0, 'cutoff':2}
+        defaultPulseParams.update(pulseParams)
+        self.pulseParams = defaultPulseParams
         
     @property
     def trigChan(self):
@@ -206,21 +206,24 @@ def update_channel_info(fileName=None):
     if fileName is None:
         fileName = config.channelParamsFile
     with open(fileName,'r') as FID:
-        ChannelDict.update(json.load(FID, object_hook=json_deserializer))
+        try:
+            ChannelDict.update(json.load(FID, object_hook=json_deserializer))
+        except Exception, e:
+            warn('Unable to update channel information.')
 
 def json_serializer(obj):
     '''
     Helper function to flatten the channel classes to a dictionary for json serialization.
     We just keep the class name and the properties
     '''
-    jsonDict = {'__class__': obj.__class__.__name__}
-    #Strip leading underscores off private properties
-    newDict = { key.lstrip('_'):value for key,value in obj.__dict__.items()}
-    jsonDict.update(newDict)
-    #Deal with shape function handles specially
-    if 'shapeFun' in jsonDict:
-        jsonDict['shapeFun'] = jsonDict['shapeFun'].__name__
-    return jsonDict
+    if isinstance(obj, FunctionType):
+        return obj.__name__
+    else:
+        jsonDict = {'__class__': obj.__class__.__name__}
+        #Strip leading underscores off private properties
+        newDict = { key.lstrip('_'):value for key,value in obj.__dict__.items()}
+        jsonDict.update(newDict)
+        return jsonDict
 
 def json_deserializer(jsonDict):
     '''
@@ -234,8 +237,9 @@ def json_deserializer(jsonDict):
         className = jsonDict.pop('__class__')
         class_ = getattr(sys.modules[__name__], className)
         #Deal with shape functions
-        if 'shapeFun' in jsonDict:
-            jsonDict['shapeFun'] = getattr(PulseShapes, jsonDict['shapeFun'])
+        if 'pulseParams' in jsonDict:
+            if 'shapeFun' in jsonDict['pulseParams']:
+                jsonDict['pulseParams']['shapeFun'] = getattr(PulseShapes, jsonDict['pulseParams']['shapeFun'])
         return class_(**jsonDict)
 
 #Load the ChannelDict on import
@@ -243,12 +247,12 @@ update_channel_info()
 
 if __name__ == '__main__':
     # create a channel params file
-    ChannelDict['q1'] = Qubit(name='q1', piAmp=1.0, pi2Amp=0.5, shapeFun=PulseShapes.drag, pulseLength=40e-9, bufferTime=2e-9, dragScaling=1, physicalChannel='BBNAPS1-12')
-    ChannelDict['q2'] = Qubit(name='q2', piAmp=1.0, pi2Amp=0.5, shapeFun=PulseShapes.gaussian, pulseLength=40e-9, bufferTime=2e-9, dragScaling=1, physicalChannel='BBNAPS1-34')
-    ChannelDict['q1q2'] = Qubit(name='q1q2', piAmp=1.0, pi2Amp=0.5, shapeFun=PulseShapes.gaussian, pulseLength=40e-9, bufferTime=2e-9, dragScaling=1, physicalChannel='BBNAPS2-12')
-    ChannelDict['M-q1'] = Measurement(name='M-q1', measType='autodyne', amp=1.0, shapeFun=PulseShapes.tanh, pulseLength=200e-9, bufferTime=2e-9, physicalChannel='BBNAPS2-34', trigChan='digitizerTrig')
-    ChannelDict['M-q1q2'] = Measurement(name='M-q1q2', measType='autodyne', amp=1.0, shapeFun=PulseShapes.tanh, pulseLength=200e-9, bufferTime=2e-9, physicalChannel='BBNAPS2-34', trigChan='digitizerTrig')
-
+    ChannelDict['q1'] = Qubit(name='q1',  physicalChannel='BBNAPS1-12', pulseParams={'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.drag, 'pulseLength':40e-9, 'bufferTime':2e-9, 'dragScaling':1})
+    ChannelDict['q2'] = Qubit(name='q2', physicalChannel='BBNAPS1-34', pulseParams={'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.drag, 'pulseLength':40e-9, 'bufferTime':2e-9, 'dragScaling':1})
+    ChannelDict['q1q2'] = Qubit(name='q1q2', physicalChannel='BBNAPS1-34', pulseParams={'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.drag, 'pulseLength':40e-9, 'bufferTime':2e-9, 'dragScaling':1})
+    ChannelDict['M-q1'] = Measurement(name='M-q1', measType='autodyne', physicalChannel='BBNAPS2-34', trigChan='digitizerTrig', pulseParams={'amp':1.0, 'shapeFun':PulseShapes.tanh, 'pulseLength':200e-9, 'bufferTime':2e-9})
+    ChannelDict['M-q1q2'] = Measurement(name='M-q1q2', measType='autodyne', physicalChannel='BBNAPS2-34', trigChan='digitizerTrig', pulseParams={'amp':1.0, 'shapeFun':PulseShapes.tanh, 'pulseLength':200e-9, 'bufferTime':2e-9})
+    
     ChannelDict['digitizerTrig'] = LogicalMarkerChannel(name='digitizerTrig', physicalChannel='BBNAPS1-2m1')
 
     ChannelDict['BBNAPS1-12'] = PhysicalQuadratureChannel(name='BBNAPS1-12', AWG='BBNAPS1', generator='QPC1-1691', IChannel='ch1', QChannel='ch2', delay=0e-9, ampFactor=1, phaseSkew=0)
@@ -259,9 +263,9 @@ if __name__ == '__main__':
     ChannelDict['BBNAPS1-2m1'] = PhysicalMarkerChannel(name='BBNAPS1-2m1', AWG='BBNAPS1')
     ChannelDict['BBNAPS1-3m1'] = PhysicalMarkerChannel(name='BBNAPS1-3m1', AWG='BBNAPS1')
 
-    ChannelDict['QPC1-1691'] = Generator(name='QPC1-1691', gateChannel='BBNAPS1-ch1m1', gateDelay=-50.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)
-    ChannelDict['Agilent1'] = Generator(name='Agilent1', gateChannel='TekAWG1-ch1m1', gateDelay=-50.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)
-    ChannelDict['Agilent2'] = Generator(name='Agilent2', gateChannel='TekAWG2-ch3m1', gateDelay=-50.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)   
+    ChannelDict['QPC1-1691'] = Generator(name='QPC1-1691', gateChannel='BBNAPS1-1m1', gateDelay=-50.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)
+    ChannelDict['Agilent1'] = Generator(name='Agilent1', gateChannel='TekAWG1-1m1', gateDelay=-50.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)
+    ChannelDict['Agilent2'] = Generator(name='Agilent2', gateChannel='TekAWG2-3m1', gateDelay=-50.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)   
 
     ChannelDict['TekAWG1'] = AWG(name='TekAWG1', model='Tek5000')
     ChannelDict['BBNAPS1'] = AWG(name='BBNAPS1', model='BBNAPS')

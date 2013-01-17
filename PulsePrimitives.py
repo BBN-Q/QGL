@@ -7,17 +7,10 @@ from functools import wraps
 
 def overrideDefaults(chan, updateParams):
     '''Helper function to update any parameters passed in and fill in the defaults otherwise.'''
-    #The default parameter list depends on the channel type
-    if type(chan) == type(Channels.Qubit):
-        paramsList = ['shapeFun','pulseLength','bufferTime','piAmp','pi2Amp','dragScaling','cutoff']
-    elif type(chan) == type(Channels.Measurement):
-        paramsList = ['shapeFun','pulseLength', 'amp', 'cutoff']
-    else:
-        raise NameError('Unable to handle channel type.')
+    #The default parameter list depends on the channel type so pull out of channel
     #First get the default or updated values
-    updateValues = [updateParams[paramName] if paramName in updateParams else getattr(chan, paramName) for paramName in paramsList]
-    #Return a dictionary        
-    paramDict = {paramName:paramValue for paramName,paramValue in zip(paramsList, updateValues)}
+    paramDict = chan.pulseParams
+    paramDict.update(updateParams)
     # pull in the samplingRate from the physicalChannel
     paramDict['samplingRate'] = chan.physicalChannel.samplingRate
     return paramDict
@@ -78,42 +71,42 @@ def Utheta(qubit, amp=0, phase=0, **kwargs):
 #Setup the default 90/180 rotations
 # @_memoize
 def X(qubit):
-    shape = qubit.shapeFun(amp=qubit.piAmp, **overrideDefaults(qubit, {}))
+    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['piAmp'], **overrideDefaults(qubit, {}))
     return Pulse("X", qubit, shape, 0, 0.0)
     
 # @_memoize
 def X90(qubit):
-    shape = qubit.shapeFun(amp=qubit.pi2Amp, **overrideDefaults(qubit, {}))
+    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **overrideDefaults(qubit, {}))
     return Pulse("X90", qubit, shape, 0, 0.0)
 
 # @_memoize
 def Xm(qubit):
-    shape = qubit.shapeFun(amp=qubit.piAmp, **overrideDefaults(qubit, {}))
+    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['piAmp'], **overrideDefaults(qubit, {}))
     return Pulse("Xm", qubit, shape, pi, 0.0)
     
 # @_memoize
 def X90m(qubit):
-    shape = qubit.shapeFun(amp=qubit.pi2Amp, **overrideDefaults(qubit, {}))
+    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **overrideDefaults(qubit, {}))
     return Pulse("X90m", qubit, shape, pi, 0.0)
 
 # @_memoize
 def Y(qubit):
-    shape = qubit.shapeFun(amp=qubit.piAmp, **overrideDefaults(qubit, {}))
+    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['piAmp'], **overrideDefaults(qubit, {}))
     return Pulse("Y", qubit, shape, pi/2, 0.0)
 
 # @_memoize
 def Y90(qubit):
-    shape = qubit.shapeFun(amp=qubit.pi2Amp, **overrideDefaults(qubit, {}))
+    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **overrideDefaults(qubit, {}))
     return Pulse("Y90", qubit, shape, pi/2, 0.0)
 
 # @_memoize
 def Ym(qubit):
-    shape = qubit.shapeFun(amp=qubit.piAmp, **overrideDefaults(qubit, {}))
+    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['piAmp'], **overrideDefaults(qubit, {}))
     return Pulse("Ym", qubit, shape, -pi/4, 0.0)
 
 # @_memoize
 def Y90m(qubit):
-    shape = qubit.shapeFun(amp=qubit.pi2Amp, **overrideDefaults(qubit, {}))
+    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **overrideDefaults(qubit, {}))
     return Pulse("Y90m", qubit, shape, -pi/4, 0.0)
 
 ## two-qubit primitivies
