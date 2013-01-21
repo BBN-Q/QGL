@@ -7,6 +7,8 @@ import numpy as np
 from warnings import warn
 from itertools import chain
 
+import pdb
+
 #Some constants
 ADDRESS_UNIT = 4 #everything is done in units of 4 timesteps
 MIN_ENTRY_LENGTH = 12
@@ -14,8 +16,8 @@ MIN_LL_ENTRY_COUNT = 2 #minimum length of mini link list
 MAX_WAVEFORM_PTS = 2**15 #maximum size of waveform memory
 MAX_WAVEFORM_VALUE = 2**13-1 #maximum waveform value i.e. 14bit DAC
 MAX_LL_ENTRIES = 8192 #maximum number of LL entries in a bank
-MAX_REPEAT_COUNT = 2^10-1;
-MAX_TRIGGER_COUNT = 2^16-1
+MAX_REPEAT_COUNT = 2**10-1;
+MAX_TRIGGER_COUNT = 2**16-1
 
 #APS bit masks
 START_MINILL_BIT = 15;
@@ -180,7 +182,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
     #Step through the all the miniLL's together
     for miniLL_IQ, miniLL_m in zip(IQLL, markerLL):
         #Find the cummulative length for each entry of IQ channel
-        timePts = np.cumsum([0] + [tmpEntry.length*tmpEntry.repeat for tmpEntry in miniLL_IQ])
+        timePts = np.cumsum([0] + [tmpEntry.length*tmpEntry.repeat for tmpEntry in miniLL_IQ[:-1]])
 
         #Find the switching points of the marker channels
         switchPts = []
@@ -197,6 +199,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
                 curIQIdx += 1
             #Push on the trigger count
             setattr(miniLL_IQ[curIQIdx], markerAttr, switchPt - timePts[curIQIdx])
+            curIQIdx += 1
 
     #Replace any remaining empty entries with None
     for miniLL_IQ in IQLL:

@@ -10,6 +10,8 @@ import config
 from Channels import ChannelDict
 import Channels
 
+from warnings import warn
+
 from APSPattern import  write_APS_file
 SEQUENCE_PADDING = 500
 
@@ -74,11 +76,12 @@ def compile_to_hardware(seqs, fileName=None, alignMode="right"):
                     # add gate pulses on the marker channel
                     genObj = chanObj.generator
                     markerKey = 'ch' + genObj.gateChannel.name.split('-')[1]
+                    if awg[markerKey]:
+                        warn('Reuse of marker gating channel: {0}'.format(markerKey))
                     awg[markerKey] = {'linkList':None, 'wfLib':None}
                     awg[markerKey]['linkList'] = PatternUtils.create_gate_seqs(
                         chanData['linkList'], genObj.gateBuffer, genObj.gateMinWidth, chanObj.samplingRate)
                     PatternUtils.delay(awg[markerKey]['linkList'], genObj.gateDelay, genObj.gateChannel.samplingRate )
-
                 elif isinstance(chanObj, Channels.PhysicalMarkerChannel):
                     PatternUtils.delay(chanData['linkList'], genObj.gateDelay, genObj.gateChannel.samplingRate)
 
