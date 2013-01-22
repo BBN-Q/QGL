@@ -83,7 +83,7 @@ def compile_to_hardware(seqs, fileName=None, alignMode="right"):
                         chanData['linkList'], genObj.gateBuffer, genObj.gateMinWidth, chanObj.samplingRate)
                     PatternUtils.delay(awg[markerKey]['linkList'], genObj.gateDelay, genObj.gateChannel.samplingRate )
                 elif isinstance(chanObj, Channels.PhysicalMarkerChannel):
-                    PatternUtils.delay(chanData['linkList'], genObj.gateDelay, genObj.gateChannel.samplingRate)
+                    PatternUtils.delay(chanData['linkList'], chanObj.delay, chanObj.samplingRate)
 
                 else:
                     raise NameError('Unable to handle channel type.')
@@ -253,7 +253,7 @@ def create_padding_LL(length, high=False):
 
 def align(pulse, blockLength, alignment, cutoff=12):
     entry = LLElement(pulse)
-    entry.length = blockLength
+    entry.length = pulse.shape.size
     entry.key = hash_pulse(pulse.shape)
     entry.phase = pulse.phase
     entry.frameChange = pulse.frameChange
