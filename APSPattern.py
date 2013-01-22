@@ -192,12 +192,20 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
             if curEntry.key != nextEntry.key:
                 switchPts.append(curIndex)
         
+
+        #Assume switch pts seperated by 1 point are single trigger blips
+        blipPts = (np.diff(switchPts) == 1).nonzero()[0]
+        for pt in blipPts[::-1]:
+            del switchPts[pt+1]
+
+        #Now map onto linklist elements
         curIQIdx = 0
         for switchPt in switchPts:
             #If the trigger count is too long we need to move to the next IQ entry
             while (switchPt - timePts[curIQIdx]) > MAX_TRIGGER_COUNT:
                 curIQIdx += 1
             #Push on the trigger count
+            assert(switchPt - timePts[curIQIdx] > 0)
             setattr(miniLL_IQ[curIQIdx], markerAttr, switchPt - timePts[curIQIdx])
             curIQIdx += 1
 
@@ -256,6 +264,9 @@ def write_APS_file(awgData, fileName, miniLLRepeat=0):
                 LLGroup.attrs['length'] = np.uint16(LLDataVecs['addr'].size)
                 for key,dataVec in LLDataVecs.items():
                     FID.create_dataset(groupStr+'/' + key, data=dataVec)
+            else:
+                chanGroup.attrs['isLinkListData'] = np.uint8(0)
+
 
 
 def read_APS_file(fileName):
