@@ -125,6 +125,10 @@ def compile_sequences(seqs):
         miniLL, wfLib = compile_sequence(seqs)
         linkLists = {chan: [LL] for chan, LL in miniLL.items()}
 
+    #Compress the waveform library
+    for chan in linkLists.keys():
+        compress_wfLib(linkLists[chan], wfLib[chan])
+
     return linkLists, wfLib
 
 def compile_sequence(seq, wfLib = {} ):
@@ -183,6 +187,21 @@ def compile_sequence(seq, wfLib = {} ):
             curFrame += entry.frameChange
 
     return logicalLLs, wfLib
+
+def compress_wfLib(seqs, wfLib):
+    '''
+    Helper function to remove unused waveforms from the library.
+    '''
+    usedKeys = set()
+    for miniLL in seqs:
+        for entry in miniLL:
+            usedKeys.add(entry.key)
+
+    unusedKeys = set(wfLib.keys()) - usedKeys
+    for key in unusedKeys:
+        del wfLib[key]
+
+
 
 def find_unique_channels(seq):
     channels = set([])
