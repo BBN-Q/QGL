@@ -245,25 +245,25 @@ update_channel_info()
 
 if __name__ == '__main__':
     # create a channel params file
-    ChannelDict['q1'] = Qubit(name='q1',  physicalChannel='BBNAPS1-12', pulseParams={'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.drag, 'pulseLength':40e-9, 'bufferTime':2e-9, 'dragScaling':1})
-    ChannelDict['q2'] = Qubit(name='q2', physicalChannel='BBNAPS1-34', pulseParams={'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.drag, 'pulseLength':40e-9, 'bufferTime':2e-9, 'dragScaling':1})
+    ChannelDict['q1'] = Qubit(name='q1',  physicalChannel='BBNAPS1-12', pulseParams={'piAmp':0.73, 'pi2Amp':0.3654, 'shapeFun':PulseShapes.drag, 'length':26.67e-9, 'bufferTime':2e-9, 'dragScaling':1})
+    ChannelDict['q2'] = Qubit(name='q2', physicalChannel='BBNAPS1-34', pulseParams={'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.drag, 'length':40e-9, 'bufferTime':2e-9, 'dragScaling':1})
     ChannelDict['q1q2'] = Qubit(name='q1q2', physicalChannel='BBNAPS1-34', pulseParams={'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.drag, 'pulseLength':40e-9, 'bufferTime':2e-9, 'dragScaling':1})
-    ChannelDict['M-q1'] = Measurement(name='M-q1', measType='autodyne', physicalChannel='BBNAPS1-34', trigChan='digitizerTrig', pulseParams={'amp':1.0, 'shapeFun':PulseShapes.tanh, 'length':200e-9, 'bufferTime':2e-9})
-    ChannelDict['M-q1q2'] = Measurement(name='M-q1q2', measType='autodyne', physicalChannel='BBNAPS2-34', trigChan='digitizerTrig', pulseParams={'amp':1.0, 'shapeFun':PulseShapes.tanh, 'length':200e-9, 'bufferTime':2e-9})
+    ChannelDict['M-q1'] = Measurement(name='M-q1', measType='autodyne', physicalChannel='BBNAPS1-34', trigChan='digitizerTrig', pulseParams={'amp':1.0, 'shapeFun':PulseShapes.tanh, 'length':1.6e-6, 'bufferTime':2e-9})
+    ChannelDict['M-q1q2'] = Measurement(name='M-q1q2', measType='autodyne', physicalChannel='BBNAPS2-34', trigChan='digitizerTrig', pulseParams={'amp':1.0, 'shapeFun':PulseShapes.tanh, 'length':1.6e-6, 'bufferTime':2e-9})
     
-    ChannelDict['digitizerTrig'] = LogicalMarkerChannel(name='digitizerTrig', physicalChannel='BBNAPS1-2m1')
+    ChannelDict['digitizerTrig'] = LogicalMarkerChannel(name='digitizerTrig', physicalChannel='BBNAPS1-2m1', pulseParams={'length':1e-9, 'amp':1.0, 'shapeFun':PulseShapes.square})
 
     ChannelDict['BBNAPS1-12'] = PhysicalQuadratureChannel(name='BBNAPS1-12', AWG='BBNAPS1', generator='QPC1-1691', IChannel='ch1', QChannel='ch2', delay=0e-9, ampFactor=1, phaseSkew=0)
-    ChannelDict['BBNAPS1-34'] = PhysicalQuadratureChannel(name='BBNAPS1-34', AWG='BBNAPS1', generator='Agilent1', IChannel='ch3', QChannel='ch4', delay=0e-9, ampFactor=1, phaseSkew=0)
+    ChannelDict['BBNAPS1-34'] = PhysicalQuadratureChannel(name='BBNAPS1-34', AWG='BBNAPS1', generator='Agilent1', IChannel='ch3', QChannel='ch4', delay=10e-9, ampFactor=1, phaseSkew=0)
     ChannelDict['BBNAPS2-12'] = PhysicalQuadratureChannel(name='BBNAPS2-12', AWG='BBNAPS2', generator='Agilent2', IChannel='ch1', QChannel='ch2', delay=0e-9, ampFactor=1, phaseSkew=0)
     ChannelDict['BBNAPS2-34'] = PhysicalQuadratureChannel(name='BBNAPS2-34', AWG='BBNAPS2', generator='Agilent2', IChannel='ch3', QChannel='ch4', delay=0e-9, ampFactor=1, phaseSkew=0)
     ChannelDict['BBNAPS1-1m1'] = PhysicalMarkerChannel(name='BBNAPS1-1m1', AWG='BBNAPS1')
-    ChannelDict['BBNAPS1-2m1'] = PhysicalMarkerChannel(name='BBNAPS1-2m1', AWG='BBNAPS1')
+    ChannelDict['BBNAPS1-2m1'] = PhysicalMarkerChannel(name='BBNAPS1-2m1', AWG='BBNAPS1', delay=-50e-9)
     ChannelDict['BBNAPS1-3m1'] = PhysicalMarkerChannel(name='BBNAPS1-3m1', AWG='BBNAPS1')
 
-    ChannelDict['QPC1-1691'] = Generator(name='QPC1-1691', gateChannel='BBNAPS1-1m1', gateDelay=-50.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)
-    ChannelDict['Agilent1'] = Generator(name='Agilent1', gateChannel='BBNAPS1-3m1', gateDelay=-50.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)
-    ChannelDict['Agilent2'] = Generator(name='Agilent2', gateChannel='TekAWG2-3m1', gateDelay=-50.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)   
+    ChannelDict['QPC1-1691'] = Generator(name='QPC1-1691', gateChannel='BBNAPS1-1m1', gateDelay=-10.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)
+    ChannelDict['Agilent1'] = Generator(name='Agilent1', gateChannel='BBNAPS1-3m1', gateDelay=-10.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)
+    ChannelDict['Agilent2'] = Generator(name='Agilent2', gateChannel='TekAWG2-3m1', gateDelay=-10.0e-9, gateBuffer=20e-9, gateMinWidth=100e-9)   
 
     ChannelDict['TekAWG1'] = AWG(name='TekAWG1', model='Tek5000')
     ChannelDict['BBNAPS1'] = AWG(name='BBNAPS1', model='BBNAPS')
