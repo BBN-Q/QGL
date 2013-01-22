@@ -53,13 +53,13 @@ def Ytheta(qubit, amp=0, **kwargs):
 def U90(qubit, phase=0, **kwargs):
     ''' A generic 90 degree rotation with variable phase. '''
     params = overrideDefaults(qubit, kwargs)
-    shape = params['shapeFun'](amp=qubit.pi2Amp, **params)
+    shape = params['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **params)
     return Pulse("U90", qubit, shape, phase, 0.0)
 
 def U180(qubit, phase=0, **kwargs):
     ''' A generic 180 degree rotation with variable phase.  '''
     params = overrideDefaults(qubit, kwargs)
-    shape = params['shapeFun'](amp=qubit.piAmp, **params)
+    shape = params['shapeFun'](amp=qubit.pulseParams['piAmp'], **params)
     return Pulse("U180", qubit, shape, phase, 0.0)
     
 def Utheta(qubit, amp=0, phase=0, **kwargs):
