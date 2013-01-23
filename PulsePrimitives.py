@@ -102,12 +102,12 @@ def Y90(qubit):
 # @_memoize
 def Ym(qubit):
     shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['piAmp'], **overrideDefaults(qubit, {}))
-    return Pulse("Ym", qubit, shape, -pi/4, 0.0)
+    return Pulse("Ym", qubit, shape, -pi/2, 0.0)
 
 # @_memoize
 def Y90m(qubit):
     shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **overrideDefaults(qubit, {}))
-    return Pulse("Y90m", qubit, shape, -pi/4, 0.0)
+    return Pulse("Y90m", qubit, shape, -pi/2, 0.0)
 
 ## two-qubit primitivies
 # @_memoize

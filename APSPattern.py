@@ -232,7 +232,8 @@ def write_APS_file(awgData, fileName, miniLLRepeat=0):
     LLs34 = [preprocess_APS(miniLL, awgData['ch34']['wfLib']) for miniLL in awgData['ch34']['linkList']]
 
     #Open the HDF5 file
-    os.remove(fileName)
+    if os.path.isfile(fileName):
+        os.remove(fileName)
     with h5py.File(fileName, 'w') as FID:  
     
         #List of which channels we have data for
