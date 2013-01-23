@@ -3,6 +3,7 @@ Module for writing hdf5 APS files from LL's and patterns
 '''
 
 import h5py
+import os
 import numpy as np
 from warnings import warn
 from itertools import chain
@@ -231,6 +232,7 @@ def write_APS_file(awgData, fileName, miniLLRepeat=0):
     LLs34 = [preprocess_APS(miniLL, awgData['ch34']['wfLib']) for miniLL in awgData['ch34']['linkList']]
 
     #Open the HDF5 file
+    os.remove(fileName)
     with h5py.File(fileName, 'w') as FID:  
     
         #List of which channels we have data for
@@ -266,7 +268,6 @@ def write_APS_file(awgData, fileName, miniLLRepeat=0):
                     FID.create_dataset(groupStr+'/' + key, data=dataVec)
             else:
                 chanGroup.attrs['isLinkListData'] = np.uint8(0)
-
 
 
 def read_APS_file(fileName):
