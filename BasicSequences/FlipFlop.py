@@ -5,7 +5,7 @@ from itertools import chain
 def FlipFlop(qubit, dragParamSweep, maxNumFFs=10, showPlot=False):
 	"""
 
-	Flip-flip sequence (X90-X90m)**n to determine off-resonance or DRAG parameter optimization.
+	Flip-flop sequence (X90-X90m)**n to determine off-resonance or DRAG parameter optimization.
 
 	Parameters
 	----------
@@ -22,7 +22,7 @@ def FlipFlop(qubit, dragParamSweep, maxNumFFs=10, showPlot=False):
 	def flipflop_seqs(dragScaling):
 		""" Helper function to create a list of sequences with a specified drag parameter. """
 		qubit.pulseParams['dragScaling'] = dragScaling
-		return [[Y90(qubit)] + [X90(qubit), X90m(qubit)]*rep + [Y90m(qubit)] for rep in range(1,maxNumFFs)]
+		return [[X90(qubit)] + [X90(qubit), X90m(qubit)]*rep + [Y90(qubit)] for rep in range(maxNumFFs)]
 
 	#Insert an identity at the start of every set to mark them off
 	originalScaling = qubit.pulseParams['dragScaling']
@@ -38,7 +38,7 @@ def FlipFlop(qubit, dragParamSweep, maxNumFFs=10, showPlot=False):
 	for seq in seqs:
 		seq.append(measBlock)
 
-	fileNames = compile_to_hardware(seqs, 'Ramsey/Ramsey')
+	fileNames = compile_to_hardware(seqs, 'FlipFlop/FlipFlop')
 	print(fileNames)
 
 	if showPlot:
