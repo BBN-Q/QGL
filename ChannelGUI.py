@@ -19,12 +19,19 @@ class ChannelInfoView(QtGui.QMainWindow):
         self.physicalChannelListView.setModel(self.physicalChannelListModel)
         self.physicalChannelListView.clicked.connect(lambda(idx): self.update_channelView(idx, self.physicalChannelListModel))
 
-        #Create an item view for the physical channels
+        #Create an item view for the generators channels
         self.generatorListModel = QtGui.QStringListModel([tmpKey for tmpKey, tmpChan in ChannelDict.items() if isinstance(tmpChan, Generator)])
         self.generatorListModel.sort(0)
         self.generatorListView = QtGui.QListView()
         self.generatorListView.setModel(self.generatorListModel)
         self.generatorListView.clicked.connect(lambda(idx): self.update_channelView(idx, self.generatorListModel))
+
+        #Create an item view for the AWG channels
+        self.awgListModel = QtGui.QStringListModel([tmpKey for tmpKey, tmpChan in ChannelDict.items() if isinstance(tmpChan, AWG)])
+        self.awgListModel.sort(0)
+        self.awgListView = QtGui.QListView()
+        self.awgListView.setModel(self.awgListModel)
+        self.awgListView.clicked.connect(lambda(idx): self.update_channelView(idx, self.awgListModel))
 
         tmpWidget = QtGui.QWidget()
         vBox = QtGui.QVBoxLayout(tmpWidget)
@@ -32,7 +39,8 @@ class ChannelInfoView(QtGui.QMainWindow):
         self.tabWidget = QtGui.QTabWidget()
         self.tabWidget.addTab(self.logicalChannelListView, 'Logical')        
         self.tabWidget.addTab(self.physicalChannelListView, 'Physical')        
-        self.tabWidget.addTab(self.generatorListView, 'Generators')        
+        self.tabWidget.addTab(self.generatorListView, 'Generator')
+        self.tabWidget.addTab(self.awgListView, 'AWG')
         vBox.addWidget(self.tabWidget)
 
         #Add the buttons for adding/deleting channels

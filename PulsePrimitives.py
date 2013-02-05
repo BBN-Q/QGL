@@ -114,7 +114,7 @@ def Y90m(qubit):
 def CNOT(source, target):
     # construct (source, target) channel and pull parameters from there
     twoQChannel = Channels.QubitFactory(source.name + target.name)
-    shape = twoQChannel.shapeFun(amp=twoQChannel.piAmp, **overrideDefaults(twoQChannel, {}))
+    shape = twoQChannel.pulseParams['shapeFun'](amp=twoQChannel.pulseParams['piAmp'], **overrideDefaults(twoQChannel, {}))
     return Pulse("CNOT", (source, target), shape, 0.0, 0.0)
 
 ## Measurement operators
