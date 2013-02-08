@@ -115,6 +115,7 @@ def create_wf_vector(wfLib):
         wfVec[idx:idx+wf.size] = np.uint16(MAX_WAVEFORM_VALUE*wf)
         offsets[key] = idx
         idx += wf.size
+        assert idx<MAX_WAVEFORM_PTS, 'Oops! You have exceeded the waveform memory of the APS' 
                     
     #Trim the waveform 
     wfVec = wfVec[0:idx] 
