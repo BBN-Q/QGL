@@ -13,6 +13,7 @@ import Channels
 from warnings import warn
 
 from APSPattern import  write_APS_file
+
 SEQUENCE_PADDING = 500
 
 def get_channel_name(chanKey):
@@ -56,7 +57,8 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
 
     # for each physical channel need to:
     # 1) delay
-    # 2) mixer correct
+    # 2) apply SSB if necessary
+    # 3) mixer correct
     for awgName, awg in awgData.items():
         #Add the slave trigger
         #TODO: only add to slave devices 
@@ -71,6 +73,11 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
                 if isinstance(chanObj, Channels.PhysicalQuadratureChannel):
                     #Apply mixer corrections and channel delay 
                     PatternUtils.delay(chanData['linkList'], chanObj.delay, chanObj.samplingRate)
+
+                    #At this point we finally have the timing of all the pulses so we can apply SSB
+                    if hasattr(chanObj, 'SSBFreq') and abs(chanObj.SSBFreq) > 0:
+                        PatternUtils.apply_SSB(chanData['linkList'], chanData['wfLib'], chanObj.SSBFreq, chanObj.samplingRate)
+
                     PatternUtils.correctMixer(chanData['wfLib'], chanObj.correctionT)
 
                     # add gate pulses on the marker channel
@@ -178,13 +185,13 @@ def compile_sequence(seq, wfLib = {} ):
                 entry.isTimeAmp = True
                 shape = shape[:1]
 
+            #Rotate for phase and frame change 
             shape *= np.exp(1j*(entry.phase+curFrame))
-            # TODO SSB modulate
             shapeHash = hash_pulse(shape)
             if shapeHash not in wfLib[chan]:
                 wfLib[chan][shapeHash] = shape
             entry.key = shapeHash
-            curFrame += entry.frameChange
+            curFrame += entry.frameChange 
 
     return logicalLLs, wfLib
 

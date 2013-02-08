@@ -2,7 +2,8 @@ import numpy as np
 import Compiler
 from warnings import warn
 from APSPattern import MIN_ENTRY_LENGTH
-import pdb
+
+from math import pi
 
 def delay(linkList, delay, samplingRate):
     '''
@@ -16,8 +17,27 @@ def delay(linkList, delay, samplingRate):
         miniLL[0].length += sampShift
         assert miniLL[0].length > 0, 'Delay error: Negative length padding element after delay.'
 
-def modulate(linkList, SSBFreq):
-    return linkList
+def apply_SSB(linkList, wfLib, SSBFreq, samplingRate):
+    #Negative because of negative frequency qubits
+    phaseStep = -2*pi*SSBFreq/samplingRate
+        
+    for miniLL in linkList:
+        curFrame = 0.0
+        for entry in miniLL:
+            #If it's a zero then just adjust the frame and move on 
+            if entry.key == Compiler.TAZKey: 
+                curFrame += phaseStep*entry.length
+            elif entry.isTimeAmp:
+                raise NameError("Unable to handle SSB square pulses")
+            else:
+                shape = np.copy(wfLib[entry.key])
+                phaseRamp = phaseStep*np.arange(0.5, shape.size)
+                shape *= np.exp(1j*(curFrame + phaseRamp))
+                shapeHash = Compiler.hash_pulse(shape)
+                if shapeHash not in wfLib:
+                    wfLib[shapeHash] = shape
+                entry.key = shapeHash
+                curFrame += phaseStep*entry.length 
 
 def align(linkList, mode, length):
     for miniLL in linkList:
