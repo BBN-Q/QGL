@@ -38,7 +38,7 @@ def map_logical_to_physical(linkLists, wfLib):
     
     return awgData
 
-def compile_to_hardware(seqs, fileName=None, alignMode="right"):
+def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
     linkLists, wfLib = compile_sequences(seqs)
 
     # align channels
@@ -100,7 +100,7 @@ def compile_to_hardware(seqs, fileName=None, alignMode="right"):
 
             # convert to hardware formats
             if ChannelDict[awgName].model == 'BBNAPS':
-                tmpFileName = config.AWGDir + fileName+'-'+awgName+'.h5'
+                tmpFileName = config.AWGDir + fileName + '-' + awgName + suffix + '.h5'
                 write_APS_file(awg, tmpFileName )
                 fileList.append(tmpFileName)
 
