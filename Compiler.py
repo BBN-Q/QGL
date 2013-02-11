@@ -158,8 +158,13 @@ def compile_sequence(seq, wfLib = {} ):
     for block in seq:
         #Align the block 
         blockLength = block.maxPts
-        # drop length 0 blocks
+        # drop length 0 blocks but push frame change onto previous entry
         if blockLength == 0:
+            for chan in channels:
+                if chan in block.pulses.keys():
+                    #Frame changes on the initial state do nothing so don't worry about them
+                    if len(logicalLLs[chan]) > 0:
+                        logicalLLs[chan][-1].frameChange += block.pulses[chan].frameChange
             continue
         for chan in channels:
             if chan in block.pulses.keys():
