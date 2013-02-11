@@ -147,7 +147,7 @@ def arb_axis_drag(qubit, nutFreq, rotAngle=0, polarAngle=0, aziAngle=0, **kwargs
 
         frameChange = sum(phaseSteps);
 
-        shape = (1.0/nutFreq)*sin(polarAngle)*calScale*np.exp(1j*aziAngle)*gaussPulse
+        shape = (1.0/nutFreq)*sin(polarAngle)*calScale*np.exp(1j*aziAngle)*gaussPulse*np.exp(1j*phaseRamp)
 
     elif abs(polarAngle) < 1e-10:
         #Otherwise assuem we have a zero-length Z rotation 
@@ -221,13 +221,13 @@ def AC(qubit, cliffNum):
         return arb_axis_drag(qubit, nutFreq, rotAngle=pi, polarAngle=pi/4)
     elif cliffNum == 13:
         #X-Z 180
-        return arb_axis_drag(qubit, nutFreq, rotAngle=pi, polarAngle=3*pi/4)
+        return arb_axis_drag(qubit, nutFreq, rotAngle=pi, polarAngle=pi/4, aziAngle=pi)
     elif cliffNum == 14:
         #Y+Z 180
         return arb_axis_drag(qubit, nutFreq, rotAngle=pi, polarAngle=pi/4, aziAngle=pi/2)
     elif cliffNum == 15:
         #Y-Z 180
-        return arb_axis_drag(qubit, nutFreq, rotAngle=pi, polarAngle=3*pi/4, aziAngle=pi/2)
+        return arb_axis_drag(qubit, nutFreq, rotAngle=pi, polarAngle=pi/4, aziAngle=-pi/2)
     elif cliffNum == 16:
         #X+Y+Z 120
         return arb_axis_drag(qubit, nutFreq, rotAngle=2*pi/3, polarAngle=acos(1/sqrt(3)), aziAngle=pi/4)
@@ -238,7 +238,7 @@ def AC(qubit, cliffNum):
         #X-Y+Z 120
         return arb_axis_drag(qubit, nutFreq, rotAngle=2*pi/3, polarAngle=acos(1/sqrt(3)), aziAngle=-pi/4)
     elif cliffNum == 19:
-        #X-Y+Z 120 (equivalent ot -X+Y-Z 120)
+        #X-Y+Z 120 (equivalent to -X+Y-Z 120)
         return arb_axis_drag(qubit, nutFreq, rotAngle=2*pi/3, polarAngle=pi-acos(1/sqrt(3)), aziAngle=3*pi/4)
     elif cliffNum == 20:
         #X+Y-Z 120
@@ -247,10 +247,10 @@ def AC(qubit, cliffNum):
         #X+Y-Z -120 (equivalent to -X-Y+Z 120)
         return arb_axis_drag(qubit, nutFreq, rotAngle=2*pi/3, polarAngle=acos(1/sqrt(3)), aziAngle=5*pi/4)
     elif cliffNum == 22:
-        #-X+Y-Z -120 
-        return arb_axis_drag(qubit, nutFreq, rotAngle=2*pi/3, polarAngle=acos(1/sqrt(3)), aziAngle=3**pi/4)
+        #-X+Y+Z 120 
+        return arb_axis_drag(qubit, nutFreq, rotAngle=2*pi/3, polarAngle=acos(1/sqrt(3)), aziAngle=3*pi/4)
     elif cliffNum == 23:
-        #-X+Y-Z -120 (equivalent to X-Y-Z 120)
+        #-X+Y+Z -120 (equivalent to X-Y-Z 120)
         return arb_axis_drag(qubit, nutFreq, rotAngle=2*pi/3, polarAngle=pi-acos(1/sqrt(3)), aziAngle=-pi/4)
     else:
         raise ValueError('Clifford number must be between 0 and 23')
