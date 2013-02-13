@@ -1,5 +1,6 @@
 from QGL import *
 
+import os
 from csv import reader
 
 def SingleQubitRB(qubit, seqFile, showPlot=False):
@@ -63,6 +64,7 @@ def SingleQubitRB_AC(qubit, seqFile, showPlot=False):
 	"""	
 	#Setup a pulse library
 	pulseLib = [AC(qubit, cliffNum) for cliffNum in range(24)]
+	pulseLib.append(pulseLib[0])
 	measBlock = MEAS(qubit)
 
 	with open(seqFile,'r') as FID:
@@ -71,7 +73,7 @@ def SingleQubitRB_AC(qubit, seqFile, showPlot=False):
 		for pulseSeqStr in fileReader:
 			seq = []
 			for pulseStr in pulseSeqStr:
-				seq.append(pulseLib[int(pulseStr)])
+				seq.append(pulseLib[int(pulseStr)-1])
 			seq.append(measBlock)
 			seqs.append(seq)
 
@@ -83,17 +85,70 @@ def SingleQubitRB_AC(qubit, seqFile, showPlot=False):
 	# print fileNames
 	#Hack for limited APS waveform memory and break it up into multiple files
 	#We've shuffled the sequences so that we loop through each gate length on the inner loop
-	numRandomizations = 32
-	numGateLengths = 9
-	for ct in range(numRandomizations//2):
-		chunk = seqs[2*numGateLengths*ct:2*numGateLengths*(ct+1)]
+	numRandomizations = 36
+	numGateLengths = 17
+	for ct in range(numRandomizations):
+		# chunk = seqs[2*numGateLengths*ct:2*numGateLengths*(ct+1)]
+		chunk = seqs[ct::numRandomizations]
 		#Tack on the calibration scalings
-		chunk += [[Id(qubit), measBlock], [Id(qubit), measBlock], [X(qubit), measBlock], [X(qubit), measBlock]]
+		chunk += [[Id(qubit), measBlock], [X(qubit), measBlock]]
 		print('Number of sequences: {0}'.format(len(chunk)))
 		fileNames = compile_to_hardware(chunk, 'RB/RB', suffix='_{0}'.format(ct+1))
 
 	if showPlot:
 		plotWin = plot_pulse_files(fileNames)
 		return plotWin
+
+def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False):
+	"""
+
+	Single qubit randomized benchmarking using atomic Clifford pulses. 
+
+	Parameters
+	----------
+	qubit : logical channel to implement sequence (LogicalChannel) 
+	seqFile : file containing sequence strings
+	showPlot : whether to plot (boolean)
+
+	Returns
+	-------
+	plotHandle : handle to plot window to prevent destruction
+	"""	
+	#Setup a pulse library
+	pulseLib = [AC(qubit, cliffNum) for cliffNum in range(24)]
+	pulseLib.append(analyzedPulse)
+	measBlock = MEAS(qubit)
+
+	seqs = []
+	for ct in range(10):
+		fileName = 'RBT_Seqs_fast_{0}_F1.txt'.format(ct+1)
+		with open(os.path.join(seqFileDir, fileName),'r') as FID:
+			fileReader = reader(FID)
+			for pulseSeqStr in fileReader:
+				seq = []
+				for pulseStr in pulseSeqStr:
+					seq.append(pulseLib[int(pulseStr)-1])
+				seq.append(measBlock)
+				seqs.append(seq)
+
+	seqsPerFile = 79
+	numFiles = len(seqs)//seqsPerFile
+
+	for ct in range(numFiles):
+		chunk = seqs[ct*seqsPerFile:(ct+1)*seqsPerFile]
+		#Tack on the calibration scalings
+		chunk += [[Id(qubit), measBlock], [X(qubit), measBlock]]
+		print('Number of sequences: {0}'.format(len(chunk)))
+		fileNames = compile_to_hardware(chunk, 'RB/RB', suffix='_{0}'.format(ct+1))
+
+	if showPlot:
+		plotWin = plot_pulse_files(fileNames)
+		return plotWin
+
+
+
+
+
+
 
 
