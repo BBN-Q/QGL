@@ -124,14 +124,14 @@ def create_wf_vector(wfLib):
 
 def calc_marker_delay(entry):
     #The firmware cannot handle 0 delay markers so push out one clock cycle
-    if entry.markerDelay1:
+    if entry.markerDelay1 is not None:
         if entry.markerDelay1 < ADDRESS_UNIT:
             entry.markerDelay1 = ADDRESS_UNIT
         markerDelay1 = entry.markerDelay1//ADDRESS_UNIT
     else:
         markerDelay1 = 0
 
-    if entry.markerDelay2:
+    if entry.markerDelay2 is not None:
         if entry.markerDelay2 < ADDRESS_UNIT:
             entry.markerDelay2 = ADDRESS_UNIT
         markerDelay2 = entry.markerDelay2//ADDRESS_UNIT
@@ -207,8 +207,11 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
             while (switchPt - timePts[curIQIdx]) > MAX_TRIGGER_COUNT:
                 curIQIdx += 1
             #Push on the trigger count
-            assert(switchPt - timePts[curIQIdx] > 0)
-            setattr(miniLL_IQ[curIQIdx], markerAttr, switchPt - timePts[curIQIdx])
+            if switchPt - timePts[curIQIdx] <= 0:
+                setattr(miniLL_IQ[curIQIdx], markerAttr, 0)
+                print("Had to push marker blip out to start of next entry.")
+            else:
+                setattr(miniLL_IQ[curIQIdx], markerAttr, switchPt - timePts[curIQIdx])
             curIQIdx += 1
 
     #Replace any remaining empty entries with None
