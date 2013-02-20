@@ -40,6 +40,16 @@ def map_logical_to_physical(linkLists, wfLib):
     return awgData
 
 def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
+
+    #Add the digitizer trigger to each sequence
+    #TODO: Make this more sophisticated. 
+    PatternUtils.add_digitizer_trigger(seqs, ChannelDict['digitizerTrig'])
+
+    #Add the slave trigger
+    #TODO: only add to slave devices 
+    PatternUtils.add_slave_trigger(seqs, ChannelDict['slaveTrig'])
+
+    #Compile all the pulses/pulseblocks to linklists and waveform libraries
     linkLists, wfLib = compile_sequences(seqs)
 
     # align channels
@@ -51,18 +61,11 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
     # map logical to physical channels
     awgData = map_logical_to_physical(linkLists, wfLib)
 
-    #Add the digitizer trigger 
-    #TODO: move this to the measurement block.
-    # PatternUtils.add_digitizer_trigger(awgData, ChannelDict['trigChan'], 0)
-
     # for each physical channel need to:
     # 1) delay
     # 2) apply SSB if necessary
     # 3) mixer correct
     for awgName, awg in awgData.items():
-        #Add the slave trigger
-        #TODO: only add to slave devices 
-        PatternUtils.add_slave_trigger(awg)
         for chanName, chanData in awg.items():
             if chanData:
                 # construct IQkey using existing convention

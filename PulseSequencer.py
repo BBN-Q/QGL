@@ -8,7 +8,6 @@ from copy import copy
 import json
 import numpy as np
 import matplotlib.pyplot as plt
-import Compiler
 
 class Pulse(object):
     '''
@@ -112,6 +111,7 @@ def align(pulseBlock, mode="center"):
 AWGFreq = 1e9
 
 def show(seq):
+    from Compiler import compile_sequence #import here to avoid circular imports 
     #compile
     linkList, wfLib = Compiler.compile_sequence(seq)
 

@@ -118,6 +118,7 @@ def arb_axis_drag(qubit, nutFreq, rotAngle=0, polarAngle=0, aziAngle=0, **kwargs
     Parameters
     ----------
     qubit : logical channel
+    nutFreq: effective nutation frequency per unit of drive amplitude (Hz)
     rotAngle : effective rotation rotAngle (radians)
     polarAngle : polar angle of rotation axis (radians)
     aziAngle : azimuthal (radians)
@@ -268,7 +269,7 @@ def CNOT(source, target):
 # @_memoize
 def MEAS(qubit, *args, **kwargs):
     '''
-    MEAS(q1, ...) constructs a measurement pulse block of a measurment + digitizer trigger.
+    MEAS(q1, ...) constructs a measurement pulse block of a measurment 
     Use the single-argument form for an individual readout channel, e.g.
         MEAS(q1)
     Use the multi-argument form for joint readout, e.g.
@@ -281,4 +282,4 @@ def MEAS(qubit, *args, **kwargs):
     params = overrideDefaults(measChannel, kwargs)
     # measurement channels should have just an "amp" parameter
     measShape = measChannel.pulseParams['shapeFun'](**params)
-    return Pulse("MEAS", measChannel, measShape, 0.0, 0.0) * Pulse("trig", measChannel.trigChan, measChannel.trigChan.pulseParams['shapeFun'](**measChannel.trigChan.pulseParams), 0.0, 0.0)
+    return Pulse("MEAS", measChannel, measShape, 0.0, 0.0) 

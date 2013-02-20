@@ -2,7 +2,7 @@ import numpy as np
 import Compiler
 from warnings import warn
 from APSPattern import MIN_ENTRY_LENGTH
-
+from PulseSequencer import Pulse
 from math import pi
 
 def delay(linkList, delay, samplingRate):
@@ -94,7 +94,6 @@ def create_gate_seqs(linkList, gateBuffer=0, gateMinWidth=0, samplingRate=1.2e9)
         #Loop over miniLL entries
         for curEntry, nextEntry in zip(miniLL[:-1], miniLL[1:]):
             entryWidth = curEntry.length * curEntry.repeat - carry
-            carry = 0
             assert entryWidth>0
             # If current state is low and next linkList is pulse, then
             # we go high in this entry.
@@ -134,33 +133,20 @@ def add_marker_pulse(LL, startPt, length):
     '''
     pass
 
-
-def add_digitizer_trigger(awgData, trigChan, delays):
+def add_digitizer_trigger(seqs, trigChan):
     '''
     Add the digitizer trigger.  For now hardcoded but should be loaded from config file.
     '''
-    awgName, awgChan = trigChan.physicalChannel.name.split('-')
+    #Assume that last pulse is the measurment pulse for now and tensor on the digitizer trigger pulse
+    for seq in seqs:
+        seq[-1] *= Pulse("digTrig", trigChan, trigChan.pulseParams['shapeFun'](**trigChan.pulseParams), 0.0, 0.0)
 
-    #Assume awgChan comes in form xmx e.g. 2m1
-    analogChan = int(awgChan[0])
-    IQKey = 'ch12' if analogChan < 3 else 'ch34'
-    awgModel = trigChan.physicalChannel.AWG.model
-    if awgModel == 'Tek5000':
-        mrksPerChan = 2
-    elif awgModel == 'BBNAPS':
-        mrksPerChan = 1
-    else:
-        raise NameError('Unknown AWG model: {0}'.format(awgModel))
-
-    mrkChan = np.mod(analogChan-1,2)*mrksPerChan + int(awgChan[-1])
-
-    for LL, delay in zip(awgData[IQKey][LL], delays):
-        delayPts = round(delay*trigChan.physicalChannel.AWG.samplingRate/APSPattern.ADDRESS_UNIT)
-        add_marker_pulse(LL, delayPts)
-
-
-def add_slave_trigger(LL):
-    pass
+def add_slave_trigger(seqs, trigChan):
+    """
+    Add a slave trigger to the first entry of every sequence.
+    """
+    for seq in seqs:
+        seq[0] *= Pulse("slaveTrig", trigChan, trigChan.pulseParams['shapeFun'](**trigChan.pulseParams), 0.0, 0.0)
 
 
     
