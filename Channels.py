@@ -183,10 +183,11 @@ class AWG(Channel):
     '''
     Although not quite a channel, it is tightly linked to channels.
     '''
-    def __init__(self, name=None, model=None, samplingRate=1.2e9):
+    def __init__(self, name=None, model=None, samplingRate=1.2e9, delay=0):
         super(AWG, self).__init__(name)
         self.model = model
         self.samplingRate = samplingRate
+        self.delay = delay
 
 def save_channel_info(fileName=None):
     '''
@@ -256,14 +257,14 @@ if __name__ == '__main__':
     ChannelDict['digitizerTrig'] = LogicalMarkerChannel(name='digitizerTrig', physicalChannel='BBNAPS1-2m1', pulseParams={'length':40e-9, 'amp':1.0, 'shapeFun':PulseShapes.square})
     ChannelDict['slaveTrig'] = LogicalMarkerChannel(name='slaveTrig', physicalChannel='BBNAPS1-4m1', pulseParams={'length':1e-9, 'amp':1.0, 'shapeFun':PulseShapes.square})
 
-    ChannelDict['BBNAPS1-12'] = PhysicalQuadratureChannel(name='BBNAPS1-12', AWG='BBNAPS1', generator='Agilent1', IChannel='ch1', QChannel='ch2', delay=0e-9, ampFactor=1.0252, phaseSkew=-4.97)
-    ChannelDict['BBNAPS1-34'] = PhysicalQuadratureChannel(name='BBNAPS1-34', AWG='BBNAPS1', generator='Agilent3', IChannel='ch3', QChannel='ch4', delay=10e-9, ampFactor=1, phaseSkew=0)
-    ChannelDict['BBNAPS2-12'] = PhysicalQuadratureChannel(name='BBNAPS2-12', AWG='BBNAPS2', generator='Agilent2', IChannel='ch1', QChannel='ch2', delay=0e-9, ampFactor=1, phaseSkew=0)
-    ChannelDict['BBNAPS2-34'] = PhysicalQuadratureChannel(name='BBNAPS2-34', AWG='BBNAPS2', generator='Agilent3', IChannel='ch3', QChannel='ch4', delay=0e-9, ampFactor=1, phaseSkew=0)
+    ChannelDict['BBNAPS1-12'] = PhysicalQuadratureChannel(name='BBNAPS1-12', AWG='BBNAPS1', generator='Agilent1', IChannel='ch1', QChannel='ch2', ampFactor=1.0252, phaseSkew=-4.97)
+    ChannelDict['BBNAPS1-34'] = PhysicalQuadratureChannel(name='BBNAPS1-34', AWG='BBNAPS1', generator='Agilent3', IChannel='ch3', QChannel='ch4', ampFactor=1, phaseSkew=0, SSBFreq=31.9e6)
+    ChannelDict['BBNAPS2-12'] = PhysicalQuadratureChannel(name='BBNAPS2-12', AWG='BBNAPS2', generator='Agilent2', IChannel='ch1', QChannel='ch2', ampFactor=1, phaseSkew=0)
+    ChannelDict['BBNAPS2-34'] = PhysicalQuadratureChannel(name='BBNAPS2-34', AWG='BBNAPS2', generator='Agilent3', IChannel='ch3', QChannel='ch4', ampFactor=1, phaseSkew=0, SSBFreq=-20e6)
     ChannelDict['BBNAPS1-1m1'] = PhysicalMarkerChannel(name='BBNAPS1-1m1', AWG='BBNAPS1')
     ChannelDict['BBNAPS1-2m1'] = PhysicalMarkerChannel(name='BBNAPS1-2m1', AWG='BBNAPS1', delay=-50e-9)
     ChannelDict['BBNAPS1-3m1'] = PhysicalMarkerChannel(name='BBNAPS1-3m1', AWG='BBNAPS1')
-    ChannelDict['BBNAPS1-4m1'] = PhysicalMarkerChannel(name='BBNAPS1-4m1', AWG='BBNAPS1')
+    ChannelDict['BBNAPS1-4m1'] = PhysicalMarkerChannel(name='BBNAPS1-4m1', AWG='BBNAPS1', delay=-200e-9)
     ChannelDict['BBNAPS2-1m1'] = PhysicalMarkerChannel(name='BBNAPS2-1m1', AWG='BBNAPS2')
     ChannelDict['BBNAPS2-2m1'] = PhysicalMarkerChannel(name='BBNAPS2-2m1', AWG='BBNAPS2')
     ChannelDict['BBNAPS2-3m1'] = PhysicalMarkerChannel(name='BBNAPS2-3m1', AWG='BBNAPS2')
@@ -275,7 +276,7 @@ if __name__ == '__main__':
 
     ChannelDict['TekAWG1'] = AWG(name='TekAWG1', model='Tek5000')
     ChannelDict['BBNAPS1'] = AWG(name='BBNAPS1', model='BBNAPS')
-    ChannelDict['BBNAPS2'] = AWG(name='BBNAPS2', model='BBNAPS')
+    ChannelDict['BBNAPS2'] = AWG(name='BBNAPS2', model='BBNAPS', delay=-30e-9)
 
     save_channel_info()
 

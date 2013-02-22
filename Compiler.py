@@ -14,7 +14,7 @@ from warnings import warn
 
 from APSPattern import  write_APS_file
 
-SEQUENCE_PADDING = 500
+SEQUENCE_PADDING = 244
 
 def get_channel_name(chanKey):
     ''' Takes in a channel key and returns a channel name '''
@@ -75,7 +75,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
                 #For now that is all we handle
                 if isinstance(chanObj, Channels.PhysicalQuadratureChannel):
                     #Apply mixer corrections and channel delay 
-                    PatternUtils.delay(chanData['linkList'], chanObj.delay, chanObj.samplingRate)
+                    PatternUtils.delay(chanData['linkList'], chanObj.delay + chanObj.AWG.delay, chanObj.samplingRate)
 
                     #At this point we finally have the timing of all the pulses so we can apply SSB
                     if hasattr(chanObj, 'SSBFreq') and abs(chanObj.SSBFreq) > 0:
@@ -86,14 +86,16 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
                     # add gate pulses on the marker channel
                     genObj = chanObj.generator
                     markerKey = 'ch' + genObj.gateChannel.name.split('-')[1]
+                    #TODO: check if this actually catches overwriting markers
                     if awg[markerKey]:
                         warn('Reuse of marker gating channel: {0}'.format(markerKey))
                     awg[markerKey] = {'linkList':None, 'wfLib':None}
                     awg[markerKey]['linkList'] = PatternUtils.create_gate_seqs(
                         chanData['linkList'], genObj.gateBuffer, genObj.gateMinWidth, chanObj.samplingRate)
-                    PatternUtils.delay(awg[markerKey]['linkList'], genObj.gateDelay, genObj.gateChannel.samplingRate )
+                    PatternUtils.delay(awg[markerKey]['linkList'], genObj.gateDelay+chanObj.delay, genObj.gateChannel.samplingRate )
+
                 elif isinstance(chanObj, Channels.PhysicalMarkerChannel):
-                    PatternUtils.delay(chanData['linkList'], chanObj.delay, chanObj.samplingRate)
+                    PatternUtils.delay(chanData['linkList'], chanObj.delay+chanObj.AWG.delay, chanObj.samplingRate)
 
                 else:
                     raise NameError('Unable to handle channel type.')
@@ -215,7 +217,6 @@ def compress_wfLib(seqs, wfLib):
     unusedKeys = set(wfLib.keys()) - usedKeys
     for key in unusedKeys:
         del wfLib[key]
-
 
 
 def find_unique_channels(seq):
