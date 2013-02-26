@@ -34,5 +34,5 @@ def process_tomo(seq, qubits=None, numPulses=4):
 	Expects a single entry list sequence
 	'''
 	return [[prepBlock] + seq + [readoutBlock,  MEAS(*qubits)]
-				 for prepBlock, readoutBlock in product(create_tomo_blocks(qubits, numPulses), repeat=len(qubits)) ]
+				 for prepBlock, readoutBlock in product(create_tomo_blocks(qubits, numPulses), repeat=2)]
 
