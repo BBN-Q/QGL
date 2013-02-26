@@ -225,16 +225,16 @@ def write_APS_file(awgData, fileName, miniLLRepeat=0):
     Main function to pack channel LLs into an APS h5 file.
     '''
 
-    #Merge the the marker data into the IQ linklists
-    merge_APS_markerData(awgData['ch12']['linkList'], awgData['ch1m1']['linkList'], 1)
-    merge_APS_markerData(awgData['ch12']['linkList'], awgData['ch2m1']['linkList'], 2)
-    merge_APS_markerData(awgData['ch34']['linkList'], awgData['ch3m1']['linkList'], 1)
-    merge_APS_markerData(awgData['ch34']['linkList'], awgData['ch4m1']['linkList'], 2)
-    
     #Preprocess the LL data to handle APS restrictions
     LLs12 = [preprocess_APS(miniLL, awgData['ch12']['wfLib']) for miniLL in awgData['ch12']['linkList']]
     LLs34 = [preprocess_APS(miniLL, awgData['ch34']['wfLib']) for miniLL in awgData['ch34']['linkList']]
 
+    #Merge the the marker data into the IQ linklists
+    merge_APS_markerData(LLs12, awgData['ch1m1']['linkList'], 1)
+    merge_APS_markerData(LLs12, awgData['ch2m1']['linkList'], 2)
+    merge_APS_markerData(LLs34, awgData['ch3m1']['linkList'], 1)
+    merge_APS_markerData(LLs34, awgData['ch4m1']['linkList'], 2)
+    
     #Open the HDF5 file
     if os.path.isfile(fileName):
         os.remove(fileName)
