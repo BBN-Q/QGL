@@ -3,6 +3,7 @@ import Compiler
 from warnings import warn
 from APSPattern import MIN_ENTRY_LENGTH
 from PulseSequencer import Pulse
+from Compiler import find_unique_channels
 from math import pi
 
 def delay(linkList, delay, samplingRate):
@@ -126,6 +127,25 @@ def create_gate_seqs(linkList, gateBuffer=0, gateMinWidth=0, samplingRate=1.2e9)
         # end loop through miniLL
     # end loop through link lists
     return gateSeqs
+
+def drop_empty_initial_blocks(seqs):
+    '''
+    For each sequence in seqs, removes initial pulse blocks with zero length.
+    '''
+    for seq in seqs:
+        channels = find_unique_channels(seq)
+        frameChange = {key: 0 for key in channels}
+        while len(seq) > 1 and seq[0].maxPts == 0:
+            # grab frame changes of pulses we are dropping
+            for ch in channels:
+                frameChange[ch] += seq[0].pulses[ch].frameChange
+            seq.pop(0)
+
+        # update phase of new first pulse with the frame change
+        for ch in channels:
+            seq[0].pulses[ch].phase += frameChange[ch]
+            seq[0].pulses[ch].frameChange += frameChange[ch]
+
 
 def add_marker_pulse(LL, startPt, length):
     '''

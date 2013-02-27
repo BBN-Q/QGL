@@ -40,6 +40,11 @@ def map_logical_to_physical(linkLists, wfLib):
     return awgData
 
 def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
+    # normalize sequences
+    seqs = [normalize(seq) for seq in seqs]
+
+    # strip off zero length leading pulse blocks
+    PatternUtils.drop_empty_initial_blocks(seqs)
 
     #Add the digitizer trigger to each sequence
     #TODO: Make this more sophisticated. 
@@ -148,8 +153,6 @@ def compile_sequence(seq, wfLib = {} ):
     Converts a single sequence into a miniLL and waveform library.
     Returns a single-entry list of a miniLL and the updated wfLib
     '''
-    # normalize sequence to PulseBlocks
-    seq = [p.promote() for p in seq]
 
     #Find the set of logical channels used here and initialize them
     channels = find_unique_channels(seq)
@@ -166,21 +169,16 @@ def compile_sequence(seq, wfLib = {} ):
         # drop length 0 blocks but push frame change onto previous entry
         if blockLength == 0:
             for chan in channels:
-                if chan in block.pulses.keys():
-                    #Frame changes on the initial state do nothing so don't worry about them
-                    if len(logicalLLs[chan]) > 0:
-                        logicalLLs[chan][-1].frameChange += block.pulses[chan].frameChange
+                #Frame changes on the initial state do nothing so don't worry about them
+                if len(logicalLLs[chan]) > 0:
+                    logicalLLs[chan][-1].frameChange += block.pulses[chan].frameChange
             continue
         for chan in channels:
-            if chan in block.pulses.keys():
-                # add aligned LL entry
-                wf, LLentry = align(block.pulses[chan], blockLength, block.alignment)
-                if hash_pulse(wf) not in wfLib:
-                    wfLib[chan][hash_pulse(wf)] = wf
-                logicalLLs[chan] += LLentry
-            else:
-                # add identity
-                logicalLLs[chan] += [create_padding_LL(blockLength)]
+            # add aligned LL entry
+            wf, LLentry = align(block.pulses[chan], blockLength, block.alignment)
+            if hash_pulse(wf) not in wfLib:
+                wfLib[chan][hash_pulse(wf)] = wf
+            logicalLLs[chan] += LLentry
 
     # loop through again to find phases, frame changes, and SSB modulation
     for chan, miniLL in logicalLLs.items():
@@ -218,12 +216,27 @@ def compress_wfLib(seqs, wfLib):
     for key in unusedKeys:
         del wfLib[key]
 
-
 def find_unique_channels(seq):
     channels = set([])
     for step in seq:
         channels |= set(step.pulses.keys())
     return channels
+
+def normalize(seq):
+    '''
+    For mixed lists of Pulses and PulseBlocks, converts to list of PulseBlocks
+    with uniform channels on each PulseBlock. We inject Id's where necessary.
+    '''
+    # promote to PulseBlocks
+    seq = [p.promote() for p in seq]
+
+    channels = set(find_unique_channels(seq))
+
+    # inject Id's for PulseBlocks not containing every channel
+    for block in seq:
+        emptyChannels = channels - set(block.pulses.keys())
+        for ch in emptyChannels:
+            block.pulses[ch] = Id(ch, length=block.maxPts)
 
 def hash_pulse(shape):
     # if we need more speed, this version is about 10x faster in my tests on arrays of length 2000

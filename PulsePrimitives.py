@@ -110,6 +110,21 @@ def Y90m(qubit):
     shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **overrideDefaults(qubit, {}))
     return Pulse("Y90m", qubit, shape, -pi/2, 0.0)
 
+# @_memoize
+def Z(qubit):
+    return Pulse("Z", qubit, np.array([], dtype=np.complex128), 0, pi)
+
+# @_memoize
+def Z90(qubit):
+    return Pulse("Z", qubit, np.array([], dtype=np.complex128), 0, pi/2)
+
+# @_memoize
+def Z90m(qubit):
+    return Pulse("Z", qubit, np.array([], dtype=np.complex128), 0, -pi/2)
+
+def Ztheta(qubit, angle=0):
+    return Pulse("Ztheta", qubit, np.array([], dtype=np.complex128), 0, angle)
+
 def arb_axis_drag(qubit, nutFreq, rotAngle=0, polarAngle=0, aziAngle=0, **kwargs):
     """
     Single qubit arbitrary axis pulse implemented with phase ramping and frame change.
