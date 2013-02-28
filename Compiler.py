@@ -48,9 +48,6 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
     # normalize sequences
     seqs = [normalize(seq) for seq in seqs]
 
-    # strip off zero length leading pulse blocks
-    PatternUtils.drop_empty_initial_blocks(seqs)
-
     #Compile all the pulses/pulseblocks to linklists and waveform libraries
     linkLists, wfLib = compile_sequences(seqs)
 
@@ -165,22 +162,25 @@ def compile_sequence(seq, wfLib = {} ):
         logicalLLs[chan] = []
         if chan not in wfLib:
             wfLib[chan] = {TAZKey:  np.zeros(1, dtype=np.complex)}
+    carriedPhase = {ch: 0 for ch in channels}
     for block in seq:
         #Align the block 
         blockLength = block.maxPts
         # drop length 0 blocks but push frame change onto previous entry
         if blockLength == 0:
-            for chan in channels:
-                #Frame changes on the initial state do nothing so don't worry about them
-                if len(logicalLLs[chan]) > 0:
-                    logicalLLs[chan][-1].frameChange += block.pulses[chan].frameChange
+            # Push frame change forward through the next pulse
+            carriedPhase = {ch: carriedPhase[ch]+block.pulses[ch].frameChange for ch in channels}
+            # continue to drop the entry
             continue
         for chan in channels:
             # add aligned LL entry
             wf, LLentry = align(block.pulses[chan], blockLength, block.alignment)
             if hash_pulse(wf) not in wfLib:
                 wfLib[chan][hash_pulse(wf)] = wf
+            LLentry[0].phase -= carriedPhase[chan]
+            LLentry[0].frameChange += carriedPhase[chan]
             logicalLLs[chan] += LLentry
+        carriedPhase = {ch: 0 for ch in channels}
 
     # loop through again to find phases, frame changes, and SSB modulation
     for chan, miniLL in logicalLLs.items():
