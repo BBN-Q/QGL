@@ -158,14 +158,16 @@ def add_digitizer_trigger(seqs, trigChan):
     '''
     #Assume that last pulse is the measurment pulse for now and tensor on the digitizer trigger pulse
     for seq in seqs:
-        seq[-1] *= Pulse("digTrig", trigChan, trigChan.pulseParams['shapeFun'](**trigChan.pulseParams), 0.0, 0.0)
+        #Hack around copied list elements referring to same sequence element
+        if isinstance(seq[-1], Pulse) or trigChan not in seq[-1].pulses.keys():
+            seq[-1] *= Pulse("digTrig", trigChan, trigChan.pulseParams['shapeFun'](**trigChan.pulseParams), 0.0, 0.0)
 
-def add_slave_trigger(seqs, trigChan):
+def slave_trigger(numSeqs):
     """
-    Add a slave trigger to the first entry of every sequence.
+    Create slave trigger link lists.
     """
-    for seq in seqs:
-        seq[0] *= Pulse("slaveTrig", trigChan, trigChan.pulseParams['shapeFun'](**trigChan.pulseParams), 0.0, 0.0)
+    return [[Compiler.create_padding_LL(1), Compiler.create_padding_LL(1, True), Compiler.create_padding_LL(1)]]*numSeqs, \
+        {Compiler.TAZKey:np.zeros(1, dtype=np.complex), Compiler.markerHighKey: np.ones(1, dtype=np.complex)}
 
 
     

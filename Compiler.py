@@ -41,19 +41,15 @@ def map_logical_to_physical(linkLists, wfLib):
     return awgData
 
 def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
+    #Add the digitizer trigger to each sequence
+    #TODO: Make this more sophisticated.
+    PatternUtils.add_digitizer_trigger(seqs, ChannelDict['digitizerTrig'])
+
     # normalize sequences
     seqs = [normalize(seq) for seq in seqs]
 
     # strip off zero length leading pulse blocks
     PatternUtils.drop_empty_initial_blocks(seqs)
-
-    #Add the digitizer trigger to each sequence
-    #TODO: Make this more sophisticated. 
-    PatternUtils.add_digitizer_trigger(seqs, ChannelDict['digitizerTrig'])
-
-    #Add the slave trigger
-    #TODO: only add to slave devices 
-    PatternUtils.add_slave_trigger(seqs, ChannelDict['slaveTrig'])
 
     #Compile all the pulses/pulseblocks to linklists and waveform libraries
     linkLists, wfLib = compile_sequences(seqs)
@@ -63,6 +59,10 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
     longestLL = max([sum([entry.length*entry.repeat for entry in miniLL]) for LL in linkLists.values() for miniLL in LL])
     for chan, LL in linkLists.items():
         PatternUtils.align(LL, alignMode, longestLL+SEQUENCE_PADDING)
+
+    #Add the slave trigger
+    #TODO: only add to slave devices
+    linkLists[ChannelDict['slaveTrig']], wfLib[ChannelDict['slaveTrig']] = PatternUtils.slave_trigger(len(seqs))
 
     # map logical to physical channels
     awgData = map_logical_to_physical(linkLists, wfLib)
@@ -147,6 +147,8 @@ def compile_sequences(seqs):
     for chan in linkLists.keys():
         compress_wfLib(linkLists[chan], wfLib[chan])
 
+    #Print a message so for the experiment we know how many sequences there are
+    print('Compiled {} sequences.'.format(len(seqs)))
     return linkLists, wfLib
 
 def compile_sequence(seq, wfLib = {} ):
@@ -163,7 +165,6 @@ def compile_sequence(seq, wfLib = {} ):
         logicalLLs[chan] = []
         if chan not in wfLib:
             wfLib[chan] = {TAZKey:  np.zeros(1, dtype=np.complex)}
-
     for block in seq:
         #Align the block 
         blockLength = block.maxPts
@@ -306,6 +307,11 @@ def align(pulse, blockLength, alignment, cutoff=12):
         shape = np.hstack(( np.zeros(np.floor(padLength/2)), shape, np.zeros(np.ceil(padLength/2)) ))
         entry.key = hash_pulse(shape)
         return shape, [entry]
+    elif padLength == blockLength:
+        #Here we have a zero-length sequence which just needs to be expanded
+        entry.key = TAZKey
+        entry.length = blockLength
+        return np.zeros(1, dtype=np.complex), [entry]
     else:
         #split the entry into the shape and one or more TAZ
         if alignment == "left":
