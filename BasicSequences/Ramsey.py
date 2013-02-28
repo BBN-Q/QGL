@@ -1,7 +1,8 @@
 from QGL import *
 from scipy.constants import pi
+from helpers import create_cal_seqs
 
-def Ramsey(qubit, pulseSpacings, TPPIFreq=0, showPlot=False):
+def Ramsey(qubit, pulseSpacings, TPPIFreq=0, showPlot=False, calRepeats=2):
 	"""
 
 	Variable pulse spacing Ramsey (pi/2 - tau - pi/2) with optional TPPI.
@@ -26,8 +27,7 @@ def Ramsey(qubit, pulseSpacings, TPPIFreq=0, showPlot=False):
 				for d,phase in zip(pulseSpacings, phases)]
 
 	#Tack on the calibration scalings
-	seqs += [[Id(qubit), MEAS(qubit)], [Id(qubit), MEAS(qubit)], [X(qubit), MEAS(qubit)], [X(qubit), MEAS(qubit)]]
-	print('Number of sequences: {0}'.format(len(seqs)))
+	seqs += create_cal_seqs((qubit,), calRepeats)
 
 	fileNames = compile_to_hardware(seqs, 'Ramsey/Ramsey')
 	print(fileNames)

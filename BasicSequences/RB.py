@@ -37,7 +37,6 @@ def SingleQubitRB(qubit, seqFile, showPlot=False):
 
 	#Tack on the calibration scalings
 	seqs += [[Id(qubit), measBlock], [Id(qubit), measBlock], [X(qubit), measBlock], [X(qubit), measBlock]]
-	print('Number of sequences: {0}'.format(len(seqs)))
 
 	fileNames = compile_to_hardware(seqs, 'RB/RB')
 	print(fileNames)
@@ -92,7 +91,6 @@ def SingleQubitRB_AC(qubit, seqFile, showPlot=False):
 		chunk = seqs[ct::numRandomizations]
 		#Tack on the calibration scalings
 		chunk += [[Id(qubit), measBlock], [X(qubit), measBlock]]
-		print('Number of sequences: {0}'.format(len(chunk)))
 		fileNames = compile_to_hardware(chunk, 'RB/RB', suffix='_{0}'.format(ct+1))
 
 	if showPlot:
@@ -137,9 +135,9 @@ def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False):
 	for ct in range(numFiles):
 		chunk = seqs[ct*seqsPerFile:(ct+1)*seqsPerFile]
 		#Tack on the calibration scalings
-		chunk += [[Id(qubit), measBlock], [X(qubit), measBlock]]
-		print('Number of sequences: {0}'.format(len(chunk)))
-		fileNames = compile_to_hardware(chunk, 'RB/RB', suffix='_{0}'.format(ct+1))
+		numCals = 4
+		chunk += [[Id(qubit), measBlock]]*numCals + [[X(qubit), measBlock]]*numCals
+		fileNames = compile_to_hardware(chunk, 'RBT/RBT', suffix='_{0}'.format(ct+1))
 
 	if showPlot:
 		plotWin = plot_pulse_files(fileNames)

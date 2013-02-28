@@ -17,7 +17,6 @@ def RabiAmp(qubit, amps, showPlot=False, phase=0):
 	plotHandle : handle to plot window to prevent destruction
 	"""
 	seqs = [[Utheta(qubit, amp=amp, phase=phase), MEAS(qubit)] for amp in amps]
-	print('Number of sequences: {0}'.format(len(seqs)))
 
 	fileNames = compile_to_hardware(seqs, 'Rabi/Rabi')
 	print(fileNames)

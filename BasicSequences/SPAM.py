@@ -30,7 +30,6 @@ def SPAM(qubit, angleSweep, maxSpamBlocks=10, showPlot=False):
 
 	#Add a final pi for reference
 	seqs.append([X(qubit)])
-	print('Number of sequences: {0}'.format(len(seqs)))
 
 	#Add the measurment block to every sequence
 	measBlock = MEAS(qubit)
