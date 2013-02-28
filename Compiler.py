@@ -237,7 +237,8 @@ def normalize(seq):
     for block in seq:
         emptyChannels = channels - set(block.pulses.keys())
         for ch in emptyChannels:
-            block.pulses[ch] = Id(ch)
+            block.pulses[ch] = Id(ch, length=0)
+    return seq
 
 def hash_pulse(shape):
     # if we need more speed, this version is about 10x faster in my tests on arrays of length 2000

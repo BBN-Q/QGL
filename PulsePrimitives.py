@@ -177,7 +177,7 @@ def arb_axis_drag(qubit, nutFreq, rotAngle=0, polarAngle=0, aziAngle=0, **kwargs
         shape = (1.0/nutFreq)*sin(polarAngle)*calScale*np.exp(1j*aziAngle)*gaussPulse*np.exp(1j*phaseRamp)
 
     elif abs(polarAngle) < 1e-10:
-        #Otherwise assuem we have a zero-length Z rotation 
+        #Otherwise assume we have a zero-length Z rotation 
         frameChange = -rotAngle;
         shape = np.array([], dtype=np.complex128)
     else:
