@@ -1,5 +1,6 @@
 import PulseShapes
 import Channels
+import operator
 
 from math import pi, sin, cos, acos, sqrt
 import numpy as np
@@ -32,10 +33,20 @@ def Id(qubit, *args, **kwargs):
     Accepts the following pulse signatures:
         Id(qubit, [kwargs])
         Id(qubit, delay, [kwargs])
+        Id(qubit1, qubit2, [kwargs])
+        Id((qubit1,qubit2...), delay, [kwargs])
     '''
-    params = overrideDefaults(qubit, kwargs)
-    if len(args) > 0:
+    if not isinstance(qubit, tuple):
+        channel = qubit
+    else:
+        channel = Channels.QubitFactory(reduce(operator.add, [q.name for q in qubit]))
+    if len(args) > 0 and isinstance(args[0], Channels.Qubit):
+        channel = Channels.QubitFactory(qubit.name + args[0].name)
+        qubit = (qubit, args[0])
+    params = overrideDefaults(channel, kwargs)
+    if len(args) > 0 and isinstance(args[0], (int,float)):
         params['length'] = args[0]
+
     shape = PulseShapes.delay(**params)
     return Pulse("Id", qubit, shape, 0, 0.0)
 

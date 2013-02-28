@@ -3,7 +3,6 @@ import Compiler
 from warnings import warn
 from APSPattern import MIN_ENTRY_LENGTH
 from PulseSequencer import Pulse
-from Compiler import find_unique_channels
 from math import pi
 
 def delay(linkList, delay, samplingRate):
@@ -133,7 +132,7 @@ def drop_empty_initial_blocks(seqs):
     For each sequence in seqs, removes initial pulse blocks with zero length.
     '''
     for seq in seqs:
-        channels = find_unique_channels(seq)
+        channels = Compiler.find_unique_channels(seq)
         frameChange = {key: 0 for key in channels}
         while len(seq) > 1 and seq[0].maxPts == 0:
             # grab frame changes of pulses we are dropping
