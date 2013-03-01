@@ -38,12 +38,12 @@ class Pulse(object):
         newLabel = self.label+"+"+other.label
         if self.qubits != other.qubits:
             raise NameError("Can only concatenate pulses acting on the same channel")
-        return Pulse(newLabel, self.qubits, np.append(self.shape, other.shape), self.frameChange + other.frameChange)
+        return Pulse(newLabel, self.qubits, np.append(np.exp(1j*self.phase)*self.shape, np.exp(1j*other.phase)*other.shape), 0., self.frameChange + other.frameChange)
 
     # unary negation inverts the pulse shape
     # TODO: does the frame change need to be updated??
     def __neg__(self):
-        return Pulse(self.label, self.qubits, -self.shape, self.frameChange)
+        return Pulse(self.label, self.qubits, -self.shape, self.phase, self.frameChange)
 
     def __mul__(self, other):
         return self.promote()*other.promote()
