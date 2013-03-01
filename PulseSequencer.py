@@ -23,6 +23,8 @@ class Pulse(object):
         self.shape = shape.astype(np.complex)
         self.phase = phase
         self.frameChange = frameChange
+        self.isTimeAmp = False
+        self.TALength = 0
 
     def __repr__(self):
         return str(self)
@@ -53,6 +55,22 @@ class Pulse(object):
         pb =  PulseBlock()
         pb.pulses = {self.qubits: self}
         return pb
+
+    @property
+    def length(self):
+        if self.isTimeAmp:
+            return self.TALength
+        else:
+            return len(self.shape)
+
+def TAPulse(label, qubits, length, amp, phase, frameChange):
+    '''
+    Creates a time/amplitude pulse with the given pulse length and amplitude
+    '''
+    p = Pulse(label, qubits, np.array([amp], np.complex), phase, frameChange)
+    p.isTimeAmp = True
+    p.TALength = length
+    return p
 
 class PulseBlock(object):
     '''
@@ -100,7 +118,7 @@ class PulseBlock(object):
     #The maximum number of points needed for any channel on this block
     @property
     def maxPts(self):
-        return max([len(p.shape) for p in self.pulses.values()])
+        return max([p.length for p in self.pulses.values()])
 
 def align(pulseBlock, mode="center"):
     # make sure we have a PulseBlock
@@ -111,9 +129,9 @@ def align(pulseBlock, mode="center"):
 AWGFreq = 1e9
 
 def show(seq):
-    from Compiler import compile_sequence #import here to avoid circular imports 
+    from Compiler import compile_sequence, normalize #import here to avoid circular imports 
     #compile
-    linkList, wfLib = Compiler.compile_sequence(seq)
+    linkList, wfLib = compile_sequence(normalize(seq))
 
     # build a concatenated waveform for each channel
     channels = linkList.keys()

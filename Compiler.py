@@ -166,11 +166,9 @@ def compile_sequence(seq, wfLib = {} ):
     for block in seq:
         #Align the block 
         blockLength = block.maxPts
-        # drop length 0 blocks but push frame change onto previous entry
+        # drop length 0 blocks but push frame change onto next non-zero entry
         if blockLength == 0:
-            # Push frame change forward through the next pulse
             carriedPhase = {ch: carriedPhase[ch]+block.pulses[ch].frameChange for ch in channels}
-            # continue to drop the entry
             continue
         for chan in channels:
             # add aligned LL entry
@@ -255,18 +253,19 @@ class LLElement(object):
     '''
     def __init__(self, pulse=None):
         self.repeat = 1
-        self.isTimeAmp = False
 
         if pulse is None:
             self.key = None
             self.length = 0
             self.phase = 0
             self.frameChange = 0
+            self.isTimeAmp = False
         else:
             self.key = hash_pulse(pulse.shape)
-            self.length = len(pulse.shape)
+            self.length = pulse.length
             self.phase = pulse.phase
             self.frameChange = pulse.frameChange
+            self.isTimeAmp = pulse.isTimeAmp
     
     @property
     def hasMarker(self):
@@ -285,11 +284,11 @@ def create_padding_LL(length, high=False):
 
 def align(pulse, blockLength, alignment, cutoff=12):
     entry = LLElement(pulse)
-    entry.length = pulse.shape.size
+    entry.length = pulse.length
     entry.key = hash_pulse(pulse.shape)
     entry.phase = pulse.phase
     entry.frameChange = pulse.frameChange
-    padLength = blockLength - pulse.shape.size
+    padLength = blockLength - entry.length
     shape = pulse.shape
     if padLength == 0:
         # can do everything with a single LLentry
