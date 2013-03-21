@@ -218,9 +218,8 @@ if __name__ == '__main__':
     
     #See if we have been passed AWG files
     parser = argparse.ArgumentParser()
-    parser.add_argument('--AWGFiles', action='store', dest='AWGFiles',  nargs='*', default=None)    
+    parser.add_argument('--AWGFiles', action='store', dest='AWGFiles',  nargs='+', default=None)    
     options =  parser.parse_args(sys.argv[1:])
-
     if options.AWGFiles:
         plot_pulse_files(options.AWGFiles)
         
