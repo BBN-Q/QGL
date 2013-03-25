@@ -38,10 +38,10 @@ def write_field(FID, fieldName, data, dataType):
 def pack_waveform(analog, marker1, marker2):
     '''
     Helper function to convert a floating point analog channel and two logical marker channel to a sequence of 16bit integers.
-    % AWG 5000 series binary data format
-    % m2 m1 d14 d13 d12 d11 d10 d9 d8 d7 d6 d5 d4 d3 d2 d1
-    % 16-bit format with markers occupying left 2 bits followed by the 14 bit
-    % analog channel value
+    AWG 5000 series binary data format
+    m2 m1 d14 d13 d12 d11 d10 d9 d8 d7 d6 d5 d4 d3 d2 d1
+    16-bit format with markers occupying left 2 bits followed by the 14 bit
+    analog channel value
     '''
 
     #Convert decimal shape on [-1,1] to binary on [0,2^14 (16383)] 
@@ -50,12 +50,59 @@ def pack_waveform(analog, marker1, marker2):
     # ignore the one extra positive number and scale from [0,16382]
     analog[analog>1] = 1.0
     analog[analog<-1] = -1.0
+    if len(marker1) < len(analog):
+        marker1 = np.append(marker1, np.ones(len(analog) - len(marker1), dtype=np.uint16))
+    if len(marker2) < len(analog):
+        marker2 = np.append(marker2, np.ones(len(analog) - len(marker2), dtype=np.uint16))
     binData = np.uint16( MAX_WAVEFORM_VALUE*analog + MAX_WAVEFORM_VALUE );
     
     binData += 2**14*marker1 + 2**15*marker2
     
     return binData
-    
+
+def marker_waveform(LL):
+    '''
+    from a marker link list, construct a marker waveform
+    '''
+    # interpret a change in key as a state switch
+    switchPts = []
+    curIndex = 0
+    for curEntry, nextEntry in zip(LL[:-1], LL[1:]):
+        curIndex += curEntry.length*curEntry.repeat
+        if curEntry.key != nextEntry.key:
+            switchPts.append(curIndex)
+
+    wfLengths = np.diff(switchPts)
+
+    wf = np.array([], dtype=np.uint16)
+    #alternate between zeros and ones
+    stateHigh = False
+    for l in wfLengths:
+        if stateHigh:
+            stateHigh = False
+            wf = np.append(wf, np.ones(l, dtype=np.uint16))
+        else:
+            stateHigh = True
+            wf = np.append(wf, np.zeros(l, dtype=np.uint16))
+
+    return wf
+
+def merge_waveform(n, chAB, chAm1, chAm2, chBm1, chBm2):
+    '''
+    Builds packed I and Q waveforms from the nth mini LL, merging in marker data.
+    '''
+    wfAB = np.array([], dtype=np.complex)
+    for entry in chAB['linkList'][n]:
+        if not entry.isTimeAmp:
+            wfAB = np.append(wfAB, chAB['wfLib'][entry.key])
+        else:
+            wfAB = np.append(wfAB, chAB['wfLib'][entry.key][0] * np.ones(entry.length * entry.repeat))
+
+    wfA = pack_waveform(np.real(wfAB), marker_waveform(chAm1['linkList'][n]), marker_waveform(chAm2['linkList'][n]))
+    wfB = pack_waveform(np.imag(wfAB), marker_waveform(chBm1['linkList'][n]), marker_waveform(chBm2['linkList'][n]))
+
+    return wfA, wfB
+
 def write_waveform(FID, WFname, WFnumber, data):
     '''
     Helper function to write a waveform
@@ -77,15 +124,22 @@ def write_waveform(FID, WFname, WFnumber, data):
     FID.write(data.tostring())
         
 
-def write_Tek_file(WFs, fileName, seqName, options=None):
+def write_Tek_file(awgData, fileName, seqName, options=None):
     '''
     Main function for writing a AWG format file.
+    awgData is a nested dict with the following structure:
+        {ch12: {wfLib: [...], linkList: [...] },
+         ch34: {wfLib: [...], linkList: [...] },
+         ch1m1: {linkList: [...]},
+         ch1m2: {linkList: [...]},
+         ...
+         ch4m2: {linkList: [...]}, }
     '''     
 
     #Set the default options
     #Marker levels default to 1V. 
     if options is None:
-        options['markerLevels'] = {}
+        options = {'markerLevels': {}}
     for chanct in range(1,5):
         for markerct in range(1,3):
             tmpStr = 'ch{0}m{1}'.format(chanct,markerct)
@@ -94,7 +148,7 @@ def write_Tek_file(WFs, fileName, seqName, options=None):
                 options['markerLevels'][tmpStr]['low'] = 0.0
                 options['markerLevels'][tmpStr]['high'] = 1.0
 
-    numSeqs = len(WFs['ch1'])
+    numSeqs = max(len(awgData['ch12']['linkList']), len(awgData['ch34']['linkList']))
     
     #Open the file
     FID = io.open(fileName, 'wb')
@@ -139,9 +193,13 @@ def write_Tek_file(WFs, fileName, seqName, options=None):
     
     #Now write the waveforms
     for ct in range(numSeqs):
-        for chanct in range(1,5):
-            chanStr = str(chanct)
-            write_waveform(FID, '{0}Ch{1}{2:03d}'.format(seqName, chanct, ct+1), 20+4*ct+chanct, pack_waveform(WFs['ch'+chanStr][ct], WFs['ch'+chanStr+'m1'][ct], WFs['ch'+chanStr+'m2'][ct]))
+        wf1, wf2 = merge_waveform(ct, awgData['ch12'], awgData['ch1m1'], awgData['ch1m2'], awgData['ch2m1'], awgData['ch2m2'])
+        write_waveform(FID, '{0}Ch1{1:03d}'.format(seqName, ct+1), 4*ct+1, wf1)
+        write_waveform(FID, '{0}Ch2{1:03d}'.format(seqName, ct+1), 4*ct+2, wf2)
+
+        wf3, wf4 = merge_waveform(ct, awgData['ch34'], awgData['ch3m1'], awgData['ch3m2'], awgData['ch4m1'], awgData['ch4m2'])
+        write_waveform(FID, '{0}Ch3{1:03d}'.format(seqName, ct+1), 4*ct+3, wf3)
+        write_waveform(FID, '{0}Ch4{1:03d}'.format(seqName, ct+1), 4*ct+4, wf4)
     
     #Write the sequence table
     for seqct in range(1,numSeqs+1):

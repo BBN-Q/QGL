@@ -13,7 +13,8 @@ from PulsePrimitives import Id
 
 from warnings import warn
 
-from APSPattern import  write_APS_file
+from APSPattern import write_APS_file
+from TekPattern import write_Tek_file
 
 SEQUENCE_PADDING = 244
 
@@ -115,9 +116,14 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
 
             # convert to hardware formats
             if ChannelDict[awgName].model == 'BBNAPS':
-                tmpFileName = config.AWGDir + fileName + '-' + awgName + suffix + '.h5'
-                write_APS_file(awg, tmpFileName )
-                fileList.append(tmpFileName)
+                fullFileName = config.AWGDir + fileName + '-' + awgName + suffix + '.h5'
+                write_APS_file(awg, fullFileName )
+                fileList.append(fullFileName)
+
+            if ChannelDict[awgName].model == 'Tek5000':
+                fullFileName = config.AWGDir + fileName + '-' + awgName + suffix + '.awg'
+                write_Tek_file(awg, fullFileName, fileName)
+                fileList.append(fullFileName)
 
     #Return the filenames we wrote
     return fileList
