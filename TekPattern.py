@@ -111,14 +111,14 @@ def merge_waveform(n, chAB, chAm1, chAm2, chBm1, chBm2):
     Builds packed I and Q waveforms from the nth mini LL, merging in marker data.
     '''
     wfAB = np.array([], dtype=np.complex)
-    for entry in chAB['linkList'][n]:
+    for entry in chAB['linkList'][n % len(chAB['linkList'])]:
         if not entry.isTimeAmp:
             wfAB = np.append(wfAB, chAB['wfLib'][entry.key])
         else:
             wfAB = np.append(wfAB, chAB['wfLib'][entry.key][0] * np.ones(entry.length * entry.repeat))
 
-    wfA = pack_waveform(np.real(wfAB), marker_waveform(chAm1['linkList'][n]), marker_waveform(chAm2['linkList'][n]))
-    wfB = pack_waveform(np.imag(wfAB), marker_waveform(chBm1['linkList'][n]), marker_waveform(chBm2['linkList'][n]))
+    wfA = pack_waveform(np.real(wfAB), marker_waveform(chAm1['linkList'][n % len(chAm1['linkList'])]), marker_waveform(chAm2['linkList'][n % len(chAm2['linkList'])]))
+    wfB = pack_waveform(np.imag(wfAB), marker_waveform(chBm1['linkList'][n % len(chBm1['linkList'])]), marker_waveform(chBm2['linkList'][n % len(chBm2['linkList'])]))
 
     return wfA, wfB
 
