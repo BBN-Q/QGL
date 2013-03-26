@@ -37,15 +37,25 @@ def create_tomo_blocks(qubits, numPulses, alignment='parallel'):
 def state_tomo(seq, qubits=None, numPulses=4):
 	'''
 	Apply state tomography readout pulses and measurement.
-	Expects a single entry list sequence
+
+	Parameters
+	-----------
+	seq : a single entry list sequence to perform tomography on
+	qubits: which qubits to act on 
+	numPulses: number of readout pulsese
 	'''
 	return [seq + [tomoBlock,  MEAS(*qubits)]
 				 for tomoBlock in create_tomo_blocks(qubits, numPulses)]
 
 def process_tomo(seq, qubits=None, numPulses=4):
 	'''
-	Apply process tomography state prep. readout pulses and measurement.
-	Expects a single entry list sequence
+	Apply process tomography state prep. and readout pulses and measurement.
+
+	Parameters
+	-----------
+	seq : a single entry list sequence to perform tomography on
+	qubits: which qubits to act on 
+	numPulses: number of prep/readout pulsese
 	'''
 	return [[prepBlock] + seq + [readoutBlock,  MEAS(*qubits)]
 				 for prepBlock, readoutBlock in product(create_tomo_blocks(qubits, numPulses), repeat=2)]
