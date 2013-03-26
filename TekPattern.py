@@ -46,6 +46,13 @@ def write_field(FID, fieldName, data, dataType):
         FID.write(struct.pack('<QQ', 0, data))
     else:
         FID.write(struct.pack(formatChars[dataType], data))
+
+def read_field(FID):
+    fieldNameLen, dataSize = struct.unpack('<II', FID.read(8))
+    fieldName = FID.read(fieldNameLen)[:-1]
+    data = FID.read(dataSize)
+
+    return fieldName, data
     
 def pack_waveform(analog, marker1, marker2):
     '''
@@ -249,7 +256,41 @@ def read_Tek_file(fileName):
             AWGData[marker1Str] = [tmpSeq&marker1Mask == marker1Mask for tmpSeq in FID[chanStr]];
             AWGData[marker2Str] = [tmpSeq&marker2Mask == marker2Mask for tmpSeq in FID[chanStr]];
     
-    return AWGData        
+    return AWGData
+
+def read_Tek_awg_file(fileName):
+    '''
+    Helper function to read in .awg file
+    '''
+    AWGData = {}
+    waveformMask = 2**14-1;
+    marker1Mask = 2**14;
+    marker2Mask = 2**15;
+
+    with io.open(fileName, 'rb') as FID:
+        name, data = read_field(FID)
+        data = struct.unpack('<h', data)[0]
+        assert name == 'MAGIC' and data == 5000, "Invalid file (MAGIC number not found)"
+        name, data = read_field(FID)
+        data = struct.unpack('<h', data)[0]
+        assert name == 'VERSION' and data == 1, "Invalid file version"
+
+        while 1:
+            name, data = read_field(FID)
+            if 'WAVEFORM_DATA' in name:
+                wf = np.fromstring(data, dtype=np.uint16)
+                AWGData[name] = wf & waveformMask
+                AWGData[name + 'm1'] = wf & marker1Mask
+                AWGData[name + 'm2'] = wf & marker2Mask
+
+            # check if there is more to read
+            b = FID.read(1)
+            if b == '':
+                break
+            else:
+                FID.seek(-1,1)
+
+    return AWGData
     
 if __name__ == '__main__':
 
