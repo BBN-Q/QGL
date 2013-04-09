@@ -7,7 +7,6 @@ import json
 import AWG
 import PatternUtils
 import config
-from Channels import ChannelDict
 import Channels
 from PulsePrimitives import Id
 

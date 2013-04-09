@@ -22,8 +22,6 @@ from PySide import QtCore, QtGui
 
 import numpy as np
 
-from Channels import ChannelDict
-
 from APSPattern import read_APS_file
 from TekPattern import read_Tek_file
 
