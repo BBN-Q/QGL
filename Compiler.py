@@ -3,18 +3,18 @@ functions for compiling lists of pulses/pulseBlocks down to the hardware level.
 '''
 
 import numpy as np
-import json
 import AWG
 import PatternUtils
 import config
 import Channels
 from PulsePrimitives import Id
-
+from Libraries import channelLib
 from warnings import warn
 
-from APSPattern import  write_APS_file
+from APSPattern import write_APS_file
 
 SEQUENCE_PADDING = 244
+
 
 def get_channel_name(chanKey):
     ''' Takes in a channel key and returns a channel name '''
@@ -23,26 +23,29 @@ def get_channel_name(chanKey):
     else:
         return "".join([chan.name for chan in chanKey])
 
+
 def setup_awg_channels(logicalChannels):
     awgs = set([])
     for chan in logicalChannels:
-        awgs.add(ChannelDict[get_channel_name(chan)].physicalChannel.AWG)
+        awgs.add(channelLib[get_channel_name(chan)].AWG)
     return {awg.name: getattr(AWG, awg.model)().channels() for awg in awgs}
 
+
 def map_logical_to_physical(linkLists, wfLib):
-    physicalChannels = {chan: ChannelDict[get_channel_name(chan)].physicalChannel.name for chan in linkLists.keys()}
+    physicalChannels = {chan: channelLib[get_channel_name(chan)].physChan.name for chan in linkLists.keys()}
     awgData = setup_awg_channels(linkLists.keys())
-    
+
     for chan in linkLists.keys():
         awgName, awgChan = physicalChannels[chan].split('-')
         awgData[awgName]['ch'+awgChan] = {'linkList': linkLists[chan], 'wfLib': wfLib[chan]}
-    
+
     return awgData
+
 
 def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
     #Add the digitizer trigger to each sequence
     #TODO: Make this more sophisticated.
-    PatternUtils.add_digitizer_trigger(seqs, ChannelDict['digitizerTrig'])
+    PatternUtils.add_digitizer_trigger(seqs, channelLib['digitizerTrig'])
 
     # normalize sequences
     seqs = [normalize(seq) for seq in seqs]
@@ -58,7 +61,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
 
     #Add the slave trigger
     #TODO: only add to slave devices
-    linkLists[ChannelDict['slaveTrig']], wfLib[ChannelDict['slaveTrig']] = PatternUtils.slave_trigger(len(seqs))
+    linkLists[channelLib['slaveTrig']], wfLib[channelLib['slaveTrig']] = PatternUtils.slave_trigger(len(seqs))
 
     # map logical to physical channels
     awgData = map_logical_to_physical(linkLists, wfLib)
@@ -72,7 +75,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
             if chanData:
                 # construct IQkey using existing convention
                 IQkey = awgName + '-' + chanName[2:]
-                chanObj = ChannelDict[IQkey]
+                chanObj = channelLib[IQkey]
                 #We handle marker and quadrature channels differently
                 #For now that is all we handle
                 if isinstance(chanObj, Channels.PhysicalQuadratureChannel):
@@ -113,13 +116,14 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
                                  'wfLib': {TAZKey:np.zeros(1, dtype=np.complex)}}
 
             # convert to hardware formats
-            if ChannelDict[awgName].model == 'BBNAPS':
+            if channelLib[awgName].model == 'BBNAPS':
                 tmpFileName = config.AWGDir + fileName + '-' + awgName + suffix + '.h5'
                 write_APS_file(awg, tmpFileName )
                 fileList.append(tmpFileName)
 
     #Return the filenames we wrote
     return fileList
+
 
 def compile_sequences(seqs):
     '''

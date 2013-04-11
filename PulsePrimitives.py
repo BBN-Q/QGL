@@ -14,7 +14,7 @@ def overrideDefaults(chan, updateParams):
     paramDict = chan.pulseParams.copy()
     paramDict.update(updateParams)
     # pull in the samplingRate from the physicalChannel
-    paramDict['samplingRate'] = chan.physicalChannel.samplingRate
+    paramDict['samplingRate'] = chan.physChan.samplingRate
     return paramDict
 
 def _memoize(pulseFunc):
