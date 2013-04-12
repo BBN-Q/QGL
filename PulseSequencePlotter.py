@@ -6,9 +6,6 @@ Created on Jan 8, 2012
 A simple GUI for plotting pulse sequences for visual inspection
 '''
 
-AWGFreq = 1e9
-
-
 import sys
 
 import matplotlib
@@ -22,6 +19,8 @@ from PySide import QtCore, QtGui
 
 import numpy as np
 
+from Libraries import instrumentLib
+from instruments.AWGs import APS, Tek5014
 from APSPattern import read_APS_file
 from TekPattern import read_Tek_file
 
@@ -201,10 +200,10 @@ def plot_pulse_files(AWGFileNames):
     for tmpFile in AWGFileNames:
         #Assume a naming convenction path/to/file/SequenceName-AWGName.h5
         AWGName = (os.path.split(os.path.splitext(tmpFile)[0])[1]).split('-')[1]
-        #Look up the appropriate model in the ChannelDict
-        if ChannelDict[AWGName].model == 'Tek5000':
+        #Look up the appropriate model in the instrumentLib
+        if isinstance(instrumentLib[AWGName], Tek5014):
             AWGWFs[AWGName] = read_Tek_file(tmpFile)
-        elif ChannelDict[AWGName].model == 'BBNAPS':
+        elif isinstance(instrumentLib[AWGName], APS):
             AWGWFs[AWGName] = read_APS_file(tmpFile)
         else:
             raise NameError('Unknown AWG Type for {0}: we currently only handle TekAWG and BBNAPS.'.format(tmpFile))

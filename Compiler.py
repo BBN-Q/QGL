@@ -13,7 +13,7 @@ from instruments.AWGs import get_empty_channel_set, APS
 
 from APSPattern import write_APS_file
 
-SEQUENCE_PADDING = 244
+SEQUENCE_PADDING = 480
 
 
 def get_channel_name(chanKey):
@@ -98,7 +98,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
                     awg[markerKey] = {'linkList':None, 'wfLib':None}
                     awg[markerKey]['linkList'] = PatternUtils.create_gate_seqs(
                         chanData['linkList'], genObj.gateBuffer, genObj.gateMinWidth, chanObj.samplingRate)
-                    PatternUtils.delay(awg[markerKey]['linkList'], genObj.gateDelay+chanObj.delay, chanObj.gateChan.samplingRate )
+                    PatternUtils.delay(awg[markerKey]['linkList'], genObj.gateDelay+chanObj.gateChan.delay, chanObj.gateChan.samplingRate )
 
                 elif isinstance(chanObj, Channels.PhysicalMarkerChannel):
                     PatternUtils.delay(chanData['linkList'], chanObj.delay+chanObj.AWG.delay, chanObj.samplingRate)

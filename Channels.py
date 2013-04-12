@@ -96,10 +96,9 @@ class Measurement(LogicalChannel):
     Measurments are special because they can be different types:
     autodyne which needs an IQ pair or hetero/homodyne which needs just a marker channel. 
     '''
-    def __init__(self, name=None, measType='autodyne', physChan=None, trigChan=None, pulseParams=None):
+    def __init__(self, name=None, measType='autodyne', physChan=None, pulseParams=None):
         super(Measurement, self).__init__(name=name, physChan=physChan)
         self.measType = measType
-        self._trigChan = trigChan
         defaultPulseParams = {'length':20e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'buffer':0.0, 'cutoff':2}
         defaultPulseParams.update(pulseParams)
         self.pulseParams = defaultPulseParams
@@ -122,11 +121,12 @@ def QubitFactory(name, **kwargs):
 
 def MeasFactory(name, measType='autodyne', **kwargs):
     ''' Return a saved measurment channel or create a new one. '''
+    from Libraries import channelLib
     if name in channelLib.channelDict and isinstance(channelLib[name], Measurement):
         return channelLib[name]
     else:
         if measType == 'autodyne':
-            return Measurment
+            return Measurement()
 
 class ChannelLibrary(HasTraits):
     channelDict = Dict(Str, Channel)
@@ -171,32 +171,34 @@ if __name__ == '__main__':
     from Libraries import instrumentLib
     channelLib = QGL.Channels.ChannelLibrary(libFile=config.channelLibFile)
 
-    channelLib.channelDict['BBNAPS1-1m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS1-1m1', AWG=instrumentLib['BBNAPS1'])
-    channelLib.channelDict['BBNAPS1-2m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS1-2m1', AWG=instrumentLib['BBNAPS1'], delay=-50e-9)
-    channelLib.channelDict['BBNAPS1-3m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS1-3m1', AWG=instrumentLib['BBNAPS1'])
+    channelLib.channelDict['BBNAPS1-1m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS1-1m1', AWG=instrumentLib['BBNAPS1'], delay=+30e-9)
+    channelLib.channelDict['BBNAPS1-2m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS1-2m1', AWG=instrumentLib['BBNAPS1'], delay=-100e-9)
+    channelLib.channelDict['BBNAPS1-3m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS1-3m1', AWG=instrumentLib['BBNAPS1'], delay=0e-9)
     channelLib.channelDict['BBNAPS1-4m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS1-4m1', AWG=instrumentLib['BBNAPS1'], delay=-200e-9)
-    channelLib.channelDict['BBNAPS1-12'] = QGL.Channels.PhysicalQuadratureChannel(name='BBNAPS1-12', AWG=instrumentLib['BBNAPS1'], generator=instrumentLib['Agilent1'], IChannel='ch1', QChannel='ch2', gateChan=channelLib['BBNAPS1-1m1'], ampFactor=1.0252, phaseSkew=-4.97)
-    channelLib.channelDict['BBNAPS1-34'] = QGL.Channels.PhysicalQuadratureChannel(name='BBNAPS1-34', AWG=instrumentLib['BBNAPS1'], generator=instrumentLib['Agilent2'], IChannel='ch3', QChannel='ch4', gateChan=channelLib['BBNAPS1-3m1'], ampFactor=1, phaseSkew=0, SSBFreq=31.9e6)
-    channelLib.channelDict['q1'] = QGL.Channels.Qubit(name='q1',  physChan=channelLib['BBNAPS1-12'], pulseParams={'piAmp':0.7313, 'pi2Amp':0.3648, 'shapeFun':QGL.PulseShapes.drag, 'length':40e-9, 'buffer':2e-9, 'dragScaling':0.3})
-    channelLib.channelDict['q2'] = QGL.Channels.Qubit(name='q2', physChan=channelLib['BBNAPS1-34'], pulseParams={'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':QGL.PulseShapes.drag, 'length':40e-9, 'buffer':2e-9, 'dragScaling':1})
-    channelLib.channelDict['digitizerTrig'] = QGL.Channels.LogicalMarkerChannel(name='digitizerTrig', physChan=channelLib['BBNAPS1-2m1'], pulseParams={'length':40e-9, 'amp':1.0, 'shapeFun':QGL.PulseShapes.square})
+    channelLib.channelDict['BBNAPS1-12'] = QGL.Channels.PhysicalQuadratureChannel(name='BBNAPS1-12', AWG=instrumentLib['BBNAPS1'], generator=instrumentLib['Agilent1'], IChannel='ch1', QChannel='ch2', gateChan=channelLib['BBNAPS1-1m1'], ampFactor=0.8942, phaseSkew=-2.00)
+    channelLib.channelDict['BBNAPS1-34'] = QGL.Channels.PhysicalQuadratureChannel(name='BBNAPS1-34', AWG=instrumentLib['BBNAPS1'], generator=instrumentLib['Autodyne1'], IChannel='ch3', QChannel='ch4', gateChan=channelLib['BBNAPS1-3m1'], ampFactor=0.9374, phaseSkew=5.662, SSBFreq=10e6)
+
+    channelLib.channelDict['BBNAPS2-1m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS2-1m1', AWG=instrumentLib['BBNAPS2'], delay=0e-9)
+    channelLib.channelDict['BBNAPS2-2m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS2-2m1', AWG=instrumentLib['BBNAPS2'], delay=-100e-9)
+    channelLib.channelDict['BBNAPS2-3m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS2-3m1', AWG=instrumentLib['BBNAPS2'], delay=+30e-9)
+    channelLib.channelDict['BBNAPS2-4m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS2-4m1', AWG=instrumentLib['BBNAPS2'], delay=-200e-9)
+    channelLib.channelDict['BBNAPS2-12'] = QGL.Channels.PhysicalQuadratureChannel(name='BBNAPS2-12', AWG=instrumentLib['BBNAPS2'], generator=instrumentLib['Autodyne2'], IChannel='ch1', QChannel='ch2', gateChan=channelLib['BBNAPS2-1m1'], ampFactor=0.9454, phaseSkew=8.7596, SSBFreq=10e6)
+    channelLib.channelDict['BBNAPS2-34'] = QGL.Channels.PhysicalQuadratureChannel(name='BBNAPS2-34', AWG=instrumentLib['BBNAPS2'], generator=instrumentLib['Agilent2'], IChannel='ch3', QChannel='ch4', gateChan=channelLib['BBNAPS2-3m1'], ampFactor=1.0045, phaseSkew=2.09)
+
+    channelLib.channelDict['q1'] = QGL.Channels.Qubit(name='q1',  physChan=channelLib['BBNAPS2-34'], pulseParams={'piAmp':0.7179, 'pi2Amp':0.3604, 'shapeFun':QGL.PulseShapes.drag, 'length':40e-9, 'buffer':2e-9, 'dragScaling':0.88})
+    channelLib.channelDict['q2'] = QGL.Channels.Qubit(name='q2', physChan=channelLib['BBNAPS1-12'], pulseParams={'piAmp':0.6583, 'pi2Amp':0.3153, 'shapeFun':QGL.PulseShapes.drag, 'length':40e-9, 'buffer':2e-9, 'dragScaling':2.65})
+    channelLib.channelDict['digitizerTrig'] = QGL.Channels.LogicalMarkerChannel(name='digitizerTrig', physChan=channelLib['BBNAPS1-2m1'], pulseParams={'length':1e-9, 'amp':1.0, 'shapeFun':QGL.PulseShapes.square})
     channelLib.channelDict['slaveTrig'] = QGL.Channels.LogicalMarkerChannel(name='slaveTrig', physChan=channelLib['BBNAPS1-4m1'], pulseParams={'length':1e-9, 'amp':1.0, 'shapeFun':QGL.PulseShapes.square})
+
+    channelLib.channelDict['M-q1'] = QGL.Channels.Measurement(name='M-q1', measType='autodyne', physChan=channelLib['BBNAPS2-12'], pulseParams={'amp':0.5, 'shapeFun':PulseShapes.tanh, 'length':3.33333e-6, 'buffer':2e-9})
+    channelLib.channelDict['M-q2'] = QGL.Channels.Measurement(name='M-q2', measType='autodyne', physChan=channelLib['BBNAPS1-34'], pulseParams={'amp':0.5, 'shapeFun':PulseShapes.tanh, 'length':3.33333e-6, 'buffer':2e-9})
     
     channelLib.write_to_library()
 
-    # ChannelDict['BBNAPS2-12'] = PhysicalQuadratureChannel(name='BBNAPS2-12', AWG='BBNAPS2', generator='Agilent2', IChannel='ch1', QChannel='ch2', ampFactor=1, phaseSkew=0)
-    # ChannelDict['BBNAPS2-34'] = PhysicalQuadratureChannel(name='BBNAPS2-34', AWG='BBNAPS2', generator='Agilent3', IChannel='ch3', QChannel='ch4', ampFactor=1, phaseSkew=0, SSBFreq=-20e6)
-    # ChannelDict['BBNAPS2-1m1'] = PhysicalMarkerChannel(name='BBNAPS2-1m1', AWG='BBNAPS2')
-    # ChannelDict['BBNAPS2-2m1'] = PhysicalMarkerChannel(name='BBNAPS2-2m1', AWG='BBNAPS2')
-    # ChannelDict['BBNAPS2-3m1'] = PhysicalMarkerChannel(name='BBNAPS2-3m1', AWG='BBNAPS2')
-    # ChannelDict['BBNAPS2-4m1'] = PhysicalMarkerChannel(name='BBNAPS2-4m1', AWG='BBNAPS2')
-
     # ChannelDict['q1q2'] = Qubit(name='q1q2', physChan='BBNAPS1-34', pulseParams={'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.drag, 'pulseLength':40e-9, 'buffer':2e-9, 'dragScaling':1})
-    # ChannelDict['M-q1'] = Measurement(name='M-q1', measType='autodyne', physChan='BBNAPS1-34', trigChan='digitizerTrig', pulseParams={'amp':1.0, 'shapeFun':PulseShapes.tanh, 'length':1.6e-6, 'buffer':2e-9})
     # ChannelDict['M-q2'] = Measurement(name='M-q2', measType='autodyne', physChan='BBNAPS2-34', trigChan='digitizerTrig', pulseParams={'amp':1.0, 'shapeFun':PulseShapes.tanh, 'length':1.6e-6, 'buffer':2e-9})
     # ChannelDict['M-q1q2'] = Measurement(name='M-q1q2', measType='autodyne', physChan='BBNAPS2-34', trigChan='digitizerTrig', pulseParams={'amp':1.0, 'shapeFun':PulseShapes.tanh, 'length':1.6e-6, 'buffer':2e-9})
     
-    # save_channel_info()
 
 
     
