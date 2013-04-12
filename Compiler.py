@@ -2,14 +2,14 @@
 functions for compiling lists of pulses/pulseBlocks down to the hardware level.
 '''
 
-import numpy as np
-import AWG
-import PatternUtils
 import config
+import numpy as np
+import PatternUtils
 import Channels
 from PulsePrimitives import Id
-from Libraries import channelLib
+from Libraries import channelLib, instrumentLib
 from warnings import warn
+from instruments.AWGs import get_empty_channel_set, APS
 
 from APSPattern import write_APS_file
 
@@ -28,7 +28,7 @@ def setup_awg_channels(logicalChannels):
     awgs = set([])
     for chan in logicalChannels:
         awgs.add(channelLib[get_channel_name(chan)].AWG)
-    return {awg.name: getattr(AWG, awg.model)().channels() for awg in awgs}
+    return {awg.name:get_empty_channel_set(awg) for awg in awgs}
 
 
 def map_logical_to_physical(linkLists, wfLib):
@@ -46,7 +46,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
     #Add the digitizer trigger to each sequence
     #TODO: Make this more sophisticated.
     PatternUtils.add_digitizer_trigger(seqs, channelLib['digitizerTrig'])
-
+    
     # normalize sequences
     seqs = [normalize(seq) for seq in seqs]
 
@@ -56,6 +56,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
     # align channels
     # this horrible line finds the longest miniLL across all channels
     longestLL = max([sum([entry.length*entry.repeat for entry in miniLL]) for LL in linkLists.values() for miniLL in LL])
+    
     for chan, LL in linkLists.items():
         PatternUtils.align(LL, alignMode, longestLL+SEQUENCE_PADDING)
 
@@ -89,15 +90,15 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
                     PatternUtils.correctMixer(chanData['wfLib'], chanObj.correctionT)
 
                     # add gate pulses on the marker channel
+                    markerKey = 'ch' + chanObj.gateChan.name.split('-')[1]
                     genObj = chanObj.generator
-                    markerKey = 'ch' + genObj.gateChannel.name.split('-')[1]
                     #TODO: check if this actually catches overwriting markers
                     if awg[markerKey]:
                         warn('Reuse of marker gating channel: {0}'.format(markerKey))
                     awg[markerKey] = {'linkList':None, 'wfLib':None}
                     awg[markerKey]['linkList'] = PatternUtils.create_gate_seqs(
                         chanData['linkList'], genObj.gateBuffer, genObj.gateMinWidth, chanObj.samplingRate)
-                    PatternUtils.delay(awg[markerKey]['linkList'], genObj.gateDelay+chanObj.delay, genObj.gateChannel.samplingRate )
+                    PatternUtils.delay(awg[markerKey]['linkList'], genObj.gateDelay+chanObj.delay, chanObj.gateChan.samplingRate )
 
                 elif isinstance(chanObj, Channels.PhysicalMarkerChannel):
                     PatternUtils.delay(chanData['linkList'], chanObj.delay+chanObj.AWG.delay, chanObj.samplingRate)
@@ -116,7 +117,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
                                  'wfLib': {TAZKey:np.zeros(1, dtype=np.complex)}}
 
             # convert to hardware formats
-            if channelLib[awgName].model == 'BBNAPS':
+            if isinstance(instrumentLib[awgName], APS):
                 tmpFileName = config.AWGDir + fileName + '-' + awgName + suffix + '.h5'
                 write_APS_file(awg, tmpFileName )
                 fileList.append(tmpFileName)
@@ -279,7 +280,7 @@ class LLElement(object):
     def isZero(self):
         return self.key == TAZKey
 
-def create_padding_LL(length, high=False):
+def create_padding_LL(length=SEQUENCE_PADDING, high=False):
     tmpLL = LLElement()
     tmpLL.isTimeAmp = True
     tmpLL.key = markerHighKey if high else TAZKey

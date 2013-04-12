@@ -67,6 +67,8 @@ class PhysicalQuadratureChannel(PhysicalChannel):
     '''
     IChannel = Str()
     QChannel = Str()
+    #During initilization we may just have a string reference to the channel
+    gateChan = Either(Str, Instance(PhysicalMarkerChannel))
     ampFactor = Float()
     phaseSkew = Float()
     SSBFreq = Float()
@@ -154,6 +156,8 @@ class ChannelLibrary(HasTraits):
                         for chan in tmpLib.channelDict.values():
                             if isinstance(chan, LogicalChannel):
                                 chan.physChan = tmpLib[chan.physChan]
+                            elif isinstance(chan, PhysicalQuadratureChannel):
+                                chan.gateChan = tmpLib[chan.gateChan]
                         self.channelDict.update(tmpLib.channelDict)
 
             except IOError:
@@ -167,20 +171,21 @@ if __name__ == '__main__':
     from Libraries import instrumentLib
     channelLib = QGL.Channels.ChannelLibrary(libFile=config.channelLibFile)
 
-    channelLib.channelDict['BBNAPS1-12'] = QGL.Channels.PhysicalQuadratureChannel(name='BBNAPS1-12', AWG=instrumentLib['BBNAPS1'], generator=instrumentLib['Agilent1'], IChannel='ch1', QChannel='ch2', ampFactor=1.0252, phaseSkew=-4.97)
-    channelLib.channelDict['BBNAPS1-34'] = QGL.Channels.PhysicalQuadratureChannel(name='BBNAPS1-34', AWG=instrumentLib['BBNAPS1'], generator=instrumentLib['Agilent2'], IChannel='ch3', QChannel='ch4', ampFactor=1, phaseSkew=0, SSBFreq=31.9e6)
+    channelLib.channelDict['BBNAPS1-1m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS1-1m1', AWG=instrumentLib['BBNAPS1'])
     channelLib.channelDict['BBNAPS1-2m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS1-2m1', AWG=instrumentLib['BBNAPS1'], delay=-50e-9)
+    channelLib.channelDict['BBNAPS1-3m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS1-3m1', AWG=instrumentLib['BBNAPS1'])
     channelLib.channelDict['BBNAPS1-4m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS1-4m1', AWG=instrumentLib['BBNAPS1'], delay=-200e-9)
-    channelLib.channelDict['q1'] = QGL.Channels.Qubit(name='q1',  physChan=channelLib['BBNAPS1-12'], pulseParams={'piAmp':0.7313, 'pi2Amp':0.3648, 'shapeFun':QGL.PulseShapes.drag, 'length':26.67e-9, 'buffer':2e-9, 'dragScaling':0.3})
+    channelLib.channelDict['BBNAPS1-12'] = QGL.Channels.PhysicalQuadratureChannel(name='BBNAPS1-12', AWG=instrumentLib['BBNAPS1'], generator=instrumentLib['Agilent1'], IChannel='ch1', QChannel='ch2', gateChan=channelLib['BBNAPS1-1m1'], ampFactor=1.0252, phaseSkew=-4.97)
+    channelLib.channelDict['BBNAPS1-34'] = QGL.Channels.PhysicalQuadratureChannel(name='BBNAPS1-34', AWG=instrumentLib['BBNAPS1'], generator=instrumentLib['Agilent2'], IChannel='ch3', QChannel='ch4', gateChan=channelLib['BBNAPS1-3m1'], ampFactor=1, phaseSkew=0, SSBFreq=31.9e6)
+    channelLib.channelDict['q1'] = QGL.Channels.Qubit(name='q1',  physChan=channelLib['BBNAPS1-12'], pulseParams={'piAmp':0.7313, 'pi2Amp':0.3648, 'shapeFun':QGL.PulseShapes.drag, 'length':40e-9, 'buffer':2e-9, 'dragScaling':0.3})
     channelLib.channelDict['q2'] = QGL.Channels.Qubit(name='q2', physChan=channelLib['BBNAPS1-34'], pulseParams={'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':QGL.PulseShapes.drag, 'length':40e-9, 'buffer':2e-9, 'dragScaling':1})
     channelLib.channelDict['digitizerTrig'] = QGL.Channels.LogicalMarkerChannel(name='digitizerTrig', physChan=channelLib['BBNAPS1-2m1'], pulseParams={'length':40e-9, 'amp':1.0, 'shapeFun':QGL.PulseShapes.square})
     channelLib.channelDict['slaveTrig'] = QGL.Channels.LogicalMarkerChannel(name='slaveTrig', physChan=channelLib['BBNAPS1-4m1'], pulseParams={'length':1e-9, 'amp':1.0, 'shapeFun':QGL.PulseShapes.square})
     
+    channelLib.write_to_library()
 
     # ChannelDict['BBNAPS2-12'] = PhysicalQuadratureChannel(name='BBNAPS2-12', AWG='BBNAPS2', generator='Agilent2', IChannel='ch1', QChannel='ch2', ampFactor=1, phaseSkew=0)
     # ChannelDict['BBNAPS2-34'] = PhysicalQuadratureChannel(name='BBNAPS2-34', AWG='BBNAPS2', generator='Agilent3', IChannel='ch3', QChannel='ch4', ampFactor=1, phaseSkew=0, SSBFreq=-20e6)
-    # ChannelDict['BBNAPS1-1m1'] = PhysicalMarkerChannel(name='BBNAPS1-1m1', AWG='BBNAPS1')
-    # ChannelDict['BBNAPS1-3m1'] = PhysicalMarkerChannel(name='BBNAPS1-3m1', AWG='BBNAPS1')
     # ChannelDict['BBNAPS2-1m1'] = PhysicalMarkerChannel(name='BBNAPS2-1m1', AWG='BBNAPS2')
     # ChannelDict['BBNAPS2-2m1'] = PhysicalMarkerChannel(name='BBNAPS2-2m1', AWG='BBNAPS2')
     # ChannelDict['BBNAPS2-3m1'] = PhysicalMarkerChannel(name='BBNAPS2-3m1', AWG='BBNAPS2')

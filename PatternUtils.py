@@ -147,7 +147,7 @@ def slave_trigger(numSeqs):
     """
     Create slave trigger link lists.
     """
-    return [[Compiler.create_padding_LL(1), Compiler.create_padding_LL(1, True), Compiler.create_padding_LL(1)]]*numSeqs, \
+    return [[Compiler.create_padding_LL(), Compiler.create_padding_LL(1, True), Compiler.create_padding_LL(1)] for _ in range(numSeqs)], \
         {Compiler.TAZKey:np.zeros(1, dtype=np.complex), Compiler.markerHighKey: np.ones(1, dtype=np.complex)}
 
 
