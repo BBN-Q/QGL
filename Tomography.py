@@ -34,7 +34,7 @@ def create_tomo_blocks(qubits, numPulses, alignment='parallel'):
 	#Create all combinations of pulses for the number of qubits
 	return [reduce(operator.mul, [p(q) for p,q in zip(pulseSet, qubits)]) for pulseSet in product(tomoSet, repeat=len(qubits))]
 
-def state_tomo(seq, qubits=None, numPulses=4):
+def state_tomo(seq, qubits, numPulses=4):
 	'''
 	Apply state tomography readout pulses and measurement.
 
@@ -47,7 +47,7 @@ def state_tomo(seq, qubits=None, numPulses=4):
 	return [seq + [tomoBlock,  MEAS(*qubits)]
 				 for tomoBlock in create_tomo_blocks(qubits, numPulses)]
 
-def process_tomo(seq, qubits=None, numPulses=4):
+def process_tomo(seq, qubits, numPulses=4):
 	'''
 	Apply process tomography state prep. and readout pulses and measurement.
 

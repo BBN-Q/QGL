@@ -308,19 +308,32 @@ def CNOT(source, target):
 
 ## Measurement operators
 # @_memoize
-def MEAS(qubit, *args, **kwargs):
+def MEAS(*args, **kwargs):
     '''
     MEAS(q1, ...) constructs a measurement pulse block of a measurment 
     Use the single-argument form for an individual readout channel, e.g.
         MEAS(q1)
-    Use the multi-argument form for joint readout, e.g.
-        MEAS(q1, q2)
+    Use tuple-form for joint readout, e.g.
+        MEAS((q1, q2))
+    Use multi-argument form for joint simultaneous readout.
     '''
-    channelName = "M-" + qubit.name
-    for q in args:
-        channelName += q.name
-    measChannel = Channels.MeasFactory(channelName)
-    params = overrideDefaults(measChannel, kwargs)
-    # measurement channels should have just an "amp" parameter
-    measShape = measChannel.pulseParams['shapeFun'](**params)
-    return Pulse("MEAS", measChannel, measShape, 0.0, 0.0) 
+    def create_meas_pulse(qubit):
+        if isinstance(qubit, Channels.Qubit):
+            #Deal with single qubit readout channel
+            channelName = "M-" + qubit.name
+        elif isinstance(qubit, tuple):
+            #Deal with joint readout channel
+            channelName = "M-"
+            for q in qubit:
+                channelName += q.name
+        measChannel = Channels.MeasFactory(channelName)
+        params = overrideDefaults(measChannel, kwargs)
+        
+        # measurement channels should have just an "amp" parameter
+        measShape = measChannel.pulseParams['shapeFun'](**params)
+        return Pulse("MEAS", measChannel, measShape, 0.0, 0.0) 
+
+    return reduce(operator.mul, [create_meas_pulse(qubit) for qubit in args])
+
+
+    
