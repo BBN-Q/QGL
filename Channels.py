@@ -20,18 +20,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 '''
 
-import sys
 import json
 import PulseShapes
 import config
 import numpy as np
 
 from math import tan,cos,pi
-import config
 
-from warnings import warn
-
-from instruments.InstrumentManager import InstrumentLibrary
 from instruments.AWGs import AWG
 from instruments.MicrowaveSources import MicrowaveSource
 
@@ -187,7 +182,7 @@ if __name__ == '__main__':
     channelLib.channelDict['BBNAPS1-1m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS1-1m1', AWG=instrumentLib['BBNAPS1'], delay=+30e-9)
     channelLib.channelDict['BBNAPS1-2m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS1-2m1', AWG=instrumentLib['BBNAPS1'], delay=-100e-9)
     channelLib.channelDict['BBNAPS1-3m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS1-3m1', AWG=instrumentLib['BBNAPS1'], delay=0e-9)
-    channelLib.channelDict['BBNAPS1-4m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS1-4m1', AWG=instrumentLib['BBNAPS1'], delay=-200e-9)
+    channelLib.channelDict['BBNAPS1-4m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS1-4m1', AWG=instrumentLib['BBNAPS1'], delay=0e-9)
     channelLib.channelDict['BBNAPS1-12'] = QGL.Channels.PhysicalQuadratureChannel(name='BBNAPS1-12', AWG=instrumentLib['BBNAPS1'], generator=instrumentLib['Agilent1'], IChannel='ch1', QChannel='ch2', gateChan=channelLib['BBNAPS1-1m1'], ampFactor=0.8942, phaseSkew=-2.00)
     channelLib.channelDict['BBNAPS1-34'] = QGL.Channels.PhysicalQuadratureChannel(name='BBNAPS1-34', AWG=instrumentLib['BBNAPS1'], generator=instrumentLib['Autodyne1'], IChannel='ch3', QChannel='ch4', gateChan=channelLib['BBNAPS1-3m1'], ampFactor=0.9374, phaseSkew=5.662, SSBFreq=10e6)
 
