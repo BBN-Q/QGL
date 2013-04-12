@@ -1,5 +1,26 @@
+'''
+Copyright 2013 Raytheon BBN Technologies
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+'''
 from Channels import *
+import PulseShapes 
+
+import inspect
 from PySide import QtGui, QtCore
+
+
+
 
 class ChannelInfoView(QtGui.QMainWindow):
     def __init__(self):
@@ -132,28 +153,34 @@ class ChannelInfoView(QtGui.QMainWindow):
         
         
 class ChannelView(QtGui.QWidget):
+
+    #Make a list of all the pulse names
+    pulseNames = [x[0] for x in inspect.getmembers(PulseShapes) if inspect.isfunction(x[1])]
+    pulseNameModel = QtGui.QStringListModel(pulseNames)
+
     def __init__(self, channel, parent = None):
         super(ChannelView, self).__init__()
         self.channel = channel
         
         #Some hidden fields
-        skipFields = ['name']
+        skipFields = ['name', 'pulseParams']
 
         #Create the layout as a vbox of hboxes
-        form = QtGui.QFormLayout()
+        form1 = QtGui.QFormLayout()
         self.GUIhandles = {}
         #Do the channelType on top for information purposes
-        form.addRow('channelType', QtGui.QLabel(self.channel.__class__.__name__))
+        form1.addRow('channelType', QtGui.QLabel(self.channel.__class__.__name__))
 
         #Helper function to update         
         for key,value in sorted(channel.__dict__.items(), key=itemgetter(0)):
             if key not in skipFields:
-                #For the physical channel field we'll pop up a combo box
-                if key == 'physicalChannel':
-                    chanType = ChannelDict[value].__class__
+                #For the physical channel field we'll pop up a combo box with all the other channels that match this one
+                if key == '_physicalChannel':
+                    chanType = type(ChannelDict[value])
                     tmpModel = QtGui.QStringListModel()
+                    #Make sure that if we delete the channel then it gets removed from here too
                     parent.physicalChannelListModel.rowsRemoved.connect(lambda a,b,c : tmpModel.removeRow(b))
-                    tmpModel.setStringList( [tmpChan for tmpChan in parent.physicalChannelListModel.stringList() if ChannelDict[tmpChan].__class__ == chanType] )
+                    tmpModel.setStringList( [tmpChan for tmpChan in parent.physicalChannelListModel.stringList() if type(ChannelDict[tmpChan]) == chanType] )
                     tmpWidget = QtGui.QComboBox()
                     tmpWidget.setModel(tmpModel)
                 elif isinstance(value, basestring):
@@ -161,9 +188,44 @@ class ChannelView(QtGui.QWidget):
                 else:
                     tmpWidget = QtGui.QLineEdit(str(value))
                     tmpWidget.setValidator(QtGui.QDoubleValidator())
-                form.addRow(key, tmpWidget)
+                form1.addRow(key.lstrip('_'), tmpWidget)
                 self.GUIhandles[key] = tmpWidget
-        self.setLayout(form)
+
+        vBox = QtGui.QVBoxLayout()
+        vBox.addLayout(form1)
+
+        #Now do the pulse params
+        form2 = QtGui.QFormLayout()
+        if hasattr(channel, 'pulseParams'):
+            vBox2 = QtGui.QVBoxLayout()
+            for key,value in channel.pulseParams.items():
+                #List all available shape functions
+                if key == 'shapeFun':
+                    tmpWidget = QtGui.QComboBox()
+                    tmpWidget.setModel(self.pulseNameModel)
+                elif isinstance(value, basestring):
+                    tmpWidget = QtGui.QLineEdit(value)
+                else:
+                    tmpWidget = QtGui.QLineEdit(str(value))
+                    tmpWidget.setValidator(QtGui.QDoubleValidator())
+                form1.addRow(key, tmpWidget)
+                self.GUIhandles[key] = tmpWidget
+            
+            #Some add/delete buttons
+            hBox = QtGui.QHBoxLayout()
+            addChanButton = QtGui.QPushButton('Add')
+            # addChanButton.clicked.connect(self.add_channel)
+            hBox.addWidget(addChanButton)
+            deleteChanButton = QtGui.QPushButton('Delete')
+            # deleteChanButton.clicked.connect(self.delete_channel)
+            hBox.addWidget(deleteChanButton)
+            hBox.addStretch(1)
+            vBox2.addLayout(hBox)                
+
+
+            vBox.addLayout(vBox2)
+
+        self.setLayout(vBox)
             
     def update_from_view(self):
         '''

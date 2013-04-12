@@ -1,10 +1,25 @@
+'''
+Copyright 2013 Raytheon BBN Technologies
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+'''
 import PulseShapes
 import Channels
 import operator
 
 from math import pi, sin, cos, acos, sqrt
 import numpy as np
-from PulseSequencer import Pulse
+from PulseSequencer import Pulse, TAPulse
 from functools import wraps
 
 def overrideDefaults(chan, updateParams):
@@ -47,8 +62,8 @@ def Id(qubit, *args, **kwargs):
     if len(args) > 0 and isinstance(args[0], (int,float)):
         params['length'] = args[0]
 
-    shape = PulseShapes.delay(**params)
-    return Pulse("Id", qubit, shape, 0, 0.0)
+    numPts = np.round(params['length']*params['samplingRate'])
+    return TAPulse("Id", qubit, numPts, 0, 0, 0)
 
 def Xtheta(qubit, amp=0, **kwargs):
     '''  A generic X rotation with a variable amplitude  '''

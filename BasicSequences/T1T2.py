@@ -2,6 +2,38 @@ from QGL import *
 from scipy.constants import pi
 from helpers import create_cal_seqs
 
+def InversionRecovery(qubit, delays, showPlot=False, calRepeats=2):
+	"""
+
+	Inversion recovery experiment to measure qubit T1
+	
+	Parameters
+	----------
+	qubit : logical channel to implement sequence (LogicalChannel) 
+	delays : delays after inversion before measurement (iterable; seconds)
+	showPlot : whether to plot (boolean)
+	calRepeats : how many repetitions of calibration pulses (int)
+
+	Returns
+	-------
+	plotHandle : handle to plot window to prevent destruction
+	"""	
+
+	#Create the basic sequences
+	seqs = [[X(qubit), Id(qubit, d), MEAS(qubit)] for d in delays]
+
+	#Tack on the calibration scalings
+	seqs += create_cal_seqs((qubit,), calRepeats)
+
+	fileNames = compile_to_hardware(seqs, 'T1/T1')
+	print(fileNames)
+
+	if showPlot:
+		plotWin = plot_pulse_files(fileNames)
+		return plotWin
+
+
+
 def Ramsey(qubit, pulseSpacings, TPPIFreq=0, showPlot=False, calRepeats=2):
 	"""
 
@@ -13,6 +45,7 @@ def Ramsey(qubit, pulseSpacings, TPPIFreq=0, showPlot=False, calRepeats=2):
 	pulseSpacings : pulse spacings (iterable; seconds)
 	TPPIFreq : frequency for TPPI phase updates of second Ramsey pulse (Hz)
 	showPlot : whether to plot (boolean)
+	calRepeats : how many repetitions of calibration pulses (int)
 
 	Returns
 	-------

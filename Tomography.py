@@ -1,5 +1,19 @@
 '''
 Helper functions for adding tomography routines.
+
+Copyright 2013 Raytheon BBN Technologies
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 '''
 from itertools import product
 import operator
@@ -23,15 +37,25 @@ def create_tomo_blocks(qubits, numPulses, alignment='parallel'):
 def state_tomo(seq, qubits=None, numPulses=4):
 	'''
 	Apply state tomography readout pulses and measurement.
-	Expects a single entry list sequence
+
+	Parameters
+	-----------
+	seq : a single entry list sequence to perform tomography on
+	qubits: which qubits to act on 
+	numPulses: number of readout pulsese
 	'''
 	return [seq + [tomoBlock,  MEAS(*qubits)]
 				 for tomoBlock in create_tomo_blocks(qubits, numPulses)]
 
 def process_tomo(seq, qubits=None, numPulses=4):
 	'''
-	Apply process tomography state prep. readout pulses and measurement.
-	Expects a single entry list sequence
+	Apply process tomography state prep. and readout pulses and measurement.
+
+	Parameters
+	-----------
+	seq : a single entry list sequence to perform tomography on
+	qubits: which qubits to act on 
+	numPulses: number of prep/readout pulsese
 	'''
 	return [[prepBlock] + seq + [readoutBlock,  MEAS(*qubits)]
 				 for prepBlock, readoutBlock in product(create_tomo_blocks(qubits, numPulses), repeat=2)]

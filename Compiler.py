@@ -1,5 +1,19 @@
 '''
 functions for compiling lists of pulses/pulseBlocks down to the hardware level.
+
+Copyright 2013 Raytheon BBN Technologies
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 '''
 
 import config
@@ -9,11 +23,11 @@ import Channels
 from PulsePrimitives import Id
 from Libraries import channelLib, instrumentLib
 from warnings import warn
-from instruments.AWGs import get_empty_channel_set, APS
-
-from APSPattern import write_APS_file
+from instruments.AWGs import get_empty_channel_set, APS, Tek5014
 
 SEQUENCE_PADDING = 480
+from APSPattern import write_APS_file
+from TekPattern import write_Tek_file
 
 
 def get_channel_name(chanKey):
@@ -118,9 +132,14 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
 
             # convert to hardware formats
             if isinstance(instrumentLib[awgName], APS):
-                tmpFileName = config.AWGDir + fileName + '-' + awgName + suffix + '.h5'
-                write_APS_file(awg, tmpFileName )
-                fileList.append(tmpFileName)
+                fullFileName = config.AWGDir + fileName + '-' + awgName + suffix + '.h5'
+                write_APS_file(awg, fullFileName )
+            elif isinstance(instrumentLib[awgName], Tek5014):
+                fullFileName = config.AWGDir + fileName + '-' + awgName + suffix + '.awg'
+                write_Tek_file(awg, fullFileName, fileName)
+            else:
+                raise NameError('Unknown AWG type')
+            fileList.append(fullFileName)
 
     #Return the filenames we wrote
     return fileList
@@ -170,11 +189,9 @@ def compile_sequence(seq, wfLib = {} ):
     for block in seq:
         #Align the block 
         blockLength = block.maxPts
-        # drop length 0 blocks but push frame change onto previous entry
+        # drop length 0 blocks but push frame change onto next non-zero entry
         if blockLength == 0:
-            # Push frame change forward through the next pulse
             carriedPhase = {ch: carriedPhase[ch]+block.pulses[ch].frameChange for ch in channels}
-            # continue to drop the entry
             continue
         for chan in channels:
             # add aligned LL entry
@@ -259,18 +276,19 @@ class LLElement(object):
     '''
     def __init__(self, pulse=None):
         self.repeat = 1
-        self.isTimeAmp = False
 
         if pulse is None:
             self.key = None
             self.length = 0
             self.phase = 0
             self.frameChange = 0
+            self.isTimeAmp = False
         else:
             self.key = hash_pulse(pulse.shape)
-            self.length = len(pulse.shape)
+            self.length = pulse.length
             self.phase = pulse.phase
             self.frameChange = pulse.frameChange
+            self.isTimeAmp = pulse.isTimeAmp
     
     @property
     def hasMarker(self):
@@ -289,11 +307,11 @@ def create_padding_LL(length=SEQUENCE_PADDING, high=False):
 
 def align(pulse, blockLength, alignment, cutoff=12):
     entry = LLElement(pulse)
-    entry.length = pulse.shape.size
+    entry.length = pulse.length
     entry.key = hash_pulse(pulse.shape)
     entry.phase = pulse.phase
     entry.frameChange = pulse.frameChange
-    padLength = blockLength - pulse.shape.size
+    padLength = blockLength - entry.length
     shape = pulse.shape
     if padLength == 0:
         # can do everything with a single LLentry

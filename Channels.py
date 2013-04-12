@@ -5,6 +5,19 @@ Created on Jan 19, 2012
 
 Original Author: Colm Ryan
 
+Copyright 2013 Raytheon BBN Technologies
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 '''
 
 import sys
@@ -166,7 +179,7 @@ class ChannelLibrary(HasTraits):
                 print('Failed to load channel library.')
 
 if __name__ == '__main__':
-    # # create a channel params file
+    # create a channel params file
     import QGL.Channels
     from Libraries import instrumentLib
     channelLib = QGL.Channels.ChannelLibrary(libFile=config.channelLibFile)
@@ -196,7 +209,6 @@ if __name__ == '__main__':
     channelLib.write_to_library()
 
     # ChannelDict['q1q2'] = Qubit(name='q1q2', physChan='BBNAPS1-34', pulseParams={'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.drag, 'pulseLength':40e-9, 'buffer':2e-9, 'dragScaling':1})
-    # ChannelDict['M-q2'] = Measurement(name='M-q2', measType='autodyne', physChan='BBNAPS2-34', trigChan='digitizerTrig', pulseParams={'amp':1.0, 'shapeFun':PulseShapes.tanh, 'length':1.6e-6, 'buffer':2e-9})
     # ChannelDict['M-q1q2'] = Measurement(name='M-q1q2', measType='autodyne', physChan='BBNAPS2-34', trigChan='digitizerTrig', pulseParams={'amp':1.0, 'shapeFun':PulseShapes.tanh, 'length':1.6e-6, 'buffer':2e-9})
     
 
