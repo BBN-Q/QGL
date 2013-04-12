@@ -252,9 +252,10 @@ def read_Tek_file(fileName):
             chanStr = 'ch{0}'.format(chanct)
             marker1Str = 'ch{0}m1'.format(chanct)
             marker2Str = 'ch{0}m2'.format(chanct)
-            AWGData[chanStr] = [(1.0/MAX_WAVEFORM_VALUE)*(np.int16(tmpSeq&waveformMask)-MAX_WAVEFORM_VALUE-1) for tmpSeq in FID[chanStr]]
-            AWGData[marker1Str] = [tmpSeq&marker1Mask == marker1Mask for tmpSeq in FID[chanStr]];
-            AWGData[marker2Str] = [tmpSeq&marker2Mask == marker2Mask for tmpSeq in FID[chanStr]];
+            if chanStr in list(FID):
+                AWGData[chanStr] = [(1.0/MAX_WAVEFORM_VALUE)*(np.int16(tmpSeq&waveformMask)-MAX_WAVEFORM_VALUE-1) for tmpSeq in FID[chanStr]]
+                AWGData[marker1Str] = [tmpSeq&marker1Mask == marker1Mask for tmpSeq in FID[chanStr]];
+                AWGData[marker2Str] = [tmpSeq&marker2Mask == marker2Mask for tmpSeq in FID[chanStr]];
     
     return AWGData
 

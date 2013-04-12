@@ -34,7 +34,7 @@ from PySide import QtCore, QtGui
 import numpy as np
 
 from Libraries import instrumentLib
-from instruments.AWGs import APS, Tek5014
+from instruments.AWGs import APS, Tek5014, Tek7000
 from APSPattern import read_APS_file
 from TekPattern import read_Tek_file
 
@@ -215,7 +215,7 @@ def plot_pulse_files(AWGFileNames):
         #Assume a naming convenction path/to/file/SequenceName-AWGName.h5
         AWGName = (os.path.split(os.path.splitext(tmpFile)[0])[1]).split('-')[1]
         #Look up the appropriate model in the instrumentLib
-        if isinstance(instrumentLib[AWGName], Tek5014):
+        if isinstance(instrumentLib[AWGName], Tek5014) or isinstance(instrumentLib[AWGName], Tek7000):
             AWGWFs[AWGName] = read_Tek_file(tmpFile)
         elif isinstance(instrumentLib[AWGName], APS):
             AWGWFs[AWGName] = read_APS_file(tmpFile)
