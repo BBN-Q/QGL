@@ -1,6 +1,6 @@
-from QGL.PulsePrimitives import *
-from QGL.Compiler import compile_to_hardware
-from QGL.PulseSequencePlotter import plot_pulse_files
+from ..PulsePrimitives import *
+from ..Compiler import compile_to_hardware
+from ..PulseSequencePlotter import plot_pulse_files
 
 def RabiAmp(qubit, amps, showPlot=False, phase=0):
 	"""

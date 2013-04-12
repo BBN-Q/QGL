@@ -1,4 +1,6 @@
-from QGL import *
+from ..PulsePrimitives import *
+from ..Compiler import compile_to_hardware
+from ..PulseSequencePlotter import plot_pulse_files
 
 import os
 from csv import reader
