@@ -326,12 +326,16 @@ def MEAS(*args, **kwargs):
             channelName = "M-"
             for q in qubit:
                 channelName += q.name
-        measChannel = Channels.MeasFactory(channelName)
-        params = overrideDefaults(measChannel, kwargs)
+        measChan = Channels.MeasFactory(channelName)
+        params = overrideDefaults(measChan, kwargs)
         
         # measurement channels should have just an "amp" parameter
-        measShape = measChannel.pulseParams['shapeFun'](**params)
-        return Pulse("MEAS", measChannel, measShape, 0.0, 0.0) 
+        measShape = measChan.pulseParams['shapeFun'](**params)
+        #Apply the autodyne frequency 
+        timeStep = 1.0/measChan.physChan.samplingRate
+        timePts = np.arange(0, timeStep*measShape.size, timeStep)
+        measShape *= np.exp(-1j*2*pi*measChan.autodyneFreq*timePts)
+        return Pulse("MEAS", measChan, measShape, 0.0, 0.0) 
 
     return reduce(operator.mul, [create_meas_pulse(qubit) for qubit in args])
 
