@@ -13,7 +13,7 @@ def gaussian(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
     numPts = np.round(length*samplingRate)
     xPts = np.linspace(-cutoff, cutoff, numPts)
     xStep = xPts[1] - xPts[0]
-    return amp * (np.exp(-0.5*(xPts**2)) - np.exp(-0.5*((xPts[-1]+xStep)**2)))
+    return (amp * (np.exp(-0.5*(xPts**2)) - np.exp(-0.5*((xPts[-1]+xStep)**2)))).astype(np.complex)
         
 def square(amp=1, length=0, samplingRate=1e9, **params):
     '''
@@ -21,7 +21,7 @@ def square(amp=1, length=0, samplingRate=1e9, **params):
     '''
     #Round to how many points we need
     numPts = np.round(length*samplingRate)
-    return amp * np.ones(numPts)
+    return (amp * np.ones(numPts)).astype(np.complex)
         
 def delay(length=0, samplingRate=1e9, **params):
     '''
@@ -56,7 +56,7 @@ def gaussOn(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
     numPts = np.round(length*samplingRate)
     xPts = np.linspace(-cutoff, 0, numPts)
     xStep = xPts[1] - xPts[0]
-    return amp * (np.exp(-0.5*(xPts**2)) - np.exp(-0.5*((xPts[0]-xStep)**2)))
+    return (amp * (np.exp(-0.5*(xPts**2)) - np.exp(-0.5*((xPts[0]-xStep)**2)))).astype(np.complex)
 
 def gaussOff(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
     '''
@@ -66,7 +66,7 @@ def gaussOff(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
     numPts = np.round(length*samplingRate)
     xPts = np.linspace(0, cutoff, numPts)
     xStep = xPts[1] - xPts[0]
-    return amp * (np.exp(-0.5*(xPts**2)) - np.exp(-0.5*((xPts[-1]+xStep)**2)))
+    return (amp * (np.exp(-0.5*(xPts**2)) - np.exp(-0.5*((xPts[-1]+xStep)**2)))).astype(np.complex)
 
 def tanh(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
     '''
@@ -75,4 +75,4 @@ def tanh(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
     numPts = np.round(length*samplingRate)
     xPts = np.arange(numPts)-cutoff
     tanhPts = amp*np.tanh(xPts)
-    return 0.5*(tanhPts + tanhPts[::-1])
+    return (0.5*(tanhPts + tanhPts[::-1])).astype(np.complex)
