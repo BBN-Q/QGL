@@ -180,17 +180,26 @@ if __name__ == '__main__':
     channelLib.channelDict['BBNAPS2-1m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS2-1m1', AWG=instrumentLib['BBNAPS2'], delay=0e-9)
     channelLib.channelDict['BBNAPS2-2m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS2-2m1', AWG=instrumentLib['BBNAPS2'], delay=-100e-9)
     channelLib.channelDict['BBNAPS2-3m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS2-3m1', AWG=instrumentLib['BBNAPS2'], delay=+30e-9)
-    channelLib.channelDict['BBNAPS2-4m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS2-4m1', AWG=instrumentLib['BBNAPS2'], delay=-200e-9)
+    channelLib.channelDict['BBNAPS2-4m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS2-4m1', AWG=instrumentLib['BBNAPS2'], delay=0e-9)
     channelLib.channelDict['BBNAPS2-12'] = QGL.Channels.PhysicalQuadratureChannel(name='BBNAPS2-12', AWG=instrumentLib['BBNAPS2'], generator=instrumentLib['Autodyne2'], IChannel='ch1', QChannel='ch2', gateChan=channelLib['BBNAPS2-1m1'], ampFactor=0.9454, phaseSkew=8.7596)
     channelLib.channelDict['BBNAPS2-34'] = QGL.Channels.PhysicalQuadratureChannel(name='BBNAPS2-34', AWG=instrumentLib['BBNAPS2'], generator=instrumentLib['Agilent2'], IChannel='ch3', QChannel='ch4', gateChan=channelLib['BBNAPS2-3m1'], ampFactor=1.0045, phaseSkew=2.09)
 
+    channelLib.channelDict['BBNAPS3-1m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS3-1m1', AWG=instrumentLib['BBNAPS3'], delay=0e-9)
+    channelLib.channelDict['BBNAPS3-2m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS3-2m1', AWG=instrumentLib['BBNAPS3'], delay=-100e-9)
+    channelLib.channelDict['BBNAPS3-3m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS3-3m1', AWG=instrumentLib['BBNAPS3'], delay=+30e-9)
+    channelLib.channelDict['BBNAPS3-4m1'] = QGL.Channels.PhysicalMarkerChannel(name='BBNAPS3-4m1', AWG=instrumentLib['BBNAPS3'], delay=-200e-9)
+    channelLib.channelDict['BBNAPS3-12'] = QGL.Channels.PhysicalQuadratureChannel(name='BBNAPS3-12', AWG=instrumentLib['BBNAPS3'], generator=instrumentLib['Autodyne3'], IChannel='ch1', QChannel='ch2', gateChan=channelLib['BBNAPS3-1m1'], ampFactor=0.9454, phaseSkew=8.7596)
+    channelLib.channelDict['BBNAPS3-34'] = QGL.Channels.PhysicalQuadratureChannel(name='BBNAPS3-34', AWG=instrumentLib['BBNAPS3'], generator=instrumentLib['LabBrick1'], IChannel='ch3', QChannel='ch4', gateChan=channelLib['BBNAPS3-3m1'], ampFactor=1.0045, phaseSkew=2.09)
+
     channelLib.channelDict['q1'] = QGL.Channels.Qubit(name='q1',  physChan=channelLib['BBNAPS2-34'], pulseParams={'piAmp':0.7179, 'pi2Amp':0.3604, 'shapeFun':QGL.PulseShapes.drag, 'length':40e-9, 'buffer':2e-9, 'dragScaling':0.88})
     channelLib.channelDict['q2'] = QGL.Channels.Qubit(name='q2', physChan=channelLib['BBNAPS1-12'], pulseParams={'piAmp':0.6583, 'pi2Amp':0.3153, 'shapeFun':QGL.PulseShapes.drag, 'length':40e-9, 'buffer':2e-9, 'dragScaling':2.65})
+    channelLib.channelDict['q3'] = QGL.Channels.Qubit(name='q3', physChan=channelLib['BBNAPS3-34'], pulseParams={'piAmp':0.6583, 'pi2Amp':0.3153, 'shapeFun':QGL.PulseShapes.drag, 'length':40e-9, 'buffer':2e-9, 'dragScaling':2.65})
     channelLib.channelDict['digitizerTrig'] = QGL.Channels.LogicalMarkerChannel(name='digitizerTrig', physChan=channelLib['BBNAPS1-2m1'], pulseParams={'length':1e-9, 'amp':1.0, 'shapeFun':QGL.PulseShapes.square})
     channelLib.channelDict['slaveTrig'] = QGL.Channels.LogicalMarkerChannel(name='slaveTrig', physChan=channelLib['BBNAPS1-4m1'], pulseParams={'length':1e-9, 'amp':1.0, 'shapeFun':QGL.PulseShapes.square})
 
     channelLib.channelDict['M-q1'] = QGL.Channels.Measurement(name='M-q1', measType='autodyne', autodyneFreq=10e6, physChan=channelLib['BBNAPS2-12'], pulseParams={'amp':0.5, 'shapeFun':PulseShapes.tanh, 'length':3.33333e-6, 'buffer':2e-9})
-    channelLib.channelDict['M-q2'] = QGL.Channels.Measurement(name='M-q2', measType='autodyne', autodyneFreq=10e6, physChan=channelLib['BBNAPS1-34'], pulseParams={'amp':0.5, 'shapeFun':PulseShapes.tanh, 'length':3.33333e-6, 'buffer':2e-9})
+    channelLib.channelDict['M-q2'] = QGL.Channels.Measurement(name='M-q2', measType='autodyne', autodyneFreq=20e6, physChan=channelLib['BBNAPS1-34'], pulseParams={'amp':0.5, 'shapeFun':PulseShapes.tanh, 'length':3.33333e-6, 'buffer':2e-9})
+    channelLib.channelDict['M-q3'] = QGL.Channels.Measurement(name='M-q3', measType='autodyne', autodyneFreq=10e6, physChan=channelLib['BBNAPS3-12'], pulseParams={'amp':0.5, 'shapeFun':PulseShapes.tanh, 'length':3.33333e-6, 'buffer':2e-9})
     
     channelLib.write_to_library()
 
