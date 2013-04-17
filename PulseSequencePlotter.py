@@ -214,6 +214,10 @@ def plot_pulse_files(AWGFileNames):
     for tmpFile in AWGFileNames:
         #Assume a naming convenction path/to/file/SequenceName-AWGName.h5
         AWGName = (os.path.split(os.path.splitext(tmpFile)[0])[1]).split('-')[1]
+        try:
+            AWGName = AWGName[:AWGName.index('_')]
+        except ValueError:
+            pass
         #Look up the appropriate model in the instrumentLib
         if isinstance(instrumentLib[AWGName], Tek5014) or isinstance(instrumentLib[AWGName], Tek7000):
             AWGWFs[AWGName] = read_Tek_file(tmpFile)
