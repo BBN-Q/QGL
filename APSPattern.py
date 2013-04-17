@@ -198,7 +198,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
     #Step through the all the miniLL's together
     for miniLL_IQ, miniLL_m in zip(IQLL, markerLL):
         #Find the cummulative length for each entry of IQ channel
-        timePts = np.cumsum([0] + [tmpEntry.length*tmpEntry.repeat for tmpEntry in miniLL_IQ[:-1]])
+        timePts = np.cumsum([0] + [tmpEntry.length*tmpEntry.repeat for tmpEntry in miniLL_IQ])
 
         #Find the switching points of the marker channels
         switchPts = []
@@ -213,6 +213,12 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
         blipPts = (np.diff(switchPts) == 1).nonzero()[0]
         for pt in blipPts[::-1]:
             del switchPts[pt+1]
+
+        #Ensure the IQ LL is long enough to support the blips
+        blipTimes = [x+y for x,y in zip(switchPts, timePts)]
+        if max(blipTimes) > timePts[-1]:
+            assert miniLL_IQ.isTimeAmp
+            miniLL_IQ.length += max(blipTimes) - timePts[-1] + 24 
 
         #Now map onto linklist elements
         curIQIdx = 0
