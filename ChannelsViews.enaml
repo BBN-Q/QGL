@@ -1,0 +1,96 @@
+from enaml.widgets.api import Window, Container, Notebook, Page, ListControl, ListItem,\
+							 Stack, StackItem, PushButton, GroupBox, Form, Label, Field
+from enaml.layout.api import hbox, vbox, spacer
+from enaml.core.api import Looper, Include
+
+from traits.api import Float
+from types import FunctionType
+
+import PulseShapes
+from EnamlHelpers import DictManagerView, DictManager, AddDialog
+
+from Channels import LogicalChannel, PhysicalChannel
+
+enamldef QubitView(GroupBox):
+	attr chan
+	attr possiblePhysChanList
+	title := chan.name
+	Form:
+		Label:
+			text = 'Physical Channel'
+		ComboBox:
+			items << [item.name for item in possiblePhysChanList if isinstance(item, PhysicalQuadratureChannel)]
+			index << [item.name for item in possiblePhysChanList if isinstance(item, PhysicalQuadratureChannel)].index(chan.physChan)
+			index ::
+				chan.physChan = [item.name for item in possiblePhysChanList if isinstance(item, PhysicalQuadratureChannel)][index]
+		Looper:
+			iterable << chan.pulseParams.keys()
+			Label:
+				text = loop_item
+			Conditional:
+				condition = isinstance(chan.pulseParams[loop_item], Float)
+				FloatField:
+					value := chan.pulseParams[loop_item]
+			Conditional:
+				condition = isinstance(chan.pulseParams[loop_item], FunctionType)
+				Field:
+					text << chan.pulseParams[loop_item].__name__
+					text ::
+						chan.pulseParams[loop_item] = getattr(PulseShapes, text)
+
+enamldef LogicalMarkerChannelView(GroupBox):
+	attr chan
+	attr possiblePhysChanList
+	title := chan.name
+	Form:
+		Label:
+			text = 'PhysicalChannel'
+		ComboBox:
+			items << [item.name for item in possiblePhysChanList if isinstance(item, PhysicalMarkerChannel)]
+			index << [item.name for item in possiblePhysChanList if isinstance(item, PhysicalMarkerChannel)].index(chan.physChan)
+			index ::
+				chan.physChan = [item.name for item in possiblePhysChanList if isinstance(item, PhysicalMarkerChannel)][index]
+		Looper:
+			iterable << chan.pulseParams.keys()
+			Label:
+				text = loop_item
+			Conditional:
+				condition = isinstance(chan.pulseParams[loop_item], Float)
+				FloatField:
+					value := chan.pulseParams[loop_item]
+			Conditional:
+				condition = isinstance(chan.pulseParams[loop_item], FunctionType)
+				Field:
+					text << chan.pulseParams[loop_item].__name__
+					text ::
+						chan.pulseParams[loop_item] = getattr(PulseShapes, text)
+
+
+
+
+enamldef ChannelLibraryView(Container):
+	attr channelLib
+	Notebook:
+		tab_style = 'preferences'
+		Page:
+			title = 'Logical'
+			closable = False
+			DictManagerView:
+				myDict = channelLib.channelDict
+				displayFilter = lambda x : isinstance(x, LogicalChannel)
+				modelName = 'chan'
+				viewMap = ChannelViewMap
+				addDialog = lambda root, itemDict : \
+			AddDialog(root, itemDict=itemDict, newClassList=Channels.NewChannelList, objText='LogicalChannel')
+
+		Page:
+			title = "Physical"
+			closable = False
+			DictManagerView:
+				myDict = channelLib.channelDict
+				displayFilter = lambda x : isinstance(x, AWGs.AWG)
+				modelName = 'chan'
+				viewMap = ChannelViewMap
+				addDialog = lambda root, itemDict : \
+					AddDialog(root, itemDict=itemDict, newClassList=Channels.NewChannelList, objText='PhysicalChannel')
+
