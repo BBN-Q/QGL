@@ -207,18 +207,17 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
             curIndex += curEntry.length*curEntry.repeat
             if curEntry.key != nextEntry.key:
                 switchPts.append(curIndex)
-        
-
+                
         #Assume switch pts seperated by 1 point are single trigger blips
         blipPts = (np.diff(switchPts) == 1).nonzero()[0]
         for pt in blipPts[::-1]:
             del switchPts[pt+1]
-
         #Ensure the IQ LL is long enough to support the blips
-        blipTimes = [x+y for x,y in zip(switchPts, timePts)]
-        if max(blipTimes) > timePts[-1]:
-            assert miniLL_IQ.isTimeAmp
-            miniLL_IQ.length += max(blipTimes) - timePts[-1] + 24 
+        if switchPts:
+            blipTimes = [x+y for x,y in zip(switchPts, timePts)]
+            if max(blipTimes) > timePts[-1]:
+                assert miniLL_IQ[-1].isTimeAmp
+                miniLL_IQ[-1].length += max(blipTimes) - timePts[-1] + 24 
 
         #Now map onto linklist elements
         curIQIdx = 0
