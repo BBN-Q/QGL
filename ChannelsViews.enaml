@@ -1,7 +1,8 @@
-from enaml.widgets.api import Window, Container, Notebook, Page, ListControl, ListItem,\
-							 Stack, StackItem, PushButton, GroupBox, Form, Label, Field
+from enaml.widgets.api import Window, Container, Notebook, Page, PushButton, GroupBox, Form, Label, Field, \
+                             ComboBox
+from enaml.stdlib.fields import FloatField
 from enaml.layout.api import hbox, vbox, spacer
-from enaml.core.api import Looper, Include
+from enaml.core.api import Looper, Conditional
 
 from traits.api import Float
 from types import FunctionType
@@ -9,162 +10,182 @@ from types import FunctionType
 import PulseShapes
 from EnamlHelpers import DictManagerView, DictManager, AddDialog, EnumComboBox
 
-from Channels import LogicalChannel, PhysicalChannel, Measurement, Qubit, LogicalMarkerChannel
+import QGL.Channels
+from instruments.AWGs import AWG
+from instruments.MicrowaveSources import MicrowaveSource
 
 enamldef LogicalMarkerChannelView(GroupBox):
-	attr chan
-	attr possibleChanList
-	attr possibleAWGs
-	attr possibleSources
-	title := '{} (LogicalMarker)'.format(chan.name)
-	Form:
-		Label:
-			text = 'Physical Chan.'
-		ComboBox:
-			items << [item.name for item in possibleChanList if isinstance(item, PhysicalMarkerChannel)]
-			index << [item.name for item in possibleChanList if isinstance(item, PhysicalMarkerChannel)].index(chan.physChan)
-			index ::
-				chan.physChan = [item.name for item in possibleChanList if isinstance(item, PhysicalMarkerChannel)][index]
-		Looper:
-			iterable << chan.pulseParams.keys()
-			Label:
-				text = loop_item
-			Conditional:
-				condition = isinstance(chan.pulseParams[loop_item], Float)
-				FloatField:
-					value := chan.pulseParams[loop_item]
-			Conditional:
-				condition = isinstance(chan.pulseParams[loop_item], FunctionType)
-				Field:
-					text << chan.pulseParams[loop_item].__name__
-					text ::
-						chan.pulseParams[loop_item] = getattr(PulseShapes, text)
+    attr chan
+    attr possibleChans
+    attr possibleInstrs
+    title := '{} (LogicalMarker)'.format(chan.name)
+    Form:
+        Label:
+            text = 'Physical Chan.'
+        ComboBox:
+            items << [item.name for item in possibleChans if isinstance(item, QGL.Channels.PhysicalMarkerChannel)]
+            index << [item for item in possibleChans if isinstance(item, QGL.Channels.PhysicalMarkerChannel)].index(chan.physChan)
+            index ::
+                chan.physChan = [item for item in possibleChans if isinstance(item, QGL.Channels.PhysicalMarkerChannel)][index]
+        Looper:
+            iterable << chan.pulseParams.keys()
+            Label:
+                text = loop_item
+            Conditional:
+                condition = isinstance(chan.pulseParams[loop_item], Float)
+                FloatField:
+                    value := chan.pulseParams[loop_item]
+            Conditional:
+                condition = isinstance(chan.pulseParams[loop_item], FunctionType)
+                Field:
+                    text << chan.pulseParams[loop_item].__name__
+                    text ::
+                        chan.pulseParams[loop_item] = getattr(PulseShapes, text)
+
+                
+enamldef PhysicalMarkerChannelView(GroupBox):
+    attr chan
+    attr possibleChans
+    attr possibleInstrs
+    title := '{} (PhysicalMarker)'.format(chan.name)
+    Form:
+        Label:
+            text = 'Delay'
+        FloatField:
+            value := chan.delay
+        Label:
+            text = 'AWG'
+        ComboBox:
+            items << [item.name  for item in possibleInstrs if isinstance(item, AWG)]
+            index << [item for item in possibleInstrs if isinstance(item, AWG)].index(chan.AWG)
+            index ::
+                chan.AWG = [item for item in possibleInstrs if isinstance(item, AWG)][index]
+
+enamldef PhysicalQuadratureChannelView(GroupBox):
+    attr chan
+    attr possibleChans
+    attr possibleInstrs
+    title := '{} (PhysicalQuadrature)'.format(chan.name)
+    Form:
+        Label:
+            text = 'AWG'
+        ComboBox:
+            items << [item.name  for item in possibleInstrs if isinstance(item, AWG)]
+            index << [item for item in possibleInstrs if isinstance(item, AWG)].index(chan.AWG)
+            index ::
+                chan.AWG = [item for item in possibleInstrs if isinstance(item, AWG)][index]
+        Label:
+            text = 'Source'
+        ComboBox:
+            items << [item.name  for item in possibleInstrs if isinstance(item, MicrowaveSource)]
+            index << [item for item in possibleInstrs if isinstance(item, MicrowaveSource)].index(chan.generator)
+            index ::
+                chan.generator = [item for item in possibleInstrs if isinstance(item, MicrowaveSource)][index]
+        Label:
+            text = 'Gate Channel'
+        ComboBox:
+            items << [item.name for item in possibleChans if isinstance(item, QGL.Channels.PhysicalMarkerChannel)]
+            index << [item for item in possibleChans if isinstance(item, QGL.Channels.PhysicalMarkerChannel)].index(chan.gateChan)
+            index ::
+                chan.gateChan = [item for item in possibleChans if isinstance(item, QGL.Channels.PhysicalMarkerChannel)][index]
+        Label:
+            text = 'Amp. Factor'
+        FloatField:
+            value := chan.ampFactor
+        Label:
+            text = 'Phase Skew (deg.)'
+        FloatField:
+            value := chan.phaseSkew
+
+enamldef LogicalQuadratureView(GroupBox):
+    attr chan
+    attr possibleChans
+    attr possibleInstrs
+    title := '{} ({})'.format(chan.name, chan.__class__.__name__)
+    Form:
+        Conditional:
+            condition = isinstance(chan, QGL.Channels.Measurement)
+            Label:
+                text = 'Type'
+            EnumComboBox:
+                myObj := chan
+                traitName = 'measType'
+            Conditional:
+                condition = chan.measType == 'autodyne'
+                Label:
+                    text = 'Autodyne Freq.'
+                FloatField:
+                    value := chan.autodyneFreq
+        Label:
+            text = 'Physical Chan.'
+        ComboBox:
+            items << [item.name for item in possibleChans if isinstance(item, QGL.Channels.PhysicalQuadratureChannel)]
+            index << [item for item in possibleChans if isinstance(item, QGL.Channels.PhysicalQuadratureChannel)].index(chan.physChan)
+            index ::
+                chan.physChan = [item for item in possibleChans if isinstance(item, QGL.Channels.PhysicalQuadratureChannel)][index]
+        Looper:
+            iterable << chan.pulseParams.keys()
+            Label:
+                text = loop_item
+            Conditional:
+                condition = isinstance(chan.pulseParams[loop_item], Float)
+                FloatField:
+                    value := chan.pulseParams[loop_item]
+            Conditional:
+                condition = isinstance(chan.pulseParams[loop_item], FunctionType)
+                Field:
+                    text << chan.pulseParams[loop_item].__name__
+                    text ::
+                        chan.pulseParams[loop_item] = getattr(PulseShapes, text)
+
+enamldef EmptyChannelView(Container):
+    attr chan
+    attr possibleChans
+    attr possibleInstrs
 
 
-PhysicalMarkerChannelView(GroupBox):
-	attr chan
-	attr possibleChanList
-	attr possibleAWGs
-	attr possibleSources
-	title := '{} (PhysicalMarker)'.format(chan.name)
-	Form:
-		Label:
-			text = 'Delay'
-		FloatField:
-			value := chan.delay
-		Label:
-			text = 'AWG'
-		ComboBox:
-			items << [item.name  for item in possibleAWGs]
-			index << possibleAWGs.index(chan.AWG)
-			index ::
-				chan.AWG = possibleAWGs[index]
-
-PhysicalQuadratureChannelView(GroupBox):
-	attr chan
-	attr possibleAWGs
-	attr possibleSources
-	attr possibleChans
-	title := '{} (PhysicalQuadrature)'.format(chan.name)
-	Form:
-		Label:
-			text = 'AWG'
-		ComboBox:
-			items << [item.name for item in possibleAWGs]
-			index << possibleAWGs.index(chan.AWG)
-			index ::
-				chan.AWG = possibleAWGs[index]
-		Label:
-			text = 'Source'
-		ComboBox:
-			items << [item.name for item in possibleSources]
-			index << possibleSources.index[chan.generator]
-			index ::
-				chan.generator = possibleSources[index]
-		Label:
-			text = 'Gate Channel'
-		ComboBox:
-			items << [item.name for item in possibleChans if isinstance(item, PhysicalMarkerChannel)]
-			index << [item.name for item in possibleChans if isinstance(item, PhysicalMarkerChannel)].index(chan.gateChan)
-			index ::
-				chan.gateChan = [item.name for item in possibleChans if isinstance(item, PhysicalMarkerChannel)][index]
-		Label:
-			text = 'Amp. Factor'
-		FloatField:
-			value := chan.ampFactor
-		Label:
-			text = 'Phase Skew (deg.)'
-		FloatField:
-			value := chan.phaseSkew
-
-LogicalQuadratureView(GroupBox):
-	attr chan
-	attr possibleChans
-	title := '{} ({}})'.format(chan.name, chan.__class__.__name__)
-	Form:
-		Conditional:
-			condition = isinstance(chan, Measurement)
-			Label:
-				text = 'Type'
-			EnumComboBox:
-				myObj := chan
-				traitName = 'measType'
-			Conditional:
-				condition = chan.measType == 'autodyne'
-				Label:
-					text = 'Autodyne Freq.'
-				FloatField:
-					value := chan.autodyneFreq
-		Label:
-			text = 'Physical Chan.'
-		ComboBox:
-			items << [item.name for item in possibleChans if isinstance(item, PhysicalQuadratureChannel)]
-			index << [item.name for item in possibleChans if isinstance(item, PhysicalQuadratureChannel)].index(chan.physChan)
-			index ::
-				chan.physChan = [item.name for item in possibleChans if isinstance(item, PhysicalQuadratureChannel)][index]
-		Looper:
-			iterable << chan.pulseParams.keys()
-			Label:
-				text = loop_item
-			Conditional:
-				condition = isinstance(chan.pulseParams[loop_item], Float)
-				FloatField:
-					value := chan.pulseParams[loop_item]
-			Conditional:
-				condition = isinstance(chan.pulseParams[loop_item], FunctionType)
-				Field:
-					text << chan.pulseParams[loop_item].__name__
-					text ::
-						chan.pulseParams[loop_item] = getattr(PulseShapes, text)
-
-ChannelViewMap = {Qubit:LogicalQuadratureView, Measurement:LogicalQuadratureView, 
-					LogicalMarkerChannel:LogicalMarkerChannelView, PhysicalQuadratureChannel:PhysicalQuadratureChannelView,
-					PhysicalMarkerChannel:PhysicalMarkerChannelView}
+ChannelViewMap = {type(None):EmptyChannelView, QGL.Channels.Qubit:LogicalQuadratureView, QGL.Channels.Measurement:LogicalQuadratureView, 
+                    QGL.Channels.LogicalMarkerChannel:LogicalMarkerChannelView, QGL.Channels.PhysicalQuadratureChannel:PhysicalQuadratureChannelView,
+                    QGL.Channels.PhysicalMarkerChannel:PhysicalMarkerChannelView}
 
 enamldef ChannelLibraryView(Container):
-	attr channelLib
-	Notebook:
-		tab_style = 'preferences'
-		Page:
-			title = 'Logical'
-			closable = False
-			DictManagerView:
-				myDict = channelLib.channelDict
-				displayFilter = lambda x : isinstance(x, LogicalChannel)
-				modelName = 'chan'
-				viewMap = ChannelViewMap
-				viewkwargs = {'possibleInstrs':sweepLib.possibleInstrs}
-				addDialog = lambda root, itemDict : \
-			AddDialog(root, itemDict=itemDict, newClassList=Channels.NewLogicalChannelList, objText='LogicalChannel')
+    id: channelLibCont
+    attr channelLib
+    attr instrumentLib
+    Notebook:
+        tab_style = 'preferences'
+        Page:
+            title = 'Logical'
+            closable = False
+            DictManagerView:
+                myDict = channelLibCont.channelLib.channelDict
+                displayFilter = lambda x : isinstance(x, QGL.Channels.LogicalChannel)
+                modelName = 'chan'
+                viewMap = ChannelViewMap
+                viewkwargs = {'possibleInstrs':channelLibCont.instrumentLib.instrDict.values(), 
+                                'possibleChans':channelLibCont.channelLib.channelDict.values()}
+                addDialog = lambda root, itemDict : \
+            AddDialog(root, itemDict=itemDict, newClassList=Channels.NewLogicalChannelList, objText='LogicalChannel')
 
-		Page:
-			title = "Physical"
-			closable = False
-			DictManagerView:
-				myDict = channelLib.channelDict
-				displayFilter = lambda x : isinstance(x, AWGs.AWG)
-				modelName = 'chan'
-				viewMap = ChannelViewMap
-				addDialog = lambda root, itemDict : \
-					AddDialog(root, itemDict=itemDict, newClassList=Channels.NewPhysicalChannelList, objText='PhysicalChannel')
+        Page:
+            title = "Physical"
+            closable = False
+            DictManagerView:
+                myDict = channelLib.channelDict
+                displayFilter = lambda x : isinstance(x, QGL.Channels.PhysicalChannel)
+                modelName = 'chan'
+                viewMap = ChannelViewMap
+                viewkwargs = {'possibleInstrs':channelLibCont.instrumentLib.instrDict.values(), 
+                                'possibleChans':channelLibCont.channelLib.channelDict.values()}
+                addDialog = lambda root, itemDict : \
+                    AddDialog(root, itemDict=itemDict, newClassList=Channels.NewPhysicalChannelList, objText='PhysicalChannel')
 
+enamldef ChannelLibraryWindow(Window):
+    id: channelLibWin
+    attr channelLib
+    attr instrumentLib
+    title = 'Channel Library'
+    Container:
+        ChannelLibraryView:
+            channelLib = channelLibWin.channelLib
+            instrumentLib = channelLibWin.instrumentLib
