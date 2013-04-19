@@ -164,8 +164,8 @@ class ChannelLibrary(HasTraits):
             except ValueError:
                 print('Failed to load channel library.')
 
-NewLogicalList = [Qubit, LogicalMarkerChannel, Measurement]
-NewPhysicalList = [PhysicalMarkerChannel, PhysicalQuadratureChannel]
+NewLogicalChannelList = [Qubit, LogicalMarkerChannel, Measurement]
+NewPhysicalChannelList = [PhysicalMarkerChannel, PhysicalQuadratureChannel]
 
 if __name__ == '__main__':
     # create a channel params file

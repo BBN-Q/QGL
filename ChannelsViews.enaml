@@ -7,49 +7,24 @@ from traits.api import Float
 from types import FunctionType
 
 import PulseShapes
-from EnamlHelpers import DictManagerView, DictManager, AddDialog
+from EnamlHelpers import DictManagerView, DictManager, AddDialog, EnumComboBox
 
-from Channels import LogicalChannel, PhysicalChannel
-
-enamldef QubitView(GroupBox):
-	attr chan
-	attr possiblePhysChanList
-	title := chan.name
-	Form:
-		Label:
-			text = 'Physical Channel'
-		ComboBox:
-			items << [item.name for item in possiblePhysChanList if isinstance(item, PhysicalQuadratureChannel)]
-			index << [item.name for item in possiblePhysChanList if isinstance(item, PhysicalQuadratureChannel)].index(chan.physChan)
-			index ::
-				chan.physChan = [item.name for item in possiblePhysChanList if isinstance(item, PhysicalQuadratureChannel)][index]
-		Looper:
-			iterable << chan.pulseParams.keys()
-			Label:
-				text = loop_item
-			Conditional:
-				condition = isinstance(chan.pulseParams[loop_item], Float)
-				FloatField:
-					value := chan.pulseParams[loop_item]
-			Conditional:
-				condition = isinstance(chan.pulseParams[loop_item], FunctionType)
-				Field:
-					text << chan.pulseParams[loop_item].__name__
-					text ::
-						chan.pulseParams[loop_item] = getattr(PulseShapes, text)
+from Channels import LogicalChannel, PhysicalChannel, Measurement, Qubit, LogicalMarkerChannel
 
 enamldef LogicalMarkerChannelView(GroupBox):
 	attr chan
-	attr possiblePhysChanList
-	title := chan.name
+	attr possibleChanList
+	attr possibleAWGs
+	attr possibleSources
+	title := '{} (LogicalMarker)'.format(chan.name)
 	Form:
 		Label:
-			text = 'PhysicalChannel'
+			text = 'Physical Chan.'
 		ComboBox:
-			items << [item.name for item in possiblePhysChanList if isinstance(item, PhysicalMarkerChannel)]
-			index << [item.name for item in possiblePhysChanList if isinstance(item, PhysicalMarkerChannel)].index(chan.physChan)
+			items << [item.name for item in possibleChanList if isinstance(item, PhysicalMarkerChannel)]
+			index << [item.name for item in possibleChanList if isinstance(item, PhysicalMarkerChannel)].index(chan.physChan)
 			index ::
-				chan.physChan = [item.name for item in possiblePhysChanList if isinstance(item, PhysicalMarkerChannel)][index]
+				chan.physChan = [item.name for item in possibleChanList if isinstance(item, PhysicalMarkerChannel)][index]
 		Looper:
 			iterable << chan.pulseParams.keys()
 			Label:
@@ -66,7 +41,105 @@ enamldef LogicalMarkerChannelView(GroupBox):
 						chan.pulseParams[loop_item] = getattr(PulseShapes, text)
 
 
+PhysicalMarkerChannelView(GroupBox):
+	attr chan
+	attr possibleChanList
+	attr possibleAWGs
+	attr possibleSources
+	title := '{} (PhysicalMarker)'.format(chan.name)
+	Form:
+		Label:
+			text = 'Delay'
+		FloatField:
+			value := chan.delay
+		Label:
+			text = 'AWG'
+		ComboBox:
+			items << [item.name  for item in possibleAWGs]
+			index << possibleAWGs.index(chan.AWG)
+			index ::
+				chan.AWG = possibleAWGs[index]
 
+PhysicalQuadratureChannelView(GroupBox):
+	attr chan
+	attr possibleAWGs
+	attr possibleSources
+	attr possibleChans
+	title := '{} (PhysicalQuadrature)'.format(chan.name)
+	Form:
+		Label:
+			text = 'AWG'
+		ComboBox:
+			items << [item.name for item in possibleAWGs]
+			index << possibleAWGs.index(chan.AWG)
+			index ::
+				chan.AWG = possibleAWGs[index]
+		Label:
+			text = 'Source'
+		ComboBox:
+			items << [item.name for item in possibleSources]
+			index << possibleSources.index[chan.generator]
+			index ::
+				chan.generator = possibleSources[index]
+		Label:
+			text = 'Gate Channel'
+		ComboBox:
+			items << [item.name for item in possibleChans if isinstance(item, PhysicalMarkerChannel)]
+			index << [item.name for item in possibleChans if isinstance(item, PhysicalMarkerChannel)].index(chan.gateChan)
+			index ::
+				chan.gateChan = [item.name for item in possibleChans if isinstance(item, PhysicalMarkerChannel)][index]
+		Label:
+			text = 'Amp. Factor'
+		FloatField:
+			value := chan.ampFactor
+		Label:
+			text = 'Phase Skew (deg.)'
+		FloatField:
+			value := chan.phaseSkew
+
+LogicalQuadratureView(GroupBox):
+	attr chan
+	attr possibleChans
+	title := '{} ({}})'.format(chan.name, chan.__class__.__name__)
+	Form:
+		Conditional:
+			condition = isinstance(chan, Measurement)
+			Label:
+				text = 'Type'
+			EnumComboBox:
+				myObj := chan
+				traitName = 'measType'
+			Conditional:
+				condition = chan.measType == 'autodyne'
+				Label:
+					text = 'Autodyne Freq.'
+				FloatField:
+					value := chan.autodyneFreq
+		Label:
+			text = 'Physical Chan.'
+		ComboBox:
+			items << [item.name for item in possibleChans if isinstance(item, PhysicalQuadratureChannel)]
+			index << [item.name for item in possibleChans if isinstance(item, PhysicalQuadratureChannel)].index(chan.physChan)
+			index ::
+				chan.physChan = [item.name for item in possibleChans if isinstance(item, PhysicalQuadratureChannel)][index]
+		Looper:
+			iterable << chan.pulseParams.keys()
+			Label:
+				text = loop_item
+			Conditional:
+				condition = isinstance(chan.pulseParams[loop_item], Float)
+				FloatField:
+					value := chan.pulseParams[loop_item]
+			Conditional:
+				condition = isinstance(chan.pulseParams[loop_item], FunctionType)
+				Field:
+					text << chan.pulseParams[loop_item].__name__
+					text ::
+						chan.pulseParams[loop_item] = getattr(PulseShapes, text)
+
+ChannelViewMap = {Qubit:LogicalQuadratureView, Measurement:LogicalQuadratureView, 
+					LogicalMarkerChannel:LogicalMarkerChannelView, PhysicalQuadratureChannel:PhysicalQuadratureChannelView,
+					PhysicalMarkerChannel:PhysicalMarkerChannelView}
 
 enamldef ChannelLibraryView(Container):
 	attr channelLib
@@ -80,8 +153,9 @@ enamldef ChannelLibraryView(Container):
 				displayFilter = lambda x : isinstance(x, LogicalChannel)
 				modelName = 'chan'
 				viewMap = ChannelViewMap
+				viewkwargs = {'possibleInstrs':sweepLib.possibleInstrs}
 				addDialog = lambda root, itemDict : \
-			AddDialog(root, itemDict=itemDict, newClassList=Channels.NewChannelList, objText='LogicalChannel')
+			AddDialog(root, itemDict=itemDict, newClassList=Channels.NewLogicalChannelList, objText='LogicalChannel')
 
 		Page:
 			title = "Physical"
@@ -92,5 +166,5 @@ enamldef ChannelLibraryView(Container):
 				modelName = 'chan'
 				viewMap = ChannelViewMap
 				addDialog = lambda root, itemDict : \
-					AddDialog(root, itemDict=itemDict, newClassList=Channels.NewChannelList, objText='PhysicalChannel')
+					AddDialog(root, itemDict=itemDict, newClassList=Channels.NewPhysicalChannelList, objText='PhysicalChannel')
 
