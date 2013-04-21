@@ -131,11 +131,10 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
                                  'wfLib': {TAZKey:np.zeros(1, dtype=np.complex)}}
 
             # convert to hardware formats
+            fullFileName = config.AWGDir + fileName + '-' + awgName + suffix + instrumentLib[awgName].seqFileExt
             if isinstance(instrumentLib[awgName], APS):
-                fullFileName = config.AWGDir + fileName + '-' + awgName + suffix + '.h5'
                 write_APS_file(awg, fullFileName )
             elif isinstance(instrumentLib[awgName], Tek5014):
-                fullFileName = config.AWGDir + fileName + '-' + awgName + suffix + '.awg'
                 write_Tek_file(awg, fullFileName, fileName)
             else:
                 raise NameError('Unknown AWG type')
