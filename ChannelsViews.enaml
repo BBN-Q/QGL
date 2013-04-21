@@ -28,7 +28,7 @@ enamldef LogicalMarkerChannelView(GroupBox):
             index ::
                 chan.physChan = [item for item in possibleChans if isinstance(item, QGL.Channels.PhysicalMarkerChannel)][index]
         Looper:
-            iterable << chan.pulseParams.keys()
+            iterable << sorted(chan.pulseParams.keys())
             Label:
                 text = loop_item
             Conditional:
@@ -124,7 +124,7 @@ enamldef LogicalQuadratureView(GroupBox):
             index ::
                 chan.physChan = [item for item in possibleChans if isinstance(item, QGL.Channels.PhysicalQuadratureChannel)][index]
         Looper:
-            iterable << chan.pulseParams.keys()
+            iterable << sorted(chan.pulseParams.keys())
             Label:
                 text = loop_item
             Conditional:
