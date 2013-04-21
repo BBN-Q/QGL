@@ -32,7 +32,7 @@ enamldef LogicalMarkerChannelView(GroupBox):
             Label:
                 text = loop_item
             Conditional:
-                condition = isinstance(chan.pulseParams[loop_item], Float)
+                condition = isinstance(chan.pulseParams[loop_item], float)
                 FloatField:
                     value := chan.pulseParams[loop_item]
             Conditional:
@@ -128,7 +128,7 @@ enamldef LogicalQuadratureView(GroupBox):
             Label:
                 text = loop_item
             Conditional:
-                condition = isinstance(chan.pulseParams[loop_item], Float)
+                condition = isinstance(chan.pulseParams[loop_item], float)
                 FloatField:
                     value := chan.pulseParams[loop_item]
             Conditional:
