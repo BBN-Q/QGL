@@ -111,7 +111,7 @@ enamldef LogicalQuadratureView(GroupBox):
                 myObj := chan
                 traitName = 'measType'
             Conditional:
-                condition = chan.measType == 'autodyne'
+                condition << chan.measType == 'autodyne'
                 Label:
                     text = 'Autodyne Freq.'
                 FloatField:
