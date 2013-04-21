@@ -4,15 +4,15 @@ from enaml.stdlib.fields import FloatField
 from enaml.layout.api import hbox, vbox, spacer
 from enaml.core.api import Looper, Conditional
 
-from traits.api import Float
-from types import FunctionType
-
-import PulseShapes
 from EnamlHelpers import DictManagerView, DictManager, AddDialog, EnumComboBox
 
 import QGL.Channels
 from instruments.AWGs import AWG
 from instruments.MicrowaveSources import MicrowaveSource
+
+import QGL.PulseShapes
+from types import FunctionType
+psList = [f for f in QGL.PulseShapes.__dict__.values() if isinstance(f, FunctionType)]
 
 enamldef LogicalMarkerChannelView(GroupBox):
     attr chan
@@ -37,12 +37,12 @@ enamldef LogicalMarkerChannelView(GroupBox):
                     value := chan.pulseParams[loop_item]
             Conditional:
                 condition = isinstance(chan.pulseParams[loop_item], FunctionType)
-                Field:
-                    text << chan.pulseParams[loop_item].__name__
-                    text ::
-                        chan.pulseParams[loop_item] = getattr(PulseShapes, text)
+                ComboBox:
+                    items << [f.__name__ for f in psList]
+                    index << psList.index(chan.pulseParams[loop_item])
+                    index ::
+                        chan.pulseParams[loop_item] = psList[index]
 
-                
 enamldef PhysicalMarkerChannelView(GroupBox):
     attr chan
     attr possibleChans
@@ -133,10 +133,11 @@ enamldef LogicalQuadratureView(GroupBox):
                     value := chan.pulseParams[loop_item]
             Conditional:
                 condition = isinstance(chan.pulseParams[loop_item], FunctionType)
-                Field:
-                    text << chan.pulseParams[loop_item].__name__
-                    text ::
-                        chan.pulseParams[loop_item] = getattr(PulseShapes, text)
+                ComboBox:
+                    items << [f.__name__ for f in psList]
+                    index << psList.index(chan.pulseParams[loop_item])
+                    index ::
+                        chan.pulseParams[loop_item] = psList[index]
 
 enamldef EmptyChannelView(Container):
     attr chan
