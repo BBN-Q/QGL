@@ -31,7 +31,7 @@ from instruments.AWGs import AWG
 from instruments.MicrowaveSources import MicrowaveSource
 
 from traits.api import HasTraits, Str, Float, Instance, DelegatesTo, Property, cached_property, \
-                        DictStrAny, Dict, Either, Enum, Bool
+                        DictStrAny, Dict, Either, Enum, Bool, on_trait_change
 
 class Channel(HasTraits):
     '''

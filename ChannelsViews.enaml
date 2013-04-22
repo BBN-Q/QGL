@@ -120,7 +120,7 @@ enamldef LogicalQuadratureView(GroupBox):
             text = 'Physical Chan.'
         ComboBox:
             items << [item.name for item in possibleChans if isinstance(item, QGL.Channels.PhysicalQuadratureChannel)]
-            index << [item for item in possibleChans if isinstance(item, QGL.Channels.PhysicalQuadratureChannel)].index(chan.physChan)
+            index << [item for item in possibleChans if isinstance(item, QGL.Channels.PhysicalQuadratureChannel)].index(chan.physChan) if chan.physChan in possibleChans else -1
             index ::
                 chan.physChan = [item for item in possibleChans if isinstance(item, QGL.Channels.PhysicalQuadratureChannel)][index]
         Looper:
@@ -164,7 +164,7 @@ enamldef ChannelLibraryView(Container):
                 modelName = 'chan'
                 viewMap = ChannelViewMap
                 viewkwargs = {'possibleInstrs':channelLibCont.instrumentLib.instrDict.values(), 
-                                'channelDict':channelLibCont.channelLib.channelDict.values()}
+                                'possibleChans':channelLibCont.channelLib.channelDict.values()}
                 addDialog = lambda root, itemDict : \
             AddDialog(root, itemDict=itemDict, newClassList=QGL.Channels.NewLogicalChannelList, objText='LogicalChannel')
 
@@ -177,7 +177,7 @@ enamldef ChannelLibraryView(Container):
                 modelName = 'chan'
                 viewMap = ChannelViewMap
                 viewkwargs = {'possibleInstrs':channelLibCont.instrumentLib.instrDict.values(), 
-                                'channelDict':channelLibCont.channelLib.channelDict.values()}
+                                'possibleChans':channelLibCont.channelLib.channelDict.values()}
                 addDialog = lambda root, itemDict : \
                     AddDialog(root, itemDict=itemDict, newClassList=QGL.Channels.NewPhysicalChannelList, objText='PhysicalChannel')
 
