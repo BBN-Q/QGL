@@ -57,13 +57,13 @@ enamldef PhysicalMarkerChannelView(GroupBox):
             text = 'AWG'
         ComboBox:
             items << [item.name  for item in possibleInstrs if isinstance(item, AWG)]
-            index << [item for item in possibleInstrs if isinstance(item, AWG)].index(chan.AWG)
+            index << [item for item in possibleInstrs if isinstance(item, AWG)].index(chan.AWG) if chan.AWG in possibleInstrs else -1
             index ::
                 chan.AWG = [item for item in possibleInstrs if isinstance(item, AWG)][index]
 
 enamldef PhysicalQuadratureChannelView(GroupBox):
     attr chan
-    attr possibleChans
+    attr channelDict
     attr possibleInstrs
     title := '{} (PhysicalQuadrature)'.format(chan.name)
     Form:
@@ -71,7 +71,7 @@ enamldef PhysicalQuadratureChannelView(GroupBox):
             text = 'AWG'
         ComboBox:
             items << [item.name  for item in possibleInstrs if isinstance(item, AWG)]
-            index << [item for item in possibleInstrs if isinstance(item, AWG)].index(chan.AWG)
+            index << [item for item in possibleInstrs if isinstance(item, AWG)].index(chan.AWG) if chan.AWG in possibleInstrs else -1
             index ::
                 chan.AWG = [item for item in possibleInstrs if isinstance(item, AWG)][index]
         Label:
@@ -164,9 +164,9 @@ enamldef ChannelLibraryView(Container):
                 modelName = 'chan'
                 viewMap = ChannelViewMap
                 viewkwargs = {'possibleInstrs':channelLibCont.instrumentLib.instrDict.values(), 
-                                'possibleChans':channelLibCont.channelLib.channelDict.values()}
+                                'channelDict':channelLibCont.channelLib.channelDict.values()}
                 addDialog = lambda root, itemDict : \
-            AddDialog(root, itemDict=itemDict, newClassList=Channels.NewLogicalChannelList, objText='LogicalChannel')
+            AddDialog(root, itemDict=itemDict, newClassList=QGL.Channels.NewLogicalChannelList, objText='LogicalChannel')
 
         Page:
             title = "Physical"
@@ -177,9 +177,9 @@ enamldef ChannelLibraryView(Container):
                 modelName = 'chan'
                 viewMap = ChannelViewMap
                 viewkwargs = {'possibleInstrs':channelLibCont.instrumentLib.instrDict.values(), 
-                                'possibleChans':channelLibCont.channelLib.channelDict.values()}
+                                'channelDict':channelLibCont.channelLib.channelDict.values()}
                 addDialog = lambda root, itemDict : \
-                    AddDialog(root, itemDict=itemDict, newClassList=Channels.NewPhysicalChannelList, objText='PhysicalChannel')
+                    AddDialog(root, itemDict=itemDict, newClassList=QGL.Channels.NewPhysicalChannelList, objText='PhysicalChannel')
 
 enamldef ChannelLibraryWindow(Window):
     id: channelLibWin
