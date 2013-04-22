@@ -140,6 +140,7 @@ class ChannelLibrary(HasTraits):
     def __getitem__(self, chanName):
         return self.channelDict[chanName]
 
+    @on_trait_change('channelDict.anytrait')
     def write_to_library(self):
         import JSONHelpers
         if self.libFile:
