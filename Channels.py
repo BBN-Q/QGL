@@ -31,7 +31,38 @@ from instruments.AWGs import AWG
 from instruments.MicrowaveSources import MicrowaveSource
 
 from traits.api import HasTraits, Str, Float, Instance, DelegatesTo, Property, cached_property, \
-                        DictStrAny, Dict, Either, Enum, Bool, on_trait_change
+                        DictStrAny, Dict, Either, Enum, Bool, on_trait_change, Any
+
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+import os
+
+
+class MyEventHandler(FileSystemEventHandler):
+
+    def __init__(self, filePath, callback):
+        super(MyEventHandler, self).__init__()
+        self.filePath = filePath
+        self.callback = callback
+
+    def on_modified(self, event):
+        if event.src_path == self.filePath:
+            self.callback()
+
+class LibraryFileWatcher(object):
+    def __init__(self, filePath, callback):
+        super(LibraryFileWatcher, self).__init__()
+        self.filePath = filePath
+        self.callback = callback
+        self.observer = Observer()
+        self.eventHandler = MyEventHandler(filePath, callback)
+        self.observer.schedule(self.eventHandler, path=os.path.dirname(filePath))
+        self.observer.start()
+
+    def __del__(self):
+        self.observer.stop()
+        self.observer.join()
+
 
 class Channel(HasTraits):
     '''
@@ -78,9 +109,9 @@ class PhysicalQuadratureChannel(PhysicalChannel):
     QChannel = Str()
     #During initilization we may just have a string reference to the channel
     gateChan = Either(Str, Instance(PhysicalMarkerChannel))
-    ampFactor = Float()
-    phaseSkew = Float()
-    SSBFreq = Float()
+    ampFactor = Float(1.0)
+    phaseSkew = Float(0.0)
+    SSBFreq = Float(0.0)
     correctionT = Property(depends_on=['ampFactor', 'phaseSkew'])
 
     @cached_property
@@ -131,10 +162,13 @@ def MeasFactory(name, measType='autodyne', **kwargs):
 class ChannelLibrary(HasTraits):
     channelDict = Dict(Str, Channel)
     libFile = Str(transient=True)
+    fileWatcher = Any(transient=True)
 
     def __init__(self, **kwargs):
         super(ChannelLibrary, self).__init__(**kwargs)
         self.load_from_library()
+        if self.libFile:
+            self.fileWatcher = LibraryFileWatcher(self.libFile, self.load_from_library)
 
     #Overload [] to allow direct pulling of channel info
     def __getitem__(self, chanName):
@@ -159,6 +193,7 @@ class ChannelLibrary(HasTraits):
                                 chan.physChan = tmpLib[chan.physChan]
                             elif isinstance(chan, PhysicalQuadratureChannel):
                                 chan.gateChan = tmpLib[chan.gateChan]
+                        import pdb; pdb.set_trace()
                         self.channelDict.update(tmpLib.channelDict)
 
             except IOError:
