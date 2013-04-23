@@ -54,20 +54,20 @@ class LibraryFileWatcher(object):
         super(LibraryFileWatcher, self).__init__()
         self.filePath = filePath
         self.callback = callback
-        self.observer = Observer()
         self.eventHandler = MyEventHandler(filePath, callback)
-        self.watch = self.observer.schedule(self.eventHandler, path=os.path.dirname(self.filePath))
-        self.observer.start()
+        self.resume()
 
     def __del__(self):
         self.observer.stop()
         self.observer.join()
 
     def pause(self):
-        self.observer.unschedule(self.watch)
+        self.observer.stop()
 
     def resume(self):
+        self.observer = Observer(timeout=0.001)
         self.watch = self.observer.schedule(self.eventHandler, path=os.path.dirname(self.filePath))
+        self.observer.start()
 
 
 
@@ -175,7 +175,7 @@ class ChannelLibrary(HasTraits):
         super(ChannelLibrary, self).__init__(**kwargs)
         self.load_from_library()
         if self.libFile:
-            self.fileWatcher = LibraryFileWatcher(self.libFile, self.load_from_library)
+            self.fileWatcher = LibraryFileWatcher(self.libFile, self.update_from_file)
 
     #Overload [] to allow direct pulling of channel info
     def __getitem__(self, chanName):
@@ -211,6 +211,23 @@ class ChannelLibrary(HasTraits):
                 print('No channel library found.')
             except ValueError:
                 print('Failed to load channel library.')
+
+    def update_from_file(self):
+        """
+        Only update relevant parameters
+        Helps avoid stale references by replacing whole channel objects as in load_from_library
+        and the overhead of recreating everything.
+        """
+        updateList = ['ampFactor', 'phaseSkew', 'SSBFreq', 'delay']
+        if self.libFile:
+            with open(self.libFile, 'r') as FID:
+                allParams = json.load(FID)['channelDict']
+                for chName, chParams in allParams.items():
+                    if chName in self.channelDict:
+                        for paramName in updateList:
+                            if paramName in chParams:
+                                setattr(self.channelDict[chName], paramName, chParams[paramName])
+
 
 NewLogicalChannelList = [Qubit, LogicalMarkerChannel, Measurement]
 NewPhysicalChannelList = [PhysicalMarkerChannel, PhysicalQuadratureChannel]
