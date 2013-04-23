@@ -127,7 +127,7 @@ enamldef LogicalQuadratureView(GroupBox):
             items << [item.name for item in curView.channelLib.channelDict.values() if isinstance(item, QGL.Channels.PhysicalQuadratureChannel)]
             index << [item for item in curView.channelLib.channelDict.values() if isinstance(item, QGL.Channels.PhysicalQuadratureChannel)].index(chan.physChan) if chan.physChan in curView.channelLib.channelDict.values() else -1
             index ::
-                chan.physChan = [item for item in channelLib if isinstance(item, QGL.Channels.PhysicalQuadratureChannel)][index]
+                chan.physChan = [item for item in curView.channelLib.channelDict.values() if isinstance(item, QGL.Channels.PhysicalQuadratureChannel)][index]
         Looper:
             iterable << sorted(chan.pulseParams.keys())
             Label:
