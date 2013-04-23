@@ -56,12 +56,19 @@ class LibraryFileWatcher(object):
         self.callback = callback
         self.observer = Observer()
         self.eventHandler = MyEventHandler(filePath, callback)
-        self.observer.schedule(self.eventHandler, path=os.path.dirname(filePath))
+        self.watch = self.observer.schedule(self.eventHandler, path=os.path.dirname(self.filePath))
         self.observer.start()
 
     def __del__(self):
         self.observer.stop()
         self.observer.join()
+
+    def pause(self):
+        self.observer.unschedule(self.watch)
+
+    def resume(self):
+        self.watch = self.observer.schedule(self.eventHandler, path=os.path.dirname(self.filePath))
+
 
 
 class Channel(HasTraits):
@@ -162,7 +169,7 @@ def MeasFactory(name, measType='autodyne', **kwargs):
 class ChannelLibrary(HasTraits):
     channelDict = Dict(Str, Channel)
     libFile = Str(transient=True)
-    fileWatcher = Any(transient=True)
+    fileWatcher = Any(None, transient=True)
 
     def __init__(self, **kwargs):
         super(ChannelLibrary, self).__init__(**kwargs)
@@ -178,8 +185,13 @@ class ChannelLibrary(HasTraits):
     def write_to_library(self):
         import JSONHelpers
         if self.libFile:
+            #Pause the file watcher to stop cicular updating insanity
+            if self.fileWatcher:
+                self.fileWatcher.pause()
             with open(self.libFile, 'w') as FID:
                 json.dump(self, FID, cls=JSONHelpers.LibraryEncoder, indent=2, sort_keys=True)
+            if self.fileWatcher:
+                self.fileWatcher.resume()
 
     def load_from_library(self):
         import JSONHelpers
@@ -190,10 +202,9 @@ class ChannelLibrary(HasTraits):
                     if isinstance(tmpLib, ChannelLibrary):
                         for chan in tmpLib.channelDict.values():
                             if isinstance(chan, LogicalChannel):
-                                chan.physChan = tmpLib[chan.physChan]
+                                chan.physChan = tmpLib[chan.physChan] if chan.physChan in tmpLib.channelDict else None
                             elif isinstance(chan, PhysicalQuadratureChannel):
-                                chan.gateChan = tmpLib[chan.gateChan]
-                        import pdb; pdb.set_trace()
+                                chan.gateChan = tmpLib[chan.gateChan] if chan.gateChan in tmpLib.channelDict else None
                         self.channelDict.update(tmpLib.channelDict)
 
             except IOError:
