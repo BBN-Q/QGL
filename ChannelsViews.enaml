@@ -16,17 +16,17 @@ psList = [f for f in QGL.PulseShapes.__dict__.values() if isinstance(f, Function
 
 enamldef LogicalMarkerChannelView(GroupBox):
     attr chan
-    attr possibleChans
+    attr channelDict
     attr possibleInstrs
     title := '{} (LogicalMarker)'.format(chan.name)
     Form:
         Label:
             text = 'Physical Chan.'
         ComboBox:
-            items << [item.name for item in possibleChans if isinstance(item, QGL.Channels.PhysicalMarkerChannel)]
-            index << [item for item in possibleChans if isinstance(item, QGL.Channels.PhysicalMarkerChannel)].index(chan.physChan)
+            items << [item.name for item in channelDict if isinstance(item, QGL.Channels.PhysicalMarkerChannel)]
+            index << filter(isinstance(item, QGL.Channels.PhysicalMarkerChannel), channelDict.values()).index(chan.physChan)
             index ::
-                chan.physChan = [item for item in possibleChans if isinstance(item, QGL.Channels.PhysicalMarkerChannel)][index]
+                chan.physChan = filter(isinstance(item, QGL.Channels.PhysicalMarkerChannel), channelDict.values())[index]
         Looper:
             iterable << sorted(chan.pulseParams.keys())
             Label:
@@ -45,7 +45,7 @@ enamldef LogicalMarkerChannelView(GroupBox):
 
 enamldef PhysicalMarkerChannelView(GroupBox):
     attr chan
-    attr possibleChans
+    attr channelDict
     attr possibleInstrs
     title := '{} (PhysicalMarker)'.format(chan.name)
     Form:
@@ -84,10 +84,10 @@ enamldef PhysicalQuadratureChannelView(GroupBox):
         Label:
             text = 'Gate Channel'
         ComboBox:
-            items << [item.name for item in possibleChans if isinstance(item, QGL.Channels.PhysicalMarkerChannel)]
-            index << [item for item in possibleChans if isinstance(item, QGL.Channels.PhysicalMarkerChannel)].index(chan.gateChan)
+            items << [item.name for item in channelDict if isinstance(item, QGL.Channels.PhysicalMarkerChannel)]
+            index << [item for item in channelDict if isinstance(item, QGL.Channels.PhysicalMarkerChannel)].index(chan.gateChan)
             index ::
-                chan.gateChan = [item for item in possibleChans if isinstance(item, QGL.Channels.PhysicalMarkerChannel)][index]
+                chan.gateChan = [item for item in channelDict if isinstance(item, QGL.Channels.PhysicalMarkerChannel)][index]
         Label:
             text = 'Amp. Factor'
         FloatField:
@@ -99,7 +99,7 @@ enamldef PhysicalQuadratureChannelView(GroupBox):
 
 enamldef LogicalQuadratureView(GroupBox):
     attr chan
-    attr possibleChans
+    attr channelDict
     attr possibleInstrs
     title := '{} ({})'.format(chan.name, chan.__class__.__name__)
     Form:
@@ -122,7 +122,7 @@ enamldef LogicalQuadratureView(GroupBox):
             items << [item.name for item in possibleChans if isinstance(item, QGL.Channels.PhysicalQuadratureChannel)]
             index << [item for item in possibleChans if isinstance(item, QGL.Channels.PhysicalQuadratureChannel)].index(chan.physChan) if chan.physChan in possibleChans else -1
             index ::
-                chan.physChan = [item for item in possibleChans if isinstance(item, QGL.Channels.PhysicalQuadratureChannel)][index]
+                chan.physChan = [item for item in channelDict if isinstance(item, QGL.Channels.PhysicalQuadratureChannel)][index]
         Looper:
             iterable << sorted(chan.pulseParams.keys())
             Label:
@@ -141,7 +141,7 @@ enamldef LogicalQuadratureView(GroupBox):
 
 enamldef EmptyChannelView(Container):
     attr chan
-    attr possibleChans
+    attr channelDict
     attr possibleInstrs
 
 
