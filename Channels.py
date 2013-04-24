@@ -185,7 +185,11 @@ class ChannelLibrary(HasTraits):
         updateList = ['ampFactor', 'phaseSkew', 'SSBFreq', 'delay', 'pulseParams']
         if self.libFile:
             with open(self.libFile, 'r') as FID:
-                allParams = json.load(FID)['channelDict']
+                try:
+                    allParams = json.load(FID)['channelDict']
+                except ValueError:
+                    print('Failed to update channel library from file. Probably is just half-written.')
+                    return
                 for chName, chParams in allParams.items():
                     if chName in self.channelDict:
                         for paramName in updateList:
