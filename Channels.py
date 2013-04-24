@@ -180,7 +180,7 @@ class ChannelLibrary(HasTraits):
     def update_from_file(self):
         """
         Only update relevant parameters
-        Helps avoid stale references by replacing whole channel objects as in load_from_library
+        Helps avoid both stale references from replacing whole channel objects (as in load_from_library)
         and the overhead of recreating everything.
         """
         updateList = ['ampFactor', 'phaseSkew', 'SSBFreq', 'delay', 'pulseParams']
