@@ -33,6 +33,8 @@ from instruments.MicrowaveSources import MicrowaveSource
 from traits.api import HasTraits, Str, Float, Instance, DelegatesTo, Property, cached_property, \
                         DictStrAny, Dict, Either, Enum, Bool, on_trait_change, Any
 
+import FileWatcher
+
 class Channel(HasTraits):
     '''
     Every channel has a name and some printers.
