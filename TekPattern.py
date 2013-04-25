@@ -25,7 +25,6 @@ import numpy as np
 
 MAX_WAVEFORM_VALUE = 2**13-1 #maximum waveform value i.e. 14bit DAC
 
-
 def write_field(FID, fieldName, data, dataType):
     typeSizes = {'int16':2, 'int32':4, 'double':8, 'uint128':16}
     formatChars = {'int16':'<h', 'int32':'<i', 'double':'<d'}
@@ -54,30 +53,6 @@ def read_field(FID):
 
     return fieldName, data
     
-def pack_waveform(analog, marker1, marker2):
-    '''
-    Helper function to convert a floating point analog channel and two logical marker channel to a sequence of 16bit integers.
-    AWG 5000 series binary data format
-    m2 m1 d14 d13 d12 d11 d10 d9 d8 d7 d6 d5 d4 d3 d2 d1
-    16-bit format with markers occupying left 2 bits followed by the 14 bit
-    analog channel value
-    '''
-
-    #Convert decimal shape on [-1,1] to binary on [0,2^14 (16383)] 
-    #AWG actually makes 111,111,111,111,10 the 100% output, and
-    # 111,111,111,111,11 is one step larger than 100% output so we
-    # ignore the one extra positive number and scale from [0,16382]
-    analog[analog>1] = 1.0
-    analog[analog<-1] = -1.0
-    if len(marker1) < len(analog):
-        marker1 = np.append(marker1, np.zeros(len(analog) - len(marker1), dtype=np.uint16))
-    if len(marker2) < len(analog):
-        marker2 = np.append(marker2, np.zeros(len(analog) - len(marker2), dtype=np.uint16))
-    binData = np.uint16( MAX_WAVEFORM_VALUE*analog + MAX_WAVEFORM_VALUE );
-
-    binData += 2**14*np.uint16(marker1) + 2**15*np.uint16(marker2)
-    
-    return binData
 
 def marker_waveform(LL, wfLib):
     '''
@@ -113,6 +88,36 @@ def merge_waveform(n, chAB, chAm1, chAm2, chBm1, chBm2):
     wfB = pack_waveform(np.imag(wfAB), wfBm1, wfBm2)
 
     return wfA, wfB
+
+def pack_waveform(analog, marker1, marker2):
+    '''
+    Helper function to convert a floating point analog channel and two logical marker channel to a sequence of 16bit integers.
+    AWG 5000 series binary data format
+    m2 m1 d14 d13 d12 d11 d10 d9 d8 d7 d6 d5 d4 d3 d2 d1
+    16-bit format with markers occupying left 2 bits followed by the 14 bit
+    analog channel value
+    '''
+
+    #Convert decimal shape on [-1,1] to binary on [0,2^14 (16383)] 
+    #AWG actually makes 111,111,111,111,10 the 100% output, and
+    # 111,111,111,111,11 is one step larger than 100% output so we
+    # ignore the one extra positive number and scale from [0,16382]
+    analog[analog>1] = 1.0
+    analog[analog<-1] = -1.0
+
+    maxLength = max(analog.size, marker1.size, marker2.size)
+
+    if marker1.size < maxLength:
+        marker1 = np.append(marker1, np.zeros(maxLength-marker1.size, dtype=np.bool))
+    if marker2.size < maxLength:
+        marker2 = np.append(marker2, np.zeros(maxLength-marker2.size, dtype=np.bool))
+    if analog.size < maxLength:
+        analog = np.append(analog, np.zeros(maxLength-analog.size, dtype=np.float64))
+
+    binData = np.uint16( MAX_WAVEFORM_VALUE*analog + MAX_WAVEFORM_VALUE );
+    binData += 2**14*np.uint16(marker1) + 2**15*np.uint16(marker2)
+    
+    return binData
 
 def write_waveform(FID, WFname, WFnumber, data):
     '''
