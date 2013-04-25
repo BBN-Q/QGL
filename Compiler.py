@@ -30,6 +30,16 @@ from APSPattern import write_APS_file
 from TekPattern import write_Tek_file
 
 
+def hash_pulse(shape):
+    # if we need more speed, this version is about 10x faster in my tests on arrays of length 2000
+    #return hashlib.sha1(shape.view(np.uint8)).hexdigest()
+    return hash(tuple(shape))
+
+TAZKey = hash_pulse(np.zeros(1, dtype=np.complex))
+markerHighKey = hash_pulse(np.ones(1, dtype=np.bool))
+
+markerWFLib = {TAZKey:np.zeros(1, dtype=np.bool), markerHighKey:np.ones(1, dtype=np.bool) }
+
 def get_channel_name(chanKey):
     ''' Takes in a channel key and returns a channel name '''
     if type(chanKey) != tuple:
@@ -109,7 +119,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
                     #TODO: check if this actually catches overwriting markers
                     if awg[markerKey]:
                         warn('Reuse of marker gating channel: {0}'.format(markerKey))
-                    awg[markerKey] = {'linkList':None, 'wfLib':None}
+                    awg[markerKey] = {'linkList':None, 'wfLib':markerWFLib}
                     awg[markerKey]['linkList'] = PatternUtils.create_gate_seqs(
                         chanData['linkList'], genObj.gateBuffer, genObj.gateMinWidth, chanObj.samplingRate)
                     PatternUtils.delay(awg[markerKey]['linkList'], genObj.gateDelay+chanObj.gateChan.delay, chanObj.gateChan.samplingRate )
@@ -127,7 +137,12 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
         if not all([chan is None for chan in awg.values()]):
             for chan in awg.keys():
                 if not awg[chan]:
-                    awg[chan] = {'linkList': [[create_padding_LL(SEQUENCE_PADDING//2), create_padding_LL(SEQUENCE_PADDING//2)]],
+                    #"Seems hackish but check for marker
+                    if chan[-2] == 'm':
+                        awg[chan] = {'linkList': [[create_padding_LL(SEQUENCE_PADDING//2), create_padding_LL(SEQUENCE_PADDING//2)]],
+                                 'wfLib': markerWFLib}
+                    else:
+                        awg[chan] = {'linkList': [[create_padding_LL(SEQUENCE_PADDING//2), create_padding_LL(SEQUENCE_PADDING//2)]],
                                  'wfLib': {TAZKey:np.zeros(1, dtype=np.complex)}}
 
             # convert to hardware formats
@@ -170,7 +185,7 @@ def compile_sequences(seqs):
     print('Compiled {} sequences.'.format(len(seqs)))
     return linkLists, wfLib
 
-def compile_sequence(seq, wfLib = {} ):
+def compile_sequence(seq, wfLib={} ):
     '''
     Converts a single sequence into a miniLL and waveform library.
     Returns a single-entry list of a miniLL and the updated wfLib
@@ -183,7 +198,10 @@ def compile_sequence(seq, wfLib = {} ):
     for chan in channels:
         logicalLLs[chan] = []
         if chan not in wfLib:
-            wfLib[chan] = {TAZKey:  np.zeros(1, dtype=np.complex)}
+            if isinstance(chan, Channels.LogicalMarkerChannel):
+                wfLib[chan] = markerWFLib
+            else:
+                wfLib[chan] = {TAZKey:  np.zeros(1, dtype=np.complex)}
     carriedPhase = {ch: 0 for ch in channels}
     for block in seq:
         #Align the block 
@@ -195,6 +213,8 @@ def compile_sequence(seq, wfLib = {} ):
         for chan in channels:
             # add aligned LL entry
             wf, LLentry = align(block.pulses[chan], blockLength, block.alignment)
+            if isinstance(chan, Channels.LogicalMarkerChannel):
+                wf = wf.astype(np.bool)
             if hash_pulse(wf) not in wfLib:
                 wfLib[chan][hash_pulse(wf)] = wf
             LLentry[0].phase -= carriedPhase[chan]
@@ -202,26 +222,27 @@ def compile_sequence(seq, wfLib = {} ):
             logicalLLs[chan] += LLentry
         carriedPhase = {ch: 0 for ch in channels}
 
-    # loop through again to find phases, frame changes, and SSB modulation
+    # loop through again to find phases, frame changes, and SSB modulation for quadrature channels
     for chan, miniLL in logicalLLs.items():
-        curFrame = 0
-        for entry in miniLL:
-            # frame update
-            shape = np.copy(wfLib[chan][entry.key])
+        if isinstance(chan, Channels.Qubit) or isinstance(chan, Channels.Measurement):
+            curFrame = 0
+            for entry in miniLL:
+                # frame update
+                shape = np.copy(wfLib[chan][entry.key])
 
-            # See if we can turn into a TA pair
-            # fragile: if you buffer a square pulse it will not be constant valued
-            if np.all(shape == shape[0]):
-                entry.isTimeAmp = True
-                shape = shape[:1]
+                # See if we can turn into a TA pair
+                # fragile: if you buffer a square pulse it will not be constant valued
+                if np.all(shape == shape[0]):
+                    entry.isTimeAmp = True
+                    shape = shape[:1]
 
-            #Rotate for phase and frame change 
-            shape *= np.exp(1j*(entry.phase+curFrame))
-            shapeHash = hash_pulse(shape)
-            if shapeHash not in wfLib[chan]:
-                wfLib[chan][shapeHash] = shape
-            entry.key = shapeHash
-            curFrame += entry.frameChange 
+                #Rotate for phase and frame change 
+                shape *= np.exp(1j*(entry.phase+curFrame))
+                shapeHash = hash_pulse(shape)
+                if shapeHash not in wfLib[chan]:
+                    wfLib[chan][shapeHash] = shape
+                entry.key = shapeHash
+                curFrame += entry.frameChange 
 
     return logicalLLs, wfLib
 
@@ -229,7 +250,7 @@ def compress_wfLib(seqs, wfLib):
     '''
     Helper function to remove unused waveforms from the library.
     '''
-    usedKeys = set()
+    usedKeys = set([TAZKey])
     for miniLL in seqs:
         for entry in miniLL:
             usedKeys.add(entry.key)
@@ -261,13 +282,7 @@ def normalize(seq):
             block.pulses[ch] = Id(ch, length=0)
     return seq
 
-def hash_pulse(shape):
-    # if we need more speed, this version is about 10x faster in my tests on arrays of length 2000
-    #return hashlib.sha1(shape.view(np.uint8)).hexdigest()
-    return hash(tuple(shape))
 
-TAZKey = hash_pulse(np.zeros(1, dtype=np.complex))
-markerHighKey = hash_pulse([True])
 
 class LLElement(object):
     '''

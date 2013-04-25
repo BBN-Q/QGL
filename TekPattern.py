@@ -70,39 +70,26 @@ def pack_waveform(analog, marker1, marker2):
     analog[analog>1] = 1.0
     analog[analog<-1] = -1.0
     if len(marker1) < len(analog):
-        marker1 = np.append(marker1, np.ones(len(analog) - len(marker1), dtype=np.uint16))
+        marker1 = np.append(marker1, np.zeros(len(analog) - len(marker1), dtype=np.uint16))
     if len(marker2) < len(analog):
-        marker2 = np.append(marker2, np.ones(len(analog) - len(marker2), dtype=np.uint16))
+        marker2 = np.append(marker2, np.zeros(len(analog) - len(marker2), dtype=np.uint16))
     binData = np.uint16( MAX_WAVEFORM_VALUE*analog + MAX_WAVEFORM_VALUE );
-    
-    binData += 2**14*marker1 + 2**15*marker2
+
+    binData += 2**14*np.uint16(marker1) + 2**15*np.uint16(marker2)
     
     return binData
 
-def marker_waveform(LL):
+def marker_waveform(LL, wfLib):
     '''
     from a marker link list, construct a marker waveform
     '''
-    # interpret a change in key as a state switch
-    switchPts = []
-    curIndex = 0
-    for curEntry, nextEntry in zip(LL[:-1], LL[1:]):
-        curIndex += curEntry.length*curEntry.repeat
-        if curEntry.key != nextEntry.key:
-            switchPts.append(curIndex)
 
-    wfLengths = np.diff(switchPts)
-
-    wf = np.array([], dtype=np.uint16)
-    #alternate between zeros and ones
-    stateHigh = False
-    for l in wfLengths:
-        if stateHigh:
-            stateHigh = False
-            wf = np.append(wf, np.ones(l, dtype=np.uint16))
+    wf = np.array([], dtype=np.bool)
+    for entry in LL:
+        if not entry.isTimeAmp:
+            wf = np.append(wf, wfLib[entry.key])
         else:
-            stateHigh = True
-            wf = np.append(wf, np.zeros(l, dtype=np.uint16))
+            wf = np.append(wf, wfLib[entry.key][0] * np.ones(entry.length * entry.repeat, dtype=np.bool))
 
     return wf
 
@@ -117,8 +104,13 @@ def merge_waveform(n, chAB, chAm1, chAm2, chBm1, chBm2):
         else:
             wfAB = np.append(wfAB, chAB['wfLib'][entry.key][0] * np.ones(entry.length * entry.repeat))
 
-    wfA = pack_waveform(np.real(wfAB), marker_waveform(chAm1['linkList'][n % len(chAm1['linkList'])]), marker_waveform(chAm2['linkList'][n % len(chAm2['linkList'])]))
-    wfB = pack_waveform(np.imag(wfAB), marker_waveform(chBm1['linkList'][n % len(chBm1['linkList'])]), marker_waveform(chBm2['linkList'][n % len(chBm2['linkList'])]))
+    wfAm1 = marker_waveform(chAm1['linkList'][n % len(chAm1['linkList'])], chAm1['wfLib'])
+    wfAm2 = marker_waveform(chAm2['linkList'][n % len(chAm2['linkList'])], chAm2['wfLib'])
+    wfBm1 = marker_waveform(chBm1['linkList'][n % len(chBm1['linkList'])], chBm1['wfLib'])
+    wfBm2 = marker_waveform(chBm2['linkList'][n % len(chBm2['linkList'])], chBm2['wfLib'])
+
+    wfA = pack_waveform(np.real(wfAB), wfAm1, wfAm2) 
+    wfB = pack_waveform(np.imag(wfAB), wfBm1, wfBm2)
 
     return wfA, wfB
 
@@ -211,15 +203,18 @@ def write_Tek_file(awgData, fileName, seqName, options=None):
             write_field(FID, 'OUTPUT_WAVEFORM_NAME_'+str(chanct), seqName+'Ch'+str(chanct)+'001', 'char')
     
     #Now write the waveforms
+    wfs = range(4)
     for ct in range(numSeqs):
-        wf1, wf2 = merge_waveform(ct, awgData['ch12'], awgData['ch1m1'], awgData['ch1m2'], awgData['ch2m1'], awgData['ch2m2'])
-        write_waveform(FID, '{0}Ch1{1:03d}'.format(seqName, ct+1), 4*ct+1, wf1)
-        write_waveform(FID, '{0}Ch2{1:03d}'.format(seqName, ct+1), 4*ct+2, wf2)
+        wfs[0], wfs[1] = merge_waveform(ct, awgData['ch12'], awgData['ch1m1'], awgData['ch1m2'], awgData['ch2m1'], awgData['ch2m2'])
+        wfs[2], wfs[3] = merge_waveform(ct, awgData['ch34'], awgData['ch3m1'], awgData['ch3m2'], awgData['ch4m1'], awgData['ch4m2'])
 
-        wf3, wf4 = merge_waveform(ct, awgData['ch34'], awgData['ch3m1'], awgData['ch3m2'], awgData['ch4m1'], awgData['ch4m2'])
-        write_waveform(FID, '{0}Ch3{1:03d}'.format(seqName, ct+1), 4*ct+3, wf3)
-        write_waveform(FID, '{0}Ch4{1:03d}'.format(seqName, ct+1), 4*ct+4, wf4)
-    
+        #On the Tek, all four channels need to have the same length
+        maxLength = max(map(lambda wf : wf.size, wfs))
+        for wfct in range(4):
+            if wfs[wfct].size < maxLength:
+                wfs[wfct] = np.append(wfs[wfct], MAX_WAVEFORM_VALUE*np.ones(maxLength-wfs[wfct].size, dtype=np.uint16))
+            write_waveform(FID, '{0}Ch{1}{2:03d}'.format(seqName, wfct+1, ct+1), 4*ct+1+wfct, wfs[wfct])
+
     #Write the sequence table
     for seqct in range(1,numSeqs+1):
         ctStr = str(seqct)

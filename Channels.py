@@ -197,6 +197,9 @@ class ChannelLibrary(HasTraits):
                                 #Deal with unicode/string difference
                                 if paramName == 'pulseParams':
                                     paramDict = {k.encode('ascii'):v for k,v in chParams['pulseParams'].items()}
+                                    shapeFunName = paramDict.pop('shapeFun', None)
+                                    if shapeFunName:
+                                        paramDict['shapeFun'] = getattr(PulseShapes, shapeFunName)
                                     setattr(self.channelDict[chName], 'pulseParams', paramDict)
                                 else:
                                     setattr(self.channelDict[chName], paramName, chParams[paramName])
