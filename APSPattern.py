@@ -22,8 +22,6 @@ import numpy as np
 from warnings import warn
 from itertools import chain
 
-import pdb
-
 #Some constants
 ADDRESS_UNIT = 4 #everything is done in units of 4 timesteps
 MIN_ENTRY_LENGTH = 12
