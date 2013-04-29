@@ -79,7 +79,8 @@ def split_multiple_triggers():
 
 def create_gate_seqs(linkList, gateBuffer=0, gateMinWidth=0, samplingRate=1.2e9):
     '''
-    Helper function that takes a set of analog channel LL and gates each miniLL
+    Helper function that takes a set of analog channel LL and creates a LL with appropriate 
+    blanking on a marker channel. 
     '''
 
     # convert times into samples
@@ -93,53 +94,66 @@ def create_gate_seqs(linkList, gateBuffer=0, gateMinWidth=0, samplingRate=1.2e9)
     # high to gate pulse
     startDelay = gateBuffer
     for miniLL in linkList:
-        #Initialize a zero length padding sequence
+        # import pdb; pdb.set_trace()
+        #Initialize a zero-length padding sequence
         gateSeqs.append([Compiler.create_padding_LL(0)])
         # we need to pad the miniLL with an extra entry if the last entry is not a zero
         if not miniLL[-1].isZero:
-            miniLL.append(Compiler.create_padding_LL(max(MIN_ENTRY_LENGTH, gateBuffer)))
-        if miniLL[-1].length < gateBuffer:
-            miniLL[-1].length = gateBuffer
+            miniLL.append(Compiler.create_padding_LL(MIN_ENTRY_LENGTH))
 
-
-        #Initialze the state low and the sample count and a carry for delays longer than the entry
-        state = 0 # 0 = low, 1 = high
-        sampct = 0
-        carry = 0
-        #Loop over miniLL entries
-        for curEntry, nextEntry in zip(miniLL[:-1], miniLL[1:]):
-            entryWidth = curEntry.length * curEntry.repeat - carry
-            assert entryWidth>0
-            # If current state is low and next linkList is pulse, then
-            # we go high in this entry.
-            # If current state is high and next entry is TAZ then go low
-            # in this one (but check the gateMinWidth)
-            # Otherwise maintain current state by adding to last entry's length
-            if state == 0 and not nextEntry.isZero:
-                #Finish up the current entry
-                gateSeqs[-1][-1].length += entryWidth - startDelay
-                #Create a new entry with the high state
-                gateSeqs[-1].append(Compiler.create_padding_LL(startDelay, high=True))
-                state = 1
-            elif state == 1 and nextEntry.isZero and (((nextEntry.length*nextEntry.repeat) > gateMinWidth) or nextEntry==miniLL[-1]):
-                # Time from beginning of pulse LL entry that trigger needs to go
-                # low to end gate pulse
-                endDelay = np.fix(entryWidth + gateBuffer);
-                if endDelay < 0:
-                    endDelay = 0
-                    warn("gatePulses warning: fixed buffer pulse to start of pulse")
-                gateSeqs[-1][-1].length += endDelay
-                if endDelay < entryWidth:
-                    gateSeqs[-1].append(Compiler.create_padding_LL(endDelay-entryWidth))
-                else:
-                    gateSeqs[-1].append(Compiler.create_padding_LL(0))
-                    carry = endDelay-entryWidth
-                state = 0
+        #Step through sequence changing state as necessary
+        blankHigh = False
+        for entry in miniLL:
+            #If we are low and the current entry is high then we need to add an element
+            if not blankHigh and not entry.isZero:
+                gateSeqs[-1].append(Compiler.create_padding_LL(entry.length*entry.repeat, high=True))
+                blankHigh = True
+            #If we are high and the next entry is low then we need to add an element
+            elif blankHigh and entry.isZero:
+                gateSeqs[-1].append(Compiler.create_padding_LL(entry.length*entry.repeat, high=False))
+                blankHigh = False
+            #Otherwise we just continue along in the same state
             else:
-                gateSeqs[-1][-1].length += entryWidth
+                gateSeqs[-1][-1].length += entry.length*entry.repeat
 
-        # end loop through miniLL
-    # end loop through link lists
+
+        #Go back through and add the gate buffer to the start of each marker high period.
+        #Assume that we start low
+        removeList = []
+        entryct = 1
+        dropct = 0
+        while entryct < len(gateSeqs[-1])-1:
+            if not gateSeqs[-1][entryct].isZero:
+                #If the previous low pulse is less than the gate buffer then we'll drop it 
+                if gateSeqs[-1][entryct-1].length < gateBuffer:
+                    removeList.append(entryct-1)
+                    removeList.append(entryct)
+                    gateSeqs[-1][entryct-(2+dropct)].length += \
+                            gateSeqs[-1][entryct-(1+dropct)].length*gateSeqs[-1][entryct-(1+dropct)].repeat + \
+                            gateSeqs[-1][entryct-dropct].length*gateSeqs[-1][entryct-dropct].repeat
+                    dropct += 2
+                else:
+                    gateSeqs[-1][entryct-(1+dropct)].length -= gateBuffer
+                    gateSeqs[-1][entryct].length += gateBuffer
+                entryct += 2
+        for r in reversed(removeList):
+            del gateSeqs[-1][r]
+
+        #Loop through again and make sure that all the low point between pulses are sufficiently long
+        removeList = []
+        entryct = 2
+        while entryct < len(gateSeqs[-1])-2:
+            if gateSeqs[-1][entryct].length*gateSeqs[-1][entryct].repeat < gateMinWidth:
+                removeList.append(entryct)
+                removeList.append(entryct+1)
+                gateSeqs[-1][entryct-1].length += \
+                        gateSeqs[-1][entryct].length*gateSeqs[-1][entryct].repeat + \
+                        gateSeqs[-1][entryct+1].length*gateSeqs[-1][entryct+1].repeat
+            entryct += 2
+        for r in reversed(removeList):
+            del gateSeqs[-1][r]
+
+
     return gateSeqs
 
 def add_marker_pulse(LL, startPt, length):
