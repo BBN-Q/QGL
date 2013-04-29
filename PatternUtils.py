@@ -56,7 +56,7 @@ def apply_SSB(linkList, wfLib, SSBFreq, samplingRate):
 
 def align(linkList, mode, length):
     for miniLL in linkList:
-        miniLL_length = sum([entry.length*entry.repeat for entry in miniLL])
+        miniLL_length = sum([entry.totLength for entry in miniLL])
         paddingEntry = Compiler.create_padding_LL(length - miniLL_length)
         if mode == 'left':
             miniLL.append(paddingEntry)
@@ -106,15 +106,15 @@ def create_gate_seqs(linkList, gateBuffer=0, gateMinWidth=0, samplingRate=1.2e9)
         for entry in miniLL:
             #If we are low and the current entry is high then we need to add an element
             if not blankHigh and not entry.isZero:
-                gateSeqs[-1].append(Compiler.create_padding_LL(entry.length*entry.repeat, high=True))
+                gateSeqs[-1].append(Compiler.create_padding_LL(entry.totLength, high=True))
                 blankHigh = True
             #If we are high and the next entry is low then we need to add an element
             elif blankHigh and entry.isZero:
-                gateSeqs[-1].append(Compiler.create_padding_LL(entry.length*entry.repeat, high=False))
+                gateSeqs[-1].append(Compiler.create_padding_LL(entry.totLength, high=False))
                 blankHigh = False
             #Otherwise we just continue along in the same state
             else:
-                gateSeqs[-1][-1].length += entry.length*entry.repeat
+                gateSeqs[-1][-1].length += entry.totLength
 
 
         #Go back through and add the gate buffer to the start of each marker high period.
@@ -129,8 +129,7 @@ def create_gate_seqs(linkList, gateBuffer=0, gateMinWidth=0, samplingRate=1.2e9)
                     removeList.append(entryct-1)
                     removeList.append(entryct)
                     gateSeqs[-1][entryct-(2+dropct)].length += \
-                            gateSeqs[-1][entryct-(1+dropct)].length*gateSeqs[-1][entryct-(1+dropct)].repeat + \
-                            gateSeqs[-1][entryct-dropct].length*gateSeqs[-1][entryct-dropct].repeat
+                            gateSeqs[-1][entryct-(1+dropct)].totLength + gateSeqs[-1][entryct-dropct].totLength
                     dropct += 2
                 else:
                     gateSeqs[-1][entryct-(1+dropct)].length -= gateBuffer
@@ -143,12 +142,11 @@ def create_gate_seqs(linkList, gateBuffer=0, gateMinWidth=0, samplingRate=1.2e9)
         removeList = []
         entryct = 2
         while entryct < len(gateSeqs[-1])-2:
-            if gateSeqs[-1][entryct].length*gateSeqs[-1][entryct].repeat < gateMinWidth:
+            if gateSeqs[-1][entryct].totLength < gateMinWidth:
                 removeList.append(entryct)
                 removeList.append(entryct+1)
                 gateSeqs[-1][entryct-1].length += \
-                        gateSeqs[-1][entryct].length*gateSeqs[-1][entryct].repeat + \
-                        gateSeqs[-1][entryct+1].length*gateSeqs[-1][entryct+1].repeat
+                        gateSeqs[-1][entryct].totLength + gateSeqs[-1][entryct+1].totLength
             entryct += 2
         for r in reversed(removeList):
             del gateSeqs[-1][r]

@@ -196,13 +196,13 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
     #Step through the all the miniLL's together
     for miniLL_IQ, miniLL_m in zip(IQLL, markerLL):
         #Find the cummulative length for each entry of IQ channel
-        timePts = np.cumsum([0] + [tmpEntry.length*tmpEntry.repeat for tmpEntry in miniLL_IQ])
+        timePts = np.cumsum([0] + [entry.totLength for entry in miniLL_IQ])
 
         #Find the switching points of the marker channels
         switchPts = []
         curIndex = 0
         for curEntry, nextEntry in zip(miniLL_m[:-1], miniLL_m[1:]):
-            curIndex += curEntry.length*curEntry.repeat
+            curIndex += curEntry.totLength
             if curEntry.key != nextEntry.key:
                 switchPts.append(curIndex)
                 

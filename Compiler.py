@@ -79,7 +79,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
 
     # align channels
     # this horrible line finds the longest miniLL across all channels
-    longestLL = max([sum([entry.length*entry.repeat for entry in miniLL]) for LL in linkLists.values() for miniLL in LL])
+    longestLL = max([sum([entry.totLength for entry in miniLL]) for LL in linkLists.values() for miniLL in LL])
     
     for chan, LL in linkLists.items():
         PatternUtils.align(LL, alignMode, longestLL+SEQUENCE_PADDING)
@@ -311,6 +311,10 @@ class LLElement(object):
     @property
     def isZero(self):
         return self.key == TAZKey
+
+    @property
+    def totLength(self):
+        return self.length*self.repeat
 
 def create_padding_LL(length=SEQUENCE_PADDING, high=False):
     tmpLL = LLElement()
