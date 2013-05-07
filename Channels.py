@@ -99,7 +99,7 @@ class Qubit(LogicalChannel):
     '''
     The main class for generating qubit pulses.  Effectively a logical "QuadratureChannel".
     '''
-    pulseParams = DictStrAny({'length':20e-9, 'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.gaussian, 'buffer':0.0, 'cutoff':2, 'dragScaling':0})
+    pulseParams = DictStrAny({'length':20e-9, 'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.gaussian, 'buffer':0.0, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9})
 
 class Measurement(LogicalChannel):
     '''
@@ -109,7 +109,7 @@ class Measurement(LogicalChannel):
     '''
     measType = Enum('autodyne','homodyne', desc='Type of measurment (autodyne, homodyne)')
     autodyneFreq = Float
-    pulseParams = DictStrAny({'length':20e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'buffer':0.0, 'cutoff':2})
+    pulseParams = DictStrAny({'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'buffer':0.0, 'cutoff':2, 'sigma':1e-9})
 
 
 def QubitFactory(name, **kwargs):
