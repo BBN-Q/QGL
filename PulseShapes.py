@@ -68,11 +68,12 @@ def gaussOff(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
     xStep = xPts[1] - xPts[0]
     return (amp * (np.exp(-0.5*(xPts**2)) - np.exp(-0.5*((xPts[-1]+xStep)**2)))).astype(np.complex)
 
-def tanh(amp=1, length=0, stretch=1, cutoff=2, samplingRate=1e9, **params):
+def tanh(amp=1, length=0, sigma=0, cutoff=2, samplingRate=1e9, **params):
     '''
     A rounded square shape from the sum of two tanh shapes. 
     '''
     numPts = np.round(length*samplingRate)
-    xPts = np.arange(numPts)
-    tanhPts = amp*np.tanh(stretch*(xPts-cutoff))
-    return (0.5*(tanhPts + tanhPts[::-1])).astype(np.complex)
+    xPts = np.linspace(-length/2, length/2, numPts)
+    x1 = -length/2 + cutoff*sigma
+    x2 = +length/2 - cutoff*sigma
+    return 0.5*(np.tanh((xPts-x1)/sigma) + np.tanh((x2-xPts)/sigma)).astype(np.complex)
