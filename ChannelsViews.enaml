@@ -93,6 +93,10 @@ enamldef PhysicalQuadratureChannelView(GroupBox):
             index ::
                 chan.gateChan = [item for item in curView.channelLib.channelDict.values() if isinstance(item, QGL.Channels.PhysicalMarkerChannel)][index]
         Label:
+            text = 'Delay'
+        FloatField:
+            value := chan.delay
+        Label:
             text = 'Amp. Factor'
         FloatField:
             value := chan.ampFactor
