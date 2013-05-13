@@ -18,7 +18,7 @@ def HahnEcho(qubit, pulseSpacings, calRepeats=2, showPlot=False):
 	-------
 	plotHandle : handle to plot window to prevent destruction
 	"""
-	seqs = [ [X90(qubit), Id(qubit, t), X(qubit), Id(qubit,t), X90(qubit) ,MEAS(qubit)] 
+	seqs = [ [X90(qubit), Id(qubit, t), X(qubit), Id(qubit,t), X90(qubit), MEAS(qubit)] 
 					 for t in pulseSpacings]
 
  	#Tack on the calibration scalings
@@ -51,7 +51,7 @@ def CPMG(qubit, numPulses, pulseSpacing, calRepeats=2, showPlot=False):
 	#First setup the t-180-t block
 	CPMGBlock = [Id(qubit, pulseSpacing/2), Y(qubit), Id(qubit, pulseSpacing/2)]
 
-	seqs = [[X90(qubit)] + CPMGBlock*rep + [X90(qubit)] for rep in numPulses]
+	seqs = [[X90(qubit)] + CPMGBlock*rep + [X90(qubit), MEAS(qubit)] for rep in numPulses]
 
  	#Tack on the calibration scalings
 	seqs += create_cal_seqs((qubit,), calRepeats)
