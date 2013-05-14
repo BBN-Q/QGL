@@ -36,6 +36,19 @@ def apply_SSB(linkList, wfLib, SSBFreq, samplingRate):
     #Negative because of negative frequency qubits
     phaseStep = -2*pi*SSBFreq/samplingRate
         
+    #Bits of phase precision
+    #Choose usual DAC vertical precision arbirarily
+    phasePrecision = 2**14
+    def round_phase(phase, precision):
+        """
+        Helper function to round a phase to a certain binary precision.
+        """
+        #Convert radians to portion of circle and then to integer precision round to precision
+        return round(phasePrecision*np.mod(phase/2.0/pi,1))
+
+    #Keep a dictionary of pulses and phases
+    pulseDict = {}
+
     for miniLL in linkList:
         curFrame = 0.0
         for entry in miniLL:
@@ -43,16 +56,22 @@ def apply_SSB(linkList, wfLib, SSBFreq, samplingRate):
             if entry.key == Compiler.TAZKey: 
                 curFrame += phaseStep*entry.length
             elif entry.isTimeAmp:
-                raise NameError("Unable to handle SSB square pulses")
+                raise NotImplementedError("Unable to handle SSB square pulses")
             else:
-                shape = np.copy(wfLib[entry.key])
-                phaseRamp = phaseStep*np.arange(0.5, shape.size)
-                shape *= np.exp(1j*(curFrame + phaseRamp))
-                shapeHash = Compiler.hash_pulse(shape)
-                if shapeHash not in wfLib:
-                    wfLib[shapeHash] = shape
-                entry.key = shapeHash
-                curFrame += phaseStep*entry.length 
+                intPhase = round_phase(curFrame, 14)
+                pulseTuple = (entry.key, intPhase)
+                if pulseTuple in pulseDict:
+                    entry.key = pulseDict[pulseTuple]
+                else:
+                    shape = np.copy(wfLib[entry.key])
+                    phaseRamp = phaseStep*np.arange(0.5, shape.size)
+                    shape *= np.exp(1j*((2.0/pi/phasePrecision)*intPhase + phaseRamp))
+                    shapeHash = Compiler.hash_pulse(shape)
+                    if shapeHash not in wfLib:
+                        wfLib[shapeHash] = shape
+                    pulseDict[pulseTuple] = shapeHash
+                    entry.key = shapeHash
+                curFrame += phaseStep*entry.length
 
 def align(linkList, mode, length):
     for miniLL in linkList:
