@@ -333,7 +333,7 @@ def MEAS(*args, **kwargs):
         measShape = measChan.pulseParams['shapeFun'](**params)
         #Apply the autodyne frequency 
         timeStep = 1.0/measChan.physChan.samplingRate
-        timePts = np.arange(0, timeStep*measShape.size, timeStep)
+        timePts = np.linspace(0, params['length'], len(measShape))
         measShape *= np.exp(-1j*2*pi*measChan.autodyneFreq*timePts)
         return Pulse("MEAS", measChan, measShape, 0.0, 0.0) 
 
