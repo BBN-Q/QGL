@@ -44,11 +44,11 @@ def apply_SSB(linkList, wfLib, SSBFreq, samplingRate):
         Helper function to round a phase to a certain binary precision.
         """
         #Convert radians to portion of circle and then to integer precision round to precision
-        return round(phasePrecision*np.mod(phase/2.0/pi,1))
+        intPhase = round(phasePrecision*np.mod(phase/2.0/pi,1))
+        return int(intPhase), 2*pi*(intPhase/phasePrecision)
 
     #Keep a dictionary of pulses and phases
     pulseDict = {}
-
     for miniLL in linkList:
         curFrame = 0.0
         for entry in miniLL:
@@ -58,14 +58,14 @@ def apply_SSB(linkList, wfLib, SSBFreq, samplingRate):
             elif entry.isTimeAmp:
                 raise NotImplementedError("Unable to handle SSB square pulses")
             else:
-                intPhase = round_phase(curFrame, 14)
+                intPhase, truncPhase = round_phase(curFrame, 14)
                 pulseTuple = (entry.key, intPhase)
                 if pulseTuple in pulseDict:
                     entry.key = pulseDict[pulseTuple]
                 else:
                     shape = np.copy(wfLib[entry.key])
                     phaseRamp = phaseStep*np.arange(0.5, shape.size)
-                    shape *= np.exp(1j*((2.0/pi/phasePrecision)*intPhase + phaseRamp))
+                    shape *= np.exp(1j*(truncPhase + phaseRamp))
                     shapeHash = Compiler.hash_pulse(shape)
                     if shapeHash not in wfLib:
                         wfLib[shapeHash] = shape
