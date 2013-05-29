@@ -88,7 +88,7 @@ class PulseSeqPlotWindow(QtGui.QWidget):
             for chanName in sorted(awg.keys()):
                 childItem = QtGui.QTreeWidgetItem([chanName])
                 #Default to not checked if there is nothing going on
-                if np.all(self.AWGWFs[awgName][chanName][0] == 0):
+                if all([np.all(seq == 0) for seq in self.AWGWFs[awgName][chanName]]):
                     childItem.setCheckState(0, QtCore.Qt.Unchecked)
                 else:
                     childItem.setCheckState(0,QtCore.Qt.Checked)
