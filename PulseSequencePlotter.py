@@ -48,7 +48,7 @@ class PulseSeqPlotWindow(QtGui.QWidget):
         
         self.AWGWFs = AWGWFs
         
-        numSeqs = max([len(tmpChan) for tmpAWG in self.AWGWFs.values() for tmpChan in tmpAWG.values()])
+        numSeqs = max([len(tmpChan) for awg in self.AWGWFs.values() for tmpChan in awg.values()])
         
         #Create the GUI
         self.resize(1000,700)
@@ -83,18 +83,18 @@ class PulseSeqPlotWindow(QtGui.QWidget):
         plotCheckBoxes.setMinimumWidth(150)
         plotCheckBoxes.setHeaderLabel('Channel Plot')
         plotCheckBoxes.itemClicked.connect(self.new_plot)
-        for tmpAWGName, tmpAWG in self.AWGWFs.items():
-            tmpItem = QtGui.QTreeWidgetItem([tmpAWGName])
-            for tmpChannelName in sorted(tmpAWG.keys()):
-                tmpChildItem = QtGui.QTreeWidgetItem([tmpChannelName])
+        for awgName, awg in self.AWGWFs.items():
+            item = QtGui.QTreeWidgetItem([awgName])
+            for chanName in sorted(awg.keys()):
+                childItem = QtGui.QTreeWidgetItem([chanName])
                 #Default to not checked if there is nothing going on
-                if np.all(self.AWGWFs[tmpAWGName][tmpChannelName][0] == 0):
-                    tmpChildItem.setCheckState(0, QtCore.Qt.Unchecked)
+                if np.all(self.AWGWFs[awgName][chanName][0] == 0):
+                    childItem.setCheckState(0, QtCore.Qt.Unchecked)
                 else:
-                    tmpChildItem.setCheckState(0,QtCore.Qt.Checked)
-                tmpItem.addChild(tmpChildItem)
-            plotCheckBoxes.addTopLevelItem(tmpItem)
-            tmpItem.setExpanded(True)
+                    childItem.setCheckState(0,QtCore.Qt.Checked)
+                item.addChild(childItem)
+            plotCheckBoxes.addTopLevelItem(item)
+            item.setExpanded(True)
         self.plotCheckBoxes = plotCheckBoxes
         
         
@@ -145,17 +145,17 @@ class PulseSeqPlotWindow(QtGui.QWidget):
         vertShift = 0
         for itemct in range(self.plotCheckBoxes.topLevelItemCount()):
             tmpItem = self.plotCheckBoxes.topLevelItem(itemct)
-            tmpAWGName = str(tmpItem.text(0))
+            awgName = str(tmpItem.text(0))
             for childct in range(tmpItem.childCount()):
-                tmpChild = tmpItem.child(childct)
-                if tmpChild.checkState(0) == QtCore.Qt.Checked:
-                    if curSegNum < len(self.AWGWFs[tmpAWGName][str(tmpChild.text(0))]):
-                        tmpChanStr = ''.join([tmpAWGName,str(tmpChild.text(0))]) 
-                        self.lines[tmpChanStr] = {}
-                        self.lines[tmpChanStr]['handle'], = self.ax.plot(self.AWGWFs[tmpAWGName][str(tmpChild.text(0))][curSegNum] + vertShift)
-                        self.lines[tmpChanStr]['vertShift'] = vertShift
-                        self.lines[tmpChanStr]['awgData'] = self.AWGWFs[tmpAWGName][str(tmpChild.text(0))]
-                    self.ax.text(0, vertShift,tmpAWGName+'-'+str(tmpChild.text(0)), fontsize=8)
+                child = tmpItem.child(childct)
+                if child.checkState(0) == QtCore.Qt.Checked:
+                    if curSegNum < len(self.AWGWFs[awgName][str(child.text(0))]):
+                        chanStr = ''.join([awgName,str(child.text(0))]) 
+                        self.lines[chanStr] = {}
+                        self.lines[chanStr]['handle'], = self.ax.plot(self.AWGWFs[awgName][str(child.text(0))][curSegNum] + vertShift)
+                        self.lines[chanStr]['vertShift'] = vertShift
+                        self.lines[chanStr]['awgData'] = self.AWGWFs[awgName][str(child.text(0))]
+                    self.ax.text(0, vertShift,awgName+'-'+str(child.text(0)), fontsize=8)
                     vertShift += 2
         self.ax.set_ylim((-1, vertShift))                    
         self.canvas.draw()
@@ -168,9 +168,9 @@ class PulseSeqPlotWindow(QtGui.QWidget):
         #Get the current segment number
         curSegNum = self.slider.sliderPosition()
 
-        for tmpChanStr, tmpLine in self.lines.items():
-            if curSegNum < len(tmpLine['awgData']):
-                tmpLine['handle'].set_data(np.arange(tmpLine['awgData'][curSegNum].size), tmpLine['awgData'][curSegNum] + tmpLine['vertShift'])
+        for line in self.lines.values():
+            if curSegNum < len(line['awgData']):
+                line['handle'].set_data(np.arange(line['awgData'][curSegNum].size), line['awgData'][curSegNum] + line['vertShift'])
         
         self.canvas.draw()
         
