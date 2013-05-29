@@ -15,9 +15,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 '''
+import numpy as np
+import hashlib
 
 import config
-import numpy as np
 import PatternUtils
 import Channels
 from PulsePrimitives import Id
@@ -31,10 +32,8 @@ from TekPattern import write_Tek_file
 
 
 def hash_pulse(shape):
-    # if we need more speed, this version is about 10x faster in my tests on arrays of length 2000
-    #return hashlib.sha1(shape.view(np.uint8)).hexdigest()
-    return hash(tuple(shape))
-
+    return hashlib.sha1(shape.tostring()).hexdigest()
+    
 TAZKey = hash_pulse(np.zeros(1, dtype=np.complex))
 markerHighKey = hash_pulse(np.ones(1, dtype=np.bool))
 
