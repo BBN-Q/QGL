@@ -22,6 +22,7 @@ import config
 import PatternUtils
 import Channels
 from PulsePrimitives import Id
+import PulseSequencer
 from Libraries import channelLib, instrumentLib
 from warnings import warn
 from instruments.AWGs import get_empty_channel_set, APS, Tek5014
@@ -71,7 +72,10 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
     PatternUtils.add_digitizer_trigger(seqs, channelLib['digitizerTrig'])
     
     # normalize sequences
-    seqs = [normalize(seq) for seq in seqs]
+    channels = set([])
+    for seq in seqs:
+        channels |= find_unique_channels(seq)
+    seqs = [normalize(seq, channels) for seq in seqs]
 
     #Compile all the pulses/pulseblocks to linklists and waveform libraries
     linkLists, wfLib = compile_sequences(seqs)
@@ -261,10 +265,16 @@ def compress_wfLib(seqs, wfLib):
 def find_unique_channels(seq):
     channels = set([])
     for step in seq:
-        channels |= set(step.pulses.keys())
+        if isinstance(step, PulseSequencer.Pulse):
+            if isinstance(step.qubits, Channels.Channel):
+                channels |= set([step.qubits])
+            else:
+                channels |= set(step.qubits)
+        else:
+            channels |= set(step.pulses.keys())
     return channels
 
-def normalize(seq):
+def normalize(seq, channels=None):
     '''
     For mixed lists of Pulses and PulseBlocks, converts to list of PulseBlocks
     with uniform channels on each PulseBlock. We inject Id's where necessary.
@@ -272,7 +282,8 @@ def normalize(seq):
     # promote to PulseBlocks
     seq = [p.promote() for p in seq]
 
-    channels = set(find_unique_channels(seq))
+    if not channels:
+        channels = find_unique_channels(seq)
 
     # inject Id's for PulseBlocks not containing every channel
     for block in seq:
