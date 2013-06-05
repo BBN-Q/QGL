@@ -77,3 +77,12 @@ def tanh(amp=1, length=0, sigma=0, cutoff=2, samplingRate=1e9, **params):
     x1 = -length/2 + cutoff*sigma
     x2 = +length/2 - cutoff*sigma
     return amp*0.5*(np.tanh((xPts-x1)/sigma) + np.tanh((x2-xPts)/sigma)).astype(np.complex)
+
+def measPulse(amp=1, length=0, sigma=0, samplingRate=1e9, **params):
+    """
+    An exponentially decaying pulse to try and populate the cavity as quickly as possible.
+    But then don't overdrive it.
+    """
+    numPts = np.round(length*samplingRate)
+    timePts = (1.0/samplingRate)*np.arange(numPts)
+    return amp*(0.8*np.exp(-timePts/sigma) + 0.2).astype(np.complex)
