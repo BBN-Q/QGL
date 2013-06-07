@@ -113,7 +113,6 @@ def create_gate_seqs(linkList, gateBuffer=0, gateMinWidth=0, samplingRate=1.2e9)
     # high to gate pulse
     startDelay = gateBuffer
     for miniLL in linkList:
-        # import pdb; pdb.set_trace()
         #Initialize a zero-length padding sequence
         gateSeqs.append([Compiler.create_padding_LL(0)])
         # we need to pad the miniLL with an extra entry if the last entry is not a zero
@@ -158,17 +157,16 @@ def create_gate_seqs(linkList, gateBuffer=0, gateMinWidth=0, samplingRate=1.2e9)
             del gateSeqs[-1][r]
 
         #Loop through again and make sure that all the low point between pulses are sufficiently long
-        removeList = []
         entryct = 2
         while entryct < len(gateSeqs[-1])-2:
             if gateSeqs[-1][entryct].totLength < gateMinWidth:
-                removeList.append(entryct)
-                removeList.append(entryct+1)
+                # add this entry length and next entry length to previous entry
                 gateSeqs[-1][entryct-1].length += \
                         gateSeqs[-1][entryct].totLength + gateSeqs[-1][entryct+1].totLength
-            entryct += 2
-        for r in reversed(removeList):
-            del gateSeqs[-1][r]
+                # delete two entries
+                del gateSeqs[-1][entryct:entryct+2]
+            else:
+                entryct += 2
 
 
     return gateSeqs
