@@ -171,7 +171,7 @@ def arb_axis_drag(qubit, nutFreq, rotAngle=0, polarAngle=0, aziAngle=0, **kwargs
         gaussPulse = PulseShapes.gaussian(amp=1, **params)
 
         #To calculate the phase ramping we'll need the sampling rate
-        sampRate = qubit.physicalChannel.samplingRate
+        sampRate = qubit.physChan.samplingRate
 
         #Scale to achieve to the desired rotation
         calScale = (rotAngle/2/pi)*sampRate/sum(gaussPulse)
@@ -197,7 +197,7 @@ def arb_axis_drag(qubit, nutFreq, rotAngle=0, polarAngle=0, aziAngle=0, **kwargs
         shape = np.array([], dtype=np.complex128)
     else:
         raise ValueError('Non-zero transverse rotation with zero-length pulse.')
-    
+
     return Pulse("ArbAxis", qubit, shape, 0.0, frameChange)
 
 def AC(qubit, cliffNum):
@@ -218,7 +218,7 @@ def AC(qubit, cliffNum):
     #Figure out the approximate nutation frequency calibration from the X180 and the samplingRate
     Xp = X(qubit)
     xpulse = Xp.shape
-    nutFreq = 0.5/(sum(xpulse)/qubit.physicalChannel.samplingRate);
+    nutFreq = 0.5/(sum(xpulse)/qubit.physChan.samplingRate);
 
 
     #Now a big else if chain for to get the specific Clifford
