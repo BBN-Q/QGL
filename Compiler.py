@@ -27,7 +27,7 @@ from Libraries import channelLib, instrumentLib
 from warnings import warn
 from instruments.AWGs import get_empty_channel_set, APS, Tek5014
 
-SEQUENCE_PADDING = 480
+SEQUENCE_PADDING = 480 #2800 #480
 from APSPattern import write_APS_file
 from TekPattern import write_Tek_file
 
@@ -239,12 +239,13 @@ def compile_sequence(seq, wfLib={} ):
                     entry.isTimeAmp = True
                     shape = shape[:1]
 
-                #Rotate for phase and frame change 
-                shape *= np.exp(1j*(entry.phase+curFrame))
-                shapeHash = hash_pulse(shape)
-                if shapeHash not in wfLib[chan]:
-                    wfLib[chan][shapeHash] = shape
-                entry.key = shapeHash
+                #Rotate for phase and frame change (don't rotate zeros...)
+                if entry.key != TAZKey:
+                    shape *= np.exp(1j*(entry.phase+curFrame))
+                    shapeHash = hash_pulse(shape)
+                    if shapeHash not in wfLib[chan]:
+                        wfLib[chan][shapeHash] = shape
+                    entry.key = shapeHash
                 curFrame += entry.frameChange 
 
     return logicalLLs, wfLib
