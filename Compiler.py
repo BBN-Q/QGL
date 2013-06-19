@@ -17,6 +17,7 @@ limitations under the License.
 '''
 import numpy as np
 import hashlib
+import os
 
 import config
 import PatternUtils
@@ -153,6 +154,10 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
                                  'wfLib': {TAZKey:np.zeros(1, dtype=np.complex)}}
 
             # convert to hardware formats
+            # create the target folder if it does not exist
+            targetFolder = os.path.split(config.AWGDir + fileName)[0]
+            if not os.path.exists(targetFolder):
+                os.mkdir(targetFolder)
             fullFileName = config.AWGDir + fileName + '-' + awgName + suffix + instrumentLib[awgName].seqFileExt
             if isinstance(instrumentLib[awgName], APS):
                 write_APS_file(awg, fullFileName )
