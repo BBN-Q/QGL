@@ -117,15 +117,19 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
                     PatternUtils.correctMixer(chanData['wfLib'], chanObj.correctionT)
 
                     # add gate pulses on the marker channel
-                    markerKey = 'ch' + chanObj.gateChan.name.split('-')[1]
+                    # note that the marker may be on an entirely different AWG
+                    markerAwgName, markerKey = chanObj.gateChan.name.split('-')
+                    markerKey = 'ch' + markerKey
+                    markerAwg = awgData[markerAwgName]
                     genObj = chanObj.generator
                     #TODO: check if this actually catches overwriting markers
-                    if awg[markerKey]:
+                    if markerAwg[markerKey]:
                         warn('Reuse of marker gating channel: {0}'.format(markerKey))
-                    awg[markerKey] = {'linkList':None, 'wfLib':markerWFLib}
-                    awg[markerKey]['linkList'] = PatternUtils.create_gate_seqs(
+                    markerAwg[markerKey] = {'linkList':None, 'wfLib':markerWFLib}
+                    markerAwg[markerKey]['linkList'] = PatternUtils.create_gate_seqs(
                         chanData['linkList'], genObj.gateBuffer, genObj.gateMinWidth, chanObj.samplingRate)
-                    PatternUtils.delay(awg[markerKey]['linkList'], genObj.gateDelay+chanObj.gateChan.delay, chanObj.gateChan.samplingRate )
+                    markerDelay = genObj.gateDelay + chanObj.gateChan.delay + (chanObj.AWG.delay - chanObj.gateChan.AWG.delay)
+                    PatternUtils.delay(markerAwg[markerKey]['linkList'], markerDelay, chanObj.gateChan.samplingRate )
 
                 elif isinstance(chanObj, Channels.PhysicalMarkerChannel):
                     PatternUtils.delay(chanData['linkList'], chanObj.delay+chanObj.AWG.delay, chanObj.samplingRate)
