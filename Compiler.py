@@ -52,7 +52,10 @@ def get_channel_name(chanKey):
 def setup_awg_channels(logicalChannels):
     awgs = set([])
     for chan in logicalChannels:
-        awgs.add(channelLib[get_channel_name(chan)].AWG)
+        awgs.add(chan.AWG)
+        # dig in an grab the associated gate channel, too
+        if not isinstance(chan, Channels.LogicalMarkerChannel):
+            awgs.add(chan.physChan.gateChan.AWG)
     return {awg.name:get_empty_channel_set(awg) for awg in awgs}
 
 
