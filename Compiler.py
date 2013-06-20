@@ -263,7 +263,7 @@ def compress_wfLib(seqs, wfLib):
     '''
     Helper function to remove unused waveforms from the library.
     '''
-    usedKeys = set([TAZKey])
+    usedKeys = set([TAZKey, markerHighKey])
     for miniLL in seqs:
         for entry in miniLL:
             usedKeys.add(entry.key)

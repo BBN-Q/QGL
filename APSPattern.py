@@ -20,7 +20,8 @@ import h5py
 import os
 import numpy as np
 from warnings import warn
-from itertools import chain
+from itertools import chain, izip_longest
+from copy import copy, deepcopy
 
 #Some constants
 ADDRESS_UNIT = 4 #everything is done in units of 4 timesteps
@@ -203,6 +204,13 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 	'''
 
 	markerAttr = 'markerDelay' + str(markerNum)
+
+	# expand link lists to the same length (copying first element of shorter one)
+	for miniLL_IQ, miniLL_m in izip_longest(IQLL, markerLL):
+		if not miniLL_IQ:
+			IQLL.append(deepcopy(IQLL[0]))
+		if not miniLL_m:
+			markerLL.append(deepcopy(markerLL[0]))
 
 	#Step through the all the miniLL's together
 	for miniLL_IQ, miniLL_m in zip(IQLL, markerLL):
