@@ -237,9 +237,13 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 
 		#Now map onto linklist elements
 		curIQIdx = 0
+		trigQueue = []
 		for switchPt in switchPts:
 			#If the trigger count is too long we need to move to the next IQ entry
-			while (switchPt - timePts[curIQIdx]) > MAX_TRIGGER_COUNT:
+			while ((switchPt - timePts[curIQIdx]) > MAX_TRIGGER_COUNT) or (len(trigQueue) > 1):
+				# update the trigger queue, dropping triggers that have played
+				trigQueue = [t - miniLL_IQ[curIQIdx].length for t in trigQueue]
+				trigQueue = [t for t in trigQueue if t >= 0]
 				curIQIdx += 1
 			#Push on the trigger count
 			if switchPt - timePts[curIQIdx] <= 0:
@@ -247,6 +251,10 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 				print("Had to push marker blip out to start of next entry.")
 			else:
 				setattr(miniLL_IQ[curIQIdx], markerAttr, switchPt - timePts[curIQIdx])
+				trigQueue.insert(0, switchPt - timePts[curIQIdx])
+			# update the trigger queue
+			trigQueue = [t - miniLL_IQ[curIQIdx].length for t in trigQueue]
+			trigQueue = [t for t in trigQueue if t >= 0]
 			curIQIdx += 1
 
 	#Replace any remaining empty entries with None
