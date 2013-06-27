@@ -60,13 +60,37 @@ def gaussOn(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
 
 def gaussOff(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
     '''
-    A half-gaussian pulse going from zero to full
+    A half-gaussian pulse going from full to zero
     '''
     #Round to how many points we need
     numPts = np.round(length*samplingRate)
     xPts = np.linspace(0, cutoff, numPts)
     xStep = xPts[1] - xPts[0]
     return (amp * (np.exp(-0.5*(xPts**2)) - np.exp(-0.5*((xPts[-1]+xStep)**2)))).astype(np.complex)
+
+def dragGaussOn(amp=1, length=0, cutoff=2, dragScaling=0.5, samplingRate=1e9, **params):
+    '''
+    A half-gaussian pulse with drag correction going from zero to full
+    '''
+    numPts = np.round(length*samplingRate)
+    xPts = np.linspace(-cutoff, 0, numPts)
+    xStep = xPts[1] - xPts[0]
+    IQuad = np.exp(-0.5*(xPts**2)) - np.exp(-0.5*((xPts[0]-xStep)**2))
+    derivScale = 1/(length/2/cutoff*samplingRate)
+    QQuad = dragScaling*derivScale*xPts*IQuad
+    return amp * (IQuad+1j*QQuad)
+
+def dragGaussOff(amp=1, length=0, cutoff=2, dragScaling=0.5, samplingRate=1e9, **params):
+    '''
+    A half-gaussian pulse with drag correction going from full to zero
+    '''
+    numPts = np.round(length*samplingRate)
+    xPts = np.linspace(0, cutoff, numPts)
+    xStep = xPts[1] - xPts[0]
+    IQuad = np.exp(-0.5*(xPts**2)) - np.exp(-0.5*((xPts[-1]+xStep)**2))
+    derivScale = 1/(length/2/cutoff*samplingRate)
+    QQuad = dragScaling*derivScale*xPts*IQuad
+    return amp * (IQuad+1j*QQuad)
 
 def tanh(amp=1, length=0, sigma=0, cutoff=2, samplingRate=1e9, **params):
     '''
