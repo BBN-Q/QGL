@@ -49,10 +49,9 @@ class Pulse(object):
 
     # adding pulses concatenates the pulse shapes
     def __add__(self, other):
-        newLabel = self.label+"+"+other.label
         if self.qubits != other.qubits:
             raise NameError("Can only concatenate pulses acting on the same channel")
-        return Pulse(newLabel, self.qubits, np.append(np.exp(1j*self.phase)*self.shape, np.exp(1j*other.phase)*other.shape), 0., self.frameChange + other.frameChange)
+        return CompositePulse([self, other])
 
     # unary negation inverts the pulse shape
     # TODO: does the frame change need to be updated??
@@ -83,6 +82,54 @@ def TAPulse(label, qubits, length, amp, phase, frameChange):
     p.isTimeAmp = True
     p.TALength = length
     return p
+
+class CompositePulse(object):
+    '''
+    A sequential series of pulses that reside within one time bin of a pulse block
+    '''
+    def __init__(self, pulses, label=""):
+        self.pulses = pulses
+        self.label = label
+
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        if self.label != "":
+            return self.label
+        else:
+            return "+".join([str(p) for p in self.pulses])
+
+    def __add__(self, other):
+        if self.qubits != other.qubits:
+            raise NameError("Can only concatenate pulses acting on the same channel")
+        if hasattr(other, 'pulses'):
+            return CompositePulse(self.pulses + other.pulses)
+        else:
+            return CompositePulse(self.pulses + [other])
+
+    def __mul__(self, other):
+        return self.promote()*other.promote()
+
+    def promote(self):
+        # promote a CompositePulse to a PulseBlock
+        pb =  PulseBlock()
+        pb.pulses = {self.qubits: self}
+        return pb
+
+    @property
+    def qubits(self):
+        # Assume that the first pulse in the composite contains the qubit information
+        return self.pulses[0].qubits
+
+    @property
+    def length(self):
+        return sum([p.length for p in self.pulses])
+
+    @property
+    def frameChange(self):
+        return sum([p.frameChange for p in self.pulses])
+
 
 class PulseBlock(object):
     '''

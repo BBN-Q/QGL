@@ -226,15 +226,19 @@ def compile_sequence(seq, wfLib={} ):
             carriedPhase = {ch: carriedPhase[ch]+block.pulses[ch].frameChange for ch in channels}
             continue
         for chan in channels:
-            # add aligned LL entry
-            wf, LLentry = align(block.pulses[chan], blockLength, block.alignment)
-            if isinstance(chan, Channels.LogicalMarkerChannel):
-                wf = wf.astype(np.bool)
-            if hash_pulse(wf) not in wfLib:
-                wfLib[chan][hash_pulse(wf)] = wf
-            LLentry[0].phase -= carriedPhase[chan]
-            LLentry[0].frameChange += carriedPhase[chan]
-            logicalLLs[chan] += LLentry
+            # add aligned LL entry(ies) (if the block contains a composite pulse, may get back multiple waveforms and LL entries)
+            wfs, LLentries = align(block.pulses[chan], blockLength, block.alignment)
+            for wf in wfs:
+                if isinstance(chan, Channels.LogicalMarkerChannel):
+                    wf = wf.astype(np.bool)
+                if hash_pulse(wf) not in wfLib:
+                    wfLib[chan][hash_pulse(wf)] = wf
+            # all LL entries in a block have the same phase
+            for LLentry in LLentries:
+                LLentry.phase -= carriedPhase[chan]
+            # but only the last entry needs to carry the frame change
+            LLentries[-1].frameChange += carriedPhase[chan]
+            logicalLLs[chan] += LLentries
         carriedPhase = {ch: 0 for ch in channels}
 
     # loop through again to find phases, frame changes, and SSB modulation for quadrature channels
@@ -347,43 +351,50 @@ def create_padding_LL(length=SEQUENCE_PADDING, high=False):
     return tmpLL
 
 def align(pulse, blockLength, alignment, cutoff=12):
-    entry = LLElement(pulse)
-    entry.length = pulse.length
-    entry.key = hash_pulse(pulse.shape)
-    entry.phase = pulse.phase
-    entry.frameChange = pulse.frameChange
-    padLength = blockLength - entry.length
-    shape = pulse.shape
+    # check for composite pulses
+    if hasattr(pulse, 'pulses'):
+        entries = [LLElement(p) for p in pulse.pulses]
+        shapes = [p.shape for p in pulse.pulses]
+    else:
+        entries = [LLElement(pulse)]
+        shapes = [pulse.shape]
+    padLength = blockLength - pulse.length
     if padLength == 0:
-        # can do everything with a single LLentry
-        return shape, [entry]
+        # no padding element required
+        return shapes, entries
     if (padLength < cutoff) and (alignment == "left" or alignment == "right"):
-        # pad the shape on one side
+        # pad the first/last shape on one side
         if alignment == "left":
-            shape = np.hstack((shape, np.zeros(padLength)))
+            shapes[-1] = np.hstack((shapes[-1], np.zeros(padLength)))
+            entries[-1].key = hash_pulse(shapes[-1])
         else: #right alignment
-            shape = np.hstack((np.zeros(padLength), shape))
-        entry.key = hash_pulse(shape)
-        return shape, [entry]
+            shapes[0] = np.hstack((np.zeros(padLength), shapes[0]))
+            entries[0].key = hash_pulse(shapes[0])
     elif (padLength < 2*cutoff and alignment == "center"):
-        # pad the shape on each side
-        shape = np.hstack(( np.zeros(np.floor(padLength/2)), shape, np.zeros(np.ceil(padLength/2)) ))
-        entry.key = hash_pulse(shape)
-        return shape, [entry]
+        # pad the both sides of the shape(s)
+        if len(shapes) == 1:
+            shapes[0] = np.hstack(( np.zeros(np.floor(padLength/2)), shapes[0], np.zeros(np.ceil(padLength/2)) ))
+            entries[0].key = hash_pulse(shapes[0])
+        else:
+            shapes[0] = np.hstack(( np.zeros(np.floor(padLength/2)), shapes[0]))
+            shapes[-1] = np.hstack(( np.zeroes(np.ceil(padLength/2)), shapes[-1]))
+            entries[0].key = hash_pulse(shapes[0])
+            entries[-1].key = hash_pulse(shapes[-1])
     elif padLength == blockLength:
         #Here we have a zero-length sequence which just needs to be expanded
-        entry.key = TAZKey
-        entry.length = blockLength
-        return np.zeros(1, dtype=np.complex), [entry]
+        entries[0].key = TAZKey
+        entries[0].length = blockLength
+        shapes = [np.zeros(1, dtype=np.complex)]
     else:
         #split the entry into the shape and one or more TAZ
         if alignment == "left":
             padEntry = create_padding_LL(padLength)
-            return shape, [entry, padEntry]
+            entries = entries + [padEntry]
         elif alignment == "right":
             padEntry = create_padding_LL(padLength)
-            return shape, [padEntry, entry]
+            entries = [padEntry] + entries
         else:
             padEntry1 = create_padding_LL(np.floor(padLength/2))
             padEntry2 = create_padding_LL(np.ceil(padLength/2))
-            return shape, [padEntry1, entry, padEntry2]
+            entries = [padEntry1] + entries + [padEntry2]
+    return shapes, entries
