@@ -58,6 +58,11 @@ class PhysicalChannel(Channel):
     samplingRate = DelegatesTo('AWG')
     delay = Float()
 
+    def __init__(self, **kwargs):
+        super(PhysicalChannel, self).__init__(**kwargs)
+        if self.AWG is None:
+            self.AWG = AWG()
+
 
 class LogicalChannel(Channel):
     '''
@@ -102,6 +107,11 @@ class Qubit(LogicalChannel):
     '''
     pulseParams = DictStrAny({'length':20e-9, 'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.gaussian, 'buffer':0.0, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9})
 
+    def __init__(self, **kwargs):
+        super(Qubit, self).__init__(**kwargs)
+        if self.physChan is None:
+            self.physChan = PhysicalQuadratureChannel(name=kwargs['name']+'-phys')
+
 class Measurement(LogicalChannel):
     '''
     A class for measurement channels. 
@@ -115,18 +125,17 @@ class Measurement(LogicalChannel):
 
 def QubitFactory(name, **kwargs):
     ''' Return a saved qubit channel or create a new one. '''
-    if name in Compiler.channelLib.channelDict and isinstance(Compiler.channelLib[name], Qubit):
+    if Compiler.channelLib and name in Compiler.channelLib.channelDict and isinstance(Compiler.channelLib[name], Qubit):
         return Compiler.channelLib[name]
     else:
         return Qubit(name=name, **kwargs)
 
 def MeasFactory(name, measType='autodyne', **kwargs):
     ''' Return a saved measurment channel or create a new one. '''
-    if name in Compiler.channelLib.channelDict and isinstance(Compiler.channelLib[name], Measurement):
+    if Compiler.channelLib and name in Compiler.channelLib.channelDict and isinstance(Compiler.channelLib[name], Measurement):
         return Compiler.channelLib[name]
     else:
-        if measType == 'autodyne':
-            return Measurement()
+        return Measurement(measType = measType)
 
 class ChannelLibrary(HasTraits):
     channelDict = Dict(Str, Channel)
