@@ -22,6 +22,7 @@ limitations under the License.
 
 import json
 import PulseShapes
+import Compiler
 import config
 import numpy as np
 
@@ -113,19 +114,16 @@ class Measurement(LogicalChannel):
 
 
 def QubitFactory(name, **kwargs):
-    #delayed import to avoid circular imports
-    from Libraries import channelLib
     ''' Return a saved qubit channel or create a new one. '''
-    if name in channelLib.channelDict and isinstance(channelLib[name], Qubit):
-        return channelLib[name]
+    if name in Compiler.channelLib.channelDict and isinstance(Compiler.channelLib[name], Qubit):
+        return Compiler.channelLib[name]
     else:
         return Qubit(name=name, **kwargs)
 
 def MeasFactory(name, measType='autodyne', **kwargs):
     ''' Return a saved measurment channel or create a new one. '''
-    from Libraries import channelLib
-    if name in channelLib.channelDict and isinstance(channelLib[name], Measurement):
-        return channelLib[name]
+    if name in Compiler.channelLib.channelDict and isinstance(Compiler.channelLib[name], Measurement):
+        return Compiler.channelLib[name]
     else:
         if measType == 'autodyne':
             return Measurement()
@@ -211,13 +209,12 @@ NewPhysicalChannelList = [PhysicalMarkerChannel, PhysicalQuadratureChannel]
 if __name__ == '__main__':
     # create a channel params file
     import QGL.Channels
-    from Libraries import instrumentLib, channelLib
     import enaml
     from enaml.stdlib.sessions import show_simple_view
 
     with enaml.imports():
         from ChannelsViews import ChannelLibraryWindow
-    show_simple_view(ChannelLibraryWindow(channelLib=channelLib, instrumentLib=instrumentLib))
+    show_simple_view(ChannelLibraryWindow(channelLib=Compiler.channelLib, instrumentLib=instrumentLib))
 
 
 

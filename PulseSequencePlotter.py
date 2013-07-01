@@ -33,7 +33,7 @@ from PySide import QtCore, QtGui
 
 import numpy as np
 
-from Libraries import instrumentLib
+import Compiler
 from instruments.AWGs import APS, Tek5014, Tek7000
 from APSPattern import read_APS_file
 from TekPattern import read_Tek_file
@@ -219,9 +219,9 @@ def plot_pulse_files(AWGFileNames):
         except ValueError:
             pass
         #Look up the appropriate model in the instrumentLib
-        if isinstance(instrumentLib[AWGName], Tek5014) or isinstance(instrumentLib[AWGName], Tek7000):
+        if isinstance(Compiler.instrumentLib[AWGName], Tek5014) or isinstance(Compiler.instrumentLib[AWGName], Tek7000):
             AWGWFs[AWGName] = read_Tek_file(tmpFile)
-        elif isinstance(instrumentLib[AWGName], APS):
+        elif isinstance(Compiler.instrumentLib[AWGName], APS):
             AWGWFs[AWGName] = read_APS_file(tmpFile)
         else:
             raise NameError('Unknown AWG Type for {0}: we currently only handle TekAWG and BBNAPS.'.format(tmpFile))

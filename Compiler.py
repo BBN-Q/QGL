@@ -18,20 +18,22 @@ limitations under the License.
 import numpy as np
 import hashlib
 import os
+from warnings import warn
 
 import config
 import PatternUtils
 import Channels
 from PulsePrimitives import Id
 import PulseSequencer
-from Libraries import channelLib, instrumentLib
-from warnings import warn
 from instruments.AWGs import get_empty_channel_set, APS, Tek5014
 
 SEQUENCE_PADDING = 480 #2800 #480
 from APSPattern import write_APS_file
 from TekPattern import write_Tek_file
 
+# global parameter libraries
+channelLib = {}
+instrumentLib = {}
 
 def hash_pulse(shape):
     return hashlib.sha1(shape.tostring()).hexdigest()
