@@ -236,8 +236,9 @@ def compile_sequence(seq, wfLib={} ):
                 if hash_pulse(wf) not in wfLib:
                     wfLib[chan][hash_pulse(wf)] = wf
             # all LL entries in a block have the same phase
+            # TODO: propagate frame changes within a composite pulse
             for LLentry in LLentries:
-                LLentry.phase -= carriedPhase[chan]
+                LLentry.phase += carriedPhase[chan]
             # but only the last entry needs to carry the frame change
             LLentries[-1].frameChange += carriedPhase[chan]
             logicalLLs[chan] += LLentries

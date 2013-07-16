@@ -142,11 +142,11 @@ def Z(qubit):
 
 # @_memoize
 def Z90(qubit):
-    return Pulse("Z", qubit, np.array([], dtype=np.complex128), 0, pi/2)
+    return Pulse("Z90", qubit, np.array([], dtype=np.complex128), 0, -pi/2)
 
 # @_memoize
 def Z90m(qubit):
-    return Pulse("Z", qubit, np.array([], dtype=np.complex128), 0, -pi/2)
+    return Pulse("Z90m", qubit, np.array([], dtype=np.complex128), 0, pi/2)
 
 def Ztheta(qubit, angle=0):
     return Pulse("Ztheta", qubit, np.array([], dtype=np.complex128), 0, angle)
@@ -184,7 +184,7 @@ def arb_axis_drag(qubit, nutFreq, rotAngle=0, polarAngle=0, aziAngle=0, **kwargs
         beta = params['dragScaling']/sampRate
         instantaneousDetuning = beta*(2*pi*calScale*sin(polarAngle)*gaussPulse)**2
         phaseSteps = phaseSteps + instantaneousDetuning*(1.0/sampRate)
-        #center phase ramp around the middle of the pulse time stes
+        #center phase ramp around the middle of the pulse time steps
         phaseRamp = np.cumsum(phaseSteps) - phaseSteps/2
 
         frameChange = sum(phaseSteps);
@@ -245,13 +245,13 @@ def AC(qubit, cliffNum):
         return Y90m(qubit)
     elif cliffNum == 7:
         #Z90
-        return arb_axis_drag(qubit, nutFreq, rotAngle=pi/2, length=0)
+        return Z90(qubit)
     elif cliffNum == 8:
         #Z180
-        return arb_axis_drag(qubit, nutFreq, rotAngle=pi, length=0)
+        return Z(qubit)
     elif cliffNum == 9:
         #Z90m
-        return arb_axis_drag(qubit, nutFreq, rotAngle=-pi/2, length=0)
+        return Z90m(qubit)
     elif cliffNum == 10:
         #X+Y 180
         return U180(qubit, phase=pi/4)
