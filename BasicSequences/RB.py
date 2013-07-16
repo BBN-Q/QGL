@@ -74,7 +74,7 @@ def SingleQubitRB_AC(qubit, seqFile, showPlot=False):
 		for pulseSeqStr in fileReader:
 			seq = []
 			for pulseStr in pulseSeqStr:
-				seq.append(pulseLib[int(pulseStr)-1])
+				seq.append(pulseLib[int(pulseStr)])
 			seq.append(measBlock)
 			seqs.append(seq)
 
@@ -122,6 +122,7 @@ def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False):
 	seqs = []
 	for ct in range(10):
 		fileName = 'RBT_Seqs_fast_{0}_F1.txt'.format(ct+1)
+		tmpSeqs = []
 		with open(os.path.join(seqFileDir, fileName),'r') as FID:
 			fileReader = reader(FID)
 			for pulseSeqStr in fileReader:
@@ -129,9 +130,10 @@ def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False):
 				for pulseStr in pulseSeqStr:
 					seq.append(pulseLib[int(pulseStr)-1])
 				seq.append(measBlock)
-				seqs.append(seq)
+				tmpSeqs.append(seq)
+			seqs += tmpSeqs[:12]*12 + tmpSeqs[12:-12] + tmpSeqs[-12:]*12
 
-	seqsPerFile = 79
+	seqsPerFile = 100
 	numFiles = len(seqs)//seqsPerFile
 
 	for ct in range(numFiles):
@@ -144,11 +146,4 @@ def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False):
 	if showPlot:
 		plotWin = plot_pulse_files(fileNames)
 		return plotWin
-
-
-
-
-
-
-
 
