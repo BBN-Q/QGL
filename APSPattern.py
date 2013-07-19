@@ -263,7 +263,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 			if not hasattr(entry, markerAttr):
 				setattr(entry, markerAttr, None)
 
-def write_APS_file(awgData, fileName, miniLLRepeat=0):
+def write_APS_file(awgData, fileName, miniLLRepeat=1):
 	'''
 	Main function to pack channel LLs into an APS h5 file.
 	'''
@@ -288,7 +288,7 @@ def write_APS_file(awgData, fileName, miniLLRepeat=0):
 		channelDataFor = [1,2,3,4]
 		FID['/'].attrs['Version'] = 2.0
 		FID['/'].attrs['channelDataFor'] = np.uint16(channelDataFor)
-		FID['/'].attrs['miniLLRepeat'] = np.uint16(miniLLRepeat)
+		FID['/'].attrs['miniLLRepeat'] = np.uint16(miniLLRepeat - 1)
    
 		#Create the waveform vectors
 		wfInfo = []

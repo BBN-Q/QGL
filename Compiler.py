@@ -72,7 +72,7 @@ def map_logical_to_physical(linkLists, wfLib):
     return awgData
 
 
-def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
+def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRepeats=1):
     #Add the digitizer trigger to each sequence
     #TODO: Make this more sophisticated.
     PatternUtils.add_digitizer_trigger(seqs, channelLib['digitizerTrig'])
@@ -165,8 +165,9 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
                 os.mkdir(targetFolder)
             fullFileName = config.AWGDir + fileName + '-' + awgName + suffix + instrumentLib[awgName].seqFileExt
             if isinstance(instrumentLib[awgName], APS):
-                write_APS_file(awg, fullFileName )
+                write_APS_file(awg, fullFileName, nbrRepeats)
             elif isinstance(instrumentLib[awgName], Tek5014):
+                assert nbrRepeats == 1, 'nbrRepeats > 1 not implemented for the Tek'
                 write_Tek_file(awg, fullFileName, fileName)
             else:
                 raise NameError('Unknown AWG type')
