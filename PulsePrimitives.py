@@ -97,58 +97,58 @@ def Utheta(qubit, amp=0, phase=0, **kwargs):
 
 #Setup the default 90/180 rotations
 # @_memoize
-def X(qubit):
-    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['piAmp'], **overrideDefaults(qubit, {}))
+def X(qubit, **kwargs):
+    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['piAmp'], **overrideDefaults(qubit, kwargs))
     return Pulse("X", qubit, shape, 0, 0.0)
     
 # @_memoize
-def X90(qubit):
-    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **overrideDefaults(qubit, {}))
+def X90(qubit, **kwargs):
+    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **overrideDefaults(qubit, kwargs))
     return Pulse("X90", qubit, shape, 0, 0.0)
 
 # @_memoize
-def Xm(qubit):
-    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['piAmp'], **overrideDefaults(qubit, {}))
+def Xm(qubit, **kwargs):
+    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['piAmp'], **overrideDefaults(qubit, kwargs))
     return Pulse("Xm", qubit, shape, pi, 0.0)
     
 # @_memoize
-def X90m(qubit):
-    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **overrideDefaults(qubit, {}))
+def X90m(qubit, **kwargs):
+    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **overrideDefaults(qubit, kwargs))
     return Pulse("X90m", qubit, shape, pi, 0.0)
 
 # @_memoize
-def Y(qubit):
-    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['piAmp'], **overrideDefaults(qubit, {}))
+def Y(qubit, **kwargs):
+    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['piAmp'], **overrideDefaults(qubit, kwargs))
     return Pulse("Y", qubit, shape, pi/2, 0.0)
 
 # @_memoize
-def Y90(qubit):
-    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **overrideDefaults(qubit, {}))
+def Y90(qubit, **kwargs):
+    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **overrideDefaults(qubit, kwargs))
     return Pulse("Y90", qubit, shape, pi/2, 0.0)
 
 # @_memoize
-def Ym(qubit):
-    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['piAmp'], **overrideDefaults(qubit, {}))
+def Ym(qubit, **kwargs):
+    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['piAmp'], **overrideDefaults(qubit, kwargs))
     return Pulse("Ym", qubit, shape, -pi/2, 0.0)
 
 # @_memoize
-def Y90m(qubit):
-    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **overrideDefaults(qubit, {}))
+def Y90m(qubit, **kwargs):
+    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **overrideDefaults(qubit, kwargs))
     return Pulse("Y90m", qubit, shape, -pi/2, 0.0)
 
 # @_memoize
-def Z(qubit):
+def Z(qubit, **kwargs):
     return Pulse("Z", qubit, np.array([], dtype=np.complex128), 0, pi)
 
 # @_memoize
-def Z90(qubit):
+def Z90(qubit **kwargs):
     return Pulse("Z90", qubit, np.array([], dtype=np.complex128), 0, -pi/2)
 
 # @_memoize
-def Z90m(qubit):
+def Z90m(qubit, **kwargs):
     return Pulse("Z90m", qubit, np.array([], dtype=np.complex128), 0, pi/2)
 
-def Ztheta(qubit, angle=0):
+def Ztheta(qubit, angle=0, **kwargs):
     return Pulse("Ztheta", qubit, np.array([], dtype=np.complex128), 0, angle)
 
 def arb_axis_drag(qubit, nutFreq, rotAngle=0, polarAngle=0, aziAngle=0, **kwargs):
