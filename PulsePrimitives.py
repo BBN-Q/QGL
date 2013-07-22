@@ -83,11 +83,11 @@ def U90(qubit, phase=0, **kwargs):
     shape = params['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **params)
     return Pulse("U90", qubit, shape, phase, 0.0)
 
-def U180(qubit, phase=0, **kwargs):
+def U(qubit, phase=0, **kwargs):
     ''' A generic 180 degree rotation with variable phase.  '''
     params = overrideDefaults(qubit, kwargs)
     shape = params['shapeFun'](amp=qubit.pulseParams['piAmp'], **params)
-    return Pulse("U180", qubit, shape, phase, 0.0)
+    return Pulse("U", qubit, shape, phase, 0.0)
     
 def Utheta(qubit, amp=0, phase=0, **kwargs):
     '''  A generic rotation with variable amplitude and phase. '''
@@ -141,7 +141,7 @@ def Z(qubit, **kwargs):
     return Pulse("Z", qubit, np.array([], dtype=np.complex128), 0, pi)
 
 # @_memoize
-def Z90(qubit **kwargs):
+def Z90(qubit, **kwargs):
     return Pulse("Z90", qubit, np.array([], dtype=np.complex128), 0, -pi/2)
 
 # @_memoize
