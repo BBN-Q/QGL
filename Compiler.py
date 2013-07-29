@@ -236,13 +236,8 @@ def compile_sequence(seq, wfLib={} ):
                     wf = wf.astype(np.bool)
                 if hash_pulse(wf) not in wfLib:
                     wfLib[chan][hash_pulse(wf)] = wf
-            # all LL entries in a block have the same phase
-            # TODO: propagate frame changes within a composite pulse
-            for LLentry in LLentries:
-                LLentry.phase += carriedPhase[chan]
-            # but only the last entry needs to carry the frame change
-            LLentries[-1].frameChange += carriedPhase[chan]
-            logicalLLs[chan] += LLentries
+            # Frame changes are then propagated through
+            logicalLLs[chan] += propagate_frame(LLentries, carriedPhase[chan])
         carriedPhase = {ch: 0 for ch in channels}
 
     # loop through again to find phases, frame changes, and SSB modulation for quadrature channels
@@ -269,6 +264,24 @@ def compile_sequence(seq, wfLib={} ):
                 curFrame += entry.frameChange 
 
     return logicalLLs, wfLib
+
+def propagate_frame(entries, frame):
+    '''
+    Propagates a frame change through a list of LL entries, dropping zero length entries
+    '''
+    # The first LL entry picks up the carried phase.
+    entries[0].phase += frame
+    entries[0].frameChange += frame
+    # then push frame changes from zero length entries forward
+    for prevEntry, thisEntry in zip(entries, entries[1:]):
+        if prevEntry.length == 0:
+            thisEntry.phase += prevEntry.frameChange
+            thisEntry.frameChange += prevEntry.frameChange
+    # then drop zero length entries
+    for ct in reversed(range(len(entries))):
+        if entries[ct].length == 0:
+            del entries[ct]
+    return entries
 
 def compress_wfLib(seqs, wfLib):
     '''
