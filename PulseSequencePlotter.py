@@ -230,11 +230,13 @@ def plot_pulse_files(AWGFileNames):
     return plot_pulse_seqs(AWGWFs)
 
 if __name__ == '__main__':
-    
+    #Load the libraries
+    execfile(os.path.join(os.path.dirname(sys.argv[0]), os.path.pardir, 'startup.py'))
+
     #See if we have been passed AWG files
     parser = argparse.ArgumentParser()
     parser.add_argument('--AWGFiles', action='store', dest='AWGFiles',  nargs='+', default=None)    
-    options =  parser.parse_args(sys.argv[1:])
+    options =  parser.parse_args()
     if options.AWGFiles:
         plot_pulse_files(options.AWGFiles)
         
