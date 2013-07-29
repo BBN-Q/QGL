@@ -87,13 +87,60 @@ def SingleQubitRB_AC(qubit, seqFile, showPlot=False):
 	#Hack for limited APS waveform memory and break it up into multiple files
 	#We've shuffled the sequences so that we loop through each gate length on the inner loop
 	numRandomizations = 36
-	numGateLengths = 17
+	# numGateLengths = 17
 	for ct in range(numRandomizations):
 		# chunk = seqs[2*numGateLengths*ct:2*numGateLengths*(ct+1)]
 		chunk = seqs[ct::numRandomizations]
 		#Tack on the calibration scalings
 		chunk += [[Id(qubit), measBlock], [X(qubit), measBlock]]
 		fileNames = compile_to_hardware(chunk, 'RB/RB', suffix='_{0}'.format(ct+1))
+
+	if showPlot:
+		plotWin = plot_pulse_files(fileNames)
+		return plotWin
+
+def SingleQubitIRB_AC(qubit, seqFile, showPlot=False):
+	"""
+
+	Single qubit interleaved randomized benchmarking using atomic Clifford pulses. 
+
+	Parameters
+	----------
+	qubit : logical channel to implement sequence (LogicalChannel) 
+	seqFile : file containing sequence strings
+	showPlot : whether to plot (boolean)
+
+	Returns
+	-------
+	plotHandle : handle to plot window to prevent destruction
+	"""	
+	#Setup a pulse library
+	pulseLib = [AC(qubit, cliffNum) for cliffNum in range(24)]
+	pulseLib.append(pulseLib[0])
+	measBlock = MEAS(qubit)
+
+	with open(seqFile,'r') as FID:
+		fileReader = reader(FID)
+		seqs = []
+		for pulseSeqStr in fileReader:
+			seq = []
+			for pulseStr in pulseSeqStr:
+				seq.append(pulseLib[int(pulseStr)])
+			seq.append(measBlock)
+			seqs.append(seq)
+
+	#Hack for limited APS waveform memory and break it up into multiple files
+	#We've shuffled the sequences so that we loop through each gate length on the inner loop
+	numRandomizations = 36
+	for ct in range(numRandomizations):
+		chunk = seqs[ct::numRandomizations]
+		chunk1 = chunk[::2]
+		chunk2 = chunk[1::2]
+		#Tack on the calibration scalings
+		chunk1 += [[Id(qubit), measBlock], [X(qubit), measBlock]]
+		fileNames = compile_to_hardware(chunk1, 'RB/RB', suffix='_{0}'.format(2*ct+1))
+		chunk2 += [[Id(qubit), measBlock], [X(qubit), measBlock]]
+		fileNames = compile_to_hardware(chunk2, 'RB/RB', suffix='_{0}'.format(2*ct+2))
 
 	if showPlot:
 		plotWin = plot_pulse_files(fileNames)
