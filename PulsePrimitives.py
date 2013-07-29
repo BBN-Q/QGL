@@ -254,10 +254,10 @@ def AC(qubit, cliffNum):
         return Z90m(qubit)
     elif cliffNum == 10:
         #X+Y 180
-        return U180(qubit, phase=pi/4)
+        return U(qubit, phase=pi/4)
     elif cliffNum == 11:
         #X-Y 180
-        return U180(qubit, phase=-pi/4)
+        return U(qubit, phase=-pi/4)
     elif cliffNum == 12:
         #X+Z 180(Hadamard)
         return arb_axis_drag(qubit, nutFreq, rotAngle=pi, polarAngle=pi/4)
