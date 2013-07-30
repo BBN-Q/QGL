@@ -240,7 +240,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 		trigQueue = []
 		for switchPt in switchPts:
 			#If the trigger count is too long we need to move to the next IQ entry
-			while ((switchPt - timePts[curIQIdx]) > MAX_TRIGGER_COUNT) or (len(trigQueue) > 1):
+			while ((switchPt - timePts[curIQIdx]) > ADDRESS_UNIT * MAX_TRIGGER_COUNT) or (len(trigQueue) > 1):
 				# update the trigger queue, dropping triggers that have played
 				trigQueue = [t - miniLL_IQ[curIQIdx].length for t in trigQueue]
 				trigQueue = [t for t in trigQueue if t >= 0]
