@@ -53,10 +53,9 @@ class Pulse(object):
             raise NameError("Can only concatenate pulses acting on the same channel")
         return CompositePulse([self, other])
 
-    # unary negation inverts the pulse shape
-    # TODO: does the frame change need to be updated??
+    # unary negation inverts the pulse shape and frame change
     def __neg__(self):
-        return Pulse(self.label, self.qubits, -self.shape, self.phase, self.frameChange)
+        return Pulse(self.label, self.qubits, -self.shape, self.phase, -self.frameChange)
 
     def __mul__(self, other):
         return self.promote()*other.promote()
@@ -153,7 +152,7 @@ class PulseBlock(object):
     def __mul__(self, rhs):
         # make sure RHS is a PulseBlock
         rhs = rhs.promote()
-        # we to go one layer deep in the copy so that we can manipulate self.pulses and self.channels w/o affecting the original object
+        # we need to go one layer deep in the copy so that we can manipulate self.pulses and self.channels w/o affecting the original object
         # should bundle this behavior into a __copy__ method
         result = copy(self)
         result.pulses = copy(self.pulses)
