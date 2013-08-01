@@ -149,7 +149,7 @@ def Z90m(qubit, **kwargs):
     return Pulse("Z90m", qubit, np.array([], dtype=np.complex128), 0, pi/2)
 
 def Ztheta(qubit, angle=0, **kwargs):
-    return Pulse("Ztheta", qubit, np.array([], dtype=np.complex128), 0, angle)
+    return Pulse("Ztheta", qubit, np.array([], dtype=np.complex128), 0, -angle)
 
 def arb_axis_drag(qubit, nutFreq, rotAngle=0, polarAngle=0, aziAngle=0, **kwargs):
     """
