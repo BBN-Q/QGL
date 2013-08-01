@@ -114,7 +114,7 @@ def create_gate_seqs(linkList, gateBuffer=0, gateMinWidth=0, samplingRate=1.2e9)
     startDelay = gateBuffer
     for miniLL in linkList:
         #Initialize a zero-length padding sequence
-        gateSeqs.append([Compiler.create_padding_LL(0)])
+        gateSeq = [Compiler.create_padding_LL(0)]
         # we need to pad the miniLL with an extra entry if the last entry is not a zero
         if not miniLL[-1].isZero:
             miniLL.append(Compiler.create_padding_LL(MIN_ENTRY_LENGTH))
@@ -124,50 +124,61 @@ def create_gate_seqs(linkList, gateBuffer=0, gateMinWidth=0, samplingRate=1.2e9)
         for entry in miniLL:
             #If we are low and the current entry is high then we need to add an element
             if not blankHigh and not entry.isZero:
-                gateSeqs[-1].append(Compiler.create_padding_LL(entry.totLength, high=True))
+                gateSeq.append(Compiler.create_padding_LL(entry.totLength, high=True))
                 blankHigh = True
             #If we are high and the next entry is low then we need to add an element
             elif blankHigh and entry.isZero:
-                gateSeqs[-1].append(Compiler.create_padding_LL(entry.totLength, high=False))
+                gateSeq.append(Compiler.create_padding_LL(entry.totLength, high=False))
                 blankHigh = False
             #Otherwise we just continue along in the same state
             else:
-                gateSeqs[-1][-1].length += entry.totLength
+                gateSeq[-1].length += entry.totLength
 
 
         #Go back through and add the gate buffer to the start of each marker high period.
-        #Assume that we start low
-        removeList = []
-        entryct = 1
-        dropct = 0
-        while entryct < len(gateSeqs[-1])-1:
-            if not gateSeqs[-1][entryct].isZero:
-                #If the previous low pulse is less than the gate buffer then we'll drop it 
-                if gateSeqs[-1][entryct-1].length < gateBuffer:
-                    removeList.append(entryct-1)
-                    removeList.append(entryct)
-                    gateSeqs[-1][entryct-(2+dropct)].length += \
-                            gateSeqs[-1][entryct-(1+dropct)].totLength + gateSeqs[-1][entryct-dropct].totLength
-                    dropct += 2
-                else:
-                    gateSeqs[-1][entryct-(1+dropct)].length -= gateBuffer
-                    gateSeqs[-1][entryct].length += gateBuffer
-                entryct += 2
-        for r in reversed(removeList):
-            del gateSeqs[-1][r]
-
-        #Loop through again and make sure that all the low point between pulses are sufficiently long
-        entryct = 2
-        while entryct < len(gateSeqs[-1])-2:
-            if gateSeqs[-1][entryct].totLength < gateMinWidth:
-                # add this entry length and next entry length to previous entry
-                gateSeqs[-1][entryct-1].length += \
-                        gateSeqs[-1][entryct].totLength + gateSeqs[-1][entryct+1].totLength
-                # delete two entries
-                del gateSeqs[-1][entryct:entryct+2]
+        #Assume that we start low and alternate low-high-low from the construction above
+        #Step through every high pulse and look at the previous one
+        for entryct in range(1, len(gateSeq),2):
+            #If the previous low pulse is less than the gate buffer then we'll drop it
+            #and add its length and the length of the current high entry to the previous high entry 
+            if gateSeq[entryct-1].length < gateBuffer:
+                #Look for the last valid previous high entry
+                goodIdx = entryct-2
+                while not gateSeq[goodIdx]:
+                    goodIdx -= 2
+                gateSeq[goodIdx].length += \
+                        gateSeq[entryct-1].totLength + gateSeq[entryct].totLength
+                #Mark the two dropped entries as removed by setting them to none
+                gateSeq[entryct-1] = None
+                gateSeq[entryct] = None
+            #Otherwise we subtract the gate buffer from the previous length 
             else:
-                entryct += 2
+                gateSeq[entryct-1].length -= gateBuffer
+                gateSeq[entryct].length += gateBuffer
+            entryct += 2
+        #Remove dropped entries
+        gateSeq = filter(lambda x : x is not None, gateSeq)
 
+        #Loop through again and make sure that all the low points between pulses are sufficiently long
+        #Given the above construction we should have the low-high-low form
+        for entryct in range(2, len(gateSeq)-1, 2):
+            if gateSeq[entryct].length < gateMinWidth:
+                #Consolidate this and the next entry onto the previous one
+                #Look for the last valid previous high entry
+                goodIdx = entryct-1
+                while not gateSeq[goodIdx]:
+                    goodIdx -= 2
+                gateSeq[goodIdx].length += \
+                        gateSeq[entryct].totLength + gateSeq[entryct+1].totLength
+                #Mark the two dropped entries as removed by setting them to none
+                gateSeq[entryct] = None
+                gateSeq[entryct+1] = None
+            entryct = 2
+        #Remove dropped entries
+        gateSeq = filter(lambda x : x is not None, gateSeq)
+    
+        #Add it on
+        gateSeqs.append(gateSeq)
 
     return gateSeqs
 
