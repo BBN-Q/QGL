@@ -23,7 +23,6 @@ limitations under the License.
 import json
 import PulseShapes
 import Compiler
-import config
 import numpy as np
 
 from math import tan,cos,pi
