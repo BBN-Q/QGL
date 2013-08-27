@@ -231,7 +231,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 			del switchPts[pt+1]
 		#Ensure the IQ LL is long enough to support the blips
 		if switchPts:
-			if max(switchPts) > timePts[-1]:
+			if max(switchPts) >= timePts[-1]:
 				assert miniLL_IQ[-1].isTimeAmp
 				miniLL_IQ[-1].length += max(switchPts) - timePts[-1] + 4 
 
