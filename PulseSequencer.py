@@ -141,6 +141,7 @@ class PulseBlock(object):
         #How multiple channels are aligned.
         self.alignment = 'left'
         self.pulses = {}
+        self.label = None
 
     def __repr__(self):
         return u"\u2297 ".join([str(pulse) for pulse in self.pulses.values()]).encode('utf-8')
