@@ -144,7 +144,8 @@ class PulseBlock(object):
         self.label = None
 
     def __repr__(self):
-        return u"\u2297 ".join([str(pulse) for pulse in self.pulses.values()]).encode('utf-8')
+        labelPart = "{0}: ".format(self.label) if self.label else ""
+        return labelPart + u"\u2297 ".join([str(pulse) for pulse in self.pulses.values()]).encode('utf-8')
 
     def __str__(self):
         return "Pulses " + ";".join([str(pulse) for pulse in self.pulses.values()]) + " alignment: {0}".format(self.alignment).encode('utf-8')
