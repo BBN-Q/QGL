@@ -60,6 +60,9 @@ class Pulse(object):
     def __mul__(self, other):
         return self.promote()*other.promote()
 
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
     def promote(self):
         # promote a Pulse to a PulseBlock
         pb =  PulseBlock()
@@ -109,6 +112,9 @@ class CompositePulse(object):
 
     def __mul__(self, other):
         return self.promote()*other.promote()
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
 
     def promote(self):
         # promote a CompositePulse to a PulseBlock
@@ -165,6 +171,9 @@ class PulseBlock(object):
             else:
                 result.pulses[k] = v
         return result
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
 
     #PulseBlocks don't need to be promoted, so just return self
     def promote(self):

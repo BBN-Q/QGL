@@ -21,6 +21,11 @@ class BlockLabel(object):
 		else:
 			return "{0}+{1}".format(self.label, self.offset)
 
+	def __eq__(self, other):
+		if isinstance(other, self.__class__):
+			return self.__dict__ == other.__dict__
+		return False
+
 def label(seq):
 	# label's are attached to the first block in a sequence
 	# make sure we have a PulseBlock
