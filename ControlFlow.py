@@ -4,11 +4,15 @@ from functools import wraps
 
 ## QGL control-flow statements ##
 
-def qif(mask, ifSeq, elseSeq):
-	endlabel(elseSeq) # make sure to populate label of elseSeq before using it
-	seqA = [CmpEq(mask), Goto(label(ifSeq))] + elseSeq
-	seqB = ifSeq + [Goto(endlabel(elseSeq))]
-	return seqA, seqB
+def qif(mask, ifSeq, elseSeq=None):
+	if elseSeq:
+		endlabel(elseSeq) # make sure to populate label of elseSeq before using it
+		seqA = [CmpEq(mask), Goto(label(ifSeq))] + elseSeq
+		seqB = ifSeq + [Goto(endlabel(elseSeq))]
+		return seqA, seqB
+	else:
+		endlabel(ifSeq)
+		return [CmpNeq(mask), Goto(endlabel(ifSeq))] + ifSeq
 
 def qwhile(mask, seq):
 	return [CmpNeq(mask), Goto(endlabel(seq))] + seq
@@ -16,15 +20,16 @@ def qwhile(mask, seq):
 def qdowhile(mask, seq):
 	return seq + [CmpEq(mask), Goto(label(seq))]
 
-def _qfunction(func):
+def qfunction(func):
+	# caches for sequences and labels
+	seq = {}
+	target = {}
 	@wraps(func)
 	def crfunc(*args):
-		if not crfunc.target:
-			crfunc.seq = func(*args)
-			crfunc.target = label(crfunc.seq)
-		return [Call(crfunc.target)], crfunc.seq + [Return()]
-	crfunc.target = None
-	crfunc.seq = None
+		if args not in target:
+			seq[args] = func(*args)
+			target[args] = label(seq[args])
+		return [Call(target[args])], seq[args] + [Return()]
 	return crfunc
 
 ## Sequencer primitives ##
@@ -33,12 +38,20 @@ class ComparisonInstruction(object):
 	def __init__(self, mask, operator):
 		self.mask = mask
 		self.operator = operator
+		self.label = None
 
 	def __repr__(self):
 		return self.__str__()
 
 	def __str__(self):
-		return "CMP " + self.operator + " " + str(self.mask)
+		labelPart = "{0}: ".format(self.label) if self.label else ""
+		return labelPart + "CMP " + self.operator + " " + str(self.mask)
+
+	def __eq__(self, other):
+		return self.__dict__ == other.__dict__
+
+	def promote(self):
+		return self
 
 def CmpEq(mask):
 	return ComparisonInstruction(mask, "==")
@@ -56,15 +69,23 @@ class ControlInstruction(object):
 	def __init__(self, instruction, target=None):
 		self.instruction = instruction
 		self.target = target
+		self.label = None
 
 	def __repr__(self):
 		return self.__str__()
 
 	def __str__(self):
-		result = self.instruction
+		labelPart = "{0}: ".format(self.label) if self.label else ""
+		result = labelPart + self.instruction
 		if self.target:
 			result += "(" + str(self.target) + ")"
 		return result
+
+	def __eq__(self, other):
+		return self.__dict__ == other.__dict__
+
+	def promote(self):
+		return self
 
 def Goto(target):
 	return ControlInstruction("GOTO", target=target)
