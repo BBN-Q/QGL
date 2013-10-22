@@ -215,8 +215,12 @@ NewLogicalChannelList = [Qubit, LogicalMarkerChannel, Measurement]
 NewPhysicalChannelList = [PhysicalMarkerChannel, PhysicalQuadratureChannel]
 
 if __name__ == '__main__':
+    import os.path
+    import sys
+    #Load the libraries
+    execfile(os.path.join(os.path.dirname(sys.argv[0]), os.path.pardir, 'startup.py'))
+
     # create a channel params file
-    import QGL.Channels
     import enaml
     from enaml.stdlib.sessions import show_simple_view
 
