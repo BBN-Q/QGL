@@ -7,9 +7,7 @@ from functools import wraps
 def qif(mask, ifSeq, elseSeq=None):
 	if elseSeq:
 		endlabel(elseSeq) # make sure to populate label of elseSeq before using it
-		seqA = [CmpEq(mask), Goto(label(ifSeq))] + elseSeq
-		seqB = ifSeq + [Goto(endlabel(elseSeq))]
-		return seqA, seqB
+		return [CmpEq(mask), Goto(label(ifSeq))] + [(elseSeq, ifSeq + [Goto(endlabel(elseSeq))])]
 	else:
 		endlabel(ifSeq)
 		return [CmpNeq(mask), Goto(endlabel(ifSeq))] + ifSeq

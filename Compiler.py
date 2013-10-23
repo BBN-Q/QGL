@@ -415,3 +415,40 @@ def align(pulse, blockLength, alignment, cutoff=12):
             padEntry2 = create_padding_LL(np.ceil(padLength/2))
             entries = [padEntry1] + entries + [padEntry2]
     return shapes, entries
+
+def flatten_and_separate(seq): 
+    '''
+    Given a (potentially nested) list of instructions, flatten the list into a 
+    main sequence and a (flattened) list of branches
+    '''
+    branchSeqs = []
+    stack = []
+    idx = 0
+    # Walk through the sequence, pruning branches and putting them on a stack
+    while idx < len(seq):
+        node = seq[idx]
+        # 3 possibilities: have a plain node, have a nested list, or have a tuple of lists
+        if isinstance(node, tuple):
+            # treat the first element as the main branch and push the remaining elements on the stack
+            seq[idx:idx+1] = node[0] #insert the first element into seq
+            stack += list(node[1:])
+        elif isinstance(node, list):
+            seq[idx:idx+1] = node
+        else:
+            idx += 1
+
+    while len(stack) > 0:
+        node = stack.pop()
+        # same 3 possibilities as above
+        if isinstance(node, tuple):
+            # make the first element the new top entry on the stack
+            stack += list(node[1:])
+            stack.append(node[0])
+        elif isinstance(node, list):
+            node.reverse()
+            stack += node
+        else:
+            branchSeqs.append(node)
+
+    return seq, branchSeqs
+
