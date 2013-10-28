@@ -96,6 +96,25 @@ def split_multiple_triggers():
 	'''
 	pass
 
+def add_gate_pulses(channel, awgData, chanData):
+    '''
+    add gate pulses on the marker channel
+    note that the marker may be on an entirely different AWG
+    '''
+    markerAwgName, markerKey = channel.gateChan.name.split('-')
+    markerKey = 'ch' + markerKey
+    markerAwg = awgData[markerAwgName]
+    genObj = channel.generator
+    if markerAwg[markerKey]:
+        warn('Reuse of marker gating channel: {0}'.format(markerKey))
+    markerAwg[markerKey] = {'linkList':None, 'wfLib':Compiler.markerWFLib}
+    markerAwg[markerKey]['linkList'] = create_gate_seqs(chanData['linkList'],
+                                                        genObj.gateBuffer,
+                                                        genObj.gateMinWidth,
+                                                        channel.samplingRate)
+    markerDelay = genObj.gateDelay + channel.gateChan.delay + (channel.AWG.delay - channel.gateChan.AWG.delay)
+    delay(markerAwg[markerKey]['linkList'], markerDelay, channel.gateChan.samplingRate )
+
 def create_gate_seqs(linkList, gateBuffer=0, gateMinWidth=0, samplingRate=1.2e9):
     '''
     Helper function that takes a set of analog channel LL and creates a LL with appropriate 

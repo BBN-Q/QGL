@@ -96,7 +96,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
         PatternUtils.align(LL, alignMode, longestLL+SEQUENCE_PADDING)
 
     #Add the slave trigger
-    #TODO: only add to slave devices
+    #TODO: only add to master device
     linkLists[channelLib['slaveTrig']], wfLib[channelLib['slaveTrig']] = PatternUtils.slave_trigger(len(seqs))
 
     # map logical to physical channels
@@ -112,11 +112,12 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
                 # construct IQkey using existing convention
                 IQkey = awgName + '-' + chanName[2:]
                 chanObj = channelLib[IQkey]
-                #We handle marker and quadrature channels differently
-                #For now that is all we handle
+            
+                # apply channel delay
+                PatternUtils.delay(chanData['linkList'], chanObj.delay + chanObj.AWG.delay, chanObj.samplingRate)
+                
+                # For quadrature channels, apply SSB and mixer correction
                 if isinstance(chanObj, Channels.PhysicalQuadratureChannel):
-                    #Apply mixer corrections and channel delay 
-                    PatternUtils.delay(chanData['linkList'], chanObj.delay + chanObj.AWG.delay, chanObj.samplingRate)
 
                     #At this point we finally have the timing of all the pulses so we can apply SSB
                     if hasattr(chanObj, 'SSBFreq') and abs(chanObj.SSBFreq) > 0:
@@ -125,26 +126,8 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
                     PatternUtils.correctMixer(chanData['wfLib'], chanObj.correctionT)
 
                     # add gate pulses on the marker channel
-                    # note that the marker may be on an entirely different AWG
-                    markerAwgName, markerKey = chanObj.gateChan.name.split('-')
-                    markerKey = 'ch' + markerKey
-                    markerAwg = awgData[markerAwgName]
-                    genObj = chanObj.generator
-                    #TODO: check if this actually catches overwriting markers
-                    if markerAwg[markerKey]:
-                        warn('Reuse of marker gating channel: {0}'.format(markerKey))
-                    markerAwg[markerKey] = {'linkList':None, 'wfLib':markerWFLib}
-                    markerAwg[markerKey]['linkList'] = PatternUtils.create_gate_seqs(
-                        chanData['linkList'], genObj.gateBuffer, genObj.gateMinWidth, chanObj.samplingRate)
-                    markerDelay = genObj.gateDelay + chanObj.gateChan.delay + (chanObj.AWG.delay - chanObj.gateChan.AWG.delay)
-                    PatternUtils.delay(markerAwg[markerKey]['linkList'], markerDelay, chanObj.gateChan.samplingRate )
-
-                elif isinstance(chanObj, Channels.PhysicalMarkerChannel):
-                    PatternUtils.delay(chanData['linkList'], chanObj.delay+chanObj.AWG.delay, chanObj.samplingRate)
-
-                else:
-                    raise NameError('Unable to handle channel type.')
-
+                    PatternUtils.add_gate_pulses(chanObj, awgData, chanData)
+                
     #Loop back through to fill empty channels and write to file
     fileList = []
     for awgName, awg in awgData.items():
