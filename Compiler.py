@@ -18,6 +18,7 @@ limitations under the License.
 import numpy as np
 import hashlib
 import os
+import collections
 from warnings import warn
 
 import config
@@ -298,13 +299,13 @@ def compress_wfLib(seqs, wfLib):
 
 def find_unique_channels(seq):
     channels = set([])
-    for step in seq:
+    for step in flatten(seq):
         if isinstance(step, PulseSequencer.Pulse):
             if isinstance(step.qubits, Channels.Channel):
                 channels |= set([step.qubits])
             else:
                 channels |= set(step.qubits)
-        else:
+        elif hasattr(step, 'pulses'):
             channels |= set(step.pulses.keys())
     return channels
 
@@ -445,10 +446,18 @@ def flatten_and_separate(seq):
             stack += list(node[1:])
             stack.append(node[0])
         elif isinstance(node, list):
-            node.reverse()
-            stack += node
+            # add list elements back to stack in reverse order (so first element is on "top")
+            stack += node[::-1]
         else:
             branchSeqs.append(node)
 
     return seq, branchSeqs
 
+# from Stack Overflow: http://stackoverflow.com/questions/2158395/flatten-an-irregular-list-of-lists-in-python/2158532#2158532
+def flatten(l):
+    for el in l:
+        if isinstance(el, collections.Iterable) and not isinstance(el, basestring):
+            for sub in flatten(el):
+                yield sub
+        else:
+            yield el

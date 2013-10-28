@@ -226,6 +226,3 @@ def show(seq):
         plt.title(repr(chan))
     plt.show(p)
 
-
-if __name__ == '__main__':
-    pass
