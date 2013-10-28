@@ -30,6 +30,16 @@ def qfunction(func):
 		return [Call(target[args])], seq[args] + [Return()]
 	return crfunc
 
+def qrepeat(n, seq):
+	if n < 1:
+		return None
+	elif n == 1:
+		return seq
+	else:
+		label(seq)
+		return [LoadRepeat(n-1)] + seq + [Repeat(label(seq))]
+
+
 ## Sequencer primitives ##
 
 class ComparisonInstruction(object):
@@ -51,6 +61,10 @@ class ComparisonInstruction(object):
 	def promote(self):
 		return self
 
+	@property
+	def totLength(self):
+		return 0
+
 def CmpEq(mask):
 	return ComparisonInstruction(mask, "==")
 
@@ -64,9 +78,10 @@ def CmpGt(mask):
 	return ComparisonInstruction(mask, ">")
 
 class ControlInstruction(object):
-	def __init__(self, instruction, target=None):
+	def __init__(self, instruction, target=None, value=None):
 		self.instruction = instruction
 		self.target = target
+		self.value = value
 		self.label = None
 
 	def __repr__(self):
@@ -77,6 +92,8 @@ class ControlInstruction(object):
 		result = labelPart + self.instruction
 		if self.target:
 			result += "(" + str(self.target) + ")"
+		elif self.value:
+			result += "(" + str(self.value) + ")"
 		return result
 
 	def __eq__(self, other):
@@ -84,6 +101,10 @@ class ControlInstruction(object):
 
 	def promote(self):
 		return self
+
+	@property
+	def totLength(self):
+		return 0
 
 def Goto(target):
 	return ControlInstruction("GOTO", target=target)
@@ -93,3 +114,9 @@ def Call(target):
 
 def Return():
 	return ControlInstruction("RETURN")
+
+def LoadRepeat(n):
+	return ControlInstruction("LOAD", value=n)
+
+def Repeat(target):
+	return ControlInstruction("REPEAT", target=target)
