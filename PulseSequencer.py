@@ -198,9 +198,9 @@ def align(pulseBlock, mode="center"):
 AWGFreq = 1e9
 
 def show(seq):
-    from Compiler import compile_sequence, normalize #import here to avoid circular imports 
+    from Compiler import compile_sequence #import here to avoid circular imports 
     #compile
-    linkList, wfLib = compile_sequence(normalize(seq))
+    linkList, branches, wfLib = compile_sequence(seq)
 
     # build a concatenated waveform for each channel
     channels = linkList.keys()

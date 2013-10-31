@@ -86,7 +86,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
         channels |= find_unique_channels(seq)
 
     #Compile all the pulses/pulseblocks to linklists and waveform libraries
-    linkLists, wfLib = compile_sequences(seqs, channels)
+    linkLists, branches, wfLib = compile_sequences(seqs, channels)
 
     # align channels
     # this horrible line finds the longest miniLL across all channels
@@ -169,24 +169,28 @@ def compile_sequences(seqs, channels=None):
     if isinstance(seqs[0], list):
         # nested sequences
         wfLib = {}
-        # use seqs[0] as prototype for finding channels (assume every miniLL operates on the same set of channels)
-        miniLL, wfLib = compile_sequence(seqs[0], wfLib)
-        linkLists = {chan: [LL] for chan, LL in miniLL.items()}
+        # use seqs[0] as prototype for finding channels (assume every link list operates on the same set of channels)
+        mainLL, branchLL, wfLib = compile_sequence(seqs[0], wfLib)
+        linkLists = {chan: [LL] for chan, LL in mainLL.items()}
+        branches = {chan: [LL] for chan, LL in branchLL.items()}
         for seq in seqs[1:]:
-            miniLL, wfLib = compile_sequence(seq, wfLib)
+            mainLL, branchLL, wfLib = compile_sequence(seq, wfLib)
             for chan in linkLists.keys():
-                linkLists[chan].append(miniLL[chan])
+                linkLists[chan].append(mainLL[chan])
+                branches[chan].append(branchLL[chan])
     else:
-        miniLL, wfLib = compile_sequence(seqs)
-        linkLists = {chan: [LL] for chan, LL in miniLL.items()}
+        mainLL, branchLL, wfLib = compile_sequence(seqs)
+        linkLists = {chan: [LL] for chan, LL in mainLL.items()}
+        branches = {chan: [LL] for chan, LL in branchLL.items()}
 
     #Compress the waveform library
     for chan in linkLists.keys():
         compress_wfLib(linkLists[chan], wfLib[chan])
+        compress_wfLib(branches[chan], wfLib[chan])
 
     #Print a message so for the experiment we know how many sequences there are
     print('Compiled {} sequences.'.format(len(seqs)))
-    return linkLists, wfLib
+    return linkLists, branches, wfLib
 
 def compile_sequence(seq, wfLib={}, channels=None):
     '''
@@ -198,14 +202,16 @@ def compile_sequence(seq, wfLib={}, channels=None):
     if not channels:
         channels = find_unique_channels(seq)
 
-    logicalLLs = {}        
+    logicalLLs = {}
+    branchLLs = {}
     for chan in channels:
         logicalLLs[chan] = []
+        branchLLs[chan] = []
         if chan not in wfLib:
             if isinstance(chan, Channels.LogicalMarkerChannel):
                 wfLib[chan] = markerWFLib
             else:
-                wfLib[chan] = {TAZKey:  np.zeros(1, dtype=np.complex)}
+                wfLib[chan] = {TAZKey: np.zeros(1, dtype=np.complex)}
     carriedPhase = {ch: 0 for ch in channels}
     for block in normalize(seq, channels):
         #Align the block 
@@ -216,7 +222,7 @@ def compile_sequence(seq, wfLib={}, channels=None):
             continue
         for chan in channels:
             # add aligned LL entry(ies) (if the block contains a composite pulse, may get back multiple waveforms and LL entries)
-            wfs, LLentries = align(block.pulses[chan], blockLength, block.alignment)
+            wfs, LLentries = align(block.label, block.pulses[chan], blockLength, block.alignment)
             for wf in wfs:
                 if isinstance(chan, Channels.LogicalMarkerChannel):
                     wf = wf.astype(np.bool)
@@ -250,7 +256,7 @@ def compile_sequence(seq, wfLib={}, channels=None):
                 entry.key = shapeHash
             curFrame += entry.frameChange 
 
-    return logicalLLs, wfLib
+    return logicalLLs, branchLLs, wfLib
 
 def compile_control_flow_sequence(seq, wfLib={}, channels=None):
     '''
