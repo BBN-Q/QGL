@@ -95,7 +95,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
 
     #Add the slave trigger
     #TODO: only add to slave devices
-    linkLists[channelLib['slaveTrig']], wfLib[channelLib['slaveTrig']] = PatternUtils.slave_trigger(len(seqs))
+    # linkLists[channelLib['slaveTrig']], wfLib[channelLib['slaveTrig']] = PatternUtils.slave_trigger(len(seqs))
 
     # map logical to physical channels
     awgData = map_logical_to_physical(linkLists, wfLib)
@@ -137,11 +137,15 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
                     markerDelay = genObj.gateDelay + chanObj.gateChan.delay + (chanObj.AWG.delay - chanObj.gateChan.AWG.delay)
                     PatternUtils.delay(markerAwg[markerKey]['linkList'], markerDelay, chanObj.gateChan.samplingRate )
 
+
                 elif isinstance(chanObj, Channels.PhysicalMarkerChannel):
                     PatternUtils.delay(chanData['linkList'], chanObj.delay+chanObj.AWG.delay, chanObj.samplingRate)
 
                 else:
                     raise NameError('Unable to handle channel type.')
+
+                #Remove unused waveforms
+                compress_wfLib(chanData['linkList'], chanData['wfLib'])
 
     #Loop back through to fill empty channels and write to file
     fileList = []
@@ -194,10 +198,6 @@ def compile_sequences(seqs):
     else:
         miniLL, wfLib = compile_sequence(seqs)
         linkLists = {chan: [LL] for chan, LL in miniLL.items()}
-
-    #Compress the waveform library
-    for chan in linkLists.keys():
-        compress_wfLib(linkLists[chan], wfLib[chan])
 
     #Print a message so for the experiment we know how many sequences there are
     print('Compiled {} sequences.'.format(len(seqs)))
