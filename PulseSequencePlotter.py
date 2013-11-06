@@ -36,7 +36,7 @@ import numpy as np
 import Compiler
 from instruments.AWGs import APS, Tek5014, Tek7000
 from APSPattern import read_APS_file
-from TekPattern import read_Tek_file
+from TekPattern import read_Tek_awg_file
 
 import argparse
 import os.path
@@ -220,7 +220,7 @@ def plot_pulse_files(AWGFileNames):
             pass
         #Look up the appropriate model in the instrumentLib
         if isinstance(Compiler.instrumentLib[AWGName], Tek5014) or isinstance(Compiler.instrumentLib[AWGName], Tek7000):
-            AWGWFs[AWGName] = read_Tek_file(tmpFile)
+            AWGWFs[AWGName] = read_Tek_awg_file(tmpFile)
         elif isinstance(Compiler.instrumentLib[AWGName], APS):
             AWGWFs[AWGName] = read_APS_file(tmpFile)
         else:

@@ -22,6 +22,7 @@ import struct
 import io
 import h5py
 import numpy as np
+import re
 
 MAX_WAVEFORM_VALUE = 2**13-1 #maximum waveform value i.e. 14bit DAC
 
@@ -263,10 +264,15 @@ def read_Tek_awg_file(fileName):
     '''
     Helper function to read in .awg file
     '''
-    AWGData = {}
+    wfData = {}
     waveformMask = 2**14-1;
     marker1Mask = 2**14;
     marker2Mask = 2**15;
+    waveformNames = {}
+    seqTable = {}
+
+    nameRE  = re.compile('WAVEFORM_NAME_(\d+)')
+    seqNameRE = re.compile('SEQUENCE_WAVEFORM_NAME_CH_(\d)_(\d+)')
 
     with io.open(fileName, 'rb') as FID:
         name, data = read_field(FID)
@@ -280,9 +286,18 @@ def read_Tek_awg_file(fileName):
             name, data = read_field(FID)
             if 'WAVEFORM_DATA' in name:
                 wf = np.fromstring(data, dtype=np.uint16)
-                AWGData[name] = wf & waveformMask
-                AWGData[name + 'm1'] = wf & marker1Mask
-                AWGData[name + 'm2'] = wf & marker2Mask
+                wfData[name] = (1.0/MAX_WAVEFORM_VALUE) * (np.int16(wf & waveformMask)-MAX_WAVEFORM_VALUE-1)
+                wfData[name + 'm1'] = (wf & marker1Mask) >> 14
+                wfData[name + 'm2'] = (wf & marker2Mask) >> 15
+            elif nameRE.match(name):
+                wfNum = nameRE.findall(name)[0]
+                waveformNames[data] = 'WAVEFORM_DATA_' + wfNum
+            elif seqNameRE.match(name):
+                channel, seqNum = seqNameRE.findall(name)[0]
+                if not ('ch' + channel) in seqTable:
+                    seqTable['ch' + channel] = {int(seqNum): data}
+                else:
+                    seqTable['ch' + channel][int(seqNum)] = data
 
             # check if there is more to read
             b = FID.read(1)
@@ -290,6 +305,23 @@ def read_Tek_awg_file(fileName):
                 break
             else:
                 FID.seek(-1,1)
+
+    # now that we have everything, loop through seqTable to build AWGData
+    AWGData = {ch: [] for ch in seqTable.keys()}
+    # add in marker keys
+    for ch in seqTable.keys():
+        AWGData[ch + 'm1'] = []
+        AWGData[ch + 'm2'] = []
+
+    seqLength = max([int(x) for x in seqTable['ch1'].keys()])
+
+    for channel in seqTable.keys():
+        for seqct in range(seqLength):
+            seqEntry = seqTable[channel][seqct + 1]
+            wfName = waveformNames[seqEntry]
+            AWGData[channel].append(wfData[wfName])
+            AWGData[channel + 'm1'].append(wfData[wfName+'m1'])
+            AWGData[channel + 'm2'].append(wfData[wfName+'m2'])
 
     return AWGData
     
