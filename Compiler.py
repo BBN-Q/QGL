@@ -95,7 +95,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
 
     #Add the slave trigger
     #TODO: only add to slave devices
-    # linkLists[channelLib['slaveTrig']], wfLib[channelLib['slaveTrig']] = PatternUtils.slave_trigger(len(seqs))
+    linkLists[channelLib['slaveTrig']], wfLib[channelLib['slaveTrig']] = PatternUtils.slave_trigger(len(seqs))
 
     # map logical to physical channels
     awgData = map_logical_to_physical(linkLists, wfLib)
