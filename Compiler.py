@@ -167,7 +167,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
             targetFolder = os.path.split(config.AWGDir + fileName)[0]
             if not os.path.exists(targetFolder):
                 os.mkdir(targetFolder)
-            fullFileName = config.AWGDir + fileName + '-' + awgName + suffix + instrumentLib[awgName].seqFileExt
+            fullFileName = os.path.normpath(os.path.join(config.AWGDir, fileName + '-' + awgName + suffix + instrumentLib[awgName].seqFileExt))
             if isinstance(instrumentLib[awgName], APS):
                 write_APS_file(awg, fullFileName, nbrRepeats)
             elif isinstance(instrumentLib[awgName], Tek5014):
