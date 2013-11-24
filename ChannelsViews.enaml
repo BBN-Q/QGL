@@ -14,8 +14,7 @@ import QGL.PulseShapes
 from types import FunctionType
 psList = [f for f in QGL.PulseShapes.__dict__.values() if isinstance(f, FunctionType)]
 
-enamldef LogicalMarkerChannelView(GroupBox):
-    id: curView
+enamldef LogicalMarkerChannelView(GroupBox): curView:
     attr chan
     attr channelLib
     attr instrumentLib
@@ -45,8 +44,7 @@ enamldef LogicalMarkerChannelView(GroupBox):
                     index ::
                         chan.pulseParams[loop_item] = psList[index]
 
-enamldef PhysicalMarkerChannelView(GroupBox):
-    id: curView
+enamldef PhysicalMarkerChannelView(GroupBox): curView:
     attr chan
     attr channelLib
     attr instrumentLib
@@ -64,8 +62,7 @@ enamldef PhysicalMarkerChannelView(GroupBox):
             index ::
                 chan.AWG = instrumentLib.AWGs[index]
 
-enamldef PhysicalQuadratureChannelView(GroupBox):
-    id: curView
+enamldef PhysicalQuadratureChannelView(GroupBox): curView:
     attr chan
     attr channelLib
     attr instrumentLib
@@ -109,8 +106,7 @@ enamldef PhysicalQuadratureChannelView(GroupBox):
         FloatField:
             value := chan.SSBFreq
 
-enamldef LogicalQuadratureView(GroupBox):
-    id: curView
+enamldef LogicalQuadratureView(GroupBox): curView:
     attr chan
     attr channelLib
     attr instrumentLib
@@ -162,8 +158,7 @@ ChannelViewMap = {type(None):EmptyChannelView, QGL.Channels.Qubit:LogicalQuadrat
                     QGL.Channels.LogicalMarkerChannel:LogicalMarkerChannelView, QGL.Channels.PhysicalQuadratureChannel:PhysicalQuadratureChannelView,
                     QGL.Channels.PhysicalMarkerChannel:PhysicalMarkerChannelView}
 
-enamldef ChannelLibraryView(Container):
-    id: channelLibCont
+enamldef ChannelLibraryView(Container): channelLibCont:
     attr channelLib
     attr instrumentLib
     Notebook:
@@ -194,8 +189,7 @@ enamldef ChannelLibraryView(Container):
                 addDialog = lambda root, itemDict : \
                     AddDialog(root, itemDict=itemDict, newClassList=QGL.Channels.NewPhysicalChannelList, objText='PhysicalChannel')
 
-enamldef ChannelLibraryWindow(Window):
-    id: channelLibWin
+enamldef ChannelLibraryWindow(Window): channelLibWin:
     attr channelLib
     attr instrumentLib
     title = 'Channel Library'
