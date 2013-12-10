@@ -30,12 +30,12 @@ from math import tan,cos,pi
 from instruments.AWGs import AWG
 from instruments.MicrowaveSources import MicrowaveSource
 
-from traits.api import HasTraits, Str, Float, Instance, DelegatesTo, Property, cached_property, \
-                        DictStrAny, Dict, Either, Enum, Bool, on_trait_change, Any
+from atom.api import Atom, Str, Float, Instance, Delegator, Property, cached_property, \
+                        Dict, Enum, Bool, Typed, observe
 
 import FileWatcher
 
-class Channel(HasTraits):
+class Channel(Atom):
     '''
     Every channel has a name and some printers.
     '''
@@ -52,9 +52,9 @@ class PhysicalChannel(Channel):
     '''
     The main class for actual AWG channels.
     '''
-    AWG = Instance(AWG)
-    generator = Instance(MicrowaveSource)
-    samplingRate = DelegatesTo('AWG')
+    AWG = Typed(AWG)
+    generator = Typed(MicrowaveSource)
+    samplingRate = Delegator(AWG)
     delay = Float()
 
     def __init__(self, **kwargs):
@@ -69,8 +69,8 @@ class LogicalChannel(Channel):
     At some point it needs to be assigned to a physical channel.
     '''
     #During initilization we may just have a string reference to the channel
-    physChan = Either(Str, Instance(PhysicalChannel))
-    AWG = DelegatesTo('physChan')
+    physChan = Instance((Str,PhysicalChannel))
+    AWG = Delegator(physChan)
 
 class PhysicalMarkerChannel(PhysicalChannel):
     '''
@@ -84,27 +84,31 @@ class PhysicalQuadratureChannel(PhysicalChannel):
     IChannel = Str()
     QChannel = Str()
     #During initilization we may just have a string reference to the channel
-    gateChan = Either(Str, Instance(PhysicalMarkerChannel))
+    gateChan = Instance((Str, PhysicalMarkerChannel))
     ampFactor = Float(1.0)
     phaseSkew = Float(0.0)
     SSBFreq = Float(0.0)
-    correctionT = Property(depends_on=['ampFactor', 'phaseSkew'])
 
     @cached_property
-    def _get_correctionT(self):
+    def correctionT(self):
         return np.array([[self.ampFactor, self.ampFactor*tan(self.phaseSkew*pi/180)], [0, 1/cos(self.phaseSkew*pi/180)]])
+
+    @observe('ampFactor', 'phaseSkew')
+    def _reset_correctionT(self, change):
+        if change['type'] == 'update':
+            self.get_member('correctionT').reset(self)
                 
 class LogicalMarkerChannel(LogicalChannel):
     '''
     A class for digital channels for gating sources or triggering other things.
     '''
-    pulseParams = DictStrAny({'shapeFun': PulseShapes.square, 'length':100e-9})
+    pulseParams = Dict({'shapeFun': PulseShapes.square, 'length':100e-9})
 
 class Qubit(LogicalChannel):
     '''
     The main class for generating qubit pulses.  Effectively a logical "QuadratureChannel".
     '''
-    pulseParams = DictStrAny({'length':20e-9, 'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.gaussian, 'buffer':0.0, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9})
+    pulseParams = Dict({'length':20e-9, 'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.gaussian, 'buffer':0.0, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9})
 
     def __init__(self, **kwargs):
         super(Qubit, self).__init__(**kwargs)
@@ -117,9 +121,9 @@ class Measurement(LogicalChannel):
     Measurments are special because they can be different types:
     autodyne which needs an IQ pair or hetero/homodyne which needs just a marker channel. 
     '''
-    measType = Enum('autodyne','homodyne', desc='Type of measurment (autodyne, homodyne)')
-    autodyneFreq = Float
-    pulseParams = DictStrAny({'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'buffer':0.0, 'cutoff':2, 'sigma':1e-9})
+    measType = Enum('autodyne','homodyne').tag(desc='Type of measurment (autodyne, homodyne)')
+    autodyneFreq = Float()
+    pulseParams = Dict({'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'buffer':0.0, 'cutoff':2, 'sigma':1e-9})
 
 
 def QubitFactory(name, **kwargs):
@@ -136,10 +140,10 @@ def MeasFactory(name, measType='autodyne', **kwargs):
     else:
         return Measurement(measType = measType)
 
-class ChannelLibrary(HasTraits):
+class ChannelLibrary(Atom):
     channelDict = Dict(Str, Channel)
-    libFile = Str(transient=True)
-    fileWatcher = Any(None, transient=True)
+    libFile = Str().tag(transient=True)
+    fileWatcher = Typed(FileWatcher.LibraryFileWatcher).tag(transient=True)
 
     def __init__(self, **kwargs):
         super(ChannelLibrary, self).__init__(**kwargs)
@@ -151,7 +155,7 @@ class ChannelLibrary(HasTraits):
     def __getitem__(self, chanName):
         return self.channelDict[chanName]
 
-    @on_trait_change('channelDict.anytrait')
+    # @on_trait_change('channelDict.anytrait')
     def write_to_library(self):
         import JSONHelpers
         if self.libFile:
@@ -222,13 +226,13 @@ if __name__ == '__main__':
 
     # create a channel params file
     import enaml
-    from enaml.stdlib.sessions import show_simple_view
+    from enaml.qt.qt_application import QtApplication
 
     with enaml.imports():
         from ChannelsViews import ChannelLibraryWindow
-    show_simple_view(ChannelLibraryWindow(channelLib=Compiler.channelLib, instrumentLib=instrumentLib))
 
+    app = QtApplication()
+    view = ChannelLibraryWindow(channelLib=Compiler.channelLib, instrumentLib=instrumentLib)
+    view.show()
 
-
-    
-    
+    app.start()
