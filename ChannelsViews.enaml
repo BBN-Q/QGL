@@ -4,7 +4,7 @@ from enaml.stdlib.fields import FloatField
 from enaml.layout.api import hbox, vbox, spacer
 from enaml.core.api import Looper, Conditional
 
-from EnamlHelpers import DictManagerView, DictManager, AddDialog, EnumComboBox
+from widgets import DictManagerView, DictManager, AddDialog, EnumComboBox
 
 import QGL.Channels
 from instruments.AWGs import AWG
@@ -117,8 +117,8 @@ enamldef LogicalQuadratureView(GroupBox): curView:
             Label:
                 text = 'Type'
             EnumComboBox:
-                myObj := chan
-                traitName = 'measType'
+                obj := chan
+                enumName = 'measType'
             Conditional:
                 condition << chan.measType == 'autodyne'
                 Label:
@@ -173,9 +173,7 @@ enamldef ChannelLibraryView(Container): channelLibCont:
                 viewMap = ChannelViewMap
                 viewkwargs = {'instrumentLib':channelLibCont.instrumentLib, 
                                 'channelLib':channelLibCont.channelLib}
-                addDialog = lambda root, itemDict : \
-            AddDialog(root, itemDict=itemDict, newClassList=QGL.Channels.NewLogicalChannelList, objText='LogicalChannel')
-
+                newClassList = QGL.Channels.NewLogicalChannelList
         Page:
             title = "Physical"
             closable = False
@@ -186,8 +184,7 @@ enamldef ChannelLibraryView(Container): channelLibCont:
                 viewMap = ChannelViewMap
                 viewkwargs = {'instrumentLib':channelLibCont.instrumentLib, 
                                 'channelLib':channelLibCont.channelLib}
-                addDialog = lambda root, itemDict : \
-                    AddDialog(root, itemDict=itemDict, newClassList=QGL.Channels.NewPhysicalChannelList, objText='PhysicalChannel')
+                newClassList = QGL.Channels.NewPhysicalChannelList
 
 enamldef ChannelLibraryWindow(Window): channelLibWin:
     attr channelLib

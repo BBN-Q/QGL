@@ -141,7 +141,8 @@ def MeasFactory(name, measType='autodyne', **kwargs):
         return Measurement(measType = measType)
 
 class ChannelLibrary(Atom):
-    channelDict = Dict(Str, Channel)
+    # channelDict = Dict(Str, Channel)
+    channelDict = Typed(dict)
     libFile = Str().tag(transient=True)
     fileWatcher = Typed(FileWatcher.LibraryFileWatcher).tag(transient=True)
 
