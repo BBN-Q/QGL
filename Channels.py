@@ -29,6 +29,7 @@ from math import tan,cos,pi
 
 from instruments.AWGs import AWG
 from instruments.MicrowaveSources import MicrowaveSource
+from DictManager import DictManager
 
 from atom.api import Atom, Str, Float, Instance, Delegator, Property, cached_property, \
                         Dict, Enum, Bool, Typed, observe
@@ -39,7 +40,7 @@ class Channel(Atom):
     '''
     Every channel has a name and some printers.
     '''
-    name = Str()
+    label = Str()
     enabled = Bool(True)
 
     def __repr__(self):
@@ -143,12 +144,21 @@ def MeasFactory(name, measType='autodyne', **kwargs):
 class ChannelLibrary(Atom):
     # channelDict = Dict(Str, Channel)
     channelDict = Typed(dict)
+    logicalChannelManager = Typed(DictManager)
+    physicalChannelManager = Typed(DictManager)
     libFile = Str().tag(transient=True)
     fileWatcher = Typed(FileWatcher.LibraryFileWatcher).tag(transient=True)
 
-    def __init__(self, **kwargs):
-        super(ChannelLibrary, self).__init__(**kwargs)
+    def __init__(self, channelDict={}, **kwargs):
+        super(ChannelLibrary, self).__init__(channelDict=channelDict, **kwargs)
         self.load_from_library()
+        self.logicalChannelManager = DictManager(itemDict=self.channelDict,
+                                                 displayFilter=lambda x : isinstance(x, LogicalChannel),
+                                                 possibleItems=NewLogicalChannelList)
+        self.physicalChannelManager = DictManager(itemDict=self.channelDict,
+                                                  displayFilter=lambda x : isinstance(x, PhysicalChannel),
+                                                  possibleItems=NewPhysicalChannelList)
+
         if self.libFile:
             self.fileWatcher = FileWatcher.LibraryFileWatcher(self.libFile, self.update_from_file)
 
