@@ -98,7 +98,7 @@ class PhysicalQuadratureChannel(PhysicalChannel):
     def _reset_correctionT(self, change):
         if change['type'] == 'update':
             self.get_member('correctionT').reset(self)
-                
+
 class LogicalMarkerChannel(LogicalChannel):
     '''
     A class for digital channels for gating sources or triggering other things.
