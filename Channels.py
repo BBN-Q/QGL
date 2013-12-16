@@ -38,13 +38,13 @@ import FileWatcher
 
 class Channel(Atom):
     '''
-    Every channel has a name and some printers.
+    Every channel has a label and some printers.
     '''
     label = Str()
     enabled = Bool(True)
 
     def __repr__(self):
-        return "{0}: {1}".format(self.__class__.__name__, self.name)
+        return "{0}: {1}".format(self.__class__.__name__, self.label)
 
     def __str__(self):
         return json.dumps(self, sort_keys=True, indent=2, default=json_serializer)
@@ -114,7 +114,7 @@ class Qubit(LogicalChannel):
     def __init__(self, **kwargs):
         super(Qubit, self).__init__(**kwargs)
         if self.physChan is None:
-            self.physChan = PhysicalQuadratureChannel(name=kwargs['name']+'-phys')
+            self.physChan = PhysicalQuadratureChannel(label=kwargs['label']+'-phys')
 
 class Measurement(LogicalChannel):
     '''
@@ -127,17 +127,17 @@ class Measurement(LogicalChannel):
     pulseParams = Dict({'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'buffer':0.0, 'cutoff':2, 'sigma':1e-9})
 
 
-def QubitFactory(name, **kwargs):
+def QubitFactory(label, **kwargs):
     ''' Return a saved qubit channel or create a new one. '''
-    if Compiler.channelLib and name in Compiler.channelLib.channelDict and isinstance(Compiler.channelLib[name], Qubit):
-        return Compiler.channelLib[name]
+    if Compiler.channelLib and label in Compiler.channelLib.channelDict and isinstance(Compiler.channelLib[label], Qubit):
+        return Compiler.channelLib[label]
     else:
-        return Qubit(name=name, **kwargs)
+        return Qubit(label=label, **kwargs)
 
-def MeasFactory(name, measType='autodyne', **kwargs):
+def MeasFactory(label, measType='autodyne', **kwargs):
     ''' Return a saved measurment channel or create a new one. '''
-    if Compiler.channelLib and name in Compiler.channelLib.channelDict and isinstance(Compiler.channelLib[name], Measurement):
-        return Compiler.channelLib[name]
+    if Compiler.channelLib and label in Compiler.channelLib.channelDict and isinstance(Compiler.channelLib[label], Measurement):
+        return Compiler.channelLib[label]
     else:
         return Measurement(measType = measType)
 
@@ -163,8 +163,8 @@ class ChannelLibrary(Atom):
             self.fileWatcher = FileWatcher.LibraryFileWatcher(self.libFile, self.update_from_file)
 
     #Overload [] to allow direct pulling of channel info
-    def __getitem__(self, chanName):
-        return self.channelDict[chanName]
+    def __getitem__(self, chanLabel):
+        return self.channelDict[chanLabel]
 
     # @on_trait_change('channelDict.anytrait')
     def write_to_library(self):
