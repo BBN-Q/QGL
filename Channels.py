@@ -31,7 +31,7 @@ from instruments.AWGs import AWG
 from instruments.MicrowaveSources import MicrowaveSource
 from DictManager import DictManager
 
-from atom.api import Atom, Str, Float, Instance, Delegator, Property, cached_property, \
+from atom.api import Atom, Str, Unicode, Float, Instance, Delegator, Property, cached_property, \
                         Dict, Enum, Bool, Typed, observe
 
 import FileWatcher
@@ -70,7 +70,7 @@ class LogicalChannel(Channel):
     At some point it needs to be assigned to a physical channel.
     '''
     #During initilization we may just have a string reference to the channel
-    physChan = Instance((Str,PhysicalChannel))
+    physChan = Instance((unicode,PhysicalChannel))
     AWG = Delegator(physChan)
 
 class PhysicalMarkerChannel(PhysicalChannel):
@@ -85,7 +85,7 @@ class PhysicalQuadratureChannel(PhysicalChannel):
     IChannel = Str()
     QChannel = Str()
     #During initilization we may just have a string reference to the channel
-    gateChan = Instance((Str, PhysicalMarkerChannel))
+    gateChan = Instance((unicode, PhysicalMarkerChannel))
     ampFactor = Float(1.0)
     phaseSkew = Float(0.0)
     SSBFreq = Float(0.0)
@@ -103,13 +103,13 @@ class LogicalMarkerChannel(LogicalChannel):
     '''
     A class for digital channels for gating sources or triggering other things.
     '''
-    pulseParams = Dict({'shapeFun': PulseShapes.square, 'length':100e-9})
+    pulseParams = Dict(default={'shapeFun': PulseShapes.square, 'length':100e-9})
 
 class Qubit(LogicalChannel):
     '''
     The main class for generating qubit pulses.  Effectively a logical "QuadratureChannel".
     '''
-    pulseParams = Dict({'length':20e-9, 'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.gaussian, 'buffer':0.0, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9})
+    pulseParams = Dict(default={'length':20e-9, 'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.gaussian, 'buffer':0.0, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9})
 
     def __init__(self, **kwargs):
         super(Qubit, self).__init__(**kwargs)
@@ -124,7 +124,7 @@ class Measurement(LogicalChannel):
     '''
     measType = Enum('autodyne','homodyne').tag(desc='Type of measurment (autodyne, homodyne)')
     autodyneFreq = Float()
-    pulseParams = Dict({'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'buffer':0.0, 'cutoff':2, 'sigma':1e-9})
+    pulseParams = Dict(default={'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'buffer':0.0, 'cutoff':2, 'sigma':1e-9})
 
 
 def QubitFactory(label, **kwargs):
