@@ -165,7 +165,7 @@ def MeasFactory(label, measType='autodyne', **kwargs):
     if Compiler.channelLib and label in Compiler.channelLib.channelDict and isinstance(Compiler.channelLib[label], Measurement):
         return Compiler.channelLib[label]
     else:
-        return Measurement(measType = measType)
+        return Measurement(label=label, measType = measType, **kwargs)
 
 class ChannelLibrary(Atom):
     # channelDict = Dict(Str, Channel)
