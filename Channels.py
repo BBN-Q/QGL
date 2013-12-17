@@ -52,6 +52,11 @@ class Channel(Atom):
     def json_encode(self):
         jsonDict = self.__getstate__()
 
+        #Strip out pass-through properties
+        for k,m in self.members().items():
+            if isinstance(m, Property):
+                del jsonDict[k]
+
         #Turn instruments back into unicode labels
         for member in ["AWG", "generator", "physChan", "gateChan"]:
             if member in jsonDict:
@@ -63,9 +68,6 @@ class Channel(Atom):
         if "pulseParams" in jsonDict:
             if "shapeFun" in jsonDict["pulseParams"]:
                 jsonDict["pulseParams"]["shapeFun"] = jsonDict["pulseParams"]["shapeFun"].__name__
-
-        #Some properties and transient members we don't want to encode
-        jsonDict.pop("correctionT", None)
 
         return jsonDict
 
