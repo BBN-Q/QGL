@@ -56,7 +56,8 @@ class Channel(Atom):
         for member in ["AWG", "generator", "physChan", "gateChan"]:
             if member in jsonDict:
                 obj = jsonDict.pop(member)
-                jsonDict[member] = obj.label
+                if obj:
+                    jsonDict[member] = obj.label
 
         #We want the name of shape functions
         if "pulseParams" in jsonDict:
