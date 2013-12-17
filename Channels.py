@@ -206,7 +206,6 @@ class ChannelLibrary(Atom):
     def json_encode(self, matlabCompatible=False):
         return {"channelDict":self.channelDict}
 
-
     def load_from_library(self):
         import JSONHelpers
         if self.libFile:
