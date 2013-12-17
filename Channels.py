@@ -31,7 +31,7 @@ from instruments.AWGs import AWG
 from instruments.MicrowaveSources import MicrowaveSource
 from DictManager import DictManager
 
-from atom.api import Atom, Str, Unicode, Float, Instance, Delegator, Property, cached_property, \
+from atom.api import Atom, Str, Unicode, Float, Instance, Property, cached_property, \
                         Dict, Enum, Bool, Typed, observe
 
 import FileWatcher
@@ -75,13 +75,14 @@ class PhysicalChannel(Channel):
     '''
     AWG = Typed(AWG)
     generator = Typed(MicrowaveSource)
-    samplingRate = Delegator(AWG)
+    samplingRate = Property()
     delay = Float()
 
-    def __init__(self, **kwargs):
-        super(PhysicalChannel, self).__init__(**kwargs)
-        if self.AWG is None:
-            self.AWG = AWG()
+    def _get_samplingRate(self):
+        return self.AWG.samplingRate
+
+    def _default_AWG(self):
+        return AWG()
 
 
 class LogicalChannel(Channel):
@@ -91,7 +92,10 @@ class LogicalChannel(Channel):
     '''
     #During initilization we may just have a string reference to the channel
     physChan = Instance((unicode,PhysicalChannel))
-    AWG = Delegator(physChan)
+    AWG = Property()
+
+    def _get_AWG(self):
+        return self.physChan.AWG
 
 class PhysicalMarkerChannel(PhysicalChannel):
     '''
