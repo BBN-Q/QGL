@@ -49,6 +49,25 @@ class Channel(Atom):
     def __str__(self):
         return json.dumps(self, sort_keys=True, indent=2, default=json_serializer)
 
+    def json_encode(self):
+        jsonDict = self.__getstate__()
+
+        #Turn instruments back into unicode labels
+        for member in ["AWG", "generator", "physChan", "gateChan"]:
+            if member in jsonDict:
+                obj = jsonDict.pop(member)
+                jsonDict[member] = obj.label
+
+        #We want the name of shape functions
+        if "pulseParams" in jsonDict:
+            if "shapeFun" in jsonDict["pulseParams"]:
+                jsonDict["pulseParams"]["shapeFun"] = jsonDict["pulseParams"]["shapeFun"].__name__
+
+        #Some properties and transient members we don't want to encode
+        jsonDict.pop("correctionT", None)
+
+        return jsonDict
+
 class PhysicalChannel(Channel):
     '''
     The main class for actual AWG channels.
@@ -146,8 +165,8 @@ class ChannelLibrary(Atom):
     channelDict = Typed(dict)
     logicalChannelManager = Typed(DictManager)
     physicalChannelManager = Typed(DictManager)
-    libFile = Str().tag(transient=True)
-    fileWatcher = Typed(FileWatcher.LibraryFileWatcher).tag(transient=True)
+    libFile = Str()
+    fileWatcher = Typed(FileWatcher.LibraryFileWatcher)
 
     def __init__(self, channelDict={}, **kwargs):
         super(ChannelLibrary, self).__init__(channelDict=channelDict, **kwargs)
@@ -166,8 +185,7 @@ class ChannelLibrary(Atom):
     def __getitem__(self, chanLabel):
         return self.channelDict[chanLabel]
 
-    # @on_trait_change('channelDict.anytrait')
-    def write_to_library(self):
+    def write_to_file(self):
         import JSONHelpers
         if self.libFile:
             #Pause the file watcher to stop cicular updating insanity
@@ -177,6 +195,10 @@ class ChannelLibrary(Atom):
                 json.dump(self, FID, cls=JSONHelpers.LibraryEncoder, indent=2, sort_keys=True)
             if self.fileWatcher:
                 self.fileWatcher.resume()
+
+    def json_encode(self, matlabCompatible=False):
+        return {"channelDict":self.channelDict}
+
 
     def load_from_library(self):
         import JSONHelpers
