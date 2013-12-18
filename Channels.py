@@ -36,6 +36,8 @@ from atom.api import Atom, Str, Unicode, Float, Instance, Property, cached_prope
 
 import FileWatcher
 
+from copy import deepcopy
+
 class Channel(Atom):
     '''
     Every channel has a label and some printers.
@@ -66,8 +68,10 @@ class Channel(Atom):
 
         #We want the name of shape functions
         if "pulseParams" in jsonDict:
-            if "shapeFun" in jsonDict["pulseParams"]:
-                jsonDict["pulseParams"]["shapeFun"] = jsonDict["pulseParams"]["shapeFun"].__name__
+            pulseParams = deepcopy(jsonDict.pop("pulseParams"))
+            if "shapeFun" in pulseParams:
+                pulseParams["shapeFun"] = pulseParams["shapeFun"].__name__
+            jsonDict["pulseParams"] = pulseParams
 
         return jsonDict
 
