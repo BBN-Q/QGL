@@ -54,9 +54,9 @@ def Id(qubit, *args, **kwargs):
     if not isinstance(qubit, tuple):
         channel = qubit
     else:
-        channel = Channels.QubitFactory(reduce(operator.add, [q.name for q in qubit]))
+        channel = Channels.QubitFactory(reduce(operator.add, [q.label for q in qubit]))
     if len(args) > 0 and isinstance(args[0], Channels.Qubit):
-        channel = Channels.QubitFactory(qubit.name + args[0].name)
+        channel = Channels.QubitFactory(qubit.label + args[0].label)
         qubit = (qubit, args[0])
     params = overrideDefaults(channel, kwargs)
     if len(args) > 0 and isinstance(args[0], (int,float)):
@@ -302,7 +302,7 @@ def AC(qubit, cliffNum):
 # @_memoize
 def CNOT(source, target):
     # construct (source, target) channel and pull parameters from there
-    twoQChannel = Channels.QubitFactory(source.name + target.name)
+    twoQChannel = Channels.QubitFactory(source.label + target.label)
     shape = twoQChannel.pulseParams['shapeFun'](amp=twoQChannel.pulseParams['piAmp'], **overrideDefaults(twoQChannel, {}))
     return Pulse("CNOT", (source, target), shape, 0.0, 0.0)
 
@@ -320,12 +320,12 @@ def MEAS(*args, **kwargs):
     def create_meas_pulse(qubit):
         if isinstance(qubit, Channels.Qubit):
             #Deal with single qubit readout channel
-            channelName = "M-" + qubit.name
+            channelName = "M-" + qubit.label
         elif isinstance(qubit, tuple):
             #Deal with joint readout channel
             channelName = "M-"
             for q in qubit:
-                channelName += q.name
+                channelName += q.label
         measChan = Channels.MeasFactory(channelName)
         params = overrideDefaults(measChan, kwargs)
         

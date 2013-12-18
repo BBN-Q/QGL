@@ -29,38 +29,62 @@ from math import tan,cos,pi
 
 from instruments.AWGs import AWG
 from instruments.MicrowaveSources import MicrowaveSource
+from DictManager import DictManager
 
-from traits.api import HasTraits, Str, Float, Instance, DelegatesTo, Property, cached_property, \
-                        DictStrAny, Dict, Either, Enum, Bool, on_trait_change, Any
+from atom.api import Atom, Str, Unicode, Float, Instance, Property, cached_property, \
+                        Dict, Enum, Bool, Typed, observe
 
 import FileWatcher
 
-class Channel(HasTraits):
+class Channel(Atom):
     '''
-    Every channel has a name and some printers.
+    Every channel has a label and some printers.
     '''
-    name = Str()
+    label = Str()
     enabled = Bool(True)
 
     def __repr__(self):
-        return "{0}: {1}".format(self.__class__.__name__, self.name)
+        return "{0}: {1}".format(self.__class__.__name__, self.label)
 
     def __str__(self):
         return json.dumps(self, sort_keys=True, indent=2, default=json_serializer)
+
+    def json_encode(self):
+        jsonDict = self.__getstate__()
+
+        #Strip out pass-through properties
+        for k,m in self.members().items():
+            if isinstance(m, Property):
+                del jsonDict[k]
+
+        #Turn instruments back into unicode labels
+        for member in ["AWG", "generator", "physChan", "gateChan"]:
+            if member in jsonDict:
+                obj = jsonDict.pop(member)
+                if obj:
+                    jsonDict[member] = obj.label
+
+        #We want the name of shape functions
+        if "pulseParams" in jsonDict:
+            if "shapeFun" in jsonDict["pulseParams"]:
+                jsonDict["pulseParams"]["shapeFun"] = jsonDict["pulseParams"]["shapeFun"].__name__
+
+        return jsonDict
 
 class PhysicalChannel(Channel):
     '''
     The main class for actual AWG channels.
     '''
-    AWG = Instance(AWG)
-    generator = Instance(MicrowaveSource)
-    samplingRate = DelegatesTo('AWG')
+    AWG = Typed(AWG)
+    generator = Typed(MicrowaveSource)
+    samplingRate = Property()
     delay = Float()
 
-    def __init__(self, **kwargs):
-        super(PhysicalChannel, self).__init__(**kwargs)
-        if self.AWG is None:
-            self.AWG = AWG()
+    def _get_samplingRate(self):
+        return self.AWG.samplingRate
+
+    def _default_AWG(self):
+        return AWG()
 
 
 class LogicalChannel(Channel):
@@ -69,8 +93,11 @@ class LogicalChannel(Channel):
     At some point it needs to be assigned to a physical channel.
     '''
     #During initilization we may just have a string reference to the channel
-    physChan = Either(Str, Instance(PhysicalChannel))
-    AWG = DelegatesTo('physChan')
+    physChan = Instance((unicode,PhysicalChannel))
+    AWG = Property()
+
+    def _get_AWG(self):
+        return self.physChan.AWG
 
 class PhysicalMarkerChannel(PhysicalChannel):
     '''
@@ -84,32 +111,36 @@ class PhysicalQuadratureChannel(PhysicalChannel):
     IChannel = Str()
     QChannel = Str()
     #During initilization we may just have a string reference to the channel
-    gateChan = Either(Str, Instance(PhysicalMarkerChannel))
+    gateChan = Instance((unicode, PhysicalMarkerChannel))
     ampFactor = Float(1.0)
     phaseSkew = Float(0.0)
     SSBFreq = Float(0.0)
-    correctionT = Property(depends_on=['ampFactor', 'phaseSkew'])
 
     @cached_property
-    def _get_correctionT(self):
+    def correctionT(self):
         return np.array([[self.ampFactor, self.ampFactor*tan(self.phaseSkew*pi/180)], [0, 1/cos(self.phaseSkew*pi/180)]])
-                
+
+    @observe('ampFactor', 'phaseSkew')
+    def _reset_correctionT(self, change):
+        if change['type'] == 'update':
+            self.get_member('correctionT').reset(self)
+
 class LogicalMarkerChannel(LogicalChannel):
     '''
     A class for digital channels for gating sources or triggering other things.
     '''
-    pulseParams = DictStrAny({'shapeFun': PulseShapes.square, 'length':100e-9})
+    pulseParams = Dict(default={'shapeFun': PulseShapes.square, 'length':100e-9})
 
 class Qubit(LogicalChannel):
     '''
     The main class for generating qubit pulses.  Effectively a logical "QuadratureChannel".
     '''
-    pulseParams = DictStrAny({'length':20e-9, 'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.gaussian, 'buffer':0.0, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9})
+    pulseParams = Dict(default={'length':20e-9, 'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.gaussian, 'buffer':0.0, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9})
 
     def __init__(self, **kwargs):
         super(Qubit, self).__init__(**kwargs)
         if self.physChan is None:
-            self.physChan = PhysicalQuadratureChannel(name=kwargs['name']+'-phys')
+            self.physChan = PhysicalQuadratureChannel(label=kwargs['label']+'-phys')
 
 class Measurement(LogicalChannel):
     '''
@@ -117,42 +148,51 @@ class Measurement(LogicalChannel):
     Measurments are special because they can be different types:
     autodyne which needs an IQ pair or hetero/homodyne which needs just a marker channel. 
     '''
-    measType = Enum('autodyne','homodyne', desc='Type of measurment (autodyne, homodyne)')
-    autodyneFreq = Float
-    pulseParams = DictStrAny({'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'buffer':0.0, 'cutoff':2, 'sigma':1e-9})
+    measType = Enum('autodyne','homodyne').tag(desc='Type of measurment (autodyne, homodyne)')
+    autodyneFreq = Float()
+    pulseParams = Dict(default={'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'buffer':0.0, 'cutoff':2, 'sigma':1e-9})
 
 
-def QubitFactory(name, **kwargs):
+def QubitFactory(label, **kwargs):
     ''' Return a saved qubit channel or create a new one. '''
-    if Compiler.channelLib and name in Compiler.channelLib.channelDict and isinstance(Compiler.channelLib[name], Qubit):
-        return Compiler.channelLib[name]
+    if Compiler.channelLib and label in Compiler.channelLib.channelDict and isinstance(Compiler.channelLib[label], Qubit):
+        return Compiler.channelLib[label]
     else:
-        return Qubit(name=name, **kwargs)
+        return Qubit(label=label, **kwargs)
 
-def MeasFactory(name, measType='autodyne', **kwargs):
+def MeasFactory(label, measType='autodyne', **kwargs):
     ''' Return a saved measurment channel or create a new one. '''
-    if Compiler.channelLib and name in Compiler.channelLib.channelDict and isinstance(Compiler.channelLib[name], Measurement):
-        return Compiler.channelLib[name]
+    if Compiler.channelLib and label in Compiler.channelLib.channelDict and isinstance(Compiler.channelLib[label], Measurement):
+        return Compiler.channelLib[label]
     else:
-        return Measurement(measType = measType)
+        return Measurement(label=label, measType = measType, **kwargs)
 
-class ChannelLibrary(HasTraits):
-    channelDict = Dict(Str, Channel)
-    libFile = Str(transient=True)
-    fileWatcher = Any(None, transient=True)
+class ChannelLibrary(Atom):
+    # channelDict = Dict(Str, Channel)
+    channelDict = Typed(dict)
+    logicalChannelManager = Typed(DictManager)
+    physicalChannelManager = Typed(DictManager)
+    libFile = Str()
+    fileWatcher = Typed(FileWatcher.LibraryFileWatcher)
 
-    def __init__(self, **kwargs):
-        super(ChannelLibrary, self).__init__(**kwargs)
+    def __init__(self, channelDict={}, **kwargs):
+        super(ChannelLibrary, self).__init__(channelDict=channelDict, **kwargs)
         self.load_from_library()
+        self.logicalChannelManager = DictManager(itemDict=self.channelDict,
+                                                 displayFilter=lambda x : isinstance(x, LogicalChannel),
+                                                 possibleItems=NewLogicalChannelList)
+        self.physicalChannelManager = DictManager(itemDict=self.channelDict,
+                                                  displayFilter=lambda x : isinstance(x, PhysicalChannel),
+                                                  possibleItems=NewPhysicalChannelList)
+
         if self.libFile:
             self.fileWatcher = FileWatcher.LibraryFileWatcher(self.libFile, self.update_from_file)
 
     #Overload [] to allow direct pulling of channel info
-    def __getitem__(self, chanName):
-        return self.channelDict[chanName]
+    def __getitem__(self, chanLabel):
+        return self.channelDict[chanLabel]
 
-    @on_trait_change('channelDict.anytrait')
-    def write_to_library(self):
+    def write_to_file(self):
         import JSONHelpers
         if self.libFile:
             #Pause the file watcher to stop cicular updating insanity
@@ -162,6 +202,9 @@ class ChannelLibrary(HasTraits):
                 json.dump(self, FID, cls=JSONHelpers.LibraryEncoder, indent=2, sort_keys=True)
             if self.fileWatcher:
                 self.fileWatcher.resume()
+
+    def json_encode(self, matlabCompatible=False):
+        return {"channelDict":self.channelDict}
 
     def load_from_library(self):
         import JSONHelpers
@@ -222,13 +265,13 @@ if __name__ == '__main__':
 
     # create a channel params file
     import enaml
-    from enaml.stdlib.sessions import show_simple_view
+    from enaml.qt.qt_application import QtApplication
 
     with enaml.imports():
         from ChannelsViews import ChannelLibraryWindow
-    show_simple_view(ChannelLibraryWindow(channelLib=Compiler.channelLib, instrumentLib=instrumentLib))
 
+    app = QtApplication()
+    view = ChannelLibraryWindow(channelLib=Compiler.channelLib, instrumentLib=instrumentLib)
+    view.show()
 
-
-    
-    
+    app.start()
