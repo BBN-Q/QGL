@@ -45,7 +45,7 @@ class Pulse(object):
         if isinstance(self.qubits, tuple):
             return '{0}({1})'.format(self.label, ','.join([qubit.name for qubit in self.qubits]))
         else:
-            return '{0}({1})'.format(self.label, self.qubits.name)
+            return '{0}({1})'.format(self.label, self.qubits.label)
 
     # adding pulses concatenates the pulse shapes
     def __add__(self, other):
