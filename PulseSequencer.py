@@ -43,7 +43,7 @@ class Pulse(object):
 
     def __str__(self):
         if isinstance(self.qubits, tuple):
-            return '{0}({1})'.format(self.label, ','.join([qubit.name for qubit in self.qubits]))
+            return '{0}({1})'.format(self.label, ','.join([qubit.label for qubit in self.qubits]))
         else:
             return '{0}({1})'.format(self.label, self.qubits.label)
 
