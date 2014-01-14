@@ -64,18 +64,28 @@ def setup_awg_channels(logicalChannels):
     return {awg.name:get_empty_channel_set(awg) for awg in awgs}
 
 
-def map_logical_to_physical(linkLists, wfLib):
+def map_logical_to_physical(linkLists, branches, wfLib):
     physicalChannels = {chan: channelLib[get_channel_name(chan)].physChan.name for chan in linkLists.keys()}
     awgData = setup_awg_channels(linkLists.keys())
 
     for chan in linkLists.keys():
         awgName, awgChan = physicalChannels[chan].split('-')
-        awgData[awgName]['ch'+awgChan] = {'linkList': linkLists[chan], 'wfLib': wfLib[chan]}
+        awgData[awgName]['ch'+awgChan] = {'linkList': linkLists[chan],
+                                          'branches': branches[chan],
+                                          'wfLib': wfLib[chan]}
 
     return awgData
 
 
-def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRepeats=1):
+def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRepeats=1, mode='branching'):
+    '''
+    Compiles 'seqs' to a hardware description and saves it to 'fileName'. Other inputs:
+        alignMode : 'left' or 'right' (default 'left')
+        nbrRepeats : number of loops of each sequence in 'seqs' to encode in the file (default 1)
+        mode: 'linear' or 'branching' (default 'branching')
+    '''
+    # TODO: if mode is 'linear', should assert that we have a compatible sequence
+
     #Add the digitizer trigger to each sequence
     #TODO: Make this more sophisticated.
     PatternUtils.add_digitizer_trigger(seqs, channelLib['digitizerTrig'])
@@ -98,9 +108,10 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
     #Add the slave trigger
     #TODO: only add to master device
     linkLists[channelLib['slaveTrig']], wfLib[channelLib['slaveTrig']] = PatternUtils.slave_trigger(len(seqs))
+    branches[channelLib['slaveTrig']] = []
 
     # map logical to physical channels
-    awgData = map_logical_to_physical(linkLists, wfLib)
+    awgData = map_logical_to_physical(linkLists, branches, wfLib)
 
     # for each physical channel need to:
     # 1) delay
@@ -113,14 +124,14 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
                 IQkey = awgName + '-' + chanName[2:]
                 chanObj = channelLib[IQkey]
             
-                # apply channel delay
+                # apply channel delay (TODO: do we delay branches? probably, but will need to encode triggering information to know start points to delay)
                 PatternUtils.delay(chanData['linkList'], chanObj.delay + chanObj.AWG.delay, chanObj.samplingRate)
                 
                 # For quadrature channels, apply SSB and mixer correction
                 if isinstance(chanObj, Channels.PhysicalQuadratureChannel):
 
                     #At this point we finally have the timing of all the pulses so we can apply SSB
-                    if hasattr(chanObj, 'SSBFreq') and abs(chanObj.SSBFreq) > 0:
+                    if mode == 'linear' and hasattr(chanObj, 'SSBFreq') and abs(chanObj.SSBFreq) > 0:
                         PatternUtils.apply_SSB(chanData['linkList'], chanData['wfLib'], chanObj.SSBFreq, chanObj.samplingRate)
 
                     PatternUtils.correctMixer(chanData['wfLib'], chanObj.correctionT)
@@ -138,10 +149,12 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
                     #"Seems hackish but check for marker
                     if chan[-2] == 'm':
                         awg[chan] = {'linkList': [[create_padding_LL(SEQUENCE_PADDING//2), create_padding_LL(SEQUENCE_PADDING//2)]],
-                                 'wfLib': markerWFLib}
+                                     'branches': [],
+                                     'wfLib': markerWFLib}
                     else:
                         awg[chan] = {'linkList': [[create_padding_LL(SEQUENCE_PADDING//2), create_padding_LL(SEQUENCE_PADDING//2)]],
-                                 'wfLib': {TAZKey:np.zeros(1, dtype=np.complex)}}
+                                     'branches': [],
+                                     'wfLib': {TAZKey:np.zeros(1, dtype=np.complex)}}
 
             # convert to hardware formats
             # create the target folder if it does not exist
@@ -185,8 +198,7 @@ def compile_sequences(seqs, channels=None):
 
     #Compress the waveform library
     for chan in linkLists.keys():
-        compress_wfLib(linkLists[chan], wfLib[chan])
-        compress_wfLib(branches[chan], wfLib[chan])
+        compress_wfLib(linkLists[chan]+branches[chan], wfLib[chan])
 
     #Print a message so for the experiment we know how many sequences there are
     print('Compiled {} sequences.'.format(len(seqs)))

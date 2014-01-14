@@ -107,13 +107,18 @@ def add_gate_pulses(channel, awgData, chanData):
     genObj = channel.generator
     if markerAwg[markerKey]:
         warn('Reuse of marker gating channel: {0}'.format(markerKey))
-    markerAwg[markerKey] = {'linkList':None, 'wfLib':Compiler.markerWFLib}
+    markerAwg[markerKey] = {'linkList':None, 'branches':None, 'wfLib':Compiler.markerWFLib}
     markerAwg[markerKey]['linkList'] = create_gate_seqs(chanData['linkList'],
+                                                        genObj.gateBuffer,
+                                                        genObj.gateMinWidth,
+                                                        channel.samplingRate)
+    markerAwg[markerKey]['branches'] = create_gate_seqs(chanData['branches'],
                                                         genObj.gateBuffer,
                                                         genObj.gateMinWidth,
                                                         channel.samplingRate)
     markerDelay = genObj.gateDelay + channel.gateChan.delay + (channel.AWG.delay - channel.gateChan.AWG.delay)
     delay(markerAwg[markerKey]['linkList'], markerDelay, channel.gateChan.samplingRate )
+    # TODO: delay branch markers??
 
 def create_gate_seqs(linkList, gateBuffer=0, gateMinWidth=0, samplingRate=1.2e9):
     '''
