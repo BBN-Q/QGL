@@ -164,7 +164,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
 
             # convert to hardware formats
             # create the target folder if it does not exist
-            targetFolder = os.path.split(config.AWGDir + fileName)[0]
+            targetFolder = os.path.split(os.path.normpath(os.path.join(config.AWGDir, fileName)))[0]
             if not os.path.exists(targetFolder):
                 os.mkdir(targetFolder)
             fullFileName = os.path.normpath(os.path.join(config.AWGDir, fileName + '-' + awgName + suffix + instrumentLib[awgName].seqFileExt))
