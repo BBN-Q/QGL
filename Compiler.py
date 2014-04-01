@@ -253,6 +253,9 @@ def compile_sequence(seq, wfLib={} ):
                 if np.all(shape == shape[0]):
                     entry.isTimeAmp = True
                     shape = shape[:1]
+                    # convert near zeros to TAZKey
+                    if abs(shape[0]) < 1e-6:
+                        entry.key = TAZKey
 
                 #Rotate for phase and frame change (don't rotate zeros...)
                 if entry.key != TAZKey:
