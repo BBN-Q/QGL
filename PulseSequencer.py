@@ -184,7 +184,7 @@ def align(pulseBlock, mode="center"):
     pulseBlock.alignment = mode
     return pulseBlock
 
-AWGFreq = 1e9
+AWGFreq = 1.2e9
 
 def show(seq):
     from Compiler import compile_sequence, normalize #import here to avoid circular imports 
