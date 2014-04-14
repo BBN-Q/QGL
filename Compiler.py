@@ -64,15 +64,13 @@ def setup_awg_channels(logicalChannels):
     return {awg.name:get_empty_channel_set(awg) for awg in awgs}
 
 
-def map_logical_to_physical(linkLists, branches, wfLib):
+def map_logical_to_physical(linkLists, wfLib):
     physicalChannels = {chan: channelLib[get_channel_name(chan)].physChan.name for chan in linkLists.keys()}
     awgData = setup_awg_channels(linkLists.keys())
 
     for chan in linkLists.keys():
         awgName, awgChan = physicalChannels[chan].split('-')
-        awgData[awgName]['ch'+awgChan] = {'linkList': linkLists[chan],
-                                          'branches': branches[chan],
-                                          'wfLib': wfLib[chan]}
+        awgData[awgName]['ch'+awgChan] = {'linkList': linkLists[chan], 'wfLib': wfLib[chan]}
 
     return awgData
 
@@ -96,7 +94,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
         channels |= find_unique_channels(seq)
 
     #Compile all the pulses/pulseblocks to linklists and waveform libraries
-    linkLists, branches, wfLib = compile_sequences(seqs, channels)
+    linkLists, wfLib = compile_sequences(seqs, channels)
 
     # align channels
     # this horrible line finds the longest miniLL across all channels
@@ -108,10 +106,9 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
     #Add the slave trigger
     #TODO: only add to master device
     linkLists[channelLib['slaveTrig']], wfLib[channelLib['slaveTrig']] = PatternUtils.slave_trigger(len(seqs))
-    branches[channelLib['slaveTrig']] = []
 
     # map logical to physical channels
-    awgData = map_logical_to_physical(linkLists, branches, wfLib)
+    awgData = map_logical_to_physical(linkLists, wfLib)
 
     # for each physical channel need to:
     # 1) delay
@@ -149,12 +146,10 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
                     #"Seems hackish but check for marker
                     if chan[-2] == 'm':
                         awg[chan] = {'linkList': [[create_padding_LL(SEQUENCE_PADDING//2), create_padding_LL(SEQUENCE_PADDING//2)]],
-                                     'branches': [],
-                                     'wfLib': markerWFLib}
+                                 'wfLib': markerWFLib}
                     else:
                         awg[chan] = {'linkList': [[create_padding_LL(SEQUENCE_PADDING//2), create_padding_LL(SEQUENCE_PADDING//2)]],
-                                     'branches': [],
-                                     'wfLib': {TAZKey:np.zeros(1, dtype=np.complex)}}
+                                 'wfLib': {TAZKey:np.zeros(1, dtype=np.complex)}}
 
             # convert to hardware formats
             # create the target folder if it does not exist
@@ -182,27 +177,24 @@ def compile_sequences(seqs, channels=None):
     if isinstance(seqs[0], list):
         # nested sequences
         wfLib = {}
-        # use seqs[0] as prototype for finding channels (assume every link list operates on the same set of channels)
-        mainLL, branchLL, wfLib = compile_sequence(seqs[0], wfLib)
-        linkLists = {chan: [LL] for chan, LL in mainLL.items()}
-        branches = {chan: [LL] for chan, LL in branchLL.items()}
+        # use seqs[0] as prototype for finding channels (assume every miniLL operates on the same set of channels)
+        miniLL, wfLib = compile_sequence(seqs[0], wfLib)
+        linkLists = {chan: [LL] for chan, LL in miniLL.items()}
         for seq in seqs[1:]:
-            mainLL, branchLL, wfLib = compile_sequence(seq, wfLib)
+            miniLL, wfLib = compile_sequence(seq, wfLib)
             for chan in linkLists.keys():
-                linkLists[chan].append(mainLL[chan])
-                branches[chan].append(branchLL[chan])
+                linkLists[chan].append(miniLL[chan])
     else:
-        mainLL, branchLL, wfLib = compile_sequence(seqs)
-        linkLists = {chan: [LL] for chan, LL in mainLL.items()}
-        branches = {chan: [LL] for chan, LL in branchLL.items()}
+        miniLL, wfLib = compile_sequence(seqs)
+        linkLists = {chan: [LL] for chan, LL in miniLL.items()}
 
     #Compress the waveform library
     for chan in linkLists.keys():
-        compress_wfLib(linkLists[chan]+branches[chan], wfLib[chan])
+        compress_wfLib(linkLists[chan], wfLib[chan])
 
     #Print a message so for the experiment we know how many sequences there are
     print('Compiled {} sequences.'.format(len(seqs)))
-    return linkLists, branches, wfLib
+    return linkLists, wfLib
 
 def compile_sequence(seq, wfLib={}, channels=None):
     '''
@@ -214,16 +206,14 @@ def compile_sequence(seq, wfLib={}, channels=None):
     if not channels:
         channels = find_unique_channels(seq)
 
-    logicalLLs = {}
-    branchLLs = {}
+    logicalLLs = {}        
     for chan in channels:
         logicalLLs[chan] = []
-        branchLLs[chan] = []
         if chan not in wfLib:
             if isinstance(chan, Channels.LogicalMarkerChannel):
                 wfLib[chan] = markerWFLib
             else:
-                wfLib[chan] = {TAZKey: np.zeros(1, dtype=np.complex)}
+                wfLib[chan] = {TAZKey:  np.zeros(1, dtype=np.complex)}
     carriedPhase = {ch: 0 for ch in channels}
     for block in normalize(seq, channels):
         #Align the block 
@@ -268,7 +258,7 @@ def compile_sequence(seq, wfLib={}, channels=None):
                 entry.key = shapeHash
             curFrame += entry.frameChange 
 
-    return logicalLLs, branchLLs, wfLib
+    return logicalLLs, wfLib
 
 def compile_control_flow_sequence(seq, wfLib={}, channels=None):
     '''
