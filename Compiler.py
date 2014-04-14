@@ -213,7 +213,7 @@ def compile_sequence(seq, wfLib={}, channels=None):
             if isinstance(chan, Channels.LogicalMarkerChannel):
                 wfLib[chan] = markerWFLib
             else:
-                wfLib[chan] = {TAZKey:  np.zeros(1, dtype=np.complex)}
+                wfLib[chan] = {TAZKey: np.zeros(1, dtype=np.complex)}
     carriedPhase = {ch: 0 for ch in channels}
     for block in normalize(seq, channels):
         #Align the block 
