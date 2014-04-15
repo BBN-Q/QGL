@@ -82,7 +82,6 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
         nbrRepeats : number of loops of each sequence in 'seqs' to encode in the file (default 1)
         mode: 'linear' or 'branching' (default 'linear')
     '''
-    # TODO: if mode is 'linear', should assert that we have a compatible sequence
 
     #Add the digitizer trigger to each sequence
     #TODO: Make this more sophisticated.
@@ -104,7 +103,6 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
         PatternUtils.align(LL, alignMode, longestLL+SEQUENCE_PADDING)
 
     #Add the slave trigger
-    #TODO: only add to master device
     linkLists[channelLib['slaveTrig']], wfLib[channelLib['slaveTrig']] = PatternUtils.slave_trigger(len(seqs))
 
     # map logical to physical channels
@@ -292,7 +290,8 @@ def compress_wfLib(seqs, wfLib):
     usedKeys = set([TAZKey, markerHighKey])
     for miniLL in seqs:
         for entry in miniLL:
-            usedKeys.add(entry.key)
+            if isinstance(entry, LLWaveform):
+                usedKeys.add(entry.key)
 
     unusedKeys = set(wfLib.keys()) - usedKeys
     for key in unusedKeys:
@@ -317,6 +316,10 @@ def normalize(seq, channels=None):
     '''
     # promote to PulseBlocks
     seq = [p.promote() for p in seq]
+
+    # make sure a sequence starts with a WAIT
+    if seq[0] != ControlFlow.Wait():
+        seq.insert(0, ControlFlow.Wait())
 
     if not channels:
         channels = find_unique_channels(seq)

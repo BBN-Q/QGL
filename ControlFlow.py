@@ -120,3 +120,8 @@ def LoadRepeat(n):
 
 def Repeat(target):
 	return ControlInstruction("REPEAT", target=target)
+
+def Wait():
+	return ControlInstruction("WAIT")
+qwait = Wait
+
