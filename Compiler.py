@@ -75,12 +75,12 @@ def map_logical_to_physical(linkLists, wfLib):
     return awgData
 
 
-def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRepeats=1, mode='branching'):
+def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRepeats=1, mode='linear'):
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'. Other inputs:
         alignMode : 'left' or 'right' (default 'left')
         nbrRepeats : number of loops of each sequence in 'seqs' to encode in the file (default 1)
-        mode: 'linear' or 'branching' (default 'branching')
+        mode: 'linear' or 'branching' (default 'linear')
     '''
     # TODO: if mode is 'linear', should assert that we have a compatible sequence
 
@@ -177,15 +177,15 @@ def compile_sequences(seqs, channels=None):
     if isinstance(seqs[0], list):
         # nested sequences
         wfLib = {}
-        # use seqs[0] as prototype for finding channels (assume every miniLL operates on the same set of channels)
-        miniLL, wfLib = compile_sequence(seqs[0], wfLib)
+        # use seqs[0] as prototype in case we were not given a set of channels
+        miniLL, wfLib = compile_sequence(seqs[0], wfLib, channels)
         linkLists = {chan: [LL] for chan, LL in miniLL.items()}
         for seq in seqs[1:]:
-            miniLL, wfLib = compile_sequence(seq, wfLib)
+            miniLL, wfLib = compile_sequence(seq, wfLib, channels)
             for chan in linkLists.keys():
                 linkLists[chan].append(miniLL[chan])
     else:
-        miniLL, wfLib = compile_sequence(seqs)
+        miniLL, wfLib = compile_sequence(seqs, {}, channels)
         linkLists = {chan: [LL] for chan, LL in miniLL.items()}
 
     #Compress the waveform library
@@ -206,7 +206,7 @@ def compile_sequence(seq, wfLib={}, channels=None):
     if not channels:
         channels = find_unique_channels(seq)
 
-    logicalLLs = {}        
+    logicalLLs = {}
     for chan in channels:
         logicalLLs[chan] = []
         if chan not in wfLib:
@@ -215,7 +215,12 @@ def compile_sequence(seq, wfLib={}, channels=None):
             else:
                 wfLib[chan] = {TAZKey: np.zeros(1, dtype=np.complex)}
     carriedPhase = {ch: 0 for ch in channels}
-    for block in normalize(seq, channels):
+    for block in normalize(flatten(seq), channels):
+        # control flow instructions just need to broadcast to all channels
+        if isinstance(block, (ControlFlow.ComparisonInstruction, ControlFlow.ControlInstruction)):
+            for chan in channels:
+                logicalLLs[chan] += [block]
+            continue
         #Align the block 
         blockLength = block.maxPts
         # drop length 0 blocks but push frame change onto next non-zero entry
@@ -240,6 +245,8 @@ def compile_sequence(seq, wfLib={}, channels=None):
             continue
         curFrame = 0
         for entry in logicalLLs[chan]:
+            if isinstance(entry, (ControlFlow.ComparisonInstruction, ControlFlow.ControlInstruction)):
+                continue
             # frame update
             shape = np.copy(wfLib[chan][entry.key])
 
@@ -259,83 +266,6 @@ def compile_sequence(seq, wfLib={}, channels=None):
             curFrame += entry.frameChange 
 
     return logicalLLs, wfLib
-
-def compile_control_flow_sequence(seq, wfLib={}, channels=None):
-    '''
-    Converts a single sequence containing QGL control flow into a pair of link lists
-    and a waveform library.
-
-    Control flow sequences are currently incompatible with SSB modulation and frame
-    changes. So, this version drops those features
-    '''
-
-    #Find the set of logical channels used here and initialize them
-    if not channels:
-        channels = find_unique_channels(seq)
-
-    mainLL = {}
-    branchLL = {}
-    for chan in channels:
-        mainLL[chan] = []
-        branchLL[chan] = []
-        if chan not in wfLib:
-            if isinstance(chan, Channels.LogicalMarkerChannel):
-                wfLib[chan] = markerWFLib
-            else:
-                wfLib[chan] = {TAZKey:  np.zeros(1, dtype=np.complex)}
-
-    # separate main branch from everything else
-    main, branch = flatten_and_separate(seq)
-
-    # convert data from both into 
-    for LL, seq in zip([mainLL, branchLL], [main, branch]):
-        for block in normalize(seq, channels):
-            if isinstance(block, (ControlFlow.ComparisonInstruction, ControlFlow.ControlInstruction)):
-                # these expand to all channels
-                for chan in channels:
-                    LL[chan] += [block]
-            else:
-                #Align the block 
-                blockLength = block.maxPts
-                # drop length 0 blocks
-                if blockLength == 0:
-                    continue
-                for chan in channels:
-                    # add aligned LL entry(ies) (if the block contains a composite pulse, may get back multiple waveforms and LL entries)
-                    wfs, LLentries = align(block.label, block.pulses[chan], blockLength, block.alignment)
-                    for wf in wfs:
-                        if isinstance(chan, Channels.LogicalMarkerChannel):
-                            wf = wf.astype(np.bool)
-                        if hash_pulse(wf) not in wfLib:
-                            wfLib[chan][hash_pulse(wf)] = wf
-                    # Frame changes are then propagated through composite pulses
-                    LL[chan] += propagate_frame(LLentries, 0.0)
-
-    # loop through again to convert amplitues/frames into complex pulses
-    for chan in channels:
-        if not isinstance(chan, (Channels.Qubit, Channels.Measurement)):
-            continue
-        for entry in itertools.chain(mainLL[chan], branchLL[chan]):
-            if isinstance(entry, (ControlFlow.ComparisonInstruction, ControlFlow.ControlInstruction)):
-                continue
-            # frame update
-            shape = np.copy(wfLib[chan][entry.key])
-
-            # See if we can turn into a TA pair
-            # n.b. fragile: if you buffer a square pulse it will not be constant valued
-            if np.all(shape == shape[0]):
-                entry.isTimeAmp = True
-                shape = shape[:1]
-
-            #Rotate for phase (don't rotate zeros...)
-            if entry.key != TAZKey:
-                shape *= np.exp(1j*(entry.phase))
-                shapeHash = hash_pulse(shape)
-                if shapeHash not in wfLib[chan]:
-                    wfLib[chan][shapeHash] = shape
-                entry.key = shapeHash
-
-    return mainLL, branchLL, wfLib
 
 def propagate_frame(entries, frame):
     '''
