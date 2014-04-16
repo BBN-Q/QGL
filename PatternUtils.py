@@ -213,21 +213,26 @@ def add_digitizer_trigger(seqs, trigChan):
     '''
     Add the digitizer trigger.  For now hardcoded but should be loaded from config file.
     '''
-    #Assume that last pulse is the measurment pulse for now and tensor on the digitizer trigger pulse
+    # Attach a trigger to any pulse block containing a measurement
     for seq in seqs:
-        #Hack around copied list elements referring to same sequence element
-        if isinstance(seq[-1], Pulse) or trigChan not in seq[-1].pulses.keys():
-            seq[-1] *= Pulse("digTrig", trigChan, trigChan.pulseParams['shapeFun'](**trigChan.pulseParams), 0.0, 0.0)
+        for ct in range(len(seq)):
+            if contains_measurement(seq[ct]):
+                seq[ct] *= Pulse("digTrig", trigChan, trigChan.pulseParams['shapeFun'](**trigChan.pulseParams), 0.0, 0.0)
+
+def contains_measurement(entry):
+    '''
+    Determines if a LL entry contains a measurement
+    '''
+    if entry.label == "MEAS":
+        return True
+    elif hasattr(entry, 'pulses'):
+        for p in entry.pulses.values():
+            if p.label == "MEAS":
+                return True
+    return False
 
 def slave_trigger(numSeqs):
     """
     Create slave trigger link lists.
     """
     return [[Compiler.create_padding_LL(1), Compiler.create_padding_LL(1, True), Compiler.create_padding_LL(1)] for _ in range(numSeqs)], Compiler.markerWFLib
-
-
-    
-        
-
-
-

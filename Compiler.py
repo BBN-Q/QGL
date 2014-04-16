@@ -83,8 +83,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
         mode: 'linear' or 'branching' (default 'linear')
     '''
 
-    #Add the digitizer trigger to each sequence
-    #TODO: Make this more sophisticated.
+    #Add the digitizer trigger to measurements
     PatternUtils.add_digitizer_trigger(seqs, channelLib['digitizerTrig'])
     
     # find channel set at top level to account for individual sequence channel variability
