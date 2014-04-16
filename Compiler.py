@@ -28,6 +28,7 @@ import Channels
 from PulsePrimitives import Id
 import PulseSequencer
 import ControlFlow
+from BlockLabel import label
 from instruments.AWGs import get_empty_channel_set, APS, Tek5014
 
 SEQUENCE_PADDING = 480 #2800 #480
@@ -185,6 +186,15 @@ def compile_sequences(seqs, channels=None):
         miniLL, wfLib = compile_sequence(seqs, {}, channels)
         linkLists = {chan: [LL] for chan, LL in miniLL.items()}
 
+    for seqs in linkLists.values():
+        # all sequences should start with a WAIT
+        for seq in seqs:
+            if seq[0] != ControlFlow.Wait():
+                seq.insert(0, ControlFlow.Wait())
+        # last sequence should end with a GOTO back to the first sequence
+        if not (hasattr(seqs[-1][-1], 'instruction') and seqs[-1][-1].instruction == 'GOTO'):
+            seqs[-1].append(ControlFlow.Goto(label(seqs[0])))
+
     #Compress the waveform library
     for chan in linkLists.keys():
         compress_wfLib(linkLists[chan], wfLib[chan])
@@ -315,10 +325,6 @@ def normalize(seq, channels=None):
     '''
     # promote to PulseBlocks
     seq = [p.promote() for p in seq]
-
-    # make sure a sequence starts with a WAIT
-    if seq[0] != ControlFlow.Wait():
-        seq.insert(0, ControlFlow.Wait())
 
     if not channels:
         channels = find_unique_channels(seq)
