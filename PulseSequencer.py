@@ -198,6 +198,7 @@ def align(pulseBlock, mode="center"):
 AWGFreq = 1e9
 
 def show(seq):
+    import Compiler
     from Compiler import compile_sequence #import here to avoid circular imports 
     #compile
     linkList, wfLib = compile_sequence(seq)
@@ -206,7 +207,7 @@ def show(seq):
     channels = linkList.keys()
     concatShapes = {q: np.array([0], dtype=np.complex128) for q in channels}
     for q in channels:
-        for entry in linkList[q]:
+        for entry in filter(lambda x: isinstance(x, Compiler.LLWaveform), linkList[q]):
             if entry.isTimeAmp:
                 concatShapes[q] = np.append(concatShapes[q], wfLib[q][entry.key][0]*np.ones(entry.length*entry.repeat))
             else:
