@@ -75,6 +75,13 @@ def map_logical_to_physical(linkLists, wfLib):
 
     return awgData
 
+def channel_delay_map(awgData):
+    chanDelays = {}
+    # loop through all used IQkeys
+    for IQkey in [awgName + '-' + chanName[2:] for awgName, awg in awgData.items() for chanName in awg.keys()]:
+        chan = channelLib[IQkey]
+        chanDelays[IQkey] = chan.delay + chan.AWG.delay
+    return PatternUtils.normalize_delays(chanDelays)
 
 def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRepeats=1, mode='linear'):
     '''
@@ -108,6 +115,9 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
     # map logical to physical channels
     awgData = map_logical_to_physical(linkLists, wfLib)
 
+    # construct channel delay map
+    chanDelays = channel_delay_map(awgData)
+
     # for each physical channel need to:
     # 1) delay
     # 2) apply SSB if necessary
@@ -120,7 +130,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
                 chanObj = channelLib[IQkey]
             
                 # apply channel delay (TODO: do we delay branches? probably, but will need to encode triggering information to know start points to delay)
-                PatternUtils.delay(chanData['linkList'], chanObj.delay + chanObj.AWG.delay, chanObj.samplingRate)
+                PatternUtils.delay(chanData['linkList'], chanDelays[IQkey], chanObj.samplingRate)
                 
                 # For quadrature channels, apply SSB and mixer correction
                 if isinstance(chanObj, Channels.PhysicalQuadratureChannel):
@@ -364,10 +374,6 @@ class LLWaveform(object):
     def __str__(self):
         labelPart = "{0}: ".format(self.label) if self.label else ""
         return labelPart + "LLWaveform(" + str(id(self)) + ")"
-    
-    @property
-    def hasMarker(self):
-        return self.markerDelay1 or self.markerDelay2
 
     @property
     def isZero(self):

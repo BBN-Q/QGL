@@ -18,6 +18,7 @@ import Compiler
 from warnings import warn
 from APSPattern import MIN_ENTRY_LENGTH
 from PulseSequencer import Pulse
+import ControlFlow
 from math import pi
 
 def delay(linkList, delay, samplingRate):
@@ -25,14 +26,26 @@ def delay(linkList, delay, samplingRate):
     Delays a mini link list by the given delay. Postives delays
     shift right, negative delays shift left.
     '''
-    # we assume that link lists are constructed with a padding element at the beginning that can be adjusted
-    assert linkList[0][0].isZero, 'Delay error: link list does not start with a padding element'
     sampShift = int(round(delay * samplingRate))
     for miniLL in linkList:
-        miniLL[0].length += sampShift
-        assert miniLL[0].length > 0, 'Delay error: Negative length padding element after delay.'
-    # TODO: handle jumping instructions (GOTO, CALL, RETURN, REPEAT)
-    # need to insert a delay element to account for longest delay across channels
+        # loop through and look for WAIT instructions
+        ct = 0
+        while ct < len(miniLL):
+            if miniLL[ct] == ControlFlow.Wait():
+                miniLL.insert(ct+1, Compiler.create_padding_LL(sampShift))
+            ct += 1
+
+def normalize_delays(delays):
+    '''
+    Since we cannot delay by a negative amount, shift all delays until they are all positive.
+    Takes in a dict of channel:delay pairs and returns a normalized dict.
+    '''
+    min_delay = min(delays.values())
+    out = dict(delays) # copy before modifying
+    if min_delay < 0:
+        for chan in delays.keys():
+            out[chan] += -min_delay
+    return out
 
 def apply_SSB(linkList, wfLib, SSBFreq, samplingRate):
     #Negative because of negative frequency qubits
