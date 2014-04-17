@@ -102,12 +102,13 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
     #Compile all the pulses/pulseblocks to linklists and waveform libraries
     linkLists, wfLib = compile_sequences(seqs, channels)
 
+    # skip this for now
     # align channels
     # this horrible line finds the longest miniLL across all channels
-    longestLL = max([sum([entry.totLength for entry in miniLL]) for LL in linkLists.values() for miniLL in LL])
+    # longestLL = max([sum([entry.totLength for entry in miniLL]) for LL in linkLists.values() for miniLL in LL])
     
-    for chan, LL in linkLists.items():
-        PatternUtils.align(LL, alignMode, longestLL+SEQUENCE_PADDING)
+    # for chan, LL in linkLists.items():
+    #     PatternUtils.align(LL, alignMode, longestLL+SEQUENCE_PADDING)
 
     #Add the slave trigger
     linkLists[channelLib['slaveTrig']], wfLib[channelLib['slaveTrig']] = PatternUtils.slave_trigger(len(seqs))

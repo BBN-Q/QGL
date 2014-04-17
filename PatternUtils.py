@@ -23,8 +23,7 @@ from math import pi
 
 def delay(linkList, delay, samplingRate):
     '''
-    Delays a mini link list by the given delay. Postives delays
-    shift right, negative delays shift left.
+    Delays a mini link list by the given amount.
     '''
     sampShift = int(round(delay * samplingRate))
     for miniLL in linkList:
@@ -37,8 +36,9 @@ def delay(linkList, delay, samplingRate):
 
 def normalize_delays(delays):
     '''
-    Since we cannot delay by a negative amount, shift all delays until they are all positive.
-    Takes in a dict of channel:delay pairs and returns a normalized dict.
+    Normalizes a dictionary of channel delays. Postives delays shift right, negative delays shift left.
+    Since we cannot delay by a negative amount in hardware, shift all delays until they are positive.
+    Takes in a dict of channel:delay pairs and returns a normalized copy of the same.
     '''
     min_delay = min(delays.values())
     out = dict(delays) # copy before modifying
@@ -150,12 +150,15 @@ def create_gate_seqs(linkList, gateBuffer=0, gateMinWidth=0, samplingRate=1.2e9)
         #Initialize a zero-length padding sequence
         gateSeq = [Compiler.create_padding_LL(0)]
         # we need to pad the miniLL with an extra entry if the last entry is not a zero
-        if not miniLL[-1].isZero:
-            miniLL.append(Compiler.create_padding_LL(MIN_ENTRY_LENGTH))
+        # TODO: this is instrument specific... move to APS1 conversion step
+        # if not miniLL[-1].isZero:
+            # miniLL.append(Compiler.create_padding_LL(MIN_ENTRY_LENGTH))
 
         #Step through sequence changing state as necessary
         blankHigh = False
         for entry in miniLL:
+            if isinstance(entry, (ControlFlow.ComparisonInstruction, ControlFlow.ControlInstruction)):
+                continue
             #If we are low and the current entry is high then we need to add an element
             if not blankHigh and not entry.isZero:
                 gateSeq.append(Compiler.create_padding_LL(entry.totLength, high=True))
