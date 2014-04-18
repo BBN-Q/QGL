@@ -272,14 +272,14 @@ def compile_sequence(seq, wfLib={}, channels=None):
             # frame update
             shape = np.copy(wfLib[chan][entry.key])
 
-                # See if we can turn into a TA pair
-                # fragile: if you buffer a square pulse it will not be constant valued
-                if np.all(shape == shape[0]):
-                    entry.isTimeAmp = True
-                    shape = shape[:1]
-                    # convert near zeros to TAZKey
-                    if abs(shape[0]) < 1e-6:
-                        entry.key = TAZKey
+            # See if we can turn into a TA pair
+            # fragile: if you buffer a square pulse it will not be constant valued
+            if np.all(shape == shape[0]):
+                entry.isTimeAmp = True
+                shape = shape[:1]
+                # convert near zeros to TAZKey
+                if abs(shape[0]) < 1e-6:
+                    entry.key = TAZKey
 
             #Rotate for phase and frame change (don't rotate zeros...)
             if entry.key != TAZKey:
