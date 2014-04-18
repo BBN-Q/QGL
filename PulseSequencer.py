@@ -43,9 +43,9 @@ class Pulse(object):
 
     def __str__(self):
         if isinstance(self.qubits, tuple):
-            return '{0}({1})'.format(self.label, ','.join([qubit.name for qubit in self.qubits]))
+            return '{0}({1})'.format(self.label, ','.join([qubit.label for qubit in self.qubits]))
         else:
-            return '{0}({1})'.format(self.label, self.qubits.name)
+            return '{0}({1})'.format(self.label, self.qubits.label)
 
     # adding pulses concatenates the pulse shapes
     def __add__(self, other):
@@ -199,7 +199,7 @@ def align(pulseBlock, mode="center"):
     pulseBlock.alignment = mode
     return pulseBlock
 
-AWGFreq = 1e9
+AWGFreq = 1.2e9
 
 def show(seq):
     import Compiler

@@ -34,29 +34,37 @@ def create_tomo_blocks(qubits, numPulses, alignment='parallel'):
 	#Create all combinations of pulses for the number of qubits
 	return [reduce(operator.mul, [p(q) for p,q in zip(pulseSet, qubits)]) for pulseSet in product(tomoSet, repeat=len(qubits))]
 
-def state_tomo(seq, qubits, numPulses=4):
+def state_tomo(seq, qubits, numPulses=4, measChans=None):
 	'''
 	Apply state tomography readout pulses and measurement.
 
 	Parameters
 	-----------
 	seq : a single entry list sequence to perform tomography on
-	qubits: which qubits to act on 
-	numPulses: number of readout pulsese
+	qubits : which qubits to act on 
+	numPulses : number of readout pulses
+	measChans : tuple of measurement channels to readout (defaults to individual qubit channels)
 	'''
-	return [seq + [tomoBlock,  MEAS(*qubits)]
+	if measChans is None:
+		measChans = qubits
+	
+	return [seq + [tomoBlock,  MEAS(*measChans)]
 				 for tomoBlock in create_tomo_blocks(qubits, numPulses)]
 
-def process_tomo(seq, qubits, numPulses=4):
+def process_tomo(seq, qubits, numPulses=4, measChans=None):
 	'''
 	Apply process tomography state prep. and readout pulses and measurement.
 
 	Parameters
 	-----------
 	seq : a single entry list sequence to perform tomography on
-	qubits: which qubits to act on 
-	numPulses: number of prep/readout pulsese
+	qubits : which qubits to act on 
+	numPulses : number of prep/readout pulses
+	measChans : tuple of measurement channels to readout (defaults to individual qubit channels)
 	'''
-	return [[prepBlock] + seq + [readoutBlock,  MEAS(*qubits)]
+	if measChans is None:
+		measChans = qubits
+	
+	return [[prepBlock] + seq + [readoutBlock,  MEAS(*measChans)]
 				 for prepBlock, readoutBlock in product(create_tomo_blocks(qubits, numPulses), repeat=2)]
 

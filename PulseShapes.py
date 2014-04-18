@@ -55,8 +55,13 @@ def gaussOn(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
     #Round to how many points we need
     numPts = np.round(length*samplingRate)
     xPts = np.linspace(-cutoff, 0, numPts)
+    #Pull the edge down to zero so there is no big step
+    #i.e. find the shift such that the next point in the pulse would be zero
     xStep = xPts[1] - xPts[0]
-    return (amp * (np.exp(-0.5*(xPts**2)) - np.exp(-0.5*((xPts[0]-xStep)**2)))).astype(np.complex)
+    nextPoint = np.exp(-0.5*((xPts[0]-xStep)**2))
+    #Rescale so that it still goes to amp
+    amp = (amp/(1-nextPoint))
+    return (amp * (np.exp(-0.5*(xPts**2)) - nextPoint)).astype(np.complex)
 
 def gaussOff(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
     '''
@@ -65,8 +70,13 @@ def gaussOff(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
     #Round to how many points we need
     numPts = np.round(length*samplingRate)
     xPts = np.linspace(0, cutoff, numPts)
+    #Pull the edge down to zero so there is no big step
+    #i.e. find the shift such that the next point in the pulse would be zero
     xStep = xPts[1] - xPts[0]
-    return (amp * (np.exp(-0.5*(xPts**2)) - np.exp(-0.5*((xPts[-1]+xStep)**2)))).astype(np.complex)
+    nextPoint = np.exp(-0.5*((xPts[-1]+xStep)**2))
+    #Rescale so that it still goes to amp
+    amp = (amp/(1-nextPoint))
+    return (amp * (np.exp(-0.5*(xPts**2)) - nextPoint)).astype(np.complex)
 
 def dragGaussOn(amp=1, length=0, cutoff=2, dragScaling=0.5, samplingRate=1e9, **params):
     '''

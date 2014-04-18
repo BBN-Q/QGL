@@ -47,12 +47,12 @@ markerHighKey = hash_pulse(np.ones(1, dtype=np.bool))
 
 markerWFLib = {TAZKey:np.zeros(1, dtype=np.bool), markerHighKey:np.ones(1, dtype=np.bool) }
 
-def get_channel_name(chanKey):
-    ''' Takes in a channel key and returns a channel name '''
+def get_channel_label(chanKey):
+    ''' Takes in a channel key and returns a channel label '''
     if type(chanKey) != tuple:
-        return chanKey.name
+        return chanKey.label
     else:
-        return "".join([chan.name for chan in chanKey])
+        return "".join([chan.label for chan in chanKey])
 
 
 def setup_awg_channels(logicalChannels):
@@ -62,11 +62,11 @@ def setup_awg_channels(logicalChannels):
         # dig in an grab the associated gate channel, too
         if not isinstance(chan, Channels.LogicalMarkerChannel):
             awgs.add(chan.physChan.gateChan.AWG)
-    return {awg.name:get_empty_channel_set(awg) for awg in awgs}
+    return {awg.label:get_empty_channel_set(awg) for awg in awgs}
 
 
 def map_logical_to_physical(linkLists, wfLib):
-    physicalChannels = {chan: channelLib[get_channel_name(chan)].physChan.name for chan in linkLists.keys()}
+    physicalChannels = {chan: channelLib[get_channel_label(chan)].physChan.label for chan in linkLists.keys()}
     awgData = setup_awg_channels(linkLists.keys())
 
     for chan in linkLists.keys():
@@ -149,6 +149,9 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
                         PatternUtils.apply_SSB(chanData['linkList'], chanData['wfLib'], chanObj.SSBFreq, chanObj.samplingRate)
 
                     PatternUtils.correctMixer(chanData['wfLib'], chanObj.correctionT)
+
+                #Remove unused waveforms
+                compress_wfLib(chanData['linkList'], chanData['wfLib'])
                 
     #Loop back through to fill empty channels and write to file
     fileList = []
@@ -167,10 +170,10 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
 
             # convert to hardware formats
             # create the target folder if it does not exist
-            targetFolder = os.path.split(config.AWGDir + fileName)[0]
+            targetFolder = os.path.split(os.path.normpath(os.path.join(config.AWGDir, fileName)))[0]
             if not os.path.exists(targetFolder):
                 os.mkdir(targetFolder)
-            fullFileName = config.AWGDir + fileName + '-' + awgName + suffix + instrumentLib[awgName].seqFileExt
+            fullFileName = os.path.normpath(os.path.join(config.AWGDir, fileName + '-' + awgName + suffix + instrumentLib[awgName].seqFileExt))
             if isinstance(instrumentLib[awgName], APS):
                 write_APS_file(awg, fullFileName, nbrRepeats)
             elif isinstance(instrumentLib[awgName], Tek5014):
@@ -210,10 +213,6 @@ def compile_sequences(seqs, channels=None):
         # last sequence should end with a GOTO back to the first sequence
         if not (hasattr(seqs[-1][-1], 'instruction') and seqs[-1][-1].instruction == 'GOTO'):
             seqs[-1].append(ControlFlow.Goto(label(seqs[0])))
-
-    #Compress the waveform library
-    for chan in linkLists.keys():
-        compress_wfLib(linkLists[chan], wfLib[chan])
 
     #Print a message so for the experiment we know how many sequences there are
     print('Compiled {} sequences.'.format(len(seqs)))
@@ -273,11 +272,14 @@ def compile_sequence(seq, wfLib={}, channels=None):
             # frame update
             shape = np.copy(wfLib[chan][entry.key])
 
-            # See if we can turn into a TA pair
-            # fragile: if you buffer a square pulse it will not be constant valued
-            if np.all(shape == shape[0]):
-                entry.isTimeAmp = True
-                shape = shape[:1]
+                # See if we can turn into a TA pair
+                # fragile: if you buffer a square pulse it will not be constant valued
+                if np.all(shape == shape[0]):
+                    entry.isTimeAmp = True
+                    shape = shape[:1]
+                    # convert near zeros to TAZKey
+                    if abs(shape[0]) < 1e-6:
+                        entry.key = TAZKey
 
             #Rotate for phase and frame change (don't rotate zeros...)
             if entry.key != TAZKey:
