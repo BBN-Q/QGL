@@ -145,6 +145,8 @@ class Qubit(LogicalChannel):
         super(Qubit, self).__init__(**kwargs)
         if self.physChan is None:
             self.physChan = PhysicalQuadratureChannel(label=kwargs['label']+'-phys')
+        if self.gateChan is None:
+            self.gateChan = PhysicalMarkerChannel(label=kwargs['label']+'-gate')
 
 class Measurement(LogicalChannel):
     '''
