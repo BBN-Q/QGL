@@ -93,6 +93,9 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
 
     #Add the digitizer trigger to measurements
     PatternUtils.add_digitizer_trigger(seqs, channelLib['digitizerTrig'])
+
+    # Add gating/blanking pulses
+    PatternUtils.add_gate_pulses(seqs)
     
     # find channel set at top level to account for individual sequence channel variability
     channels = set([])
@@ -113,6 +116,11 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
     #Add the slave trigger
     linkLists[channelLib['slaveTrig']], wfLib[channelLib['slaveTrig']] = PatternUtils.slave_trigger(len(seqs))
 
+    # apply gating constraints
+    for chan, LL in linkLists.items():
+        if isinstance(chan, PhysicalMarkerChannel):
+            LL = PatternUtils.apply_gating_constraints(chan.physChan, LL)
+    
     # map logical to physical channels
     awgData = map_logical_to_physical(linkLists, wfLib)
 
@@ -130,7 +138,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
                 IQkey = awgName + '-' + chanName[2:]
                 chanObj = channelLib[IQkey]
             
-                # apply channel delay (TODO: do we delay branches? probably, but will need to encode triggering information to know start points to delay)
+                # apply channel delay
                 PatternUtils.delay(chanData['linkList'], chanDelays[IQkey], chanObj.samplingRate)
                 
                 # For quadrature channels, apply SSB and mixer correction
@@ -141,9 +149,6 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
                         PatternUtils.apply_SSB(chanData['linkList'], chanData['wfLib'], chanObj.SSBFreq, chanObj.samplingRate)
 
                     PatternUtils.correctMixer(chanData['wfLib'], chanObj.correctionT)
-
-                    # add gate pulses on the marker channel
-                    PatternUtils.add_gate_pulses(chanObj, awgData, chanData)
                 
     #Loop back through to fill empty channels and write to file
     fileList = []

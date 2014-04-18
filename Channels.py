@@ -84,7 +84,6 @@ class PhysicalQuadratureChannel(PhysicalChannel):
     IChannel = Str()
     QChannel = Str()
     #During initilization we may just have a string reference to the channel
-    gateChan = Either(Str, Instance(PhysicalMarkerChannel))
     ampFactor = Float(1.0)
     phaseSkew = Float(0.0)
     SSBFreq = Float(0.0)
@@ -105,6 +104,7 @@ class Qubit(LogicalChannel):
     The main class for generating qubit pulses.  Effectively a logical "QuadratureChannel".
     '''
     pulseParams = DictStrAny({'length':20e-9, 'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.gaussian, 'buffer':0.0, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9})
+    gateChan = Either(Str, Instance(LogicalMarkerChannel))
 
     def __init__(self, **kwargs):
         super(Qubit, self).__init__(**kwargs)
@@ -120,6 +120,7 @@ class Measurement(LogicalChannel):
     measType = Enum('autodyne','homodyne', desc='Type of measurment (autodyne, homodyne)')
     autodyneFreq = Float
     pulseParams = DictStrAny({'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'buffer':0.0, 'cutoff':2, 'sigma':1e-9})
+    gateChan = Either(Str, Instance(LogicalMarkerChannel))
 
 
 def QubitFactory(name, **kwargs):

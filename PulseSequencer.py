@@ -76,6 +76,10 @@ class Pulse(object):
         else:
             return len(self.shape)
 
+    @property
+    def isZero(self):
+        return np.all(self.shape == 0)
+
 def TAPulse(label, qubits, length, amp, phase, frameChange):
     '''
     Creates a time/amplitude pulse with the given pulse length and amplitude

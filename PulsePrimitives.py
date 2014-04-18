@@ -339,5 +339,6 @@ def MEAS(*args, **kwargs):
 
     return reduce(operator.mul, [create_meas_pulse(qubit) for qubit in args])
 
-
-    
+# Gating/blanking pulse primitives
+def BLANK(chan, width):
+    return TAPulse("BLANK", chan.gateChan, width, 1, 0, 0)
