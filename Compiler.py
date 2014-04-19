@@ -34,6 +34,7 @@ from instruments.AWGs import get_empty_channel_set, APS, Tek5014
 SEQUENCE_PADDING = 480 #2800 #480
 from APSPattern import write_APS_file
 from TekPattern import write_Tek_file
+from mm import multimethod
 
 # global parameter libraries
 channelLib = {}
@@ -59,9 +60,9 @@ def setup_awg_channels(logicalChannels):
     awgs = set([])
     for chan in logicalChannels:
         awgs.add(chan.AWG)
-        # dig in an grab the associated gate channel, too
+        # dig in and grab the associated gate channel, too
         if not isinstance(chan, Channels.LogicalMarkerChannel):
-            awgs.add(chan.physChan.gateChan.AWG)
+            awgs.add(chan.gateChan.AWG)
     return {awg.label:get_empty_channel_set(awg) for awg in awgs}
 
 
@@ -105,14 +106,6 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
     #Compile all the pulses/pulseblocks to linklists and waveform libraries
     linkLists, wfLib = compile_sequences(seqs, channels)
 
-    # skip this for now
-    # align channels
-    # this horrible line finds the longest miniLL across all channels
-    # longestLL = max([sum([entry.totLength for entry in miniLL]) for LL in linkLists.values() for miniLL in LL])
-    
-    # for chan, LL in linkLists.items():
-    #     PatternUtils.align(LL, alignMode, longestLL+SEQUENCE_PADDING)
-
     #Add the slave trigger
     linkLists[channelLib['slaveTrig']], wfLib[channelLib['slaveTrig']] = PatternUtils.slave_trigger(len(seqs))
 
@@ -131,8 +124,8 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
     # 1) delay
     # 2) apply SSB if necessary
     # 3) mixer correct
-    for awgName, awg in awgData.items():
-        for chanName, chanData in awg.items():
+    for awgName, data in awgData.items():
+        for chanName, chanData in data.items():
             if chanData:
                 # construct IQkey using existing convention
                 IQkey = awgName + '-' + chanName[2:]
@@ -155,37 +148,24 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
                 
     #Loop back through to fill empty channels and write to file
     fileList = []
-    for awgName, awg in awgData.items():
+    for awgName, data in awgData.items():
         #If all the channels are empty then do not bother writing the file
-        if not all([chan is None for chan in awg.values()]):
-            for chan in awg.keys():
-                if not awg[chan]:
-                    #"Seems hackish but check for marker
-                    if chan[-2] == 'm':
-                        awg[chan] = {'linkList': [[create_padding_LL(SEQUENCE_PADDING//2), create_padding_LL(SEQUENCE_PADDING//2)]],
-                                 'wfLib': markerWFLib}
-                    else:
-                        awg[chan] = {'linkList': [[create_padding_LL(SEQUENCE_PADDING//2), create_padding_LL(SEQUENCE_PADDING//2)]],
-                                 'wfLib': {TAZKey:np.zeros(1, dtype=np.complex)}}
+        if all([chan is None for chan in data.values()]):
+            continue
 
-            # convert to hardware formats
-            # create the target folder if it does not exist
-            targetFolder = os.path.split(os.path.normpath(os.path.join(config.AWGDir, fileName)))[0]
-            if not os.path.exists(targetFolder):
-                os.mkdir(targetFolder)
-            fullFileName = os.path.normpath(os.path.join(config.AWGDir, fileName + '-' + awgName + suffix + instrumentLib[awgName].seqFileExt))
-            if isinstance(instrumentLib[awgName], APS):
-                write_APS_file(awg, fullFileName, nbrRepeats)
-            elif isinstance(instrumentLib[awgName], Tek5014):
-                assert nbrRepeats == 1, 'nbrRepeats > 1 not implemented for the Tek'
-                write_Tek_file(awg, fullFileName, fileName)
-            else:
-                raise NameError('Unknown AWG type')
-            fileList.append(fullFileName)
+        # convert to hardware formats
+        # create the target folder if it does not exist
+        targetFolder = os.path.split(os.path.normpath(os.path.join(config.AWGDir, fileName)))[0]
+        if not os.path.exists(targetFolder):
+            os.mkdir(targetFolder)
+        fullFileName = os.path.normpath(os.path.join(config.AWGDir, fileName + '-' + awgName + suffix + instrumentLib[awgName].seqFileExt))
+
+        write_sequence_file(instrumentLib[awgName], data, fullFileName)
+
+        fileList.append(fullFileName)
 
     #Return the filenames we wrote
     return fileList
-
 
 def compile_sequences(seqs, channels=None):
     '''
@@ -354,7 +334,13 @@ def normalize(seq, channels=None):
             block.pulses[ch] = Id(ch, length=0)
     return seq
 
+@multimethod(APS, dict, str)
+def write_sequence_file(awg, data, filename):
+    write_APS_file(data, fileName)
 
+@multimethod(Tek5014, dict, str)
+def write_sequence_file(awg, data, filename):
+    write_Tek_file(data, filename, 1)
 
 class LLWaveform(object):
     '''
