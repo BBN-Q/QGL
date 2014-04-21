@@ -261,9 +261,23 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 				trigQueue = [t for t in trigQueue if t >= 0]
 				curIQIdx += 1
 			#Push on the trigger count
+			#If are switch point is before the start of the LL entry then we are in trouble...
 			if switchPt - timePts[curIQIdx] <= 0:
-				setattr(miniLL_IQ[curIQIdx], markerAttr, 0)
-				print("Had to push marker blip out to start of next entry.")
+				#See if the previous entry was a TA pair and whether we can split it
+				needToShift = switchPt - timePts[curIQIdx-1]
+				import pdb; pdb.set_trace()
+				if miniLL_IQ[curIQIdx-1].isTimeAmp and miniLL_IQ[curIQIdx-1].length > needToShift + MIN_ENTRY_LENGTH:
+					miniLL_IQ.insert(curIQIdx, deepcopy(miniLL_IQ[curIQIdx-1]))
+					miniLL_IQ[curIQIdx-1].length = needToShift-ADDRESS_UNIT
+					miniLL_IQ[curIQIdx].length -= needToShift-ADDRESS_UNIT
+					miniLL_IQ[curIQIdx].markerDelay1 = None
+					miniLL_IQ[curIQIdx].markerDelay2 = None
+					setattr(miniLL_IQ[curIQIdx], markerAttr, ADDRESS_UNIT)
+					#Recalculate the timePts
+					timePts = np.cumsum([0] + [entry.totLength for entry in miniLL_IQ])
+				else:
+					setattr(miniLL_IQ[curIQIdx], markerAttr, 0)
+					print("Had to push marker blip out to start of next entry.")
 			else:
 				setattr(miniLL_IQ[curIQIdx], markerAttr, switchPt - timePts[curIQIdx])
 				trigQueue.insert(0, switchPt - timePts[curIQIdx])
