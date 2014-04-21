@@ -29,10 +29,11 @@ from PulsePrimitives import Id
 import PulseSequencer
 import ControlFlow
 from BlockLabel import label
-from instruments.AWGs import get_empty_channel_set, APS, Tek5014
+import instruments
+from instruments.AWGs import get_empty_channel_set
 
-SEQUENCE_PADDING = 480 #2800 #480
 from APSPattern import write_APS_file
+from APS2Pattern import write_APS2_file
 from TekPattern import write_Tek_file
 from mm import multimethod
 
@@ -60,11 +61,8 @@ def setup_awg_channels(logicalChannels):
     awgs = set([])
     for chan in logicalChannels:
         awgs.add(chan.AWG)
-        # dig in and grab the associated gate channel, too
-        if not isinstance(chan, Channels.LogicalMarkerChannel):
-            awgs.add(chan.gateChan.AWG)
-    return {awg.label:get_empty_channel_set(awg) for awg in awgs}
 
+    return {awg.label:get_empty_channel_set(awg) for awg in awgs}
 
 def map_logical_to_physical(linkLists, wfLib):
     physicalChannels = {chan: channelLib[get_channel_label(chan)].physChan.label for chan in linkLists.keys()}
@@ -111,7 +109,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
 
     # apply gating constraints
     for chan, LL in linkLists.items():
-        if isinstance(chan, PhysicalMarkerChannel):
+        if isinstance(chan, Channels.PhysicalMarkerChannel):
             LL = PatternUtils.apply_gating_constraints(chan.physChan, LL)
     
     # map logical to physical channels
@@ -334,13 +332,17 @@ def normalize(seq, channels=None):
             block.pulses[ch] = Id(ch, length=0)
     return seq
 
-@multimethod(APS, dict, str)
+@multimethod(instruments.AWGs.APS, dict, unicode)
 def write_sequence_file(awg, data, filename):
-    write_APS_file(data, fileName)
+    write_APS_file(data, filename)
 
-@multimethod(Tek5014, dict, str)
+@multimethod(instruments.AWGs.Tek5014, dict, unicode)
 def write_sequence_file(awg, data, filename):
     write_Tek_file(data, filename, 1)
+
+@multimethod(instruments.AWGs.APS2, dict, unicode)
+def write_sequence_file(awg, data, filename):
+    write_APS2_file(data, filename)
 
 class LLWaveform(object):
     '''
@@ -377,7 +379,7 @@ class LLWaveform(object):
     def totLength(self):
         return self.length*self.repeat
 
-def create_padding_LL(length=SEQUENCE_PADDING, high=False):
+def create_padding_LL(length=0, high=False):
     tmpLL = LLWaveform()
     tmpLL.isTimeAmp = True
     tmpLL.key = markerHighKey if high else TAZKey
