@@ -146,7 +146,7 @@ class Qubit(LogicalChannel):
         if self.physChan is None:
             self.physChan = PhysicalQuadratureChannel(label=kwargs['label']+'-phys')
         if self.gateChan is None:
-            self.gateChan = PhysicalMarkerChannel(label=kwargs['label']+'-gate')
+            self.gateChan = LogicalMarkerChannel(label=kwargs['label']+'-gate')
 
 class Measurement(LogicalChannel):
     '''
@@ -219,13 +219,16 @@ class ChannelLibrary(Atom):
             try:
                 with open(self.libFile, 'r') as FID:
                     tmpLib = json.load(FID, cls=JSONHelpers.ChannelDecoder)
-                    if isinstance(tmpLib, ChannelLibrary):
-                        for chan in tmpLib.channelDict.values():
-                            if isinstance(chan, LogicalChannel):
-                                chan.physChan = tmpLib[chan.physChan] if chan.physChan in tmpLib.channelDict else None
-                            elif isinstance(chan, PhysicalQuadratureChannel):
-                                chan.gateChan = tmpLib[chan.gateChan] if chan.gateChan in tmpLib.channelDict else None
-                        self.channelDict.update(tmpLib.channelDict)
+                    if not isinstance(tmpLib, ChannelLibrary):
+                        raise ValueError('Failed to load channel library')
+
+                    # connect objects labeled by strings
+                    for chan in tmpLib.channelDict.values():
+                        if hasattr(chan, 'physChan'):
+                            chan.physChan = tmpLib[chan.physChan] if chan.physChan in tmpLib.channelDict else None
+                        if hasattr(chan, 'gateChan'):
+                            chan.gateChan = tmpLib[chan.gateChan] if chan.gateChan in tmpLib.channelDict else None
+                    self.channelDict.update(tmpLib.channelDict)
 
             except IOError:
                 print('No channel library found.')

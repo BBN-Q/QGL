@@ -80,16 +80,9 @@ enamldef PhysicalQuadratureChannelView(GroupBox): curView:
             text = 'Source'
         ComboBox:
             items << instrumentLib.sources.displayList
-            index << instrumentLib.sources.displayList.index(chan.generator.label) if (chan.generator.label in instrumentLib.sources.displayList) else -1
+            index << instrumentLib.sources.displayList.index(chan.generator.label) if (chan.generator and chan.generator.label in instrumentLib.sources.displayList) else -1
             index ::
                 chan.generator = instrumentLib[selected_item]
-        Label:
-            text = 'Gate Channel'
-        ComboBox:
-            items << channelLib.physicalChannelManager.displayList
-            index << channelLib.physicalChannelManager.displayList.index(chan.gateChan.label) if (chan.gateChan.label in channelLib.physicalChannelManager.displayList) else -1
-            index ::
-                chan.gateChan = channelLib[selected_item]
         Label:
             text = 'Delay'
         FloatField:
@@ -130,9 +123,16 @@ enamldef LogicalQuadratureView(GroupBox): curView:
             text = 'Physical Chan.'
         ComboBox:
             items << channelLib.physicalChannelManager.displayList
-            index << channelLib.physicalChannelManager.displayList.index(chan.physChan.label) if (chan.physChan.label in channelLib.physicalChannelManager.displayList) else -1
+            index << channelLib.physicalChannelManager.displayList.index(chan.physChan.label) if (chan.physChan and chan.physChan.label in channelLib.physicalChannelManager.displayList) else -1
             index ::
                 chan.physChan = channelLib[selected_item]
+        Label:
+            text = 'Gate Chan.'
+        ComboBox:
+            items << channelLib.logicalChannelManager.displayList
+            index << channelLib.logicalChannelManager.displayList.index(chan.gateChan.label) if (chan.gateChan and chan.gateChan.label in channelLib.logicalChannelManager.displayList) else -1
+            index ::
+                chan.gateChan = channelLib[selected_item]
         Looper:
             iterable << sorted(chan.pulseParams.keys())
             Label:
