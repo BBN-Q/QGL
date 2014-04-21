@@ -22,6 +22,7 @@ import numpy as np
 from warnings import warn
 from itertools import chain, izip_longest
 from copy import copy, deepcopy
+import hashlib
 
 #Some constants
 ADDRESS_UNIT = 4 #everything is done in units of 4 timesteps
@@ -39,7 +40,10 @@ END_MINILL_BIT = 14;
 WAIT_TRIG_BIT = 13;
 TA_PAIR_BIT = 12;
 
-TAZKey = hash(tuple(np.zeros(1, dtype=np.complex)))
+def hash_pulse(shape):
+    return hashlib.sha1(shape.tostring()).hexdigest()
+
+TAZKey = hash_pulse(np.zeros(1, dtype=np.complex))
 
 def preprocess_APS(miniLL, wfLib):
 	'''
@@ -53,56 +57,67 @@ def preprocess_APS(miniLL, wfLib):
 		if curEntry.length >= MIN_ENTRY_LENGTH:
 			newMiniLL.append(curEntry)
 			entryct += 1
-		else:
-			if entryct == len(miniLL) - 1:
-				# we've run out of entries to append to. drop it?
-				warn("Unable to handle too short LL element, dropping.")
-				break
-			nextEntry = miniLL[entryct+1]
-			previousEntry = miniLL[entryct-1] if entryct > 0 else None
-			
-			#For short TA pairs we see if we can add them to the next waveform
-			if curEntry.key == TAZKey and not nextEntry.key == TAZKey:
-				#Concatenate the waveforms                
-				paddedWF = np.hstack((wfLib[curEntry.key]*np.ones(curEntry.length), wfLib[nextEntry.key]))
-				#Hash the result to generate a new unique key and add
-				newKey = hash(tuple(paddedWF))
-				wfLib[newKey] = paddedWF
-				nextEntry.key = newKey
-				nextEntry.length = wfLib[newKey].size
-				newMiniLL.append(nextEntry)
-				entryct += 2
-			
-			#For short pulses we see if we can steal some padding from the previous or next entry
-			elif previousEntry.key == TAZKey and previousEntry.length > 2*MIN_ENTRY_LENGTH:
-				padLength = MIN_ENTRY_LENGTH - curEntry.length
-				newMiniLL[-1].length -= padLength
-				#Concatenate the waveforms                
-				paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[curEntry.key]))
-				#Hash the result to generate a new unique key and add
-				newKey = hash(tuple(paddedWF))
-				wfLib[newKey] = paddedWF
-				curEntry.key = newKey
-				curEntry.length = wfLib[newKey].size
-				newMiniLL.append(curEntry)
-				entryct += 1
+			continue
 
-			elif nextEntry.key == TAZKey and nextEntry.length > 2*MIN_ENTRY_LENGTH:
-				padLength = MIN_ENTRY_LENGTH - curEntry.length
-				newMiniLL[-1].length -= padLength
-				#Concatenate the waveforms                
-				paddedWF = np.hstack((wfLib[curEntry.key], np.zeros(padLength, dtype=np.complex)))
-				#Hash the result to generate a new unique key and add
-				newKey = hash(tuple(paddedWF))
-				wfLib[newKey] = paddedWF
-				curEntry.key = newKey
-				curEntry.length = wfLib[newKey].size
-				newMiniLL.append(curEntry)
-				entryct += 1
-
+		if entryct == len(miniLL) - 1:
+			# we've run out of entries to append to. drop it?
+			warn("Unable to handle too short LL element, dropping.")
+			break
+		nextEntry = miniLL[entryct+1]
+		previousEntry = miniLL[entryct-1] if entryct > 0 else None
+		
+		#For short TA pairs we see if we can add them to the next waveform
+		if curEntry.key == TAZKey and not nextEntry.key == TAZKey:
+			#Concatenate the waveforms                
+			paddedWF = np.hstack((wfLib[curEntry.key]*np.ones(curEntry.length), wfLib[nextEntry.key]))
+			#Hash the result to generate a new unique key and add
+			newKey = hash(tuple(paddedWF))
+			wfLib[newKey] = paddedWF
+			nextEntry.key = newKey
+			nextEntry.length = wfLib[newKey].size
+			newMiniLL.append(nextEntry)
+			entryct += 2
+		
+		#For short pulses we see if we can steal some padding from the previous or next entry
+		elif previousEntry.key == TAZKey and previousEntry.length > 2*MIN_ENTRY_LENGTH:
+			padLength = MIN_ENTRY_LENGTH - curEntry.length
+			newMiniLL[-1].length -= padLength
+			#Concatenate the waveforms
+			if curEntry.isTimeAmp:
+				paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[curEntry.key]*np.ones(curEntry.length)))
+				if curEntry.key != TAZKey:
+					curEntry.isTimeAmp = False
 			else:
-				warn("Unable to handle too short LL element, dropping.")
-				entryct += 1
+				paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[curEntry.key]))
+			#Hash the result to generate a new unique key and add
+			newKey = hash(tuple(paddedWF))
+			wfLib[newKey] = paddedWF
+			curEntry.key = newKey
+			curEntry.length = wfLib[newKey].size
+			newMiniLL.append(curEntry)
+			entryct += 1
+
+		elif nextEntry.key == TAZKey and nextEntry.length > 2*MIN_ENTRY_LENGTH:
+			padLength = MIN_ENTRY_LENGTH - curEntry.length
+			nextEntry.length -= padLength
+			#Concatenate the waveforms
+			if curEntry.isTimeAmp:
+				paddedWF = np.hstack((wfLib[curEntry.key]*np.ones(curEntry.length), np.zeros(padLength, dtype=np.complex)))
+				if curEntry.key != TAZKey:
+					curEntry.isTimeAmp = False
+			else:
+				paddedWF = np.hstack((wfLib[curEntry.key], np.zeros(padLength, dtype=np.complex)))
+			#Hash the result to generate a new unique key and add
+			newKey = hash(tuple(paddedWF))
+			wfLib[newKey] = paddedWF
+			curEntry.key = newKey
+			curEntry.length = wfLib[newKey].size
+			newMiniLL.append(curEntry)
+			entryct += 1
+
+		else:
+			warn("Unable to handle too short LL element, dropping.")
+			entryct += 1
 
 	#Update the miniLL 
 	return newMiniLL
@@ -233,7 +248,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 		if switchPts:
 			if max(switchPts) >= timePts[-1]:
 				assert miniLL_IQ[-1].isTimeAmp
-				miniLL_IQ[-1].length += max(switchPts) - timePts[-1] + 4 
+				miniLL_IQ[-1].length += max(switchPts) - timePts[-1] + 8 
 
 		#Now map onto linklist elements
 		curIQIdx = 0
