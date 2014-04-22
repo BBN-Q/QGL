@@ -17,13 +17,13 @@ limitations under the License.
 '''
 
 import h5py
-import hashlib
 import os
 import numpy as np
 from warnings import warn
 from itertools import chain, izip_longest
 from copy import copy, deepcopy
 import Compiler, ControlFlow
+import APSPattern
 
 #Some constants
 ADDRESS_UNIT = 4 #everything is done in units of 4 timesteps
@@ -54,77 +54,6 @@ EQUAL       = 0x4 | 0x0
 NOTEQUAL    = 0x4 | 0x1
 GREATERTHAN = 0x4 | 0x2
 LESSTHAN    = 0x4 | 0x3
-
-def hash_pulse(shape):
-	return hashlib.sha1(shape.tostring()).hexdigest()
-
-TAZKey = hash_pulse(np.zeros(1, dtype=np.complex))
-
-def preprocess_APS(miniLL, wfLib):
-	'''
-	Helper function to deal with LL elements less than minimum LL entry count  
-	by trying to concatenate them into neighbouring entries
-	'''
-	newMiniLL = []
-	entryct = 0
-	while entryct < len(miniLL):
-		curEntry = miniLL[entryct]
-		if not isinstance(curEntry, Compiler.LLWaveform) or curEntry.length >= MIN_ENTRY_LENGTH:
-			newMiniLL.append(curEntry)
-			entryct += 1
-		else:
-			if entryct == len(miniLL) - 1:
-				# we've run out of entries to append to. drop it?
-				warn("Unable to handle too short LL element, dropping.")
-				break
-			nextEntry = miniLL[entryct+1]
-			previousEntry = miniLL[entryct-1] if entryct > 0 else None
-			
-			#For short TA pairs we see if we can add them to the next waveform
-			if curEntry.key == TAZKey and not nextEntry.key == TAZKey:
-				#Concatenate the waveforms                
-				paddedWF = np.hstack((wfLib[curEntry.key]*np.ones(curEntry.length), wfLib[nextEntry.key]))
-				#Hash the result to generate a new unique key and add
-				newKey = hash(tuple(paddedWF))
-				wfLib[newKey] = paddedWF
-				nextEntry.key = newKey
-				nextEntry.length = wfLib[newKey].size
-				newMiniLL.append(nextEntry)
-				entryct += 2
-			
-			#For short pulses we see if we can steal some padding from the previous or next entry
-			elif previousEntry.key == TAZKey and previousEntry.length > 2*MIN_ENTRY_LENGTH:
-				padLength = MIN_ENTRY_LENGTH - curEntry.length
-				newMiniLL[-1].length -= padLength
-				#Concatenate the waveforms                
-				paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[curEntry.key]))
-				#Hash the result to generate a new unique key and add
-				newKey = hash(tuple(paddedWF))
-				wfLib[newKey] = paddedWF
-				curEntry.key = newKey
-				curEntry.length = wfLib[newKey].size
-				newMiniLL.append(curEntry)
-				entryct += 1
-
-			elif nextEntry.key == TAZKey and nextEntry.length > 2*MIN_ENTRY_LENGTH:
-				padLength = MIN_ENTRY_LENGTH - curEntry.length
-				newMiniLL[-1].length -= padLength
-				#Concatenate the waveforms                
-				paddedWF = np.hstack((wfLib[curEntry.key], np.zeros(padLength, dtype=np.complex)))
-				#Hash the result to generate a new unique key and add
-				newKey = hash(tuple(paddedWF))
-				wfLib[newKey] = paddedWF
-				curEntry.key = newKey
-				curEntry.length = wfLib[newKey].size
-				newMiniLL.append(curEntry)
-				entryct += 1
-
-			else:
-				warn("Unable to handle too short LL element, dropping.")
-				entryct += 1
-
-	#Update the miniLL 
-	return newMiniLL
 
 def create_wf_vector(wfLib):
 	'''
@@ -362,7 +291,7 @@ def write_APS2_file(awgData, fileName):
 	'''
 
 	#Preprocess the LL data to handle APS restrictions
-	LLData = [preprocess_APS(miniLL, awgData['ch12']['wfLib']) for miniLL in awgData['ch12']['linkList']]
+	LLData = [APSPattern.preprocess_APS(miniLL, awgData['ch12']['wfLib']) for miniLL in awgData['ch12']['linkList']]
 
 	#Merge the the marker data into the IQ linklists
 	# merge_APS_markerData(LLs12, awgData['ch1m1']['linkList'], 1)

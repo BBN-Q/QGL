@@ -21,6 +21,7 @@ import os
 import numpy as np
 from warnings import warn
 from itertools import chain, izip_longest
+import Compiler, ControlFlow
 from copy import copy, deepcopy
 
 #Some constants
@@ -50,59 +51,60 @@ def preprocess_APS(miniLL, wfLib):
 	entryct = 0
 	while entryct < len(miniLL):
 		curEntry = miniLL[entryct]
-		if curEntry.length >= MIN_ENTRY_LENGTH:
+		if not isinstance(curEntry, Compiler.LLWaveform) or curEntry.length >= MIN_ENTRY_LENGTH:
 			newMiniLL.append(curEntry)
 			entryct += 1
+			continue
+
+		if entryct == len(miniLL) - 1:
+			# we've run out of entries to append to. drop it?
+			warn("Unable to handle too short LL element, dropping.")
+			break
+		nextEntry = miniLL[entryct+1]
+		previousEntry = miniLL[entryct-1] if entryct > 0 else None
+		
+		#For short TA pairs we see if we can add them to the next waveform
+		if curEntry.key == TAZKey and not nextEntry.key == TAZKey:
+			#Concatenate the waveforms                
+			paddedWF = np.hstack((wfLib[curEntry.key]*np.ones(curEntry.length), wfLib[nextEntry.key]))
+			#Hash the result to generate a new unique key and add
+			newKey = hash(tuple(paddedWF))
+			wfLib[newKey] = paddedWF
+			nextEntry.key = newKey
+			nextEntry.length = wfLib[newKey].size
+			newMiniLL.append(nextEntry)
+			entryct += 2
+		
+		#For short pulses we see if we can steal some padding from the previous or next entry
+		elif isinstance(previousEntry, Compiler.LLWaveform) and previousEntry.key == TAZKey and previousEntry.length > 2*MIN_ENTRY_LENGTH:
+			padLength = MIN_ENTRY_LENGTH - curEntry.length
+			newMiniLL[-1].length -= padLength
+			#Concatenate the waveforms                
+			paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[curEntry.key]))
+			#Hash the result to generate a new unique key and add
+			newKey = hash(tuple(paddedWF))
+			wfLib[newKey] = paddedWF
+			curEntry.key = newKey
+			curEntry.length = wfLib[newKey].size
+			newMiniLL.append(curEntry)
+			entryct += 1
+
+		elif isinstance(nextEntry, Compiler.LLWaveform) and nextEntry.key == TAZKey and nextEntry.length > 2*MIN_ENTRY_LENGTH:
+			padLength = MIN_ENTRY_LENGTH - curEntry.length
+			newMiniLL[-1].length -= padLength
+			#Concatenate the waveforms                
+			paddedWF = np.hstack((wfLib[curEntry.key], np.zeros(padLength, dtype=np.complex)))
+			#Hash the result to generate a new unique key and add
+			newKey = hash(tuple(paddedWF))
+			wfLib[newKey] = paddedWF
+			curEntry.key = newKey
+			curEntry.length = wfLib[newKey].size
+			newMiniLL.append(curEntry)
+			entryct += 1
+
 		else:
-			if entryct == len(miniLL) - 1:
-				# we've run out of entries to append to. drop it?
-				warn("Unable to handle too short LL element, dropping.")
-				break
-			nextEntry = miniLL[entryct+1]
-			previousEntry = miniLL[entryct-1] if entryct > 0 else None
-			
-			#For short TA pairs we see if we can add them to the next waveform
-			if curEntry.key == TAZKey and not nextEntry.key == TAZKey:
-				#Concatenate the waveforms                
-				paddedWF = np.hstack((wfLib[curEntry.key]*np.ones(curEntry.length), wfLib[nextEntry.key]))
-				#Hash the result to generate a new unique key and add
-				newKey = hash(tuple(paddedWF))
-				wfLib[newKey] = paddedWF
-				nextEntry.key = newKey
-				nextEntry.length = wfLib[newKey].size
-				newMiniLL.append(nextEntry)
-				entryct += 2
-			
-			#For short pulses we see if we can steal some padding from the previous or next entry
-			elif previousEntry.key == TAZKey and previousEntry.length > 2*MIN_ENTRY_LENGTH:
-				padLength = MIN_ENTRY_LENGTH - curEntry.length
-				newMiniLL[-1].length -= padLength
-				#Concatenate the waveforms                
-				paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[curEntry.key]))
-				#Hash the result to generate a new unique key and add
-				newKey = hash(tuple(paddedWF))
-				wfLib[newKey] = paddedWF
-				curEntry.key = newKey
-				curEntry.length = wfLib[newKey].size
-				newMiniLL.append(curEntry)
-				entryct += 1
-
-			elif nextEntry.key == TAZKey and nextEntry.length > 2*MIN_ENTRY_LENGTH:
-				padLength = MIN_ENTRY_LENGTH - curEntry.length
-				newMiniLL[-1].length -= padLength
-				#Concatenate the waveforms                
-				paddedWF = np.hstack((wfLib[curEntry.key], np.zeros(padLength, dtype=np.complex)))
-				#Hash the result to generate a new unique key and add
-				newKey = hash(tuple(paddedWF))
-				wfLib[newKey] = paddedWF
-				curEntry.key = newKey
-				curEntry.length = wfLib[newKey].size
-				newMiniLL.append(curEntry)
-				entryct += 1
-
-			else:
-				warn("Unable to handle too short LL element, dropping.")
-				entryct += 1
+			warn("Unable to handle too short LL element, dropping.")
+			entryct += 1
 
 	#Update the miniLL 
 	return newMiniLL
