@@ -27,6 +27,8 @@ def delay(linkList, delay, samplingRate):
     Delays a mini link list by the given amount.
     '''
     sampShift = int(round(delay * samplingRate))
+    if sampShift <= 0: # no need to inject zero delays
+        return
     for miniLL in linkList:
         # loop through and look for WAIT instructions
         ct = 0
@@ -119,7 +121,7 @@ def add_gate_pulses(seqs):
     for seq in seqs:
         for ct in range(len(seq)):
             if hasattr(seq[ct], 'pulses'):
-                for chan, pulse in seq[ct].pulses:
+                for chan, pulse in seq[ct].pulses.items():
                     if hasattr(chan, 'gateChan') and not pulse.isZero:
                         seq[ct] *= BLANK(chan, pulse.length)
             else:
