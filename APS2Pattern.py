@@ -317,8 +317,8 @@ def write_APS2_file(awgData, fileName):
 			chanGroup = FID.create_group(chanStr)
 			chanGroup.attrs['isIQMode'] = np.uint8(1)
 			#Write the waveformLib to file
-			FID.create_dataset('{0}/waveformLib'.format(chanStr), data=wfInfo[chanct][0])
+			FID.create_dataset(chanStr+'/waveforms', data=wfInfo[chanct][0])
 
 			#Write the instructions to channel 1
 			if np.mod(chanct,2) == 0:
-				FID.create_dataset(chanStr+'/linkListData', data=create_LL_data(LLData, wfInfo[chanct][1]))
+				FID.create_dataset(chanStr+'/instructions', data=create_LL_data(LLData, wfInfo[chanct][1]))
