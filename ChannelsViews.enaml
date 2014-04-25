@@ -24,10 +24,10 @@ enamldef LogicalMarkerChannelView(GroupBox): curView:
         Label:
             text = 'Physical Chan.'
         ComboBox:
-            items << [item.label for item in curView.channelLib.channelDict.values() if isinstance(item, QGL.Channels.PhysicalMarkerChannel)]
-            index << filter(lambda item : isinstance(item, QGL.Channels.PhysicalMarkerChannel), curView.channelLib.channelDict.values()).index(chan.physChan) if chan.physChan in curView.channelLib.channelDict.values() else -1
+            items << [item.label for item in curView.channelLib.values() if isinstance(item, QGL.Channels.PhysicalMarkerChannel)]
+            index << filter(lambda item : isinstance(item, QGL.Channels.PhysicalMarkerChannel), curView.channelLib.values()).index(chan.physChan) if chan.physChan in curView.channelLib.values() else -1
             index ::
-                chan.physChan = filter(lambda item : isinstance(item, QGL.Channels.PhysicalMarkerChannel), curView.channelLib.channelDict.values())[index]
+                chan.physChan = filter(lambda item : isinstance(item, QGL.Channels.PhysicalMarkerChannel), curView.channelLib.values())[index]
         Looper:
             iterable << sorted(chan.pulseParams.keys())
             Label:

@@ -195,9 +195,31 @@ class ChannelLibrary(Atom):
         if self.libFile:
             self.fileWatcher = FileWatcher.LibraryFileWatcher(self.libFile, self.update_from_file)
 
-    #Overload [] to allow direct pulling of channel info
-    def __getitem__(self, chanLabel):
-        return self.channelDict[chanLabel]
+    #Dictionary methods
+    def __getitem__(self, key):
+        return self.channelDict[key]
+
+    def __setitem__(self, key, value):
+        self.channelDict[key] = value
+
+    def __delitem__(self, key):
+        del self.channelDict[key]
+
+    # def __len__(self):
+    #     return len(self.channelDict)
+
+    # def __iter__(self):
+    #     for x in self.channelDict:
+    #         yield x
+
+    def __contains__(self, key):
+        return key in self.channelDict
+
+    def keys(self):
+        return self.channelDict.keys()
+
+    def values(self):
+        return self.channelDict.values()
 
     def write_to_file(self):
         import JSONHelpers
