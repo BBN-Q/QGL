@@ -100,6 +100,11 @@ class LogicalChannel(Channel):
     physChan = Instance((unicode,PhysicalChannel))
     AWG = Property()
 
+    def __init__(self, **kwargs):
+        super(LogicalChannel, self).__init__(**kwargs)
+        if self.physChan is None:
+            self.physChan = PhysicalChannel(label=kwargs['label']+'-phys')
+
     def _get_AWG(self):
         return self.physChan.AWG
 
@@ -143,8 +148,6 @@ class Qubit(LogicalChannel):
 
     def __init__(self, **kwargs):
         super(Qubit, self).__init__(**kwargs)
-        if self.physChan is None:
-            self.physChan = PhysicalQuadratureChannel(label=kwargs['label']+'-phys')
         if self.gateChan is None:
             self.gateChan = LogicalMarkerChannel(label=kwargs['label']+'-gate')
 
@@ -159,6 +162,10 @@ class Measurement(LogicalChannel):
     pulseParams = Dict(default={'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'buffer':0.0, 'cutoff':2, 'sigma':1e-9})
     gateChan = Instance((unicode, LogicalMarkerChannel))
 
+    def __init__(self, **kwargs):
+        super(Measurement, self).__init__(**kwargs)
+        if self.gateChan is None:
+            self.gateChan = LogicalMarkerChannel(label=kwargs['label']+'-gate')
 
 def QubitFactory(label, **kwargs):
     ''' Return a saved qubit channel or create a new one. '''
@@ -172,7 +179,7 @@ def MeasFactory(label, measType='autodyne', **kwargs):
     if Compiler.channelLib and label in Compiler.channelLib.channelDict and isinstance(Compiler.channelLib[label], Measurement):
         return Compiler.channelLib[label]
     else:
-        return Measurement(label=label, measType = measType, **kwargs)
+        return Measurement(label=label, measType=measType, **kwargs)
 
 class ChannelLibrary(Atom):
     # channelDict = Dict(Str, Channel)
