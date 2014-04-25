@@ -38,10 +38,21 @@ def endlabel(seq):
 	return label(seq) + len(seq)
 
 def newlabel():
-	labelSet = string.ascii_uppercase
+	label = BlockLabel(asciibase(newlabel.numlabels))
 	newlabel.numlabels += 1
-	if newlabel.numlabels > len(labelSet):
-		NameError("Ran out of labels")
-	return BlockLabel("seq" + labelSet[newlabel.numlabels-1])
+	return label
 
 newlabel.numlabels = 0
+
+def asciibase(x):
+	'''
+	Converts x to base 26 composed of the uppercase alphabet
+	'''
+	digits = string.ascii_uppercase
+	s = ''
+	while 1:
+		s = digits[x % 26] + s
+		x = x // 26
+		if x == 0:
+			break
+	return s
