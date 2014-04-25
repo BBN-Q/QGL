@@ -169,14 +169,14 @@ class Measurement(LogicalChannel):
 
 def QubitFactory(label, **kwargs):
     ''' Return a saved qubit channel or create a new one. '''
-    if Compiler.channelLib and label in Compiler.channelLib.channelDict and isinstance(Compiler.channelLib[label], Qubit):
+    if Compiler.channelLib and label in Compiler.channelLib and isinstance(Compiler.channelLib[label], Qubit):
         return Compiler.channelLib[label]
     else:
         return Qubit(label=label, **kwargs)
 
 def MeasFactory(label, measType='autodyne', **kwargs):
     ''' Return a saved measurment channel or create a new one. '''
-    if Compiler.channelLib and label in Compiler.channelLib.channelDict and isinstance(Compiler.channelLib[label], Measurement):
+    if Compiler.channelLib and label in Compiler.channelLib and isinstance(Compiler.channelLib[label], Measurement):
         return Compiler.channelLib[label]
     else:
         return Measurement(label=label, measType=measType, **kwargs)
