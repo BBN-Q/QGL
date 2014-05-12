@@ -265,7 +265,6 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 			if switchPt - timePts[curIQIdx] <= 0:
 				#See if the previous entry was a TA pair and whether we can split it
 				needToShift = switchPt - timePts[curIQIdx-1]
-				import pdb; pdb.set_trace()
 				if miniLL_IQ[curIQIdx-1].isTimeAmp and miniLL_IQ[curIQIdx-1].length > needToShift + MIN_ENTRY_LENGTH:
 					miniLL_IQ.insert(curIQIdx, deepcopy(miniLL_IQ[curIQIdx-1]))
 					miniLL_IQ[curIQIdx-1].length = needToShift-ADDRESS_UNIT
