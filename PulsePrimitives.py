@@ -306,6 +306,14 @@ def CNOT(source, target):
     shape = twoQChannel.pulseParams['shapeFun'](amp=twoQChannel.pulseParams['piAmp'], **overrideDefaults(twoQChannel, {}))
     return Pulse("CNOT", (source, target), shape, 0.0, 0.0)
 
+def echoCR(controlQ, CR, **kwargs):
+    """
+    An echoed CR ZX90 pulse.  Uses pi2Amp for the pusle amplitude.
+    """
+    pulseParams = overrideDefaults(CR, kwargs)
+    amp = pulseParams['pi2Amp']
+    return [ Utheta(CR, amp=amp, **pulseParams), X(controlQ),Utheta(CR, amp=-amp, **pulseParams), X(controlQ) ]
+
 ## Measurement operators
 # @_memoize
 def MEAS(*args, **kwargs):
