@@ -144,8 +144,8 @@ def Cx2(c1,c2, q1, q2):
 	Helper function to create pulse block for a pair of single-qubit Cliffords
 	"""
 	#Create list of pulse objects on the qubits
-	seq1 = clifford_pulseSeq(c1, q1)
-	seq2 = clifford_pulseSeq(c2, q2)
+	seq1 = clifford_seq(c1, q1)
+	seq2 = clifford_seq(c2, q2)
 
 	#Create the pulse block 
 	return reduce(operator.add, seq1) * reduce(operator.add, seq2)
@@ -155,17 +155,17 @@ def entangling_seq(gate, q1, q2, CR):
 	Helper function to create the entangling gate sequence
 	"""
 	if gate == "CNOT":
-		return [echoCR(q2, CR)]
+		return echoCR(q2, CR)
 	elif gate == "iSWAP":
-		return [echoCR(q2, CR), Y90m(q1)*Y90m(q2), echoCR(q2, CR)]
+		return echoCR(q2, CR) + [Y90m(q1)*Y90m(q2)] +  echoCR(q2, CR)
 	elif gate == "SWAP":
-		return [echoCR(q2, CR), Y90m*Y90m(q2), echoCR(q2, CR), (X90(q1)+Y90m(q2))*X90(q2), echoCR(q2, CR)]
+		return echoCR(q2, CR) + [Y90m(q1)*Y90m(q2)] + echoCR(q2, CR) + [(X90(q1)+Y90m(q1))*X90(q2)] + echoCR(q2, CR)
 
 def entangling_mat(gate):
 	"""
 	Helper function to create the entangling gate matrix
 	"""
-	echoCR = expm(-1j*pi/4*np.kron(pX, pZ))
+	echoCR = expm(1j*pi/4*np.kron(pX, pZ))
 	if gate == "CNOT":
 		return echoCR
 	elif gate == "iSWAP":
@@ -186,11 +186,11 @@ def clifford_seq(c, q1, q2=None, CR=None):
 	else:
 		#Look up the sequence for the integer
 		c = C2Seqs[c]
-		seq = Cx2(c[0][0], c[0][1], q1, q2)
+		seq = [Cx2(c[0][0], c[0][1], q1, q2)]
 		if c[1]:
 			seq += entangling_seq(c[1], q1, q2, CR)
 		if c[2]:
-			seq += Cx2(c[2][0], c[2][1], q1, q2)
+			seq += [Cx2(c[2][0], c[2][1], q1, q2)]
 		return seq
 
 @memoize
