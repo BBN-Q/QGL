@@ -69,6 +69,42 @@ def SingleQubitRB(qubit, seqs, showPlot=False):
 		plotWin = plot_pulse_files(fileNames)
 		return plotWin
 
+def TwoQubitRB(q1, q2, CR, seqs, showPlot=False):
+	"""
+
+	Two qubit randomized benchmarking using 90 and 180 single qubit generators and ZX90 
+
+	Parameters
+	----------
+	qubit : logical channel to implement sequence (LogicalChannel) 
+	seqs : list of lists of Clifford group integers
+	showPlot : whether to plot (boolean)
+
+	Returns
+	-------
+	plotHandle : handle to plot window to prevent destruction
+	"""	
+
+	seqsBis = []
+	for seq in seqs:
+		seqsBis.append(reduce(operator.add, [clifford_seq(c, q1, q2, CR) for c in seq]))
+
+	#Add the measurement to all sequences
+	for seq in seqsBis:
+		seq.append(MEAS(q1, q2))
+
+	#Tack on the calibration sequences
+	seqsBis += create_cal_seqs((q1,q2), 2)
+
+	fileNames = compile_to_hardware(seqsBis, 'RB/RB')
+	print(fileNames)
+
+	if showPlot:
+		plotWin = plot_pulse_files(fileNames)
+		return plotWin
+
+
+
 
 def SingleQubitRB_AC(qubit, seqFile, showPlot=False):
 	"""
