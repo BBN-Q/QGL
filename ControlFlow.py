@@ -27,7 +27,7 @@ def qfunction(func):
 		if args not in target:
 			seq[args] = func(*args)
 			target[args] = label(seq[args])
-		return [Call(target[args])], seq[args] + [Return()]
+		return [Call(target[args])], seq[args] + [Return()] # TODO: update me to only return seq[args] on first call
 	return crfunc
 
 def qrepeat(n, seq):

@@ -322,3 +322,6 @@ def write_APS2_file(awgData, fileName):
 			#Write the instructions to channel 1
 			if np.mod(chanct,2) == 0:
 				FID.create_dataset(chanStr+'/instructions', data=create_LL_data(LLData, wfInfo[chanct][1]))
+
+def read_APS2_file(fileName):
+	return {'ch1': np.zeros(1), 'ch2': np.zeros(1)}
