@@ -37,6 +37,7 @@ class Pulse(object):
         self.frameChange = frameChange
         self.isTimeAmp = False
         self.TALength = 0
+        self.repeat = 1
 
     def __repr__(self):
         return str(self)
@@ -183,6 +184,11 @@ def align(pulseBlock, mode="center"):
     pulseBlock = pulseBlock.promote()
     pulseBlock.alignment = mode
     return pulseBlock
+
+def repeat(p, n):
+    assert isinstance(p, Pulse), "Can only repeat a Pulse object"
+    p.repeat = n
+    return p
 
 AWGFreq = 1.2e9
 
