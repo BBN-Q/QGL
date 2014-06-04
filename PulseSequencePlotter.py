@@ -34,10 +34,11 @@ from PySide import QtCore, QtGui
 import numpy as np
 
 import Compiler
-from instruments.AWGs import APS, Tek5014, Tek7000
+from instruments.AWGs import APS, APS2, Tek5014, Tek7000
 from APSPattern import read_APS_file
 from APS2Pattern import read_APS2_file
 from TekPattern import read_Tek_awg_file
+from mm import multimethod
 
 import argparse
 import os.path
@@ -205,6 +206,23 @@ def plot_pulse_seqs(AWGWFs):
     #Need to a keep a reference to the window alive.
     return plotterWindow
 
+# define sequence reader dispatch on awg type
+@multimethod(Tek5014, unicode)
+def read_sequence_file(awg, filename):
+    return read_Tek_awg_file(filename)
+
+@multimethod(Tek7000, unicode)
+def read_sequence_file(awg, filename):
+    return read_Tek_awg_file(filename)
+
+@multimethod(APS, unicode)
+def read_sequence_file(awg, filename):
+    return read_APS_file(filename)
+
+@multimethod(APS2, unicode)
+def read_sequence_file(awg, filename):
+    return read_APS2_file(filename)
+
 def plot_pulse_files(AWGFileNames):
     '''
     Helper function to plot AWG files
@@ -219,15 +237,7 @@ def plot_pulse_files(AWGFileNames):
             AWGName = AWGName[:AWGName.index('_')]
         except ValueError:
             pass
-        #Look up the appropriate model in the instrumentLib
-        if isinstance(Compiler.instrumentLib[AWGName], (Tek5014, Tek7000)):
-            AWGWFs[AWGName] = read_Tek_awg_file(tmpFile)
-        elif isinstance(Compiler.instrumentLib[AWGName], APS):
-            AWGWFs[AWGName] = read_APS_file(tmpFile)
-        elif isinstance(Compiler.instrumentLib[AWGName], APS2):
-            AWGWFs[AWGName] = read_APS2_file(tmpFile)
-        else:
-            raise NameError('Unknown AWG Type for {0}: we currently only handle TekAWG and BBNAPS.'.format(tmpFile))
+        AWGWFs[AWGName] = read_sequence_file(Compiler.instrumentLib[AWGName], tmpFile)
 
     #Need to a keep a reference to the window alive.
     return plot_pulse_seqs(AWGWFs)
