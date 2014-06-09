@@ -302,13 +302,10 @@ def compress_wfLib(seqs, wfLib):
 def find_unique_channels(seq):
     channels = set([])
     for step in seq:
-        if isinstance(step, PulseSequencer.Pulse):
-            if isinstance(step.qubits, Channels.Channel):
-                channels |= set([step.qubits])
-            else:
-                channels |= set(step.qubits)
+        if isinstance(step, (PulseSequencer.Pulse, PulseSequencer.CompositePulse)):
+            channels |= set([step.qubits])
         else:
-            channels |= set(step.pulses.keys())
+            channels |= set(step.qubits)
     return channels
 
 def normalize(seq, channels=None):

@@ -169,6 +169,10 @@ class PulseBlock(object):
     def promote(self):
         return self
 
+    @property
+    def qubits(self):
+        return self.pulses.keys()
+
     #A list of the channels used in this block
     @property
     def channelNames(self):
