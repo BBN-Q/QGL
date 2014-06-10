@@ -124,7 +124,7 @@ class CompositePulse(object):
 
     @property
     def length(self):
-        return sum([p.length for p in self.pulses])
+        return sum([p.length*p.repeat for p in self.pulses])
 
     @property
     def frameChange(self):
