@@ -191,7 +191,7 @@ def align(pulseBlock, mode="center"):
 
 def repeat(p, n):
     assert isinstance(p, Pulse), "Can only repeat a Pulse object"
-    p.repeat = n
+    p.repeat = round(n)
     return p
 
 AWGFreq = 1.2e9
