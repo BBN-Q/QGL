@@ -55,23 +55,27 @@ def apply_SSB(linkList, wfLib, SSBFreq, samplingRate):
             #If it's a zero then just adjust the frame and move on 
             if entry.key == Compiler.TAZKey: 
                 curFrame += phaseStep*entry.length
-            elif entry.isTimeAmp:
-                raise NotImplementedError("Unable to handle SSB square pulses")
+                continue
+            # expand time-amplitude pulses in-place
+            if entry.isTimeAmp:
+                entry.isTimeAmp = False
+                shape = wfLib[entry.key][0] * np.ones(entry.length, dtype=np.complex)
             else:
-                intPhase, truncPhase = round_phase(curFrame, 14)
-                pulseTuple = (entry.key, intPhase)
-                if pulseTuple in pulseDict:
-                    entry.key = pulseDict[pulseTuple]
-                else:
-                    shape = np.copy(wfLib[entry.key])
-                    phaseRamp = phaseStep*np.arange(0.5, shape.size)
-                    shape *= np.exp(1j*(truncPhase + phaseRamp))
-                    shapeHash = Compiler.hash_pulse(shape)
-                    if shapeHash not in wfLib:
-                        wfLib[shapeHash] = shape
-                    pulseDict[pulseTuple] = shapeHash
-                    entry.key = shapeHash
-                curFrame += phaseStep*entry.length
+                shape = np.copy(wfLib[entry.key])
+
+            intPhase, truncPhase = round_phase(curFrame, 14)
+            pulseTuple = (entry.key, intPhase, entry.length)
+            if pulseTuple in pulseDict:
+                entry.key = pulseDict[pulseTuple]
+            else:
+                phaseRamp = phaseStep*np.arange(0.5, shape.size)
+                shape *= np.exp(1j*(truncPhase + phaseRamp))
+                shapeHash = Compiler.hash_pulse(shape)
+                if shapeHash not in wfLib:
+                    wfLib[shapeHash] = shape
+                pulseDict[pulseTuple] = shapeHash
+                entry.key = shapeHash
+            curFrame += phaseStep*entry.length
 
 def align(linkList, mode, length):
     for miniLL in linkList:
