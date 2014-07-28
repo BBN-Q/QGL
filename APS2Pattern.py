@@ -27,39 +27,56 @@ import APSPattern
 
 #Some constants
 ADDRESS_UNIT = 4 #everything is done in units of 4 timesteps
-MIN_ENTRY_LENGTH = 12
-MAX_WAVEFORM_PTS = 2**22 #maximum size of waveform memory
+MIN_ENTRY_LENGTH = 8
+MAX_WAVEFORM_PTS = 2**28 #maximum size of waveform memory
 MAX_WAVEFORM_VALUE = 2**13-1 #maximum waveform value i.e. 14bit DAC
-MAX_LL_ENTRIES = 2**20
+MAX_NUM_INSTRUCTIONS = 2**26
 MAX_REPEAT_COUNT = 2**16-1;
-MAX_TRIGGER_COUNT = 2**16-1
+MAX_TRIGGER_COUNT = 2**32-1
 
 #APS command bits
 WAIT_TRIG_BIT = 15
-TA_PAIR_BIT   = 14
 # CMP_OP        = 11 # 11-13
 # OP_CODE       = 8 # 8-10
 # CMP_MASK      = 0 # 0-7
 
 # instruction encodings
 WFM    = 0x0
-LOAD   = 0x1
-REPEAT = 0x2
-GOTO   = 0x3
-CALL   = 0x4
-RET    = 0x5
+MARKER = 0x1
+WAIT   = 0x2
+LOAD   = 0x3
+REPEAT = 0x4
+CMP    = 0x5
+GOTO   = 0x6
+CALL   = 0x7
+RET    = 0x8
+SYNC   = 0x9
+PFETCH = 0xA
+
+# WFM/MARKER op codes
+PLAY      = 0x0
+WAIT_TRIG = 0x1
+WAIT_SYNC = 0x2
+TA_PAIR_BIT = 45
 
 # CMP op encodings
-EQUAL       = 0x4 | 0x0
-NOTEQUAL    = 0x4 | 0x1
-GREATERTHAN = 0x4 | 0x2
-LESSTHAN    = 0x4 | 0x3
+EQUAL       = 0x0
+NOTEQUAL    = 0x1
+GREATERTHAN = 0x2
+LESSTHAN    = 0x3
 
 def create_wf_vector(wfLib):
 	'''
 	Helper function to create the wf vector and offsets into it.
 	'''
-	wfVec = np.zeros(MAX_WAVEFORM_PTS, dtype=np.int16)
+	max_pts_needed = 0
+	for wf in wfLib.values():
+		if len(wf) == 1:
+			max_pts_needed += ADDRESS_UNIT
+		else:
+			max_pts_needed += len(wf)
+
+	wfVec = np.zeros(max_pts_needed, dtype=np.int16)
 	offsets = {}
 	idx = 0
 	for key, wf in wfLib.items():
@@ -79,7 +96,8 @@ def create_wf_vector(wfLib):
 		idx += wf.size 
 					
 	#Trim the waveform 
-	wfVec = wfVec[0:idx] 
+	# wfVec = wfVec[0:idx]
+	wfVec.resize(idx+1)
 
 	return wfVec, offsets
 
@@ -102,111 +120,125 @@ def calc_marker_delay(entry):
 	return markerDelay1, markerDelay2
 
 class Instruction:
-	def __init__(self, data, label=None, target=None):
-		self.data = data
+	def __init__(self, header, payload, label=None, target=None):
+		self.header = header
+		self.payload = payload
 		self.label = label
 		self.target = target
 
 	@property
 	def address(self):
-		return (self.data[1] << 16) | (self.data[2] & 0xff)
+		return self.payload & 0xffffffff # bottom 32-bits of payload
 
 	@address.setter
 	def address(self, value):
-		self.data[1] = value >> 16
-		self.data[2] = value & 0xff
+		self.payload |= value & 0xffffffff
 
-def Waveform(addr, count, repeat, isTA, label=None):
-	instr = Instruction(np.array([WFM << 8 | addr >> 16, addr & 0xff, count, 0, 0, repeat], dtype=np.uint16), label)
-	if isTA:
-		instr.data[0] |= 1 << TA_PAIR_BIT
-	return instr
+	def flatten(self):
+		return (self.header << 56) | self.payload
 
-def Command(cmd, mask=0x00, addr=None, count=0, label=None):
-	if isinstance(addr, int):
-		return Instruction(np.array([cmd << 8 | mask, addr >> 16, addr & 0xff, count, 0, 0], dtype=np.uint16), label)
+def Waveform(addr, count, isTA, write=False, label=None):
+	header = (WFM << 4) | (write & 0x1)
+	count = int(count)
+	count = ((count / ADDRESS_UNIT)-1) & 0x00ffffff
+	addr = (addr / ADDRESS_UNIT) & 0x00ffffff
+	payload = PLAY << 46 | (isTA & 0x1) | (count << 24) | addr
+	return Instruction(header, payload, label)
+
+def Marker(sel, state, count, write=False, label=None):
+	header = (MARKER << 4) | ((sel & 0x3) << 2) | (write & 0x1)
+	count = int(count)
+	four_count = ((count / ADDRESS_UNIT)-1) & 0xffffffff
+	count_rem = count % ADDRESS_UNIT
+	# do something with count_rem....
+	transition = 0
+
+	payload = PLAY << 46 | (transition << 33) | ((state & 0x1) << 32) | four_count
+	return Instruction(header, payload, label)
+
+def Command(cmd, payload, label=None):
+	header = (cmd << 4)
+	if isinstance(payload, int):
+		return Instruction(header, payload, label)
 	else:
-		return Instruction(np.array([cmd << 8 | mask, 0, 0, count, 0, 0], dtype=np.uint16), label, target=addr)
+		return Instruction(header, 0, label, target=payload)
+
+def Sync(label=None):
+	return Command(SYNC, 0, label=label)
+
+def Wait(label=None):
+	return Command(WAIT, 0, label=label)
+
+def Cmp(op, mask, label=None):
+	return Command(CMP, (op << 8) | (mask & 0xff), label=label)
 
 def Goto(addr, label=None):
-	return Command(GOTO, 0, addr, label=label)
+	return Command(GOTO, addr, label=label)
 
 def Call(addr, label=None):
-	return Command(CALL, 0, addr, label)
+	return Command(CALL, addr, label)
 
-def Return(addr, label=None):
-	return Command(RET, label=label)
+def Return(label=None):
+	return Command(RET, 0, label=label)
 
 def Load(count, label=None):
-	return Command(LOAD, count=count, label=label)
+	return Command(LOAD, count, label=label)
 
 def Repeat(addr, label=None):
-	return Command(REPEAT, label=label)
+	return Command(REPEAT, 0, label=label)
 
-def create_LL_data(LLs, offsets):
+def create_instr_data(seq, offsets):
 	'''
 	Helper function to create LL data vectors from a list of miniLL's and an offset dictionary
 	keyed on the wf keys.
 	'''
 
 	#Preallocate the bank data and do some checking for miniLL lengths
-	seqLengths = np.array([len(miniLL) for miniLL in LLs])
+	seqLengths = np.array([len(miniLL) for miniLL in seq])
 	numEntries = sum(seqLengths)
-	assert numEntries < MAX_LL_ENTRIES, 'Oops! too many LL entries: {0}'.format(numEntries)
-	assert LLs[-1][-1].instruction == 'GOTO', 'Link list must end with a GOTO instruction'
-	instructions = []
-	waitMask = 0
-	cmpMask = 0
-	prevlabel = None
+	assert numEntries < MAX_NUM_INSTRUCTIONS, 'Oops! too many instructions: {0}'.format(numEntries)
+	assert seq[-1][-1].instruction == 'GOTO', 'Link list must end with a GOTO instruction'
 
-	for entry in chain.from_iterable(LLs):
-		# effectively switch on the IR instruction type
+	cmpTable = {'==': EQUAL, '!=': NOTEQUAL, '>': GREATERTHAN, '<': LESSTHAN}
+
+	# always start with SYNC
+	instructions = [Sync(label='start')]
+
+	for entry in chain.from_iterable(seq):
+		# switch on the IR instruction type
 		if isinstance(entry, Compiler.LLWaveform):
-			instructions.append(Waveform(offsets[entry.key]//ADDRESS_UNIT,
-				                         entry.length//ADDRESS_UNIT-1,
-				                         entry.repeat-1,
+			instructions.append(Waveform(offsets[entry.key],
+				                         entry.length,
 				                         entry.isTimeAmp,
-				                         entry.label))
+				                         True,
+				                         label=entry.label))
+
 		elif isinstance(entry, ControlFlow.ComparisonInstruction):
-			if entry.operator == '==':
-				cmpMask = EQUAL
-			elif entry.operator == '!=':
-				cmpMask = NOTEQUAL
-			elif entry.operator == '>':
-				cmpMask = GREATERTHAN
-			elif entry.operator == '<':
-				cmpMask = LESSTHAN
-			else:
-				raise NameError('Unrecognized comparison operator {0}', entry.operator)
-			cmpMask = (cmpMask << 3) | entry.mask
-			prevlabel = entry.label
-			continue # apply the comparison to the following instruction
+			instructions.append(Cmp(cmpTable[entry.operator], entry.mask, label=entry.label))
+
 		elif isinstance(entry, ControlFlow.ControlInstruction):
+			# zero argument commands
 			if entry.instruction == 'WAIT':
-				waitMask = 1 << WAIT_TRIG_BIT
-				prevlabel = entry.label
-				continue # apply to the following instruction
+				instructions.append(Wait(label=entry.label))
+			elif entry.instruction == 'RETURN':
+				instructions.append(Return(label=entry.label))
+			# target argument commands
 			elif entry.instruction == 'GOTO':
 				instructions.append(Goto(entry.target, label=entry.label))
 			elif entry.instruction == 'CALL':
 				instructions.append(Call(entry.target, label=entry.label))
-			elif entry.instruction == 'RETURN':
-				instructions.append(Call(entry.target, label=entry.label))
-			elif entry.instruction == 'LOAD':
-				instructions.append(Load(entry.value, label=entry.label))
 			elif entry.instruction == 'REPEAT':
 				instructions.append(Call(entry.target, label=entry.label))
-		# apply masks and clear them
-		instructions[-1].data[0] |= waitMask | cmpMask
-		waitMask, cmpMask = 0, 0
-		# apply carried label
-		if not instructions[-1].label and prevlabel:
-			instructions[-1].label = prevlabel
-			prevlabel = None
+			# value argument commands
+			elif entry.instruction == 'LOAD':
+				instructions.append(Load(entry.value, label=entry.label))
+
+	instructions.append(Goto('start'))
+	print(instructions)
 
 	resolve_symbols(instructions)
 
-	data = np.hstack([instr.data for instr in instructions])
+	data = [instr.flatten() for instr in instructions]
 	return data
 
 def resolve_symbols(seq):
@@ -291,13 +323,13 @@ def write_APS2_file(awgData, fileName):
 	'''
 
 	#Preprocess the LL data to handle APS restrictions
-	LLData = [APSPattern.preprocess_APS(miniLL, awgData['ch12']['wfLib']) for miniLL in awgData['ch12']['linkList']]
+	seqs = [APSPattern.preprocess_APS(seq, awgData['ch12']['wfLib']) for seq in awgData['ch12']['linkList']]
 
 	#Merge the the marker data into the IQ linklists
-	# merge_APS_markerData(LLs12, awgData['ch1m1']['linkList'], 1)
-	# merge_APS_markerData(LLs12, awgData['ch2m1']['linkList'], 2)
-	# merge_APS_markerData(LLs34, awgData['ch3m1']['linkList'], 1)
-	# merge_APS_markerData(LLs34, awgData['ch4m1']['linkList'], 2)
+	# merge_APS_markerData(seqs, awgData['ch1m1']['linkList'], 1)
+	# merge_APS_markerData(seqs, awgData['ch1m2']['linkList'], 2)
+	# merge_APS_markerData(seqs, awgData['ch2m1']['linkList'], 3)
+	# merge_APS_markerData(seqs, awgData['ch2m2']['linkList'], 4)
 	
 	#Open the HDF5 file
 	if os.path.isfile(fileName):
@@ -315,13 +347,12 @@ def write_APS2_file(awgData, fileName):
 		for chanct in range(2):
 			chanStr = '/chan_{0}'.format(chanct+1)
 			chanGroup = FID.create_group(chanStr)
-			chanGroup.attrs['isIQMode'] = np.uint8(1)
 			#Write the waveformLib to file
 			FID.create_dataset(chanStr+'/waveforms', data=wfInfo[chanct][0])
 
 			#Write the instructions to channel 1
 			if np.mod(chanct,2) == 0:
-				FID.create_dataset(chanStr+'/instructions', data=create_LL_data(LLData, wfInfo[chanct][1]))
+				FID.create_dataset(chanStr+'/instructions', data=create_instr_data(seqs, wfInfo[chanct][1]))
 
 def read_APS2_file(fileName):
 	return {'ch1': np.zeros(1), 'ch2': np.zeros(1)}
