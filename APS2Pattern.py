@@ -34,12 +34,6 @@ MAX_NUM_INSTRUCTIONS = 2**26
 MAX_REPEAT_COUNT = 2**16-1;
 MAX_TRIGGER_COUNT = 2**32-1
 
-#APS command bits
-WAIT_TRIG_BIT = 15
-# CMP_OP        = 11 # 11-13
-# OP_CODE       = 8 # 8-10
-# CMP_MASK      = 0 # 0-7
-
 # instruction encodings
 WFM    = 0x0
 MARKER = 0x1
@@ -125,6 +119,13 @@ class Instruction:
 		self.payload = payload
 		self.label = label
 		self.target = target
+
+	def __repr__(self):
+		return self.__str__()
+
+	def __str__(self):
+		labelPart = "{0}: ".format(self.label) if self.label else ""
+		return labelPart + "Instruction(" + str(hex(self.header)) + ", " + str(hex(self.payload)) + ")"
 
 	@property
 	def address(self):
