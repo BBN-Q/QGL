@@ -253,68 +253,58 @@ def resolve_symbols(seq):
 		if entry.target and entry.target in symbols:
 			entry.address = symbols[entry.target]
 
-def merge_APS_markerData(IQLL, markerLL, markerNum):
+def merge_APS_markerData(seqs, markerLL, markerNum):
 	'''
-	Helper function to merge two marker channels into an IQ channel.
+	Helper function to merge marker instructions into a waveform sequence
 	'''
 
 	markerAttr = 'markerDelay' + str(markerNum)
 
 	# expand link lists to the same length (copying first element of shorter one)
-	for miniLL_IQ, miniLL_m in izip_longest(IQLL, markerLL):
-		if not miniLL_IQ:
-			IQLL.append(deepcopy(IQLL[0]))
-		if not miniLL_m:
+	for seq, marker in izip_longest(seqs, markerLL):
+		if not seq:
+			seqs.append(deepcopy(seqs[0]))
+		if not marker:
 			markerLL.append(deepcopy(markerLL[0]))
 
 	#Step through the all the miniLL's together
-	for miniLL_IQ, miniLL_m in zip(IQLL, markerLL):
-		#Find the cummulative length for each entry of IQ channel
-		timePts = np.cumsum([0] + [entry.totLength for entry in miniLL_IQ])
+	for seq, marker in zip(seqs, markerLL):
+		#Find the cummulative length for each entry of waveform sequence
+		timePts = np.cumsum([0] + [entry.totLength for entry in seq])
 
 		#Find the switching points of the marker channels
 		switchPts = []
 		curIndex = 0
-		for curEntry, nextEntry in zip(miniLL_m[:-1], miniLL_m[1:]):
+		for curEntry, nextEntry in zip(marker[:-1], marker[1:]):
 			curIndex += curEntry.totLength
-			if curEntry.key != nextEntry.key:
+			if not isinstance(curEntry, Compiler.LLWaveform) or not isinstance(nextEntry, Compiler.LLWaveform) or curEntry.key != nextEntry.key:
 				switchPts.append(curIndex)
-				
-		#Assume switch pts seperated by 1 point are single trigger blips
-		blipPts = (np.diff(switchPts) == 1).nonzero()[0]
-		for pt in blipPts[::-1]:
-			del switchPts[pt+1]
-		#Ensure the IQ LL is long enough to support the blips
-		if switchPts:
-			if max(switchPts) > timePts[-1]:
-				assert miniLL_IQ[-1].isTimeAmp
-				miniLL_IQ[-1].length += max(switchPts) - timePts[-1] + 4 
 
-		#Now map onto linklist elements
-		curIQIdx = 0
+		#Now greedily inject into waveform sequence
+		curIndex = 0
 		trigQueue = []
 		for switchPt in switchPts:
 			#If the trigger count is too long we need to move to the next IQ entry
-			while ((switchPt - timePts[curIQIdx]) > ADDRESS_UNIT * MAX_TRIGGER_COUNT) or (len(trigQueue) > 1):
+			while ((switchPt - timePts[curIndex]) > ADDRESS_UNIT * MAX_TRIGGER_COUNT) or (len(trigQueue) > 1):
 				# update the trigger queue, dropping triggers that have played
-				trigQueue = [t - miniLL_IQ[curIQIdx].length for t in trigQueue]
+				trigQueue = [t - seq[curIndex].length for t in trigQueue]
 				trigQueue = [t for t in trigQueue if t >= 0]
-				curIQIdx += 1
+				curIndex += 1
 			#Push on the trigger count
-			if switchPt - timePts[curIQIdx] <= 0:
-				setattr(miniLL_IQ[curIQIdx], markerAttr, 0)
+			if switchPt - timePts[curIndex] <= 0:
+				setattr(seq[curIndex], markerAttr, 0)
 				print("Had to push marker blip out to start of next entry.")
 			else:
-				setattr(miniLL_IQ[curIQIdx], markerAttr, switchPt - timePts[curIQIdx])
-				trigQueue.insert(0, switchPt - timePts[curIQIdx])
+				setattr(seq[curIndex], markerAttr, switchPt - timePts[curIndex])
+				trigQueue.insert(0, switchPt - timePts[curIndex])
 			# update the trigger queue
-			trigQueue = [t - miniLL_IQ[curIQIdx].length for t in trigQueue]
+			trigQueue = [t - seq[curIndex].length for t in trigQueue]
 			trigQueue = [t for t in trigQueue if t >= 0]
-			curIQIdx += 1
+			curIndex += 1
 
 	#Replace any remaining empty entries with None
-	for miniLL_IQ in IQLL:
-		for entry in miniLL_IQ:
+	for seq in seqs:
+		for entry in seq:
 			if not hasattr(entry, markerAttr):
 				setattr(entry, markerAttr, None)
 
