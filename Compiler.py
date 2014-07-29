@@ -95,6 +95,9 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
 
     # Add gating/blanking pulses
     PatternUtils.add_gate_pulses(seqs)
+
+    # Add the slave trigger
+    PatternUtils.add_slave_trigger(seqs, channelLib['slaveTrig'])
     
     # find channel set at top level to account for individual sequence channel variability
     channels = set([])
@@ -103,9 +106,6 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
 
     #Compile all the pulses/pulseblocks to linklists and waveform libraries
     linkLists, wfLib = compile_sequences(seqs, channels)
-
-    #Add the slave trigger
-    linkLists[channelLib['slaveTrig']], wfLib[channelLib['slaveTrig']] = PatternUtils.slave_trigger(len(seqs))
 
     # apply gating constraints
     for chan, LL in linkLists.items():

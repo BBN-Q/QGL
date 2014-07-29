@@ -213,8 +213,9 @@ def contains_measurement(entry):
                 return True
     return False
 
-def slave_trigger(numSeqs):
+def add_slave_trigger(seqs, slaveChan):
     """
-    Create slave trigger link lists.
+    Add the slave trigger to each sequence.
     """
-    return [[Compiler.create_padding_LL(1), Compiler.create_padding_LL(1, True), Compiler.create_padding_LL(1)] for _ in range(numSeqs)], Compiler.markerWFLib
+    for seq in seqs:
+        seq.insert(0, TAPulse("slaveTrig", slaveChan, slaveChan.pulseParams['length'], 1.0, 0.0, 0.0))
