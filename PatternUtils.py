@@ -17,7 +17,7 @@ import numpy as np
 import Compiler
 from warnings import warn
 from APSPattern import MIN_ENTRY_LENGTH
-from PulseSequencer import Pulse
+from PulseSequencer import Pulse, TAPulse
 from PulsePrimitives import BLANK
 import ControlFlow
 from math import pi
@@ -31,6 +31,7 @@ def delay(linkList, delay, samplingRate):
         return
     for miniLL in linkList:
         # loop through and look for WAIT instructions
+        # use while loop because len(miniLL) will change as we inject delays
         ct = 0
         while ct < len(miniLL):
             if miniLL[ct] == ControlFlow.Wait():
@@ -190,21 +191,15 @@ def apply_gating_constraints(chan, linkList):
 def isNonZeroWaveform(entry):
     return not isinstance(entry, (ControlFlow.ComparisonInstruction, ControlFlow.ControlInstruction)) and not entry.isZero
 
-def add_marker_pulse(LL, startPt, length):
-    '''
-    Helper function to add a marker pulse to a LL from a given startPt and with a given length
-    '''
-    pass
-
 def add_digitizer_trigger(seqs, trigChan):
     '''
-    Add the digitizer trigger to a logical LL (pulse blocks).  For now hardcoded but should be loaded from config file.
+    Add the digitizer trigger to a logical LL (pulse blocks).
     '''
     # Attach a trigger to any pulse block containing a measurement
     for seq in seqs:
         for ct in range(len(seq)):
             if contains_measurement(seq[ct]):
-                seq[ct] *= Pulse("digTrig", trigChan, trigChan.pulseParams['shapeFun'](**trigChan.pulseParams), 0.0, 0.0)
+                seq[ct] *= TAPulse("digTrig", trigChan, trigChan.pulseParams['length'], 1.0, 0.0, 0.0)
 
 def contains_measurement(entry):
     '''
