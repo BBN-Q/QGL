@@ -109,12 +109,6 @@ def correctMixer(wfLib, T):
         iqWF = np.vstack((np.real(v), np.imag(v)))
         wfLib[k] = T[0,:].dot(iqWF) + 1j*T[1,:].dot(iqWF)
 
-def split_multiple_triggers():
-	'''
-	Split entries with multiple triggers into two entries.
-	'''
-	pass
-
 def add_gate_pulses(seqs):
     '''
     add gating pulses to Qubit pulses

@@ -379,10 +379,10 @@ class LLWaveform(object):
     def totLength(self):
         return self.length*self.repeat
 
-def create_padding_LL(length=0, high=False):
+def create_padding_LL(length=0):
     tmpLL = LLWaveform()
     tmpLL.isTimeAmp = True
-    tmpLL.key = markerHighKey if high else TAZKey
+    tmpLL.key = TAZKey
     tmpLL.length = length
     return tmpLL
 
