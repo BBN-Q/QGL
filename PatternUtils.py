@@ -143,7 +143,7 @@ def apply_gating_constraints(chan, linkList):
         # first pass consolidates entries
         previousEntry = None
         for entry in miniLL:
-            if isinstance(entry, (ControlFlow.ComparisonInstruction, ControlFlow.ControlInstruction)):
+            if isinstance(entry, ControlFlow.ControlInstruction):
                 if previousEntry:
                     gateSeq.append(previousEntry)
                     previousEntry = None
@@ -170,7 +170,7 @@ def apply_gating_constraints(chan, linkList):
             if isNonZeroWaveform(gateSeq[ct]):
                 gateSeq[ct].length += gateBuffer
                 # contract the next pulse by the same amount
-                if ct + 1 < len(gateSeq) - 1 and not isinstance(gateSeq[ct+1], (ControlFlow.ComparisonInstruction, ControlFlow.ControlInstruction)):
+                if ct + 1 < len(gateSeq) - 1 and not isinstance(gateSeq[ct+1], ControlFlow.ControlInstruction):
                     gateSeq[ct+1].length -= gateBuffer #TODO: what if this becomes negative?
 
         # third pass ensures gateMinWidth
@@ -189,7 +189,7 @@ def apply_gating_constraints(chan, linkList):
     return gateSeqs
 
 def isNonZeroWaveform(entry):
-    return not isinstance(entry, (ControlFlow.ComparisonInstruction, ControlFlow.ControlInstruction)) and not entry.isZero
+    return not isinstance(entry, ControlFlow.ControlInstruction) and not entry.isZero
 
 def add_digitizer_trigger(seqs, trigChan):
     '''

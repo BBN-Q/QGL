@@ -217,7 +217,7 @@ def compile_sequence(seq, wfLib={}, channels=None):
     carriedPhase = {ch: 0 for ch in channels}
     for block in normalize(flatten(seq), channels):
         # control flow instructions just need to broadcast to all channels
-        if isinstance(block, (ControlFlow.ComparisonInstruction, ControlFlow.ControlInstruction)):
+        if isinstance(block, ControlFlow.ControlInstruction):
             for chan in channels:
                 logicalLLs[chan] += [block]
             continue
@@ -245,7 +245,7 @@ def compile_sequence(seq, wfLib={}, channels=None):
             continue
         curFrame = 0
         for entry in logicalLLs[chan]:
-            if isinstance(entry, (ControlFlow.ComparisonInstruction, ControlFlow.ControlInstruction)):
+            if isinstance(entry, ControlFlow.ControlInstruction):
                 continue
             # frame update
             shape = np.copy(wfLib[chan][entry.key])

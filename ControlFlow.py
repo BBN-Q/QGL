@@ -42,41 +42,6 @@ def qrepeat(n, seq):
 
 ## Sequencer primitives ##
 
-class ComparisonInstruction(object):
-	def __init__(self, mask, operator):
-		self.mask = mask
-		self.operator = operator
-		self.label = None
-
-	def __repr__(self):
-		return self.__str__()
-
-	def __str__(self):
-		labelPart = "{0}: ".format(self.label) if self.label else ""
-		return labelPart + "CMP " + self.operator + " " + str(self.mask)
-
-	def __eq__(self, other):
-		return self.__dict__ == other.__dict__
-
-	def promote(self):
-		return self
-
-	@property
-	def totLength(self):
-		return 0
-
-def CmpEq(mask):
-	return ComparisonInstruction(mask, "==")
-
-def CmpNeq(mask):
-	return ComparisonInstruction(mask, "!=")
-
-def CmpLt(mask):
-	return ComparisonInstruction(mask, "<")
-
-def CmpGt(mask):
-	return ComparisonInstruction(mask, ">")
-
 class ControlInstruction(object):
 	def __init__(self, instruction, target=None, value=None):
 		self.instruction = instruction
@@ -125,3 +90,24 @@ def Wait():
 	return ControlInstruction("WAIT")
 qwait = Wait
 
+class ComparisonInstruction(ControlInstruction):
+	def __init__(self, mask, operator):
+		super(ComparisonInstruction, self).__init__("CMP")
+		self.mask = mask
+		self.operator = operator
+
+	def __str__(self):
+		labelPart = "{0}: ".format(self.label) if self.label else ""
+		return labelPart + "CMP " + self.operator + " " + str(self.mask)
+
+def CmpEq(mask):
+	return ComparisonInstruction(mask, "==")
+
+def CmpNeq(mask):
+	return ComparisonInstruction(mask, "!=")
+
+def CmpLt(mask):
+	return ComparisonInstruction(mask, "<")
+
+def CmpGt(mask):
+	return ComparisonInstruction(mask, ">")
