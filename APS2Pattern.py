@@ -188,24 +188,45 @@ def Load(count, label=None):
 def Repeat(addr, label=None):
 	return Command(REPEAT, 0, label=label)
 
-def create_instr_data(seq, offsets):
+def create_instr_data(seqs, offsets):
 	'''
-	Helper function to create LL data vectors from a list of miniLL's and an offset dictionary
+	Helper function to create instruction vector from an IR sequence and an offset dictionary
 	keyed on the wf keys.
+
+	Seqs is a list containing waveform and marker data, e.g. [wfSeq, m1Seq, m2Seq, m3Seq, m4Seq]
 	'''
 
-	#Preallocate the bank data and do some checking for miniLL lengths
-	seqLengths = np.array([len(miniLL) for miniLL in seq])
-	numEntries = sum(seqLengths)
-	assert numEntries < MAX_NUM_INSTRUCTIONS, 'Oops! too many instructions: {0}'.format(numEntries)
-	assert seq[-1][-1].instruction == 'GOTO', 'Link list must end with a GOTO instruction'
+	# get start times of all entries in the sequences, and create (seq, time) pairs
+	timeTuples = []
+	for ct, seq in enumerate(seqs):
+		timePts = np.cumsum([0] + [entry.totLength for entry in seq])
+		timeTuples.append([(ct, t) for t in timePts])
 
+	timeTuples.sort()
+	# keep track of where we are in each sequence
+	curIdx = np.zeros(len(seqs), dtype=np.int64)
+	seqLens = np.array([len(s) for s in seqs])
+	
 	cmpTable = {'==': EQUAL, '!=': NOTEQUAL, '>': GREATERTHAN, '<': LESSTHAN}
 
 	# always start with SYNC
 	instructions = [Sync(label='start')]
 
-	for entry in chain.from_iterable(seq):
+	while len(timeTuples) > 0:
+		timeTuple = timeTuples.pop(0)
+		curSeq = timeTuple[0]
+		entry = seqs[curSeq][curIdx[curSeq]]
+		curIdx[curSeq] += 1
+
+		# poor man's way of deciding waveform or marker is to use curSeq
+		if curSeq != 0: # a marker channel
+			# ignore control flow instructions
+			if not isinstance(entry, ControlFlow.ControlInstruction):
+				state = (entry.key == Compiler.TAZKey)
+				instructions.append(Marker(curSeq-1, state, entry.length, label=entry.label))
+			continue
+
+		# otherwise we are dealing with the waveform sequence
 		# switch on the IR instruction type
 		if isinstance(entry, Compiler.LLWaveform):
 			instructions.append(Waveform(offsets[entry.key],
@@ -213,9 +234,6 @@ def create_instr_data(seq, offsets):
 				                         entry.isTimeAmp,
 				                         True,
 				                         label=entry.label))
-
-		elif isinstance(entry, ControlFlow.ComparisonInstruction):
-			instructions.append(Cmp(cmpTable[entry.operator], entry.mask, label=entry.label))
 
 		elif isinstance(entry, ControlFlow.ControlInstruction):
 			# zero argument commands
@@ -233,11 +251,18 @@ def create_instr_data(seq, offsets):
 			# value argument commands
 			elif entry.instruction == 'LOAD':
 				instructions.append(Load(entry.value, label=entry.label))
+			elif entry.instruction == 'CMP':
+				instructions.append(Cmp(cmpTable[entry.operator], entry.mask, label=entry.label))
+		else:
+			raise NameError("Unknown instruction type")
 
-	instructions.append(Goto('start'))
 	print(instructions)
-
 	resolve_symbols(instructions)
+
+	if instructions[-1] != Goto(0):
+		instructions.append(Goto(0))
+
+	assert len(instructions) < MAX_NUM_INSTRUCTIONS, 'Oops! too many instructions: {0}'.format(len(instructions))
 
 	data = [instr.flatten() for instr in instructions]
 	return data
@@ -253,60 +278,22 @@ def resolve_symbols(seq):
 		if entry.target and entry.target in symbols:
 			entry.address = symbols[entry.target]
 
-def merge_APS_markerData(seqs, markerLL, markerNum):
+def compress_marker(markerLL):
 	'''
-	Helper function to merge marker instructions into a waveform sequence
+	Compresses adjacent entries of the same state into single entries
 	'''
+	for seq in markerLL:
+		idx = 0
+		while idx+1 < len(seq):
+			if (isinstance(seq[idx], Compiler.LLWaveform)
+				and isinstance(seq[idx+1], Compiler.LLWaveform)
+				and seq[idx].key == seq[idx+1].key):
 
-	markerAttr = 'markerDelay' + str(markerNum)
-
-	# expand link lists to the same length (copying first element of shorter one)
-	for seq, marker in izip_longest(seqs, markerLL):
-		if not seq:
-			seqs.append(deepcopy(seqs[0]))
-		if not marker:
-			markerLL.append(deepcopy(markerLL[0]))
-
-	#Step through the all the miniLL's together
-	for seq, marker in zip(seqs, markerLL):
-		#Find the cummulative length for each entry of waveform sequence
-		timePts = np.cumsum([0] + [entry.totLength for entry in seq])
-
-		#Find the switching points of the marker channels
-		switchPts = []
-		curIndex = 0
-		for curEntry, nextEntry in zip(marker[:-1], marker[1:]):
-			curIndex += curEntry.totLength
-			if not isinstance(curEntry, Compiler.LLWaveform) or not isinstance(nextEntry, Compiler.LLWaveform) or curEntry.key != nextEntry.key:
-				switchPts.append(curIndex)
-
-		#Now greedily inject into waveform sequence
-		curIndex = 0
-		trigQueue = []
-		for switchPt in switchPts:
-			#If the trigger count is too long we need to move to the next IQ entry
-			while ((switchPt - timePts[curIndex]) > ADDRESS_UNIT * MAX_TRIGGER_COUNT) or (len(trigQueue) > 1):
-				# update the trigger queue, dropping triggers that have played
-				trigQueue = [t - seq[curIndex].length for t in trigQueue]
-				trigQueue = [t for t in trigQueue if t >= 0]
-				curIndex += 1
-			#Push on the trigger count
-			if switchPt - timePts[curIndex] <= 0:
-				setattr(seq[curIndex], markerAttr, 0)
-				print("Had to push marker blip out to start of next entry.")
+				# TODO: handle repeats != 0 ?
+				seq[idx].length += seq[idx+1].length
+				del seq[idx+1]
 			else:
-				setattr(seq[curIndex], markerAttr, switchPt - timePts[curIndex])
-				trigQueue.insert(0, switchPt - timePts[curIndex])
-			# update the trigger queue
-			trigQueue = [t - seq[curIndex].length for t in trigQueue]
-			trigQueue = [t for t in trigQueue if t >= 0]
-			curIndex += 1
-
-	#Replace any remaining empty entries with None
-	for seq in seqs:
-		for entry in seq:
-			if not hasattr(entry, markerAttr):
-				setattr(entry, markerAttr, None)
+				idx += 1
 
 def write_APS2_file(awgData, fileName):
 	'''
@@ -316,23 +303,25 @@ def write_APS2_file(awgData, fileName):
 	#Preprocess the LL data to handle APS restrictions
 	seqs = [APSPattern.preprocess_APS(seq, awgData['ch12']['wfLib']) for seq in awgData['ch12']['linkList']]
 
-	#Merge the the marker data into the IQ linklists
-	# merge_APS_markerData(seqs, awgData['ch1m1']['linkList'], 1)
-	# merge_APS_markerData(seqs, awgData['ch1m2']['linkList'], 2)
-	# merge_APS_markerData(seqs, awgData['ch2m1']['linkList'], 3)
-	# merge_APS_markerData(seqs, awgData['ch2m2']['linkList'], 4)
-	
+	# compress marker data
+	for field in ['ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']:
+		compress_marker(awgData[field]['linkList'])
+
+	#Create the waveform vectors
+	wfInfo = []
+	wfInfo.append(create_wf_vector({key:wf.real for key,wf in awgData['ch12']['wfLib'].items()}))
+	wfInfo.append(create_wf_vector({key:wf.imag for key,wf in awgData['ch12']['wfLib'].items()}))
+
+	# build instruction vector
+	instructions = create_instr_data([awgData[s]['linkList'] for s in ['ch12', 'ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']],
+		wfInfo[0][1])
+
 	#Open the HDF5 file
 	if os.path.isfile(fileName):
 		os.remove(fileName)
 	with h5py.File(fileName, 'w') as FID:  
 		FID['/'].attrs['Version'] = 3.0
 		FID['/'].attrs['channelDataFor'] = np.uint16([1,2])
-   
-		#Create the waveform vectors
-		wfInfo = []
-		wfInfo.append(create_wf_vector({key:wf.real for key,wf in awgData['ch12']['wfLib'].items()}))
-		wfInfo.append(create_wf_vector({key:wf.imag for key,wf in awgData['ch12']['wfLib'].items()}))
 
 		#Create the groups and datasets
 		for chanct in range(2):
@@ -343,7 +332,7 @@ def write_APS2_file(awgData, fileName):
 
 			#Write the instructions to channel 1
 			if np.mod(chanct,2) == 0:
-				FID.create_dataset(chanStr+'/instructions', data=create_instr_data(seqs, wfInfo[chanct][1]))
+				FID.create_dataset(chanStr+'/instructions', data=instructions)
 
 def read_APS2_file(fileName):
 	return {'ch1': np.zeros(1), 'ch2': np.zeros(1)}
