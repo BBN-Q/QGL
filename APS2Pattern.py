@@ -113,7 +113,7 @@ def calc_marker_delay(entry):
 
 	return markerDelay1, markerDelay2
 
-class Instruction:
+class Instruction(object):
 	def __init__(self, header, payload, label=None, target=None):
 		self.header = header
 		self.payload = payload
@@ -199,8 +199,8 @@ def create_instr_data(seqs, offsets):
 	# get start times of all entries in the sequences, and create (seq, time) pairs
 	timeTuples = []
 	for ct, seq in enumerate(seqs):
-		timePts = np.cumsum([0] + [entry.totLength for entry in seq])
-		timeTuples.append([(ct, t) for t in timePts])
+		timePts = np.cumsum([0] + [entry.totLength for entry in seq])[:-1]
+		timeTuples += [(t, ct) for t in timePts]
 
 	timeTuples.sort()
 	# keep track of where we are in each sequence
@@ -213,8 +213,7 @@ def create_instr_data(seqs, offsets):
 	instructions = [Sync(label='start')]
 
 	while len(timeTuples) > 0:
-		timeTuple = timeTuples.pop(0)
-		curSeq = timeTuple[0]
+		curSeq = timeTuples.pop(0)[1]
 		entry = seqs[curSeq][curIdx[curSeq]]
 		curIdx[curSeq] += 1
 
