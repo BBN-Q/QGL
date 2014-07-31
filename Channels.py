@@ -112,6 +112,8 @@ class PhysicalMarkerChannel(PhysicalChannel):
     '''
     An digital output channel on an AWG.
     '''
+    gateBuffer = Float(0.0).tag(desc="How much extra time should be added onto the beginning of a gating pulse")
+    gateMinWidth = Float(0.0).tag(desc="The minimum marker pulse width")
         
 class PhysicalQuadratureChannel(PhysicalChannel):
     '''

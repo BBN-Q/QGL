@@ -56,6 +56,14 @@ enamldef PhysicalMarkerChannelView(GroupBox): curView:
         FloatField:
             value := chan.delay
         Label:
+            text = 'Gate Buffer'
+        FloatField:
+            value := chan.gateBuffer
+        Label:
+            text = 'Min Pulse Width'
+        FloatField:
+            value := chan.gateMinWidth
+        Label:
             text = 'AWG'
         ComboBox:
             items << instrumentLib.AWGs.displayList
