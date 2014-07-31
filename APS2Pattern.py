@@ -267,7 +267,7 @@ def create_instr_data(seqs, offsets):
 	maxlen = max([len(s) for s in seqs])
 	instructions = []
 	for ct in range(maxlen):
-		instructions += create_seq_instructions([s[ct] for s in seqs], offsets)
+		instructions += create_seq_instructions([s[ct] if ct < len(s) else [] for s in seqs], offsets)
 
 	resolve_symbols(instructions)
 
@@ -317,7 +317,10 @@ def write_APS2_file(awgData, fileName):
 
 	# compress marker data
 	for field in ['ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']:
-		compress_marker(awgData[field]['linkList'])
+		if 'linkList' in awgData[field].keys():
+			compress_marker(awgData[field]['linkList'])
+		else:
+			awgData[field]['linkList'] = []
 
 	#Create the waveform vectors
 	wfInfo = []
