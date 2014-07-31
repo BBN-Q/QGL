@@ -125,7 +125,10 @@ class Instruction(object):
 
 	def __str__(self):
 		labelPart = "{0}: ".format(self.label) if self.label else ""
-		return labelPart + "Instruction(" + str(hex(self.header)) + ", " + str(hex(self.payload)) + ")"
+		out = labelPart + "Instruction(" + str(hex(self.header)) + ", "
+		if self.target:
+			out += str(self.target) + "/"
+		return out + str(hex(self.payload)) + ")"
 
 	@property
 	def address(self):
@@ -188,7 +191,7 @@ def Load(count, label=None):
 def Repeat(addr, label=None):
 	return Command(REPEAT, 0, label=label)
 
-def create_instr_data(seqs, offsets):
+def create_seq_instructions(seqs, offsets):
 	'''
 	Helper function to create instruction vector from an IR sequence and an offset dictionary
 	keyed on the wf keys.
@@ -210,7 +213,7 @@ def create_instr_data(seqs, offsets):
 	cmpTable = {'==': EQUAL, '!=': NOTEQUAL, '>': GREATERTHAN, '<': LESSTHAN}
 
 	# always start with SYNC
-	instructions = [Sync(label='start')]
+	instructions = [Sync()]
 
 	while len(timeTuples) > 0:
 		curSeq = timeTuples.pop(0)[1]
@@ -255,7 +258,17 @@ def create_instr_data(seqs, offsets):
 		else:
 			raise NameError("Unknown instruction type")
 
-	print(instructions)
+	return instructions
+
+def create_instr_data(seqs, offsets):
+	'''
+	Constructs the complete instruction data vector, and does basic checks for validity.
+	'''
+	maxlen = max([len(s) for s in seqs])
+	instructions = []
+	for ct in range(maxlen):
+		instructions += create_seq_instructions([s[ct] for s in seqs], offsets)
+
 	resolve_symbols(instructions)
 
 	if instructions[-1] != Goto(0):
