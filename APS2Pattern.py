@@ -51,7 +51,8 @@ PFETCH = 0xA
 PLAY      = 0x0
 WAIT_TRIG = 0x1
 WAIT_SYNC = 0x2
-TA_PAIR_BIT = 45
+WFM_OP_OFFSET = 46
+TA_PAIR_BIT   = 45
 
 # CMP op encodings
 EQUAL       = 0x0
@@ -144,20 +145,20 @@ class Instruction(object):
 def Waveform(addr, count, isTA, write=False, label=None):
 	header = (WFM << 4) | (write & 0x1)
 	count = int(count)
-	count = ((count / ADDRESS_UNIT)-1) & 0x00ffffff
-	addr = (addr / ADDRESS_UNIT) & 0x00ffffff
-	payload = PLAY << 46 | (isTA & 0x1) | (count << 24) | addr
+	count = ((count // ADDRESS_UNIT)-1) & 0x00ffffff
+	addr = (addr // ADDRESS_UNIT) & 0x00ffffff
+	payload = PLAY << WFM_OP_OFFSET | ((isTA & 0x1) << TA_PAIR_BIT) | (count << 24) | addr
 	return Instruction(header, payload, label)
 
 def Marker(sel, state, count, write=False, label=None):
 	header = (MARKER << 4) | ((sel & 0x3) << 2) | (write & 0x1)
 	count = int(count)
-	four_count = ((count / ADDRESS_UNIT)-1) & 0xffffffff
+	four_count = ((count // ADDRESS_UNIT)-1) & 0xffffffff
 	count_rem = count % ADDRESS_UNIT
-	# do something with count_rem....
-	transition = 0
+	transitionWords = {0: 0b0000, 1: 0b1000, 2: 0b1100, 3: 0b1110}
+	transition = transitionWords[count_rem]
 
-	payload = PLAY << 46 | (transition << 33) | ((state & 0x1) << 32) | four_count
+	payload = PLAY << WFM_OP_OFFSET | (transition << 33) | ((state & 0x1) << 32) | four_count
 	return Instruction(header, payload, label)
 
 def Command(cmd, payload, label=None):
