@@ -139,6 +139,14 @@ class Instruction(object):
 	def address(self, value):
 		self.payload |= value & 0xffffffff
 
+	@property
+	def writeFlag(self):
+		return self.header & 0x1
+
+	@writeFlag.setter
+	def writeFlag(self, value):
+		self.header |= value & 0x1
+
 	def flatten(self):
 		return (self.header << 56) | self.payload
 
@@ -197,7 +205,11 @@ def create_seq_instructions(seqs, offsets):
 	Helper function to create instruction vector from an IR sequence and an offset dictionary
 	keyed on the wf keys.
 
-	Seqs is a list containing waveform and marker data, e.g. [wfSeq, m1Seq, m2Seq, m3Seq, m4Seq]
+	Seqs is a list of lists containing waveform and marker data, e.g.
+	[wfSeq, m1Seq, m2Seq, m3Seq, m4Seq]
+
+	We take the strategy of greedily grabbing the next instruction that occurs in time, accross
+	all	waveform and marker channels.
 	'''
 
 	# get start times of all entries in the sequences, and create (seq, time) pairs
@@ -210,6 +222,7 @@ def create_seq_instructions(seqs, offsets):
 	# keep track of where we are in each sequence
 	curIdx = np.zeros(len(seqs), dtype=np.int64)
 	seqLens = np.array([len(s) for s in seqs])
+	firstWriteFlag = False
 	
 	cmpTable = {'==': EQUAL, '!=': NOTEQUAL, '>': GREATERTHAN, '<': LESSTHAN}
 
@@ -219,6 +232,11 @@ def create_seq_instructions(seqs, offsets):
 	while len(timeTuples) > 0:
 		curSeq = timeTuples.pop(0)[1]
 		entry = seqs[curSeq][curIdx[curSeq]]
+		writeFlag = curIdx[curSeq] > 0
+		if writeFlag and not firstWriteFlag:
+			# reach back to the previous instruction to write it
+			instructions[-1].writeFlag = True
+			firstWriteFlag = True
 		curIdx[curSeq] += 1
 
 		# poor man's way of deciding waveform or marker is to use curSeq
@@ -226,7 +244,11 @@ def create_seq_instructions(seqs, offsets):
 			# ignore control flow instructions
 			if not isinstance(entry, ControlFlow.ControlInstruction):
 				state = (entry.key == Compiler.TAZKey)
-				instructions.append(Marker(curSeq-1, state, entry.length, label=entry.label))
+				instructions.append(Marker(curSeq-1,
+					                       state,
+					                       entry.length,
+					                       write=writeFlag,
+					                       label=entry.label))
 			continue
 
 		# otherwise we are dealing with the waveform sequence
@@ -235,7 +257,7 @@ def create_seq_instructions(seqs, offsets):
 			instructions.append(Waveform(offsets[entry.key],
 				                         entry.length,
 				                         entry.isTimeAmp,
-				                         True,
+				                         write=writeFlag,
 				                         label=entry.label))
 
 		elif isinstance(entry, ControlFlow.ControlInstruction):
