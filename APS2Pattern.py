@@ -169,18 +169,20 @@ def Marker(sel, state, count, write=False, label=None):
 	payload = PLAY << WFM_OP_OFFSET | (transition << 33) | ((state & 0x1) << 32) | four_count
 	return Instruction(header, payload, label)
 
-def Command(cmd, payload, label=None):
+def Command(cmd, payload, write=False, label=None):
 	header = (cmd << 4)
 	if isinstance(payload, int):
-		return Instruction(header, payload, label)
+		instr = Instruction(header, payload, label)
 	else:
-		return Instruction(header, 0, label, target=payload)
+		instr = Instruction(header, 0, label, target=payload)
+	instr.writeFlag = write
+	return instr
 
 def Sync(label=None):
-	return Command(SYNC, 0, label=label)
+	return Command(SYNC, WAIT_SYNC << WFM_OP_OFFSET, write=True, label=label)
 
 def Wait(label=None):
-	return Command(WAIT, 0, label=label)
+	return Command(WAIT, WAIT_TRIG << WFM_OP_OFFSET, write=True, label=label)
 
 def Cmp(op, mask, label=None):
 	return Command(CMP, (op << 8) | (mask & 0xff), label=label)
@@ -189,7 +191,7 @@ def Goto(addr, label=None):
 	return Command(GOTO, addr, label=label)
 
 def Call(addr, label=None):
-	return Command(CALL, addr, label)
+	return Command(CALL, addr, label=label)
 
 def Return(label=None):
 	return Command(RET, 0, label=label)
@@ -259,7 +261,7 @@ def create_seq_instructions(seqs, offsets):
 				                         label=entry.label))
 		elif curSeq > 1: # a marker channel
 			markerSel = curSeq - 2
-			state = (entry.key == Compiler.TAZKey)
+			state = (entry.key != Compiler.TAZKey)
 			instructions.append(Marker(markerSel,
 				                       state,
 				                       entry.length,
@@ -340,7 +342,7 @@ def write_APS2_file(awgData, fileName):
 	'''
 
 	#Preprocess the LL data to handle APS restrictions
-	seqs = [APSPattern.preprocess_APS(seq, awgData['ch12']['wfLib']) for seq in awgData['ch12']['linkList']]
+	# seqs = [APSPattern.preprocess_APS(seq, awgData['ch12']['wfLib']) for seq in awgData['ch12']['linkList']]
 
 	# compress marker data
 	for field in ['ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']:

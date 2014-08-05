@@ -190,10 +190,11 @@ def add_digitizer_trigger(seqs, trigChan):
     Add the digitizer trigger to a logical LL (pulse blocks).
     '''
     # Attach a trigger to any pulse block containing a measurement
+    pulseLength = trigChan.pulseParams['length'] * trigChan.physChan.samplingRate
     for seq in seqs:
         for ct in range(len(seq)):
             if contains_measurement(seq[ct]):
-                seq[ct] *= TAPulse("TRIG", trigChan, trigChan.pulseParams['length'], 1.0, 0.0, 0.0)
+                seq[ct] *= TAPulse("TRIG", trigChan, pulseLength, 1.0, 0.0, 0.0)
 
 def contains_measurement(entry):
     '''
@@ -208,8 +209,9 @@ def contains_measurement(entry):
     return False
 
 def add_slave_trigger(seqs, slaveChan):
-    """
+    '''
     Add the slave trigger to each sequence.
-    """
+    '''
+    pulseLength = slaveChan.pulseParams['length'] * slaveChan.physChan.samplingRate
     for seq in seqs:
-        seq.insert(0, TAPulse("TRIG", slaveChan, slaveChan.pulseParams['length'], 1.0, 0.0, 0.0))
+        seq.insert(0, TAPulse("TRIG", slaveChan, pulseLength, 1.0, 0.0, 0.0))
