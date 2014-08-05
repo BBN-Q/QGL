@@ -369,7 +369,11 @@ class LLWaveform(object):
 
     def __str__(self):
         labelPart = "{0}: ".format(self.label) if self.label else ""
-        return labelPart + "LLWaveform(" + str(id(self)) + ")"
+        if self.isTimeAmp:
+            TA = 'HIGH' if self.key != TAZKey else 'LOW'
+            return labelPart + "LLWaveform-TA(" + TA + ", " + str(self.length) + ")"
+        else: 
+            return labelPart + "LLWaveform(" + self.key[:6] + ", " + str(self.length) + ")"
 
     @property
     def isZero(self):
