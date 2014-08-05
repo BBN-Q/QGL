@@ -148,7 +148,7 @@ class Instruction(object):
 		self.header |= value & 0x1
 
 	def flatten(self):
-		return (self.header << 56) | self.payload
+		return long((self.header << 56) | self.payload)
 
 def Waveform(addr, count, isTA, write=False, label=None):
 	header = (WFM << 4) | (write & 0x1)
@@ -200,6 +200,12 @@ def Load(count, label=None):
 def Repeat(addr, label=None):
 	return Command(REPEAT, 0, label=label)
 
+def timestamp_entries(seq):
+	t = 0
+	for ct in range(len(seq)):
+		seq[ct].startTime = t
+		t += seq[ct].totLength
+
 def create_seq_instructions(seqs, offsets):
 	'''
 	Helper function to create instruction vector from an IR sequence and an offset dictionary
@@ -212,17 +218,25 @@ def create_seq_instructions(seqs, offsets):
 	all	waveform and marker channels.
 	'''
 
-	# get start times of all entries in the sequences, and create (seq, time) pairs
+	# timestamp all entries before filtering (where we lose time information on control flow)
+	for seq in seqs:
+		timestamp_entries(seq)
+
+	# filter out sequencing instructions from the waveform and marker lists, so that seqs becomes:
+	# [control-flow, wfs, m1, m2, m3, m4]
+	controlInstrs = filter(lambda s: isinstance(s, ControlFlow.ControlInstruction), seqs[0])
+	seqs.insert(0, controlInstrs)
+	for ct in range(1, len(seqs)):
+		seqs[ct] = filter(lambda s: isinstance(s, Compiler.LLWaveform), seqs[ct])
+
+	# create (seq, startTime) pairs over all sequences
 	timeTuples = []
 	for ct, seq in enumerate(seqs):
-		timePts = np.cumsum([0] + [entry.totLength for entry in seq])[:-1]
-		timeTuples += [(t, ct) for t in timePts]
-
+		timeTuples += [(entry.startTime, ct) for entry in seq]
 	timeTuples.sort()
+
 	# keep track of where we are in each sequence
 	curIdx = np.zeros(len(seqs), dtype=np.int64)
-	seqLens = np.array([len(s) for s in seqs])
-	firstWriteFlag = False
 	
 	cmpTable = {'==': EQUAL, '!=': NOTEQUAL, '>': GREATERTHAN, '<': LESSTHAN}
 
@@ -230,37 +244,29 @@ def create_seq_instructions(seqs, offsets):
 	instructions = [Sync()]
 
 	while len(timeTuples) > 0:
-		curSeq = timeTuples.pop(0)[1]
+		startTime, curSeq = timeTuples.pop(0)
 		entry = seqs[curSeq][curIdx[curSeq]]
-		writeFlag = curIdx[curSeq] > 0
-		if writeFlag and not firstWriteFlag:
-			# reach back to the previous instruction to write it
-			instructions[-1].writeFlag = True
-			firstWriteFlag = True
+		nextStartTime = timeTuples[0][0] if len(timeTuples) > 0 else -1
+		writeFlag = (startTime != nextStartTime)
 		curIdx[curSeq] += 1
 
 		# poor man's way of deciding waveform or marker is to use curSeq
-		if curSeq != 0: # a marker channel
-			# ignore control flow instructions
-			if not isinstance(entry, ControlFlow.ControlInstruction):
-				state = (entry.key == Compiler.TAZKey)
-				instructions.append(Marker(curSeq-1,
-					                       state,
-					                       entry.length,
-					                       write=writeFlag,
-					                       label=entry.label))
-			continue
-
-		# otherwise we are dealing with the waveform sequence
-		# switch on the IR instruction type
-		if isinstance(entry, Compiler.LLWaveform):
+		if curSeq == 1: # waveform channel
 			instructions.append(Waveform(offsets[entry.key],
 				                         entry.length,
 				                         entry.isTimeAmp,
 				                         write=writeFlag,
 				                         label=entry.label))
+		elif curSeq > 1: # a marker channel
+			markerSel = curSeq - 2
+			state = (entry.key == Compiler.TAZKey)
+			instructions.append(Marker(markerSel,
+				                       state,
+				                       entry.length,
+				                       write=writeFlag,
+				                       label=entry.label))
 
-		elif isinstance(entry, ControlFlow.ControlInstruction):
+		else: # otherwise we are dealing with control-flow
 			# zero argument commands
 			if entry.instruction == 'WAIT':
 				instructions.append(Wait(label=entry.label))
@@ -278,8 +284,6 @@ def create_seq_instructions(seqs, offsets):
 				instructions.append(Load(entry.value, label=entry.label))
 			elif entry.instruction == 'CMP':
 				instructions.append(Cmp(cmpTable[entry.operator], entry.mask, label=entry.label))
-		else:
-			raise NameError("Unknown instruction type")
 
 	return instructions
 
@@ -299,7 +303,7 @@ def create_instr_data(seqs, offsets):
 
 	assert len(instructions) < MAX_NUM_INSTRUCTIONS, 'Oops! too many instructions: {0}'.format(len(instructions))
 
-	data = [instr.flatten() for instr in instructions]
+	data = np.array([instr.flatten() for instr in instructions], dtype=np.uint64)
 	return data
 
 def resolve_symbols(seq):

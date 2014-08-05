@@ -193,7 +193,7 @@ def add_digitizer_trigger(seqs, trigChan):
     for seq in seqs:
         for ct in range(len(seq)):
             if contains_measurement(seq[ct]):
-                seq[ct] *= TAPulse("digTrig", trigChan, trigChan.pulseParams['length'], 1.0, 0.0, 0.0)
+                seq[ct] *= TAPulse("TRIG", trigChan, trigChan.pulseParams['length'], 1.0, 0.0, 0.0)
 
 def contains_measurement(entry):
     '''
@@ -212,4 +212,4 @@ def add_slave_trigger(seqs, slaveChan):
     Add the slave trigger to each sequence.
     """
     for seq in seqs:
-        seq.insert(0, TAPulse("slaveTrig", slaveChan, slaveChan.pulseParams['length'], 1.0, 0.0, 0.0))
+        seq.insert(0, TAPulse("TRIG", slaveChan, slaveChan.pulseParams['length'], 1.0, 0.0, 0.0))
