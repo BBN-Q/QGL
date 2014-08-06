@@ -155,6 +155,55 @@ def calc_marker_delay(entry):
 
 	return markerDelay1, markerDelay2
 
+class Instruction(object):
+	def __init__(self, addr, count, trig1, trig2, repeat):
+		self.addr = addr
+		self.count = count
+		self.trig1 = trig1
+		self.trig2 = trig2
+		self.repeat = repeat
+
+	def __repr__(self):
+		return self.__str__()
+
+	def __str__(self):
+		return ("Instruction(" + str(self.addr) + ", " + str(self.count) + ", " + 
+			    str(self.trig1) + ", " + str(self.trig2) + ", " + str(self.repeat) + ")")
+
+	@property
+	def start(self):
+		return self.repeat & (1 << START_MINILL_BIT)
+
+	@start.setter
+	def start(self, value):
+		self.repeat |= (value & 0x1) << START_MINILL_BIT
+
+	@property
+	def end(self):
+		return self.repeat & (1 << END_MINILL_BIT)
+
+	@end.setter
+	def end(self, value):
+		self.repeat |= (value & 0x1) << END_MINILL_BIT
+
+	@property
+	def wait(self):
+		return self.repeat & (1 << WAIT_TRIG_BIT)
+
+	@wait.setter
+	def wait(self, value):
+		self.repeat |= (value & 0x1) << WAIT_TRIG_BIT
+
+	@property
+	def TAPair(self):
+		return self.repeat & (1 << TA_PAIR_BIT)
+
+	@TAPair.setter
+	def TAPair(self, value):
+		self.repeat |= (value & 0x1) << TA_PAIR_BIT
+
+	def flatten(self):
+		return (self.addr << 16*4) | (self.count << 16*3) | (self.trig1 << 16*2) | (self.trig2 << 16*1) | self.repeat
 
 def create_LL_data(LLs, offsets, AWGName=''):
 	'''
