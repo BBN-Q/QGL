@@ -165,14 +165,17 @@ class PulseSeqPlotWindow(QtGui.QWidget):
 
     def update_plot(self):
         '''
-        Just updates the y-date for the sequence number changes
+        Just updates the y-data for the sequence number changes
         '''
         #Get the current segment number
         curSegNum = self.slider.sliderPosition()
 
+        longest_line = 0
         for line in self.lines.values():
             if curSegNum < len(line['awgData']):
                 line['handle'].set_data(np.arange(line['awgData'][curSegNum].size), line['awgData'][curSegNum] + line['vertShift'])
+                longest_line = max(longest_line, line['awgData'][curSegNum].size)
+        self.ax.set_xlim((0, longest_line))
         
         self.canvas.draw()
         
