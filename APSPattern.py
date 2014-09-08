@@ -295,6 +295,10 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 			curIndex += curEntry.totLength
 			if hasattr(curEntry, 'key') and hasattr(nextEntry, 'key') and curEntry.key != nextEntry.key:
 				switchPts.append(curIndex)
+
+		# Push on an extra switch point if we have an odd number of switches (to maintain state)
+		if len(switchPts) % 2 == 1:
+			switchPts.append(timePts[-1]-4)
 				
 		#Assume switch pts seperated by 1 point are single trigger blips
 		blipPts = (np.diff(switchPts) == 1).nonzero()[0]
@@ -310,6 +314,8 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 
 		#Now map onto linklist elements
 		curIQIdx = 0
+		while isinstance(miniLL_IQ[curIQIdx], ControlFlow.ControlInstruction):
+			curIQIdx += 1
 		trigQueue = []
 		for switchPt in switchPts:
 			#If the trigger count is too long we need to move to the next IQ entry
@@ -318,6 +324,8 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 				trigQueue = [t - miniLL_IQ[curIQIdx].length for t in trigQueue]
 				trigQueue = [t for t in trigQueue if t >= 0]
 				curIQIdx += 1
+				while isinstance(miniLL_IQ[curIQIdx], ControlFlow.ControlInstruction):
+					curIQIdx += 1
 			#Push on the trigger count
 			if switchPt - timePts[curIQIdx] <= 0:
 				setattr(miniLL_IQ[curIQIdx], markerAttr, 0)
@@ -329,6 +337,8 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 			trigQueue = [t - miniLL_IQ[curIQIdx].length for t in trigQueue]
 			trigQueue = [t for t in trigQueue if t >= 0]
 			curIQIdx += 1
+			while curIQIdx < len(miniLL_IQ) and isinstance(miniLL_IQ[curIQIdx], ControlFlow.ControlInstruction):
+				curIQIdx += 1
 
 	#Replace any remaining empty entries with None
 	for miniLL_IQ in IQLL:

@@ -114,7 +114,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
     # apply gating constraints
     for chan, LL in linkLists.items():
         if isinstance(chan, Channels.LogicalMarkerChannel):
-            LL = PatternUtils.apply_gating_constraints(chan.physChan, LL)
+            linkLists[chan] = PatternUtils.apply_gating_constraints(chan.physChan, LL)
     
     # map logical to physical channels
     awgData = map_logical_to_physical(linkLists, wfLib)
