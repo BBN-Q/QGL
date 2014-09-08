@@ -62,7 +62,11 @@ def setup_awg_channels(logicalChannels):
     for chan in logicalChannels:
         awgs.add(chan.AWG)
 
-    return {awg.label:get_empty_channel_set(awg) for awg in awgs}
+    data = {awg.label:get_empty_channel_set(awg) for awg in awgs}
+    for awgdata in data.values():
+        for chan in awgdata.keys():
+            awgdata[chan] = {'linkList': [], 'wfLib': {TAZKey: np.zeros(1, dtype=np.complex)}}
+    return data
 
 def map_logical_to_physical(linkLists, wfLib):
     physicalChannels = {chan: channelLib[get_channel_label(chan)].physChan.label for chan in linkLists.keys()}

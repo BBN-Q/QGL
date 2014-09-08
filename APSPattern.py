@@ -139,14 +139,14 @@ def create_wf_vector(wfLib):
 
 def calc_marker_delay(entry):
 	#The firmware cannot handle 0 delay markers so push out one clock cycle
-	if entry.markerDelay1 is not None:
+	if hasattr(entry, 'markerDelay1') and entry.markerDelay1 is not None:
 		if entry.markerDelay1 < ADDRESS_UNIT:
 			entry.markerDelay1 = ADDRESS_UNIT
 		markerDelay1 = entry.markerDelay1//ADDRESS_UNIT
 	else:
 		markerDelay1 = 0
 
-	if entry.markerDelay2 is not None:
+	if hasattr(entry, 'markerDelay2') and entry.markerDelay2 is not None:
 		if entry.markerDelay2 < ADDRESS_UNIT:
 			entry.markerDelay2 = ADDRESS_UNIT
 		markerDelay2 = entry.markerDelay2//ADDRESS_UNIT
@@ -156,12 +156,12 @@ def calc_marker_delay(entry):
 	return markerDelay1, markerDelay2
 
 class Instruction(object):
-	def __init__(self, addr, count, trig1, trig2, repeat):
-		self.addr = addr
-		self.count = count
-		self.trig1 = trig1
-		self.trig2 = trig2
-		self.repeat = repeat
+	def __init__(self, addr=0, count=0, trig1=0, trig2=0, repeat=0):
+		self.addr = int(addr)
+		self.count = int(count)
+		self.trig1 = int(trig1)
+		self.trig2 = int(trig2)
+		self.repeat = int(repeat)
 
 	def __repr__(self):
 		return self.__str__()
@@ -211,32 +211,50 @@ def create_LL_data(LLs, offsets, AWGName=''):
 	keyed on the wf keys.
 	'''
 
-	#Preallocate the bank data and do some checking for miniLL lengths
+	# Do some checking on miniLL lengths
 	seqLengths = np.array([len(miniLL) for miniLL in LLs])
 	assert np.all(seqLengths >= MIN_LL_ENTRY_COUNT), 'Oops! mini LL''s needs to have at least two elements.'
 	assert np.all(seqLengths < MAX_LL_ENTRIES), 'Oops! mini LL''s cannot have length greater than {0}, you have {1} entries'.format(MAX_BANK_SIZE, len(miniLL))
-	numEntries = sum(seqLengths)
+
+	instructions = []
+	waitFlag = False
+	for miniLL in LLs:
+		miniStart = True
+		for entry in miniLL:
+			if isinstance(entry, ControlFlow.ControlInstruction):
+				if entry.instruction == 'WAIT':
+					waitFlag = True
+					continue
+				else:
+					warn("skipping instruction {0}".format(entry))
+			else: # waveform instructions
+				t1, t2 = calc_marker_delay(entry)
+				instr = Instruction(
+					addr = offsets[entry.key]//ADDRESS_UNIT,
+					count = entry.length//ADDRESS_UNIT - 1,
+					trig1 = t1,
+					trig2 = t2,
+					repeat = entry.repeat -1)
+				# set flags
+				instr.TAPair = entry.isTimeAmp
+				instr.wait = waitFlag
+				instr.start = miniStart
+				waitFlag = False
+				miniStart = False
+				instructions.append(instr)
+		instructions[-1].end = True
+
+	# convert to LLData structure
+	numEntries = len(instructions)
 	LLData = {label: np.zeros(numEntries, dtype=np.uint16) for label in ['addr','count', 'trigger1', 'trigger2', 'repeat']}
-
-	#Loop over all entries
-	TAPairEntries = []
-	for ct, entry in enumerate(chain.from_iterable(LLs)):
-		LLData['addr'][ct] = offsets[entry.key]//ADDRESS_UNIT
-		LLData['count'][ct] = entry.length//ADDRESS_UNIT-1
-		LLData['trigger1'][ct], LLData['trigger2'][ct] = calc_marker_delay(entry)
-		LLData['repeat'][ct] = entry.repeat-1
-		if entry.isTimeAmp:
-			TAPairEntries.append(ct)
-
-	#Add in the miniLL start/stop and TA pair flags on the upper bits of the repeat entries
-	startPts = np.hstack((0, np.cumsum(seqLengths[:-1])))
-	endPts = np.cumsum(seqLengths)-1
-	LLData['repeat'][startPts] += 2**START_MINILL_BIT + 2**WAIT_TRIG_BIT
-	LLData['repeat'][endPts] += 2**END_MINILL_BIT
-	LLData['repeat'][TAPairEntries] += 2**TA_PAIR_BIT
+	for ct in range(numEntries):
+		LLData['addr'][ct] = instructions[ct].addr
+		LLData['count'][ct] = instructions[ct].count
+		LLData['trigger1'][ct] = instructions[ct].trig1
+		LLData['trigger2'][ct] = instructions[ct].trig2
+		LLData['repeat'][ct] = instructions[ct].repeat
 	
 	#Check streaming requirements
-	numEntries = np.uint16(LLData['addr'].size)
 	if numEntries > MAX_LL_ENTRIES:
 		print('Streaming will be necessary for {}'.format(AWGName))
 		#Get the length of the longest LL
@@ -253,15 +271,17 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 	'''
 	Helper function to merge two marker channels into an IQ channel.
 	'''
+	if len(markerLL) == 0:
+		return
 
 	markerAttr = 'markerDelay' + str(markerNum)
 
 	# expand link lists to the same length (copying first element of shorter one)
 	for miniLL_IQ, miniLL_m in izip_longest(IQLL, markerLL):
 		if not miniLL_IQ:
-			IQLL.append(deepcopy(IQLL[0]))
+			IQLL.append([Compiler.create_padding_LL(MIN_ENTRY_LENGTH), Compiler.create_padding_LL(MIN_ENTRY_LENGTH)])
 		if not miniLL_m:
-			markerLL.append(deepcopy(markerLL[0]))
+			markerLL.append([Compiler.create_padding_LL(MIN_ENTRY_LENGTH)])
 
 	#Step through the all the miniLL's together
 	for miniLL_IQ, miniLL_m in zip(IQLL, markerLL):
@@ -273,7 +293,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 		curIndex = 0
 		for curEntry, nextEntry in zip(miniLL_m[:-1], miniLL_m[1:]):
 			curIndex += curEntry.totLength
-			if curEntry.key != nextEntry.key:
+			if hasattr(curEntry, 'key') and hasattr(nextEntry, 'key') and curEntry.key != nextEntry.key:
 				switchPts.append(curIndex)
 				
 		#Assume switch pts seperated by 1 point are single trigger blips
@@ -281,10 +301,12 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 		for pt in blipPts[::-1]:
 			del switchPts[pt+1]
 		#Ensure the IQ LL is long enough to support the blips
-		if switchPts:
-			if max(switchPts) >= timePts[-1]:
-				assert miniLL_IQ[-1].isTimeAmp
-				miniLL_IQ[-1].length += max(switchPts) - timePts[-1] + 4 
+		if switchPts and max(switchPts) >= timePts[-1]:
+			dt = max(switchPts) - timePts[-1]
+			if miniLL_IQ[-1].isTimeAmp:
+				miniLL_IQ[-1].length += dt + 4 
+			else:
+				miniLL_IQ.append(Compiler.create_padding_LL(max(dt+4, MIN_ENTRY_LENGTH)))
 
 		#Now map onto linklist elements
 		curIQIdx = 0

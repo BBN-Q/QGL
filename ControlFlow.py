@@ -71,6 +71,10 @@ class ControlInstruction(object):
 	def totLength(self):
 		return 0
 
+	@property
+	def length(self):
+		return 0
+
 def Goto(target):
 	return ControlInstruction("GOTO", target=target)
 
