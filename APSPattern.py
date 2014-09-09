@@ -40,7 +40,7 @@ END_MINILL_BIT = 14;
 WAIT_TRIG_BIT = 13;
 TA_PAIR_BIT = 12;
 
-TAZKey = hash(tuple(np.zeros(1, dtype=np.complex)))
+TAZKey = Compiler.hash_pulse(np.zeros(1, dtype=np.complex))
 
 def preprocess_APS(miniLL, wfLib):
 	'''
@@ -290,16 +290,18 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 
 		#Find the switching points of the marker channels
 		switchPts = []
-		curIndex = 0
-		for curEntry, nextEntry in zip(miniLL_m[:-1], miniLL_m[1:]):
-			curIndex += curEntry.totLength
-			if hasattr(curEntry, 'key') and hasattr(nextEntry, 'key') and curEntry.key != nextEntry.key:
-				switchPts.append(curIndex)
+		prevKey = TAZKey
+		t = 0
+		for entry in miniLL_m:
+			if hasattr(entry, 'key') and prevKey != entry.key:
+				switchPts.append(t)
+				prevKey = entry.key
+			t += entry.totLength
 
 		# Push on an extra switch point if we have an odd number of switches (to maintain state)
 		if len(switchPts) % 2 == 1:
-			switchPts.append(timePts[-1]-4)
-				
+			switchPts.append(t)
+
 		#Assume switch pts seperated by 1 point are single trigger blips
 		blipPts = (np.diff(switchPts) == 1).nonzero()[0]
 		for pt in blipPts[::-1]:
@@ -307,27 +309,32 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 		#Ensure the IQ LL is long enough to support the blips
 		if switchPts and max(switchPts) >= timePts[-1]:
 			dt = max(switchPts) - timePts[-1]
-			if miniLL_IQ[-1].isTimeAmp:
+			if hasattr(miniLL_IQ[-1], 'isTimeAmp') and miniLL_IQ[-1].isTimeAmp:
 				miniLL_IQ[-1].length += dt + 4 
 			else:
 				miniLL_IQ.append(Compiler.create_padding_LL(max(dt+4, MIN_ENTRY_LENGTH)))
 
 		#Now map onto linklist elements
 		curIQIdx = 0
-		while isinstance(miniLL_IQ[curIQIdx], ControlFlow.ControlInstruction):
-			curIQIdx += 1
 		trigQueue = []
 		for switchPt in switchPts:
-			#If the trigger count is too long we need to move to the next IQ entry
-			while ((switchPt - timePts[curIQIdx]) > ADDRESS_UNIT * MAX_TRIGGER_COUNT) or (len(trigQueue) > 1):
+			# skip if:
+			#   1) control-flow instruction
+			#   2) the trigger count is too long
+			#   3) the previous trigger pulse entends into the current entry
+			while (isinstance(miniLL_IQ[curIQIdx], ControlFlow.ControlInstruction) or
+				(switchPt - timePts[curIQIdx]) > (ADDRESS_UNIT * MAX_TRIGGER_COUNT) or
+				len(trigQueue) > 1):
 				# update the trigger queue, dropping triggers that have played
 				trigQueue = [t - miniLL_IQ[curIQIdx].length for t in trigQueue]
 				trigQueue = [t for t in trigQueue if t >= 0]
 				curIQIdx += 1
-				while isinstance(miniLL_IQ[curIQIdx], ControlFlow.ControlInstruction):
-					curIQIdx += 1
+				# add padding pulses if needed
+				if curIQIdx >= len(miniLL_IQ):
+					pad = max(MIN_ENTRY_LENGTH, min(trigQueue, 0))
+					miniLL_IQ.append(Compiler.create_padding_LL(pad))
 			#Push on the trigger count
-			if switchPt - timePts[curIQIdx] <= 0:
+			if switchPt - timePts[curIQIdx] < 0:
 				setattr(miniLL_IQ[curIQIdx], markerAttr, 0)
 				print("Had to push marker blip out to start of next entry.")
 			else:
@@ -337,8 +344,6 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 			trigQueue = [t - miniLL_IQ[curIQIdx].length for t in trigQueue]
 			trigQueue = [t for t in trigQueue if t >= 0]
 			curIQIdx += 1
-			while curIQIdx < len(miniLL_IQ) and isinstance(miniLL_IQ[curIQIdx], ControlFlow.ControlInstruction):
-				curIQIdx += 1
 
 	#Replace any remaining empty entries with None
 	for miniLL_IQ in IQLL:
