@@ -68,7 +68,7 @@ def preprocess_APS(miniLL, wfLib):
 			#Concatenate the waveforms                
 			paddedWF = np.hstack((wfLib[curEntry.key]*np.ones(curEntry.length), wfLib[nextEntry.key]))
 			#Hash the result to generate a new unique key and add
-			newKey = hash(tuple(paddedWF))
+			newKey = Compiler.hash_pulse(paddedWF)
 			wfLib[newKey] = paddedWF
 			nextEntry.key = newKey
 			nextEntry.length = wfLib[newKey].size
@@ -79,10 +79,15 @@ def preprocess_APS(miniLL, wfLib):
 		elif isinstance(previousEntry, Compiler.LLWaveform) and previousEntry.key == TAZKey and previousEntry.length > 2*MIN_ENTRY_LENGTH:
 			padLength = MIN_ENTRY_LENGTH - curEntry.length
 			newMiniLL[-1].length -= padLength
-			#Concatenate the waveforms                
-			paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[curEntry.key]))
+			#Concatenate the waveforms
+			if curEntry.isTimeAmp:
+				paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[curEntry.key]*np.ones(curEntry.length)))
+				if curEntry.key != TAZKey:
+					curEntry.isTimeAmp = False
+			else:
+				paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[curEntry.key]))
 			#Hash the result to generate a new unique key and add
-			newKey = hash(tuple(paddedWF))
+			newKey = Compiler.hash_pulse(paddedWF)
 			wfLib[newKey] = paddedWF
 			curEntry.key = newKey
 			curEntry.length = wfLib[newKey].size
@@ -91,11 +96,16 @@ def preprocess_APS(miniLL, wfLib):
 
 		elif isinstance(nextEntry, Compiler.LLWaveform) and nextEntry.key == TAZKey and nextEntry.length > 2*MIN_ENTRY_LENGTH:
 			padLength = MIN_ENTRY_LENGTH - curEntry.length
-			newMiniLL[-1].length -= padLength
-			#Concatenate the waveforms                
-			paddedWF = np.hstack((wfLib[curEntry.key], np.zeros(padLength, dtype=np.complex)))
+			nextEntry.length -= padLength
+			#Concatenate the waveforms
+			if curEntry.isTimeAmp:
+				paddedWF = np.hstack((wfLib[curEntry.key]*np.ones(curEntry.length), np.zeros(padLength, dtype=np.complex)))
+				if curEntry.key != TAZKey:
+					curEntry.isTimeAmp = False
+			else:
+				paddedWF = np.hstack((wfLib[curEntry.key], np.zeros(padLength, dtype=np.complex)))
 			#Hash the result to generate a new unique key and add
-			newKey = hash(tuple(paddedWF))
+			newKey = Compiler.hash_pulse(paddedWF)
 			wfLib[newKey] = paddedWF
 			curEntry.key = newKey
 			curEntry.length = wfLib[newKey].size
@@ -334,9 +344,27 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 					pad = max(MIN_ENTRY_LENGTH, min(trigQueue, 0))
 					miniLL_IQ.append(Compiler.create_padding_LL(pad))
 			#Push on the trigger count
-			if switchPt - timePts[curIQIdx] < 0:
-				setattr(miniLL_IQ[curIQIdx], markerAttr, 0)
-				print("Had to push marker blip out to start of next entry.")
+
+			#If are switch point is before the start of the LL entry then we are in trouble...
+			if switchPt - timePts[curIQIdx] <= 0:
+				#See if the previous entry was a TA pair and whether we can split it
+				needToShift = switchPt - timePts[curIQIdx-1]
+				if isinstance(miniLL_IQ[curIQIdx-1], Compiler.LLWaveform) and \
+					miniLL_IQ[curIQIdx-1].isTimeAmp and \
+					miniLL_IQ[curIQIdx-1].length > (needToShift + MIN_ENTRY_LENGTH):
+
+					miniLL_IQ.insert(curIQIdx, deepcopy(miniLL_IQ[curIQIdx-1]))
+					miniLL_IQ[curIQIdx-1].length = needToShift-ADDRESS_UNIT
+					miniLL_IQ[curIQIdx].length -= needToShift-ADDRESS_UNIT
+					miniLL_IQ[curIQIdx].markerDelay1 = None
+					miniLL_IQ[curIQIdx].markerDelay2 = None
+					setattr(miniLL_IQ[curIQIdx], markerAttr, ADDRESS_UNIT)
+					#Recalculate the timePts
+					timePts = np.cumsum([0] + [entry.totLength for entry in miniLL_IQ])
+				else:
+					setattr(miniLL_IQ[curIQIdx], markerAttr, 0)
+					print("Had to push marker blip out to start of next entry.")
+
 			else:
 				setattr(miniLL_IQ[curIQIdx], markerAttr, switchPt - timePts[curIQIdx])
 				trigQueue.insert(0, switchPt - timePts[curIQIdx])

@@ -1,11 +1,41 @@
 from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
+from ..Cliffords import clifford_seq, clifford_mat, inverse_clifford
+from helpers import create_cal_seqs
 
 import os
 from csv import reader
+import numpy as np
 
-def SingleQubitRB(qubit, seqFile, showPlot=False):
+def create_RB_seqs(numQubits, lengths, repeats=32, interleaveGate=None):
+	"""
+	Create a list of lists of Clifford gates to implement RB.
+	"""
+	if numQubits == 1:
+		cliffGroupSize = 24
+	elif numQubits == 2:
+		cliffGroupSize = 11520
+	else:
+		raise Exception("Can only handle one or two qubits.")
+
+	#Create lists of of random integers 
+	#Subtract one from length for recovery gate
+	seqs = []
+	for length in lengths:
+		seqs += np.random.random_integers(0, cliffGroupSize-1, (repeats, length-1)).tolist()
+
+	#Calculate the recovery gate
+	for seq in seqs:
+		if len(seq) == 1:
+			mat = clifford_mat(seq[0], numQubits)
+		else:
+			mat = reduce(lambda x,y: np.dot(y,x), [clifford_mat(c, numQubits) for c in seq])
+		seq.append(inverse_clifford(mat))
+
+	return seqs
+
+def SingleQubitRB(qubit, seqs, showPlot=False):
 	"""
 
 	Single qubit randomized benchmarking using 90 and 180 generators. 
@@ -13,7 +43,7 @@ def SingleQubitRB(qubit, seqFile, showPlot=False):
 	Parameters
 	----------
 	qubit : logical channel to implement sequence (LogicalChannel) 
-	seqFile : file containing sequence strings
+	seqs : list of lists of Clifford group integers
 	showPlot : whether to plot (boolean)
 
 	Returns
@@ -21,31 +51,59 @@ def SingleQubitRB(qubit, seqFile, showPlot=False):
 	plotHandle : handle to plot window to prevent destruction
 	"""	
 
-	#Setup a pulse library
-	pulseLib = {'X90p':X90(qubit), 'X90m':X90m(qubit), 'Xp':X(qubit), 'Xm':Xm(qubit),
-	            'Y90p':Y90(qubit), 'Y90m':Y90m(qubit), 'Yp':Y(qubit), 'Ym':Ym(qubit),
-	            'QId':Id(qubit)}
-	measBlock = MEAS(qubit)
+	seqsBis = []
+	for seq in seqs:
+		seqsBis.append(reduce(operator.add, [clifford_seq(c, qubit) for c in seq]))
 
-	with open(seqFile,'r') as FID:
-		fileReader = reader(FID, delimiter='\t')
-		seqs = []
-		for pulseSeqStr in fileReader:
-			seq = []
-			for pulseStr in pulseSeqStr:
-				seq.append(pulseLib[pulseStr])
-			seq.append(measBlock)
-			seqs.append(seq)
+	#Add the measurement to all sequences
+	for seq in seqsBis:
+		seq.append(MEAS(qubit))
 
-	#Tack on the calibration scalings
-	seqs += [[Id(qubit), measBlock], [Id(qubit), measBlock], [X(qubit), measBlock], [X(qubit), measBlock]]
+	#Tack on the calibration sequences
+	seqsBis += create_cal_seqs((qubit,), 2)
 
-	fileNames = compile_to_hardware(seqs, 'RB/RB')
+	fileNames = compile_to_hardware(seqsBis, 'RB/RB')
 	print(fileNames)
 
 	if showPlot:
 		plotWin = plot_pulse_files(fileNames)
 		return plotWin
+
+def TwoQubitRB(q1, q2, CR, seqs, showPlot=False):
+	"""
+
+	Two qubit randomized benchmarking using 90 and 180 single qubit generators and ZX90 
+
+	Parameters
+	----------
+	qubit : logical channel to implement sequence (LogicalChannel) 
+	seqs : list of lists of Clifford group integers
+	showPlot : whether to plot (boolean)
+
+	Returns
+	-------
+	plotHandle : handle to plot window to prevent destruction
+	"""	
+
+	seqsBis = []
+	for seq in seqs:
+		seqsBis.append(reduce(operator.add, [clifford_seq(c, q1, q2, CR) for c in seq]))
+
+	#Add the measurement to all sequences
+	for seq in seqsBis:
+		seq.append(MEAS(q1, q2))
+
+	#Tack on the calibration sequences
+	seqsBis += create_cal_seqs((q1,q2), 2)
+
+	fileNames = compile_to_hardware(seqsBis, 'RB/RB')
+	print(fileNames)
+
+	if showPlot:
+		plotWin = plot_pulse_files(fileNames)
+		return plotWin
+
+
 
 
 def SingleQubitRB_AC(qubit, seqFile, showPlot=False):

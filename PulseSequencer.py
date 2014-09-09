@@ -37,6 +37,7 @@ class Pulse(object):
         self.frameChange = frameChange
         self.isTimeAmp = False
         self.TALength = 0
+        self.repeat = 1
 
     def __repr__(self):
         return str(self)
@@ -133,7 +134,7 @@ class CompositePulse(object):
 
     @property
     def length(self):
-        return sum([p.length for p in self.pulses])
+        return sum([p.length*p.repeat for p in self.pulses])
 
     @property
     def frameChange(self):
@@ -183,6 +184,10 @@ class PulseBlock(object):
     def promote(self):
         return self
 
+    @property
+    def qubits(self):
+        return self.pulses.keys()
+
     #A list of the channels used in this block
     @property
     def channelNames(self):
@@ -198,6 +203,11 @@ def align(pulseBlock, mode="center"):
     pulseBlock = pulseBlock.promote()
     pulseBlock.alignment = mode
     return pulseBlock
+
+def repeat(p, n):
+    assert isinstance(p, Pulse), "Can only repeat a Pulse object"
+    p.repeat = round(n)
+    return p
 
 AWGFreq = 1.2e9
 

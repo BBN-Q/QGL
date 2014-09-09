@@ -361,6 +361,7 @@ class LLWaveform(object):
             self.phase = 0
             self.frameChange = 0
             self.isTimeAmp = False
+            self.repeat = 1
         else:
             self.key = hash_pulse(pulse.shape)
             self.length = pulse.length
