@@ -346,7 +346,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 			#Push on the trigger count
 
 			#If are switch point is before the start of the LL entry then we are in trouble...
-			if switchPt - timePts[curIQIdx] <= 0:
+			if switchPt - timePts[curIQIdx] < 0:
 				#See if the previous entry was a TA pair and whether we can split it
 				needToShift = switchPt - timePts[curIQIdx-1]
 				if isinstance(miniLL_IQ[curIQIdx-1], Compiler.LLWaveform) and \
