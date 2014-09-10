@@ -16,7 +16,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 '''
 import numpy as np
-import hashlib
 import os
 import collections
 import itertools
@@ -41,13 +40,7 @@ from mm import multimethod
 channelLib = {}
 instrumentLib = {}
 
-def hash_pulse(shape):
-    return hashlib.sha1(shape.tostring()).hexdigest()
-    
-TAZKey = hash_pulse(np.zeros(1, dtype=np.complex))
-markerHighKey = hash_pulse(np.ones(1, dtype=np.bool))
-
-markerWFLib = {TAZKey:np.zeros(1, dtype=np.bool), markerHighKey:np.ones(1, dtype=np.bool) }
+markerWFLib = {PatternUtils.TAZKey:np.zeros(1, dtype=np.bool), PatternUtils.markerHighKey:np.ones(1, dtype=np.bool) }
 
 def get_channel_label(chanKey):
     ''' Takes in a channel key and returns a channel label '''
@@ -65,7 +58,7 @@ def setup_awg_channels(logicalChannels):
     data = {awg.label:get_empty_channel_set(awg) for awg in awgs}
     for awgdata in data.values():
         for chan in awgdata.keys():
-            awgdata[chan] = {'linkList': [], 'wfLib': {TAZKey: np.zeros(1, dtype=np.complex)}}
+            awgdata[chan] = {'linkList': [], 'wfLib': {PatternUtils.TAZKey: np.zeros(1, dtype=np.complex)}}
     return data
 
 def map_logical_to_physical(linkLists, wfLib):
@@ -102,7 +95,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
 
     # Add the slave trigger
     PatternUtils.add_slave_trigger(seqs, channelLib['slaveTrig'])
-    
+
     # find channel set at top level to account for individual sequence channel variability
     channels = set([])
     for seq in seqs:
@@ -115,7 +108,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
     for chan, LL in linkLists.items():
         if isinstance(chan, Channels.LogicalMarkerChannel):
             linkLists[chan] = PatternUtils.apply_gating_constraints(chan.physChan, LL)
-    
+
     # map logical to physical channels
     awgData = map_logical_to_physical(linkLists, wfLib)
 
@@ -132,10 +125,10 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
                 # construct IQkey using existing convention
                 IQkey = awgName + '-' + chanName[2:]
                 chanObj = channelLib[IQkey]
-            
+
                 # apply channel delay
                 PatternUtils.delay(chanData['linkList'], chanDelays[IQkey], chanObj.samplingRate)
-                
+
                 # For quadrature channels, apply SSB and mixer correction
                 if isinstance(chanObj, Channels.PhysicalQuadratureChannel):
 
@@ -147,7 +140,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
 
                 #Remove unused waveforms
                 compress_wfLib(chanData['linkList'], chanData['wfLib'])
-                
+
     #Loop back through to fill empty channels and write to file
     fileList = []
     for awgName, data in awgData.items():
@@ -217,7 +210,7 @@ def compile_sequence(seq, wfLib={}, channels=None):
             if isinstance(chan, Channels.LogicalMarkerChannel):
                 wfLib[chan] = markerWFLib
             else:
-                wfLib[chan] = {TAZKey: np.zeros(1, dtype=np.complex)}
+                wfLib[chan] = {PatternUtils.TAZKey: np.zeros(1, dtype=np.complex)}
     carriedPhase = {ch: 0 for ch in channels}
     for block in normalize(flatten(seq), channels):
         # control flow instructions just need to broadcast to all channels
@@ -225,7 +218,7 @@ def compile_sequence(seq, wfLib={}, channels=None):
             for chan in channels:
                 logicalLLs[chan] += [block]
             continue
-        #Align the block 
+        #Align the block
         blockLength = block.maxPts
         # drop length 0 blocks but push frame change onto next non-zero entry
         if blockLength == 0:
@@ -237,8 +230,8 @@ def compile_sequence(seq, wfLib={}, channels=None):
             for wf in wfs:
                 if isinstance(chan, Channels.LogicalMarkerChannel):
                     wf = wf.astype(np.bool)
-                if hash_pulse(wf) not in wfLib:
-                    wfLib[chan][hash_pulse(wf)] = wf
+                if PatternUtils.hash_pulse(wf) not in wfLib:
+                    wfLib[chan][PatternUtils.hash_pulse(wf)] = wf
             # Frame changes are then propagated through
             logicalLLs[chan] += propagate_frame(LLentries, carriedPhase[chan])
         carriedPhase = {ch: 0 for ch in channels}
@@ -259,18 +252,18 @@ def compile_sequence(seq, wfLib={}, channels=None):
             if np.all(shape == shape[0]):
                 entry.isTimeAmp = True
                 shape = shape[:1]
-                # convert near zeros to TAZKey
+                # convert near zeros to PatternUtils.TAZKey
                 if abs(shape[0]) < 1e-6:
-                    entry.key = TAZKey
+                    entry.key = PatternUtils.TAZKey
 
             #Rotate for phase and frame change (don't rotate zeros...)
-            if entry.key != TAZKey:
+            if entry.key != PatternUtils.TAZKey:
                 shape *= np.exp(1j*(entry.phase+curFrame))
-                shapeHash = hash_pulse(shape)
+                shapeHash = PatternUtils.hash_pulse(shape)
                 if shapeHash not in wfLib[chan]:
                     wfLib[chan][shapeHash] = shape
                 entry.key = shapeHash
-            curFrame += entry.frameChange 
+            curFrame += entry.frameChange
 
     return logicalLLs, wfLib
 
@@ -296,7 +289,7 @@ def compress_wfLib(seqs, wfLib):
     '''
     Helper function to remove unused waveforms from the library.
     '''
-    usedKeys = set([TAZKey, markerHighKey])
+    usedKeys = set([PatternUtils.TAZKey, PatternUtils.markerHighKey])
     for miniLL in seqs:
         for entry in miniLL:
             if isinstance(entry, LLWaveform):
@@ -363,7 +356,7 @@ class LLWaveform(object):
             self.isTimeAmp = False
             self.repeat = 1
         else:
-            self.key = hash_pulse(pulse.shape)
+            self.key = PatternUtils.hash_pulse(pulse.shape)
             self.length = pulse.length
             self.phase = pulse.phase
             self.frameChange = pulse.frameChange
@@ -375,14 +368,14 @@ class LLWaveform(object):
     def __str__(self):
         labelPart = "{0}: ".format(self.label) if self.label else ""
         if self.isTimeAmp:
-            TA = 'HIGH' if self.key != TAZKey else 'LOW'
+            TA = 'HIGH' if self.key != PatternUtils.TAZKey else 'LOW'
             return labelPart + "LLWaveform-TA(" + TA + ", " + str(self.length) + ")"
-        else: 
+        else:
             return labelPart + "LLWaveform(" + self.key[:6] + ", " + str(self.length) + ")"
 
     @property
     def isZero(self):
-        return self.key == TAZKey
+        return self.key == PatternUtils.TAZKey
 
     @property
     def totLength(self):
@@ -391,7 +384,7 @@ class LLWaveform(object):
 def create_padding_LL(length=0):
     tmpLL = LLWaveform()
     tmpLL.isTimeAmp = True
-    tmpLL.key = TAZKey
+    tmpLL.key = PatternUtils.TAZKey
     tmpLL.length = length
     return tmpLL
 
@@ -412,23 +405,23 @@ def align(label, pulse, blockLength, alignment, cutoff=12):
         # pad the first/last shape on one side
         if alignment == "left":
             shapes[-1] = np.hstack((shapes[-1], np.zeros(padLength)))
-            entries[-1].key = hash_pulse(shapes[-1])
+            entries[-1].key = PatternUtils.hash_pulse(shapes[-1])
         else: #right alignment
             shapes[0] = np.hstack((np.zeros(padLength), shapes[0]))
-            entries[0].key = hash_pulse(shapes[0])
+            entries[0].key = PatternUtils.hash_pulse(shapes[0])
     elif (padLength < 2*cutoff and alignment == "center"):
         # pad the both sides of the shape(s)
         if len(shapes) == 1:
             shapes[0] = np.hstack(( np.zeros(np.floor(padLength/2)), shapes[0], np.zeros(np.ceil(padLength/2)) ))
-            entries[0].key = hash_pulse(shapes[0])
+            entries[0].key = PatternUtils.hash_pulse(shapes[0])
         else:
             shapes[0] = np.hstack(( np.zeros(np.floor(padLength/2)), shapes[0]))
             shapes[-1] = np.hstack(( np.zeroes(np.ceil(padLength/2)), shapes[-1]))
-            entries[0].key = hash_pulse(shapes[0])
-            entries[-1].key = hash_pulse(shapes[-1])
+            entries[0].key = PatternUtils.hash_pulse(shapes[0])
+            entries[-1].key = PatternUtils.hash_pulse(shapes[-1])
     elif padLength == blockLength:
         #Here we have a zero-length sequence which just needs to be expanded
-        entries[0].key = TAZKey
+        entries[0].key = PatternUtils.TAZKey
         entries[0].length = blockLength
         shapes = [np.zeros(1, dtype=np.complex)]
     else:
@@ -445,9 +438,9 @@ def align(label, pulse, blockLength, alignment, cutoff=12):
             entries = [padEntry1] + entries + [padEntry2]
     return shapes, entries
 
-def flatten_and_separate(seq): 
+def flatten_and_separate(seq):
     '''
-    Given a (potentially nested) list of instructions, flatten the list into a 
+    Given a (potentially nested) list of instructions, flatten the list into a
     main sequence and a (flattened) list of branches
     '''
     branchSeqs = []

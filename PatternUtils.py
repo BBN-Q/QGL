@@ -14,13 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 '''
 import numpy as np
-import Compiler
 from warnings import warn
-from APSPattern import MIN_ENTRY_LENGTH
 from PulseSequencer import Pulse, TAPulse
 from PulsePrimitives import BLANK
 import ControlFlow
 from math import pi
+import hashlib
+
+def hash_pulse(shape):
+    return hashlib.sha1(shape.tostring()).hexdigest()
+
+TAZKey = hash_pulse(np.zeros(1, dtype=np.complex))
+markerHighKey = hash_pulse(np.ones(1, dtype=np.bool))
 
 def delay(linkList, delay, samplingRate):
     '''
@@ -54,7 +59,7 @@ def normalize_delays(delays):
 def apply_SSB(linkList, wfLib, SSBFreq, samplingRate):
     #Negative because of negative frequency qubits
     phaseStep = -2*pi*SSBFreq/samplingRate
-        
+
     #Bits of phase precision
     #Choose usual DAC vertical precision arbirarily
     phasePrecision = 2**14
@@ -71,8 +76,8 @@ def apply_SSB(linkList, wfLib, SSBFreq, samplingRate):
     for miniLL in linkList:
         curFrame = 0.0
         for entry in miniLL:
-            #If it's a zero then just adjust the frame and move on 
-            if entry.key == Compiler.TAZKey: 
+            #If it's a zero then just adjust the frame and move on
+            if entry.key == Compiler.TAZKey:
                 curFrame += phaseStep*entry.length
                 continue
             # expand time-amplitude pulses in-place

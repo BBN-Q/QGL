@@ -22,7 +22,9 @@ import numpy as np
 from warnings import warn
 from itertools import chain, izip_longest
 import Compiler, ControlFlow
+from PatternUtils import hash_pulse, TAZKey
 from copy import copy, deepcopy
+
 
 #Some constants
 ADDRESS_UNIT = 4 #everything is done in units of 4 timesteps
@@ -40,11 +42,9 @@ END_MINILL_BIT = 14;
 WAIT_TRIG_BIT = 13;
 TA_PAIR_BIT = 12;
 
-TAZKey = Compiler.hash_pulse(np.zeros(1, dtype=np.complex))
-
 def preprocess_APS(miniLL, wfLib):
 	'''
-	Helper function to deal with LL elements less than minimum LL entry count  
+	Helper function to deal with LL elements less than minimum LL entry count
 	by trying to concatenate them into neighbouring entries
 	'''
 	newMiniLL = []
@@ -62,19 +62,19 @@ def preprocess_APS(miniLL, wfLib):
 			break
 		nextEntry = miniLL[entryct+1]
 		previousEntry = miniLL[entryct-1] if entryct > 0 else None
-		
+
 		#For short TA pairs we see if we can add them to the next waveform
 		if curEntry.key == TAZKey and not nextEntry.key == TAZKey:
-			#Concatenate the waveforms                
+			#Concatenate the waveforms
 			paddedWF = np.hstack((wfLib[curEntry.key]*np.ones(curEntry.length), wfLib[nextEntry.key]))
 			#Hash the result to generate a new unique key and add
-			newKey = Compiler.hash_pulse(paddedWF)
+			newKey = hash_pulse(paddedWF)
 			wfLib[newKey] = paddedWF
 			nextEntry.key = newKey
 			nextEntry.length = wfLib[newKey].size
 			newMiniLL.append(nextEntry)
 			entryct += 2
-		
+
 		#For short pulses we see if we can steal some padding from the previous or next entry
 		elif isinstance(previousEntry, Compiler.LLWaveform) and previousEntry.key == TAZKey and previousEntry.length > 2*MIN_ENTRY_LENGTH:
 			padLength = MIN_ENTRY_LENGTH - curEntry.length
@@ -87,7 +87,7 @@ def preprocess_APS(miniLL, wfLib):
 			else:
 				paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[curEntry.key]))
 			#Hash the result to generate a new unique key and add
-			newKey = Compiler.hash_pulse(paddedWF)
+			newKey = hash_pulse(paddedWF)
 			wfLib[newKey] = paddedWF
 			curEntry.key = newKey
 			curEntry.length = wfLib[newKey].size
@@ -105,7 +105,7 @@ def preprocess_APS(miniLL, wfLib):
 			else:
 				paddedWF = np.hstack((wfLib[curEntry.key], np.zeros(padLength, dtype=np.complex)))
 			#Hash the result to generate a new unique key and add
-			newKey = Compiler.hash_pulse(paddedWF)
+			newKey = hash_pulse(paddedWF)
 			wfLib[newKey] = paddedWF
 			curEntry.key = newKey
 			curEntry.length = wfLib[newKey].size
@@ -116,7 +116,7 @@ def preprocess_APS(miniLL, wfLib):
 			warn("Unable to handle too short LL element, dropping.")
 			entryct += 1
 
-	#Update the miniLL 
+	#Update the miniLL
 	return newMiniLL
 
 def create_wf_vector(wfLib):
@@ -133,17 +133,17 @@ def create_wf_vector(wfLib):
 		#TA pairs need to be repeated ADDRESS_UNIT times
 		if wf.size == 1:
 			wf = wf.repeat(ADDRESS_UNIT)
-		#Ensure the wf is an integer number of ADDRESS_UNIT's 
+		#Ensure the wf is an integer number of ADDRESS_UNIT's
 		trim = wf.size%ADDRESS_UNIT
 		if trim:
 			wf = wf[:-trim]
 		assert idx + wf.size < MAX_WAVEFORM_PTS, 'Oops! You have exceeded the waveform memory of the APS'
 		wfVec[idx:idx+wf.size] = np.uint16(np.round(MAX_WAVEFORM_VALUE*wf))
 		offsets[key] = idx
-		idx += wf.size 
-					
-	#Trim the waveform 
-	wfVec = wfVec[0:idx] 
+		idx += wf.size
+
+	#Trim the waveform
+	wfVec = wfVec[0:idx]
 
 	return wfVec, offsets
 
@@ -177,7 +177,7 @@ class Instruction(object):
 		return self.__str__()
 
 	def __str__(self):
-		return ("Instruction(" + str(self.addr) + ", " + str(self.count) + ", " + 
+		return ("Instruction(" + str(self.addr) + ", " + str(self.count) + ", " +
 			    str(self.trig1) + ", " + str(self.trig2) + ", " + str(self.repeat) + ")")
 
 	@property
@@ -263,7 +263,7 @@ def create_LL_data(LLs, offsets, AWGName=''):
 		LLData['trigger1'][ct] = instructions[ct].trig1
 		LLData['trigger2'][ct] = instructions[ct].trig2
 		LLData['repeat'][ct] = instructions[ct].repeat
-	
+
 	#Check streaming requirements
 	if numEntries > MAX_LL_ENTRIES:
 		print('Streaming will be necessary for {}'.format(AWGName))
@@ -320,7 +320,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 		if switchPts and max(switchPts) >= timePts[-1]:
 			dt = max(switchPts) - timePts[-1]
 			if hasattr(miniLL_IQ[-1], 'isTimeAmp') and miniLL_IQ[-1].isTimeAmp:
-				miniLL_IQ[-1].length += dt + 4 
+				miniLL_IQ[-1].length += dt + 4
 			else:
 				miniLL_IQ.append(Compiler.create_padding_LL(max(dt+4, MIN_ENTRY_LENGTH)))
 
@@ -393,19 +393,19 @@ def write_APS_file(awgData, fileName, miniLLRepeat=1):
 	merge_APS_markerData(LLs12, awgData['ch2m1']['linkList'], 2)
 	merge_APS_markerData(LLs34, awgData['ch3m1']['linkList'], 1)
 	merge_APS_markerData(LLs34, awgData['ch4m1']['linkList'], 2)
-	
+
 	#Open the HDF5 file
 	if os.path.isfile(fileName):
 		os.remove(fileName)
-	with h5py.File(fileName, 'w') as FID:  
-	
+	with h5py.File(fileName, 'w') as FID:
+
 		#List of which channels we have data for
 		#TODO: actually handle incomplete channel data
 		channelDataFor = [1,2,3,4]
 		FID['/'].attrs['Version'] = 2.0
 		FID['/'].attrs['channelDataFor'] = np.uint16(channelDataFor)
 		FID['/'].attrs['miniLLRepeat'] = np.uint16(miniLLRepeat - 1)
-   
+
 		#Create the waveform vectors
 		wfInfo = []
 		for wfLib in (awgData['ch12']['wfLib'], awgData['ch34']['wfLib']):
@@ -444,7 +444,7 @@ def read_APS_file(fileName):
 	END_MINILL_MASK = 2**END_MINILL_BIT
 	TA_PAIR_MASK = 2**TA_PAIR_BIT
 	REPEAT_MASK = 2**10-1
-	
+
 	chanStrs = ['ch1','ch2', 'ch3', 'ch4']
 	chanStrs2 = ['chan_1', 'chan_2', 'chan_3', 'chan_4']
 	mrkStrs = ['ch1m1', 'ch2m1', 'ch3m1', 'ch4m1']
@@ -465,7 +465,7 @@ def read_APS_file(fileName):
 			tmpTrigger1 = curLLData['trigger1'].value.flatten()
 			tmpTrigger2 = curLLData['trigger2'].value.flatten()
 			numEntries = curLLData.attrs['length']
-   
+
 			#Pull out and scale the waveform data
 			wfLib =(1.0/MAX_WAVEFORM_VALUE)*FID[chanStr]['waveformLib'].value.flatten()
 
@@ -479,7 +479,7 @@ def read_APS_file(fileName):
 				if START_MINILL_MASK & tmpRepeat[entryct]:
 					AWGData[chanStrs[chanct]].append(np.array([], dtype=np.float64))
 					triggerDelays = []
-					
+
 				#Record the trigger delays
 				if np.mod(chanct,2) == 0:
 					if tmpTrigger1[entryct] > 0:
@@ -491,10 +491,10 @@ def read_APS_file(fileName):
 				#If it is a TA pair or regular pulse
 				curRepeat = (tmpRepeat[entryct] & REPEAT_MASK)+1
 				if TA_PAIR_MASK & tmpRepeat[entryct]:
-					AWGData[chanStrs[chanct]][-1] = np.hstack((AWGData[chanStrs[chanct]][-1], 
+					AWGData[chanStrs[chanct]][-1] = np.hstack((AWGData[chanStrs[chanct]][-1],
 													np.tile(wfLib[tmpAddr[entryct]*ADDRESS_UNIT:tmpAddr[entryct]*ADDRESS_UNIT+4], curRepeat*(tmpCount[entryct]+1))))
 				else:
-					AWGData[chanStrs[chanct]][-1] = np.hstack((AWGData[chanStrs[chanct]][-1], 
+					AWGData[chanStrs[chanct]][-1] = np.hstack((AWGData[chanStrs[chanct]][-1],
 													np.tile(wfLib[tmpAddr[entryct]*ADDRESS_UNIT:tmpAddr[entryct]*ADDRESS_UNIT+ADDRESS_UNIT*(tmpCount[entryct]+1)], curRepeat)))
 				#Add the trigger pulse
 				if END_MINILL_MASK & tmpRepeat[entryct]:
