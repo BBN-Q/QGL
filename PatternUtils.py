@@ -17,7 +17,7 @@ import numpy as np
 from warnings import warn
 from PulseSequencer import Pulse, TAPulse
 from PulsePrimitives import BLANK
-import ControlFlow
+import ControlFlow, Compiler
 from math import pi
 import hashlib
 

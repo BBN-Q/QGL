@@ -62,7 +62,12 @@ class ControlInstruction(object):
 		return result
 
 	def __eq__(self, other):
-		return self.__dict__ == other.__dict__
+		# ignore label in equality testing
+		mydict = self.__dict__.copy()
+		otherdict = other.__dict__.copy()
+		mydict.pop('label')
+		otherdict.pop('label')
+		return mydict == otherdict
 
 	def promote(self):
 		return self
