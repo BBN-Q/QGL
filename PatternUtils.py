@@ -77,7 +77,7 @@ def apply_SSB(linkList, wfLib, SSBFreq, samplingRate):
         curFrame = 0.0
         for entry in miniLL:
             #If it's a zero then just adjust the frame and move on
-            if entry.key == Compiler.TAZKey:
+            if not hasattr(entry, 'key') or entry.key == TAZKey:
                 curFrame += phaseStep*entry.length
                 continue
             # expand time-amplitude pulses in-place
@@ -94,7 +94,7 @@ def apply_SSB(linkList, wfLib, SSBFreq, samplingRate):
             else:
                 phaseRamp = phaseStep*np.arange(0.5, shape.size)
                 shape *= np.exp(1j*(truncPhase + phaseRamp))
-                shapeHash = Compiler.hash_pulse(shape)
+                shapeHash = hash_pulse(shape)
                 if shapeHash not in wfLib:
                     wfLib[shapeHash] = shape
                 pulseDict[pulseTuple] = shapeHash
