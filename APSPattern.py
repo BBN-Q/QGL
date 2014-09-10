@@ -235,6 +235,9 @@ def create_LL_data(LLs, offsets, AWGName=''):
 				if entry.instruction == 'WAIT':
 					waitFlag = True
 					continue
+				elif entry.instruction == 'GOTO' and entry.target == LLs[0][0].label:
+					# can safely skip a goto with a target of the first instruction
+					continue
 				else:
 					warn("skipping instruction {0}".format(entry))
 			else: # waveform instructions
@@ -322,7 +325,11 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 			if hasattr(miniLL_IQ[-1], 'isTimeAmp') and miniLL_IQ[-1].isTimeAmp:
 				miniLL_IQ[-1].length += dt + 4
 			else:
-				miniLL_IQ.append(Compiler.create_padding_LL(max(dt+4, MIN_ENTRY_LENGTH)))
+				# inject before any control flow statements at the end of the sequence
+				idx = len(miniLL_IQ)
+				while idx > 0 and isinstance(miniLL_IQ[idx-1], ControlFlow.ControlInstruction):
+					idx -=1
+				miniLL_IQ.insert(idx, Compiler.create_padding_LL(max(dt+4, MIN_ENTRY_LENGTH)))
 
 		#Now map onto linklist elements
 		curIQIdx = 0

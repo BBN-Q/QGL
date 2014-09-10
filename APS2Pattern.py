@@ -20,8 +20,6 @@ import h5py
 import os
 import numpy as np
 from warnings import warn
-from itertools import chain, izip_longest
-from copy import copy, deepcopy
 import Compiler, ControlFlow
 import APSPattern
 
