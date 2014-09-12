@@ -408,8 +408,9 @@ def write_APS_file(awgData, fileName, miniLLRepeat=1):
 
 		#List of which channels we have data for
 		#TODO: actually handle incomplete channel data
-		channelDataFor = [1,2,3,4]
-		FID['/'].attrs['Version'] = 2.0
+		channelDataFor = [1,2] if LLs12 else []
+		channelDataFor += [3,4] if LLs34 else []
+		FID['/'].attrs['Version'] = 2.1
 		FID['/'].attrs['channelDataFor'] = np.uint16(channelDataFor)
 		FID['/'].attrs['miniLLRepeat'] = np.uint16(miniLLRepeat - 1)
 
@@ -428,9 +429,8 @@ def write_APS_file(awgData, fileName, miniLLRepeat=1):
 			#Write the waveformLib to file
 			FID.create_dataset('{0}/waveformLib'.format(chanStr), data=wfInfo[chanct][0])
 
-			#For A channels (1 & 3) we write link list data
-			if np.mod(chanct,2) == 0:
-				chanGroup.attrs['isLinkListData'] = np.uint8(1)
+			#For A channels (1 & 3) we write link list data if we actually have any
+			if (np.mod(chanct,2) == 0) and LLData[chanct//2]:
 				groupStr = chanStr+'/linkListData'
 				LLGroup = FID.create_group(groupStr)
 				LLDataVecs, numEntries = create_LL_data(LLData[chanct//2], wfInfo[chanct][1], os.path.basename(fileName))
@@ -461,53 +461,55 @@ def read_APS_file(fileName):
 			#If we're in IQ mode then the Q channel gets its linkListData from the I channel
 			if FID[chanStr].attrs['isIQMode']:
 				tmpChan = 2*(chanct//2)
-				curLLData = FID[chanStrs2[tmpChan]]['linkListData']
+				curLLData = FID[chanStrs2[tmpChan]]['linkListData'] if "linkListData" in FID[chanStrs2[tmpChan]] else []
 			else:
-				curLLData = FID[chanStr]['linkListData']
-			#Pull out the LL data
-			#Matlab puts our column vectors so need to flatten too
-			tmpAddr = curLLData['addr'].value.flatten()
-			tmpCount = curLLData['count'].value.flatten()
-			tmpRepeat = curLLData['repeat'].value.flatten()
-			tmpTrigger1 = curLLData['trigger1'].value.flatten()
-			tmpTrigger2 = curLLData['trigger2'].value.flatten()
-			numEntries = curLLData.attrs['length']
+				curLLData = FID[chanStr]['linkListData'] if "linkListData" in FID[chanStrs2[tmpChan]] else []
 
-			#Pull out and scale the waveform data
-			wfLib =(1.0/MAX_WAVEFORM_VALUE)*FID[chanStr]['waveformLib'].value.flatten()
+			if curLLData:
+				#Pull out the LL data
+				#Matlab puts our column vectors so need to flatten too
+				tmpAddr = curLLData['addr'].value.flatten()
+				tmpCount = curLLData['count'].value.flatten()
+				tmpRepeat = curLLData['repeat'].value.flatten()
+				tmpTrigger1 = curLLData['trigger1'].value.flatten()
+				tmpTrigger2 = curLLData['trigger2'].value.flatten()
+				numEntries = curLLData.attrs['length']
 
-			#Initialize the lists of sequences
-			AWGData[chanStrs[chanct]] = []
-			AWGData[mrkStrs[chanct]] = []
+				#Pull out and scale the waveform data
+				wfLib =(1.0/MAX_WAVEFORM_VALUE)*FID[chanStr]['waveformLib'].value.flatten()
 
-			#Loop over LL entries
-			for entryct in range(numEntries):
-				#If we are starting a new entry push back an empty array
-				if START_MINILL_MASK & tmpRepeat[entryct]:
-					AWGData[chanStrs[chanct]].append(np.array([], dtype=np.float64))
-					triggerDelays = []
+				#Initialize the lists of sequences
+				AWGData[chanStrs[chanct]] = []
+				AWGData[mrkStrs[chanct]] = []
 
-				#Record the trigger delays
-				if np.mod(chanct,2) == 0:
-					if tmpTrigger1[entryct] > 0:
-						triggerDelays.append(AWGData[chanStrs[chanct]][-1].size + ADDRESS_UNIT*tmpTrigger1[entryct])
-				else:
-					if tmpTrigger2[entryct] > 0:
-						triggerDelays.append(AWGData[chanStrs[chanct]][-1].size + ADDRESS_UNIT*tmpTrigger2[entryct])
+				#Loop over LL entries
+				for entryct in range(numEntries):
+					#If we are starting a new entry push back an empty array
+					if START_MINILL_MASK & tmpRepeat[entryct]:
+						AWGData[chanStrs[chanct]].append(np.array([], dtype=np.float64))
+						triggerDelays = []
 
-				#If it is a TA pair or regular pulse
-				curRepeat = (tmpRepeat[entryct] & REPEAT_MASK)+1
-				if TA_PAIR_MASK & tmpRepeat[entryct]:
-					AWGData[chanStrs[chanct]][-1] = np.hstack((AWGData[chanStrs[chanct]][-1],
-													np.tile(wfLib[tmpAddr[entryct]*ADDRESS_UNIT:tmpAddr[entryct]*ADDRESS_UNIT+4], curRepeat*(tmpCount[entryct]+1))))
-				else:
-					AWGData[chanStrs[chanct]][-1] = np.hstack((AWGData[chanStrs[chanct]][-1],
-													np.tile(wfLib[tmpAddr[entryct]*ADDRESS_UNIT:tmpAddr[entryct]*ADDRESS_UNIT+ADDRESS_UNIT*(tmpCount[entryct]+1)], curRepeat)))
-				#Add the trigger pulse
-				if END_MINILL_MASK & tmpRepeat[entryct]:
-					triggerSeq = np.zeros(AWGData[chanStrs[chanct]][-1].size, dtype=np.bool)
-					triggerSeq[triggerDelays] = True
-					AWGData[mrkStrs[chanct]].append(triggerSeq)
+					#Record the trigger delays
+					if np.mod(chanct,2) == 0:
+						if tmpTrigger1[entryct] > 0:
+							triggerDelays.append(AWGData[chanStrs[chanct]][-1].size + ADDRESS_UNIT*tmpTrigger1[entryct])
+					else:
+						if tmpTrigger2[entryct] > 0:
+							triggerDelays.append(AWGData[chanStrs[chanct]][-1].size + ADDRESS_UNIT*tmpTrigger2[entryct])
+
+					#If it is a TA pair or regular pulse
+					curRepeat = (tmpRepeat[entryct] & REPEAT_MASK)+1
+					if TA_PAIR_MASK & tmpRepeat[entryct]:
+						AWGData[chanStrs[chanct]][-1] = np.hstack((AWGData[chanStrs[chanct]][-1],
+														np.tile(wfLib[tmpAddr[entryct]*ADDRESS_UNIT:tmpAddr[entryct]*ADDRESS_UNIT+4], curRepeat*(tmpCount[entryct]+1))))
+					else:
+						AWGData[chanStrs[chanct]][-1] = np.hstack((AWGData[chanStrs[chanct]][-1],
+														np.tile(wfLib[tmpAddr[entryct]*ADDRESS_UNIT:tmpAddr[entryct]*ADDRESS_UNIT+ADDRESS_UNIT*(tmpCount[entryct]+1)], curRepeat)))
+					#Add the trigger pulse
+					if END_MINILL_MASK & tmpRepeat[entryct]:
+						triggerSeq = np.zeros(AWGData[chanStrs[chanct]][-1].size, dtype=np.bool)
+						triggerSeq[triggerDelays] = True
+						AWGData[mrkStrs[chanct]].append(triggerSeq)
 	return AWGData
 
 
