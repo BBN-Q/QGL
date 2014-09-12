@@ -87,7 +87,7 @@ def TAPulse(label, qubits, length, amp, phase, frameChange):
     '''
     p = Pulse(label, qubits, np.array([amp], np.complex), phase, frameChange)
     p.isTimeAmp = True
-    p.TALength = length
+    p.TALength = int(round(length))
     return p
 
 class CompositePulse(object):
