@@ -292,7 +292,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 	# expand link lists to the same length (copying first element of shorter one)
 	for miniLL_IQ, miniLL_m in izip_longest(IQLL, markerLL):
 		if not miniLL_IQ:
-			IQLL.append([Compiler.create_padding_LL(MIN_ENTRY_LENGTH), Compiler.create_padding_LL(MIN_ENTRY_LENGTH)])
+			IQLL.append([ControlFlow.Wait(), Compiler.create_padding_LL(MIN_ENTRY_LENGTH), Compiler.create_padding_LL(MIN_ENTRY_LENGTH)])
 		if not miniLL_m:
 			markerLL.append([Compiler.create_padding_LL(MIN_ENTRY_LENGTH)])
 
