@@ -390,4 +390,34 @@ def write_APS2_file(awgData, fileName):
 				FID.create_dataset(chanStr+'/instructions', data=instructions)
 
 def read_APS2_file(fileName):
-	return {'ch1': np.zeros(1), 'ch2': np.zeros(1)}
+	chanStrs = ['ch1', 'ch2', 'ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']
+	seqs = {ch: [] for ch in chanStrs}
+	with h5py.File(fileName, 'r') as FID:
+		ch1wf = (1.0/MAX_WAVEFORM_VALUE)*FID['/chan_1/waveforms'].value.flatten()
+		ch2wf = (1.0/MAX_WAVEFORM_VALUE)*FID['/chan_2/waveforms'].value.flatten()
+		instructions = FID['/chan_1/instructions'].value.flatten()
+
+		for data in instructions:
+			instr = Instruction.unflatten(data)
+			if instr.opcode == WAIT:
+				for ch in chanStrs:
+					seqs[ch].append(np.array([], dtype=np.float64))
+			elif instr.opcode == WFM:
+				addr = (instr.payload & 0x00ffffff) * ADDRESS_UNIT
+				count = (instr.payload >> 24) & 0xfffff
+				count = (count + 1) * ADDRESS_UNIT
+				isTA = (instr.payload >> 45) & 0x1
+				if not isTA:
+					seqs['ch1'][-1] = np.append( seqs['ch1'][-1], ch1wf[addr:addr + count] )
+					seqs['ch2'][-1] = np.append( seqs['ch2'][-1], ch2wf[addr:addr + count] )
+				else:
+					seqs['ch1'][-1] = np.append( seqs['ch1'][-1], np.array([ch1wf[addr]] * count) )
+					seqs['ch2'][-1] = np.append( seqs['ch2'][-1], np.array([ch2wf[addr]] * count) )
+			elif instr.opcode == MARKER:
+				chan = 'ch12m' + str(((instr.header >> 2) & 0x3) + 1)
+				count = instr.payload & 0xffffffff
+				count = (count + 1) * ADDRESS_UNIT
+				state = (instr.payload >> 32) & 0x1
+				seqs[chan][-1] = np.append( seqs[chan][-1], np.array([state] * count) )
+
+	return seqs
