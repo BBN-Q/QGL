@@ -21,6 +21,7 @@ import os
 import numpy as np
 from warnings import warn
 import Compiler, ControlFlow
+import PatternUtils
 import APSPattern
 
 #Some constants
@@ -119,6 +120,10 @@ class Instruction(object):
 		self.label = label
 		self.target = target
 
+	@classmethod
+	def unflatten(cls, instr):
+		return cls(header = int(long(instr) >> 56) & 0xff, payload = long(instr) & 0xffffffffffffff)
+
 	def __repr__(self):
 		return self.__str__()
 
@@ -145,6 +150,10 @@ class Instruction(object):
 	def writeFlag(self, value):
 		self.header |= value & 0x1
 
+	@property
+	def opcode(self):
+		return self.header >> 4
+
 	def flatten(self):
 		return long((self.header << 56) | self.payload)
 
@@ -153,7 +162,7 @@ def Waveform(addr, count, isTA, write=False, label=None):
 	count = int(count)
 	count = ((count // ADDRESS_UNIT)-1) & 0x00ffffff
 	addr = (addr // ADDRESS_UNIT) & 0x00ffffff
-	payload = PLAY << WFM_OP_OFFSET | ((isTA & 0x1) << TA_PAIR_BIT) | (count << 24) | addr
+	payload = (PLAY << WFM_OP_OFFSET) | ((isTA & 0x1) << TA_PAIR_BIT) | (count << 24) | addr
 	return Instruction(header, payload, label)
 
 def Marker(sel, state, count, write=False, label=None):
@@ -164,7 +173,7 @@ def Marker(sel, state, count, write=False, label=None):
 	transitionWords = {0: 0b0000, 1: 0b1000, 2: 0b1100, 3: 0b1110}
 	transition = transitionWords[count_rem]
 
-	payload = PLAY << WFM_OP_OFFSET | (transition << 33) | ((state & 0x1) << 32) | four_count
+	payload = (PLAY << WFM_OP_OFFSET) | (transition << 33) | ((state & 0x1) << 32) | four_count
 	return Instruction(header, payload, label)
 
 def Command(cmd, payload, write=False, label=None):
@@ -252,14 +261,18 @@ def create_seq_instructions(seqs, offsets):
 
 		# poor man's way of deciding waveform or marker is to use curSeq
 		if curSeq == 1: # waveform channel
+			if entry.length < MIN_ENTRY_LENGTH:
+				continue
 			instructions.append(Waveform(offsets[entry.key],
 				                         entry.length,
 				                         entry.isTimeAmp,
 				                         write=writeFlag,
 				                         label=entry.label))
 		elif curSeq > 1: # a marker channel
+			if entry.length < MIN_ENTRY_LENGTH:
+				continue
 			markerSel = curSeq - 2
-			state = (entry.key != Compiler.TAZKey)
+			state = (entry.key != PatternUtils.TAZKey)
 			instructions.append(Marker(markerSel,
 				                       state,
 				                       entry.length,
