@@ -90,8 +90,7 @@ def create_wf_vector(wfLib):
 		idx += wf.size 
 					
 	#Trim the waveform 
-	# wfVec = wfVec[0:idx]
-	wfVec.resize(idx+1)
+	wfVec.resize(idx)
 
 	return wfVec, offsets
 
