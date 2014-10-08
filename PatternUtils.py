@@ -126,7 +126,7 @@ def add_gate_pulses(seqs):
         for ct in range(len(seq)):
             if hasattr(seq[ct], 'pulses'):
                 for chan, pulse in seq[ct].pulses.items():
-                    if hasattr(chan, 'gateChan') and not pulse.isZero:
+                    if hasattr(chan, 'gateChan') and not pulse.isZero and not (chan.gateChan in seq[ct].pulses.keys()):
                         seq[ct] *= BLANK(chan, pulse.length)
             else:
                 chan = seq[ct].qubits
@@ -202,7 +202,7 @@ def add_digitizer_trigger(seqs, trigChan):
     pulseLength = trigChan.pulseParams['length'] * trigChan.physChan.samplingRate
     for seq in seqs:
         for ct in range(len(seq)):
-            if contains_measurement(seq[ct]):
+            if contains_measurement(seq[ct]) and not (hasattr(seq[ct], 'pulses') and trigChan in seq[ct].pulses.keys()):
                 seq[ct] *= TAPulse("TRIG", trigChan, pulseLength, 1.0, 0.0, 0.0)
 
 def contains_measurement(entry):
