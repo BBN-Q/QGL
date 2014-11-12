@@ -223,4 +223,7 @@ def add_slave_trigger(seqs, slaveChan):
     '''
     pulseLength = slaveChan.pulseParams['length'] * slaveChan.physChan.samplingRate
     for seq in seqs:
+        # skip if the sequence already starts with a slave trig
+        if hasattr(seq[0], 'qubits') and seq[0].qubits == slaveChan:
+            continue
         seq.insert(0, TAPulse("TRIG", slaveChan, pulseLength, 1.0, 0.0, 0.0))
