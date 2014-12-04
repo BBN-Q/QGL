@@ -20,6 +20,7 @@ import os
 import collections
 import itertools
 from warnings import warn
+from copy import copy
 
 import config
 import PatternUtils
@@ -166,28 +167,25 @@ def compile_sequences(seqs, channels=None):
     '''
     Main function to convert sequences to miniLL's and waveform libraries.
     '''
-    if isinstance(seqs[0], list):
-        # nested sequences
-        wfLib = {}
-        # use seqs[0] as prototype in case we were not given a set of channels
-        miniLL, wfLib = compile_sequence(seqs[0], wfLib, channels)
-        linkLists = {chan: [LL] for chan, LL in miniLL.items()}
-        for seq in seqs[1:]:
-            miniLL, wfLib = compile_sequence(seq, wfLib, channels)
-            for chan in linkLists.keys():
-                linkLists[chan].append(miniLL[chan])
-    else:
-        miniLL, wfLib = compile_sequence(seqs, {}, channels)
-        linkLists = {chan: [LL] for chan, LL in miniLL.items()}
+    # all sequences should start with a WAIT
+    for seq in seqs:
+        if seq[0] != ControlFlow.Wait():
+            seq.insert(0, ControlFlow.Wait())
+    # last sequence should end with a GOTO back to the first sequence
+    if not (hasattr(seqs[-1][-1], 'instruction') and seqs[-1][-1].instruction == 'GOTO'):
+        seqs[-1].append(ControlFlow.Goto(label(seqs[0])))
 
-    for seqs in linkLists.values():
-        # all sequences should start with a WAIT
-        for seq in seqs:
-            if seq[0] != ControlFlow.Wait():
-                seq.insert(0, ControlFlow.Wait())
-        # last sequence should end with a GOTO back to the first sequence
-        if not (hasattr(seqs[-1][-1], 'instruction') and seqs[-1][-1].instruction == 'GOTO'):
-            seqs[-1].append(ControlFlow.Goto(label(seqs[0])))
+    resolve_offsets(seqs)
+
+    wfLib = {}
+    # use seqs[0] as prototype in case we were not given a set of channels
+    miniLL, wfLib = compile_sequence(seqs[0], wfLib, channels)
+    linkLists = {chan: [LL] for chan, LL in miniLL.items()}
+    for seq in seqs[1:]:
+        miniLL, wfLib = compile_sequence(seq, wfLib, channels)
+        for chan in linkLists.keys():
+            linkLists[chan].append(miniLL[chan])
+
 
     #Print a message so for the experiment we know how many sequences there are
     print('Compiled {} sequences.'.format(len(seqs)))
@@ -216,7 +214,7 @@ def compile_sequence(seq, wfLib={}, channels=None):
         # control flow instructions just need to broadcast to all channels
         if isinstance(block, ControlFlow.ControlInstruction):
             for chan in channels:
-                logicalLLs[chan] += [block]
+                logicalLLs[chan] += [copy(block)]
             continue
         #Align the block
         blockLength = block.maxPts
@@ -482,3 +480,25 @@ def flatten(l):
                 yield sub
         else:
             yield el
+
+def resolve_offsets(seqs):
+    # create symbol look-up table
+    symbols = {}
+    for i, seq in enumerate(seqs):
+        for j, entry in enumerate(seq):
+            if entry.label and entry.label not in symbols:
+                symbols[entry.label] = (i, j)
+    # re-label targets with offsets
+    for seq in seqs:
+        for entry in seq:
+            if hasattr(entry, 'target') and entry.target and entry.target.offset != 0:
+                noOffsetLabel = copy(entry.target)
+                noOffsetLabel.offset = 0
+                baseidx = symbols[noOffsetLabel]
+                targetidx = (baseidx[0], baseidx[1]+entry.target.offset)
+                # targets are allowed to point beyond the end of the current sequence
+                while targetidx[1] >= len(seqs[targetidx[0]]):
+                    targetidx = (targetidx[0]+1, targetidx[1]-len(seqs[targetidx[0]]))
+                    assert targetidx[0] < len(seqs), "invalid target"
+                entry.target = label(seqs[targetidx[0]][targetidx[1]:])
+

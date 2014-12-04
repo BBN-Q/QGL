@@ -20,6 +20,7 @@ import h5py
 import os
 import numpy as np
 from warnings import warn
+from copy import copy
 import Compiler, ControlFlow
 import PatternUtils
 import APSPattern
@@ -251,8 +252,9 @@ def create_seq_instructions(seqs, offsets):
 	
 	cmpTable = {'==': EQUAL, '!=': NOTEQUAL, '>': GREATERTHAN, '<': LESSTHAN}
 
-	# always start with SYNC
-	instructions = [Sync()]
+	# always start with SYNC (stealing label from first pulse)
+	firstLabel = seqs[timeTuples[0][1]][0].label
+	instructions = [Sync(label=firstLabel)]
 
 	while len(timeTuples) > 0:
 		startTime, curSeq = timeTuples.pop(0)
@@ -325,12 +327,14 @@ def resolve_symbols(seq):
 	symbols = {}
 	# create symbol look-up table
 	for ct, entry in enumerate(seq):
-		if entry.label:
+		if entry.label and entry.label not in symbols:
 			symbols[entry.label] = ct
 	# then update
 	for entry in seq:
-		if entry.target and entry.target in symbols:
-			entry.address = symbols[entry.target]
+		if entry.target:
+			noOffsetLabel = copy(entry.target)
+			noOffsetLabel.offset = 0
+			entry.address = symbols[noOffsetLabel] + entry.target.offset
 
 def compress_marker(markerLL):
 	'''

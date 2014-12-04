@@ -26,6 +26,9 @@ class BlockLabel(object):
 			return self.__dict__ == other.__dict__
 		return False
 
+	def __hash__(self):
+		return hash(self.label) ^ hash(self.offset)
+
 def label(seq):
 	# label's are attached to the first block in a sequence
 	# make sure we have a PulseBlock
