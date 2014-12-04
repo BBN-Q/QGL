@@ -128,7 +128,7 @@ def add_gate_pulses(seqs):
                 for chan, pulse in seq[ct].pulses.items():
                     if hasattr(chan, 'gateChan') and not pulse.isZero and not (chan.gateChan in seq[ct].pulses.keys()):
                         seq[ct] *= BLANK(chan, pulse.length)
-            else:
+            elif hasattr(seq[ct], 'qubits'):
                 chan = seq[ct].qubits
                 if hasattr(chan, 'gateChan') and not seq[ct].isZero:
                     seq[ct] *= BLANK(chan, seq[ct].length)
