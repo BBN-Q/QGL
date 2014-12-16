@@ -15,7 +15,8 @@ def create_cal_seqs(qubits, numRepeats, measChans=None):
 		measChans = qubits
 
 	calSet = [Id, X]
-	calSeqs = [reduce(operator.mul, [p(q) for p,q in zip(pulseSet, qubits)]) for pulseSet in product(calSet, repeat=len(qubits))]
+	#Make all combination for qubit calibration states for n qubits and repeat 
+	calSeqs = [reduce(operator.mul, [p(q) for p,q in zip(pulseSet, qubits)]) for pulseSet in product(calSet, repeat=len(qubits)) for _ in range(numRepeats)]
 
-	#Add on the measurement operator and repeat
-	return reduce(operator.add, [[[seq]+[MEAS(*measChans)]]*numRepeats for seq in calSeqs])
+	#Add on the measurement operator
+	return [[seq, MEAS(*measChans)] for seq in calSeqs]
