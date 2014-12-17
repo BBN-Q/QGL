@@ -298,7 +298,7 @@ def create_seq_instructions(seqs, offsets):
 				instructions.append(Call(entry.target, label=entry.label))
 			# value argument commands
 			elif entry.instruction == 'LOAD':
-				instructions.append(Load(entry.value, label=entry.label))
+				instructions.append(Load(entry.value-1, label=entry.label))
 			elif entry.instruction == 'CMP':
 				instructions.append(Cmp(cmpTable[entry.operator], entry.mask, label=entry.label))
 

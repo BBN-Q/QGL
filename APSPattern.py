@@ -22,6 +22,7 @@ import numpy as np
 from warnings import warn
 from itertools import chain, izip_longest
 import Compiler, ControlFlow
+import PulseSequencer
 from PatternUtils import hash_pulse, TAZKey
 from copy import copy, deepcopy
 
@@ -228,6 +229,7 @@ def create_LL_data(LLs, offsets, AWGName=''):
 
 	instructions = []
 	waitFlag = False
+	LLs, miniLLrepeat = unroll_loops(LLs)
 	for miniLL in LLs:
 		miniStart = True
 		for entry in miniLL:
@@ -278,7 +280,7 @@ def create_LL_data(LLs, offsets, AWGName=''):
 		maxRepInterval = timePerEntry*llLengths[1]
 		print('Maximum suggested sequence rate is {:.3f}ms, or for 100us rep. rate this would be {} miniLL repeats'.format(1e3*maxRepInterval, int(maxRepInterval/100e-6)))
 
-	return LLData, numEntries
+	return LLData, numEntries, miniLLrepeat
 
 def merge_APS_markerData(IQLL, markerLL, markerNum):
 	'''
@@ -386,6 +388,56 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 			if not hasattr(entry, markerAttr):
 				setattr(entry, markerAttr, None)
 
+def unroll_loops(LLs):
+	'''
+	Unrolls repeated sequences in place, unless the sequence can be unrolled with a miniLL repeat
+	attribute. Returns the (potentially) modified sequence and the miniLL repeat value.
+	'''
+
+	# if all sequences start and end with LOAD and REPEAT, respectively, and all load values
+	# are the same, we can just drop these instructions and return a miniLLrepeat value
+	if isinstance(LLs[0][0], ControlFlow.ControlInstruction) and LLs[0][0].instruction == 'LOAD':
+		repeats = LLs[0][0].value
+	else:
+		repeats = -1
+
+	simpleUnroll = True
+	for seq in LLs:
+		if not isinstance(seq[0], ControlFlow.ControlInstruction) or \
+			not isinstance(seq[-1], ControlFlow.ControlInstruction) or \
+			seq[0].instruction != 'LOAD' or \
+			seq[-1].instruction != 'REPEAT' or \
+			seq[0].value != repeats or \
+			seq[-1].target != seq[1].label:
+			simpleUnroll = False
+
+	if simpleUnroll:
+		return LLs, repeats
+
+	# otherwise, we need to manually unroll any repeated section
+	instructions = []
+	for seq in LLs:
+		symbols = {}
+		ct = 0
+		while ct < len(seq):
+			entry = seq[ct]
+			# fill symbol table
+			if isinstance(entry, (ControlFlow.ControlInstruction, PulseSequencer.PulseBlock)) and \
+				entry.label and entry.label not in symbols:
+				symbols[entry.label] = ct
+			# look for the end of a repeated block
+			if isinstance(entry, ControlFlow.ControlInstruction) and entry.instruction == 'REPEAT':
+				repeatedBlock = seq[symbols[entry.target]:ct]
+				numRepeats = seq[symbols[entry.target]-1].value
+				# unroll the block (dropping the LOAD and REPEAT)
+				seq = seq[:symbols[entry.target]-1] + repeatedBlock*numRepeats + seq[ct+1:]
+				# advance the count (minus 2 for dropped instructions)
+				ct += (numRepeats-1) * len(repeatedBlock) - 2
+			ct += 1
+		# add unrolled sequence to instruction list
+		instructions.append(seq)
+	return instructions, 0
+
 def write_APS_file(awgData, fileName, miniLLRepeat=1):
 	'''
 	Main function to pack channel LLs into an APS h5 file.
@@ -421,6 +473,7 @@ def write_APS_file(awgData, fileName, miniLLRepeat=1):
 			wfInfo.append(create_wf_vector({key:wf.imag for key,wf in wfLib.items()}))
 
 		LLData = [LLs12, LLs34]
+		repeats = [0, 0]
 		#Create the groups and datasets
 		for chanct in range(4):
 			chanStr = '/chan_{0}'.format(chanct+1)
@@ -433,13 +486,15 @@ def write_APS_file(awgData, fileName, miniLLRepeat=1):
 			if (np.mod(chanct,2) == 0) and LLData[chanct//2]:
 				groupStr = chanStr+'/linkListData'
 				LLGroup = FID.create_group(groupStr)
-				LLDataVecs, numEntries = create_LL_data(LLData[chanct//2], wfInfo[chanct][1], os.path.basename(fileName))
+				LLDataVecs, numEntries, repeats[chanct//2] = create_LL_data(LLData[chanct//2], wfInfo[chanct][1], os.path.basename(fileName))
 				LLGroup.attrs['length'] = numEntries
 				for key,dataVec in LLDataVecs.items():
 					FID.create_dataset(groupStr+'/' + key, data=dataVec)
 			else:
 				chanGroup.attrs['isLinkListData'] = np.uint8(0)
-
+		if repeats != [0, 0]:
+			assert repeats[0] == repeats[1], 'Failed to unroll sequence'
+			FID['/'].attrs['miniLLRepeat'] = np.uint16(miniLLRepeat * repeats[0] - 1)
 
 def read_APS_file(fileName):
 	'''

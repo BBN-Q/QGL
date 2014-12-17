@@ -37,8 +37,12 @@ def qrepeat(n, seq):
 		return seq
 	else:
 		label(seq)
-		return [LoadRepeat(n-1)] + seq + [Repeat(label(seq))]
+		return [LoadRepeat(n)] + seq + [Repeat(label(seq))]
 
+# utility to repeat all sequences the same number of times
+def qrepeatall(n, seqs):
+	for ct in range(len(seqs)):
+		seqs[ct] = qrepeat(seqs[ct])
 
 ## Sequencer primitives ##
 

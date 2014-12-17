@@ -62,7 +62,12 @@ class Pulse(object):
         return self.promote()*other.promote()
 
     def __eq__(self, other):
-        return self.__dict__ == other.__dict__
+        mydict = self.__dict__.copy()
+        otherdict = other.__dict__.copy()
+        # element-wise comparison of shape
+        mydict.pop('shape')
+        otherdict.pop('shape')
+        return mydict == otherdict and all(self.shape == other.shape)
 
     def promote(self):
         # promote a Pulse to a PulseBlock
@@ -178,7 +183,12 @@ class PulseBlock(object):
         return result
 
     def __eq__(self, other):
-        return self.__dict__ == other.__dict__
+        # ignore label in equality testing
+        mydict = self.__dict__.copy()
+        otherdict = other.__dict__.copy()
+        mydict.pop('label')
+        otherdict.pop('label')
+        return mydict == otherdict
 
     #PulseBlocks don't need to be promoted, so just return self
     def promote(self):
