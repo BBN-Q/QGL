@@ -42,7 +42,8 @@ def qrepeat(n, seq):
 # utility to repeat all sequences the same number of times
 def qrepeatall(n, seqs):
 	for ct in range(len(seqs)):
-		seqs[ct] = qrepeat(seqs[ct])
+		seqs[ct] = qrepeat(n, seqs[ct])
+	return seqs
 
 ## Sequencer primitives ##
 
