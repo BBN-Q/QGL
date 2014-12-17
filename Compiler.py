@@ -80,12 +80,11 @@ def channel_delay_map(awgData):
         chanDelays[IQkey] = chan.delay + chan.AWG.delay
     return PatternUtils.normalize_delays(chanDelays)
 
-def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRepeats=1, mode='linear'):
+def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'. Other inputs:
+        suffix : string to append to end of fileName (e.g. with fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5)
         alignMode : 'left' or 'right' (default 'left')
-        nbrRepeats : number of loops of each sequence in 'seqs' to encode in the file (default 1)
-        mode: 'linear' or 'branching' (default 'linear')
     '''
 
     #Add the digitizer trigger to measurements
@@ -134,7 +133,7 @@ def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right", nbrRe
                 if isinstance(chanObj, Channels.PhysicalQuadratureChannel):
 
                     #At this point we finally have the timing of all the pulses so we can apply SSB
-                    if mode == 'linear' and hasattr(chanObj, 'SSBFreq') and abs(chanObj.SSBFreq) > 0:
+                    if hasattr(chanObj, 'SSBFreq') and abs(chanObj.SSBFreq) > 0:
                         PatternUtils.apply_SSB(chanData['linkList'], chanData['wfLib'], chanObj.SSBFreq, chanObj.samplingRate)
 
                     PatternUtils.correctMixer(chanData['wfLib'], chanObj.correctionT)
