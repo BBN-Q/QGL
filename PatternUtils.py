@@ -181,7 +181,8 @@ def apply_gating_constraints(chan, linkList):
         while ct+2 < len(gateSeq):
             # look for pulse, delay, pulse pattern and ensure delay is long enough
             if [isNonZeroWaveform(x) for x in gateSeq[ct:ct+3]] == [True, False, True] and \
-                gateSeq[ct+1].length < gateMinWidth:
+                gateSeq[ct+1].length < gateMinWidth and \
+                [isinstance(x, ControlFlow.ControlInstruction) for x in gateSeq[ct:ct+3]] == [False, False, False]:
                 gateSeq[ct].length += gateSeq[ct+1].length + gateSeq[ct+2].length
                 del gateSeq[ct+1:ct+3]
             else:
