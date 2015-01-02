@@ -126,12 +126,15 @@ def add_gate_pulses(seqs):
         for ct in range(len(seq)):
             if hasattr(seq[ct], 'pulses'):
                 for chan, pulse in seq[ct].pulses.items():
-                    if hasattr(chan, 'gateChan') and not pulse.isZero and not (chan.gateChan in seq[ct].pulses.keys()):
+                    if has_gate(chan) and not pulse.isZero and not (chan.gateChan in seq[ct].pulses.keys()):
                         seq[ct] *= BLANK(chan, pulse.length)
             elif hasattr(seq[ct], 'qubits'):
                 chan = seq[ct].qubits
-                if hasattr(chan, 'gateChan') and not seq[ct].isZero:
+                if has_gate(chan) and not seq[ct].isZero:
                     seq[ct] *= BLANK(chan, seq[ct].length)
+
+def has_gate(channel):
+    return hasattr(channel, 'gateChan') and channel.gateChan
 
 def apply_gating_constraints(chan, linkList):
     # get channel parameters in samples
