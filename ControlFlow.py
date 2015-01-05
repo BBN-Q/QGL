@@ -100,8 +100,11 @@ def LoadRepeat(n):
 def Repeat(target):
 	return ControlInstruction("REPEAT", target=target)
 
-def Wait():
-	return ControlInstruction("WAIT")
+def Wait(kind="TRIG"):
+	if kind == "TRIG":
+		return ControlInstruction("WAIT")
+	else:
+		return ControlInstruction("WAITCMP")
 qwait = Wait
 
 class ComparisonInstruction(ControlInstruction):

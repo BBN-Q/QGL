@@ -46,6 +46,7 @@ CALL   = 0x7
 RET    = 0x8
 SYNC   = 0x9
 PFETCH = 0xA
+WAITCMP = 0XB
 
 # WFM/MARKER op codes
 PLAY      = 0x0
@@ -194,6 +195,9 @@ def Sync(label=None):
 def Wait(label=None):
 	return Command(WAIT, WAIT_TRIG << WFM_OP_OFFSET, write=True, label=label)
 
+def WaitCmp(label=None):
+	return Command(WAITCMP, 0, label=label)
+
 def Cmp(op, mask, label=None):
 	return Command(CMP, (op << 8) | (mask & 0xff), label=label)
 
@@ -287,6 +291,8 @@ def create_seq_instructions(seqs, offsets):
 			# zero argument commands
 			if entry.instruction == 'WAIT':
 				instructions.append(Wait(label=entry.label))
+			elif entry.instruction == 'WAITCMP':
+				instructions.append(WaitCmp(label=entry.label))
 			elif entry.instruction == 'RETURN':
 				instructions.append(Return(label=entry.label))
 			# target argument commands
