@@ -107,6 +107,10 @@ def Wait(kind="TRIG"):
 		return ControlInstruction("WAITCMP")
 qwait = Wait
 
+def Sync():
+	return ControlInstruction("SYNC")
+qsync = Sync
+
 class ComparisonInstruction(ControlInstruction):
 	def __init__(self, mask, operator):
 		super(ComparisonInstruction, self).__init__("CMP")

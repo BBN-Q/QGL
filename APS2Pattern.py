@@ -293,6 +293,8 @@ def create_seq_instructions(seqs, offsets):
 				instructions.append(Wait(label=entry.label))
 			elif entry.instruction == 'WAITCMP':
 				instructions.append(WaitCmp(label=entry.label))
+			elif entry.instruction == 'SYNC':
+				instructions.append(Sync(label=entry.label))
 			elif entry.instruction == 'RETURN':
 				instructions.append(Return(label=entry.label))
 			# target argument commands
