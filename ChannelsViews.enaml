@@ -104,9 +104,11 @@ enamldef PhysicalQuadratureChannelView(GroupBox): curView:
         FloatField:
             value := chan.phaseSkew
         Label:
-            text = 'SSB Frequency (Hz)'
+            text = 'SSB Frequency (MHz)'
+
         FloatField:
-            value := chan.SSBFreq
+            value << chan.SSBFreq/1e6
+            value :: chan.SSBFreq = value*1e6
 
 enamldef LogicalQuadratureView(GroupBox): curView:
     attr chan
