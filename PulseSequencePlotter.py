@@ -40,7 +40,19 @@ from instruments.AWGs import APS, APS2, Tek5014, Tek7000
 import Libraries
 
 #TODO: handle console plotting to static html file
-bk.output_notebook()
+def in_ipynb():
+    try:
+        cfg = get_ipython().config 
+        if cfg['IPKernelApp']['parent_appname'] == 'ipython-notebook':
+            return True
+        else:
+            return False
+    except NameError:
+        return False
+
+#Only load if in notebook
+if in_ipynb():
+    bk.output_notebook()
 
 # define sequence reader dispatch on awg type
 @multimethod(Tek5014, unicode)
