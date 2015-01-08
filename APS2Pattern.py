@@ -241,9 +241,14 @@ def create_seq_instructions(seqs, offsets):
 	# filter out sequencing instructions from the waveform and marker lists, so that seqs becomes:
 	# [control-flow, wfs, m1, m2, m3, m4]
 	controlInstrs = filter(lambda s: isinstance(s, ControlFlow.ControlInstruction), seqs[0])
-	seqs.insert(0, controlInstrs)
-	for ct in range(1, len(seqs)):
+	for ct in range(len(seqs)):
+		localControl = filter(lambda s: isinstance(s, ControlFlow.ControlInstruction), seqs[ct])
 		seqs[ct] = filter(lambda s: isinstance(s, Compiler.LLWaveform), seqs[ct])
+		# update control instructions to have the earliest time stamp of any occurence on wfs, m1, m2, m3, or m4
+		if ct > 0:
+			for ct, (a, b) in enumerate(zip(controlInstrs, localControl)):
+				controlInstrs[ct].startTime = min(a.startTime, b.startTime)
+	seqs.insert(0, controlInstrs)
 
 	# create (seq, startTime) pairs over all sequences
 	timeTuples = []
