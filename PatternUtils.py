@@ -39,7 +39,7 @@ def delay(linkList, delay, samplingRate):
         # use while loop because len(miniLL) will change as we inject delays
         ct = 0
         while ct < len(miniLL):
-            if miniLL[ct] == ControlFlow.Wait():
+            if miniLL[ct] == ControlFlow.Wait() or miniLL[ct] == ControlFlow.Sync():
                 miniLL.insert(ct+1, Compiler.create_padding_LL(sampShift))
             ct += 1
 
