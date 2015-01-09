@@ -76,7 +76,7 @@ def read_sequence_file(awg, filename):
 def all_zero_seqs(seqs):
     return all([np.all(seq == 0) for seq in seqs])
 
-def plot_pulse_files(fileNames, firstSeqNum=0):
+def plot_pulse_files(fileNames, firstSeqNum=-1):
     '''
     plot_pulse_files(fileNames, firstSeqNum=0)
 
@@ -94,10 +94,10 @@ def plot_pulse_files(fileNames, firstSeqNum=0):
     
     for fileName in sorted(fileNames):
         
-        #Assume a naming convenction path/to/file/SequenceName-AWGName.h5
+        #Assume a naming convention path/to/file/SequenceName-AWGName.h5
         AWGName = (os.path.split(os.path.splitext(fileName)[0])[1]).split('-')[1]
 
-        title += AWGName + '; '
+        title += os.path.split(os.path.splitext(fileName)[0])[1] + "; "
 
         wfs[AWGName] = read_sequence_file(Libraries.instrumentLib[AWGName], fileName)
     
