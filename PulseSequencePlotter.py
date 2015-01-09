@@ -37,6 +37,8 @@ from QGL.APS2Pattern import read_APS2_file
 from QGL.TekPattern import read_Tek_awg_file
 from instruments.AWGs import APS, APS2, Tek5014, Tek7000
 
+import uuid, tempfile
+
 import Libraries
 
 #TODO: handle console plotting to static html file
@@ -74,9 +76,12 @@ def read_sequence_file(awg, filename):
 def all_zero_seqs(seqs):
     return all([np.all(seq == 0) for seq in seqs])
 
-def plot_pulse_files(fileNames):
+def plot_pulse_files(fileNames, firstSeqNum=0):
     '''
-    Helper function to plot AWG files.
+    plot_pulse_files(fileNames, firstSeqNum=0)
+
+    Helper function to plot a list of AWG files.  In an iPython notebook the plots will be in line with 
+    dynamic updating.  For iPython consoles a static html file will be generated with the firstSeqNum. 
     '''
     #If we only go one filename turn it into a list
     if isinstance(fileNames, str):
@@ -99,8 +104,8 @@ def plot_pulse_files(fileNames):
         for (k,seqs) in sorted(wfs[AWGName].items()):
             if not all_zero_seqs(seqs):
                 lineNames.append(AWGName + '-' + k)
-                dataDict[lineNames[-1] + "_x"] = np.arange(len(seqs[0]))
-                dataDict[lineNames[-1]] = seqs[0] + 2*(len(lineNames)-1)
+                dataDict[lineNames[-1] + "_x"] = np.arange(len(seqs[firstSeqNum-1]))
+                dataDict[lineNames[-1]] = seqs[firstSeqNum-1] + 2*(len(lineNames)-1)
                 
     #Remove trailing semicolon from title
     title = title[:-2]
@@ -115,18 +120,28 @@ def plot_pulse_files(fileNames):
     for ct,k in enumerate(lineNames):
         figH.line(k+"_x", k, source=source, color=colours[ct%len(colours)], line_width=2, legend=k)
 
-    def update_plot(_, seqNum):
-        for ct,k in enumerate(lineNames):
-            AWGName, chName = k.split('-')
-            source.data[k+"_x"] = np.arange(len(wfs[AWGName][chName][seqNum-1]))
-            source.data[k] = wfs[AWGName][chName][seqNum-1] + 2*ct
-        source.push_notebook()
-            
-    #widgets.interact(update_plot, seqNum=(1, len(wfs[AWGName]["ch1"])), div=widgets.HTMLWidget(value=notebook_div(figH)))
-    
-    slider = widgets.IntSliderWidget(value=1, min=1, max=len(wfs[AWGName]["ch1"]), step=1, description="Sequence:")
-    slider.on_trait_change(update_plot, 'value')
-    plotBox = widgets.HTMLWidget(value=notebook_div(figH))
-    appBox = widgets.ContainerWidget()
-    appBox.children = [slider, plotBox]
-    display(appBox)
+    if in_ipynb():
+        #Setup inline plotting with slider updating of data
+
+        def update_plot(_, seqNum):
+            for ct,k in enumerate(lineNames):
+                AWGName, chName = k.split('-')
+                source.data[k+"_x"] = np.arange(len(wfs[AWGName][chName][seqNum-1]))
+                source.data[k] = wfs[AWGName][chName][seqNum-1] + 2*ct
+            source.push_notebook()
+                
+        #widgets.interact(update_plot, seqNum=(1, len(wfs[AWGName]["ch1"])), div=widgets.HTMLWidget(value=notebook_div(figH)))
+        
+        slider = widgets.IntSliderWidget(value=firstSeqNum, min=1, max=len(wfs[AWGName]["ch1"]), step=1, description="Sequence:")
+        slider.on_trait_change(update_plot, 'value')
+        plotBox = widgets.HTMLWidget(value=notebook_div(figH))
+        appBox = widgets.ContainerWidget()
+        appBox.children = [slider, plotBox]
+        display(appBox)
+
+    else:
+
+        #Otherwise dump to a static file
+
+        bk.output_file(os.path.join(tempfile.gettempdir(), str(uuid.uuid4()) + ".html"))
+        bk.show(figH)
