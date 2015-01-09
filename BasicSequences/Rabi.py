@@ -26,9 +26,8 @@ def RabiAmp(qubit, amps, phase=0, showPlot=False):
 	print(fileNames)
 
 	if showPlot:
-		plotWin = plot_pulse_files(fileNames)
-		return plotWin
-
+		plot_pulse_files(fileNames)
+	
 def RabiWidth(qubit, widths, amp=1, phase=0, shapeFun=QGL.PulseShapes.tanh, showPlot=False):
 	"""
 
@@ -52,8 +51,7 @@ def RabiWidth(qubit, widths, amp=1, phase=0, shapeFun=QGL.PulseShapes.tanh, show
 	print(fileNames)
 
 	if showPlot:
-		plotWin = plot_pulse_files(fileNames)
-		return plotWin
-
+		plot_pulse_files(fileNames)
+	
 
 

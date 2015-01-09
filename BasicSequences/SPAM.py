@@ -42,6 +42,5 @@ def SPAM(qubit, angleSweep, maxSpamBlocks=10, showPlot=False):
 	print(fileNames)
 
 	if showPlot:
-		plotWin = plot_pulse_files(fileNames)
-		return plotWin
+		plot_pulse_files(fileNames)
 

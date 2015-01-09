@@ -66,8 +66,7 @@ def SingleQubitRB(qubit, seqs, showPlot=False):
 	print(fileNames)
 
 	if showPlot:
-		plotWin = plot_pulse_files(fileNames)
-		return plotWin
+		plot_pulse_files(fileNames)
 
 def TwoQubitRB(q1, q2, CR, seqs, showPlot=False):
 	"""
@@ -100,10 +99,7 @@ def TwoQubitRB(q1, q2, CR, seqs, showPlot=False):
 	print(fileNames)
 
 	if showPlot:
-		plotWin = plot_pulse_files(fileNames)
-		return plotWin
-
-
+		plot_pulse_files(fileNames)
 
 
 def SingleQubitRB_AC(qubit, seqFile, showPlot=False):
@@ -154,8 +150,7 @@ def SingleQubitRB_AC(qubit, seqFile, showPlot=False):
 		fileNames = compile_to_hardware(chunk, 'RB/RB', suffix='_{0}'.format(ct+1))
 
 	if showPlot:
-		plotWin = plot_pulse_files(fileNames)
-		return plotWin
+		plot_pulse_files(fileNames)
 
 def SingleQubitIRB_AC(qubit, seqFile, showPlot=False):
 	"""
@@ -201,8 +196,7 @@ def SingleQubitIRB_AC(qubit, seqFile, showPlot=False):
 		fileNames = compile_to_hardware(chunk2, 'RB/RB', suffix='_{0}'.format(2*ct+2))
 
 	if showPlot:
-		plotWin = plot_pulse_files(fileNames)
-		return plotWin
+		plot_pulse_files(fileNames)
 
 def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False):
 	"""
@@ -249,6 +243,5 @@ def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False):
 		fileNames = compile_to_hardware(chunk, 'RBT/RBT', suffix='_{0}'.format(ct+1))
 
 	if showPlot:
-		plotWin = plot_pulse_files(fileNames)
-		return plotWin
+		plot_pulse_files(fileNames)
 

@@ -28,8 +28,7 @@ def HahnEcho(qubit, pulseSpacings, calRepeats=2, showPlot=False):
 	print(fileNames)
 
 	if showPlot:
-		plotWin = plot_pulse_files(fileNames)
-		return plotWin
+		plot_pulse_files(fileNames)
 
 
 def CPMG(qubit, numPulses, pulseSpacing, calRepeats=2, showPlot=False):
@@ -62,6 +61,5 @@ def CPMG(qubit, numPulses, pulseSpacing, calRepeats=2, showPlot=False):
 	print(fileNames)
 
 	if showPlot:
-		plotWin = plot_pulse_files(fileNames)
-		return plotWin
+		plot_pulse_files(fileNames)
 

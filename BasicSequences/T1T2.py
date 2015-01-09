@@ -31,9 +31,7 @@ def InversionRecovery(qubit, delays, showPlot=False, calRepeats=2):
 	print(fileNames)
 
 	if showPlot:
-		plotWin = plot_pulse_files(fileNames)
-		return plotWin
-
+		plot_pulse_files(fileNames)
 
 
 def Ramsey(qubit, pulseSpacings, TPPIFreq=0, showPlot=False, calRepeats=2):
@@ -68,6 +66,5 @@ def Ramsey(qubit, pulseSpacings, TPPIFreq=0, showPlot=False, calRepeats=2):
 	print(fileNames)
 
 	if showPlot:
-		plotWin = plot_pulse_files(fileNames)
-		return plotWin
+		plot_pulse_files(fileNames)
 
