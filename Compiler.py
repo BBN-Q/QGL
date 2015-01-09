@@ -80,7 +80,7 @@ def channel_delay_map(awgData):
         chanDelays[IQkey] = chan.delay + chan.AWG.delay
     return PatternUtils.normalize_delays(chanDelays)
 
-def compile_to_hardware(seqs, fileName=None, suffix='', alignMode="right"):
+def compile_to_hardware(seqs, fileName, suffix='', alignMode="right"):
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'. Other inputs:
         suffix : string to append to end of fileName (e.g. with fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5)
