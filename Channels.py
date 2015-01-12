@@ -272,7 +272,7 @@ class ChannelLibrary(Atom):
         Helps avoid both stale references from replacing whole channel objects (as in load_from_library)
         and the overhead of recreating everything.
         """
-        updateList = ['ampFactor', 'phaseSkew', 'SSBFreq', 'delay', 'pulseParams']
+        updateList = ['ampFactor', 'phaseSkew', 'SSBFreq', 'delay']
         if self.libFile:
             with open(self.libFile, 'r') as FID:
                 try:
@@ -282,17 +282,21 @@ class ChannelLibrary(Atom):
                     return
                 for chName, chParams in allParams.items():
                     if chName in self.channelDict:
-                        for paramName in updateList:
-                            if paramName in chParams:
-                                #Deal with unicode/string difference
-                                if paramName == 'pulseParams':
-                                    paramDict = {k.encode('ascii'):v for k,v in chParams['pulseParams'].items()}
-                                    shapeFunName = paramDict.pop('shapeFun', None)
-                                    if shapeFunName:
-                                        paramDict['shapeFun'] = getattr(PulseShapes, shapeFunName)
-                                    setattr(self.channelDict[chName], 'pulseParams', paramDict)
-                                else:
-                                    setattr(self.channelDict[chName], paramName, chParams[paramName])
+                        if 'pulseParams' in chParams.keys():
+                            paramDict = {k.encode('ascii'):v for k,v in chParams['pulseParams'].items()}
+                            shapeFunName = paramDict.pop('shapeFun', None)
+                            if shapeFunName:
+                                paramDict['shapeFun'] = getattr(PulseShapes, shapeFunName)
+                            self.channelDict[chName].pulseParams = paramDict
+                        if 'physChan' in chParams.keys():
+                            self.channelDict[chName].physChan = self.channelDict[chParams['physChan']] if chParams['physChan'] in self.channelDict else None
+                        if 'gateChan' in chParams.keys():
+                            self.channelDict[chName].gateChan = self.channelDict[chParams['gateChan']] if chParams['gateChan'] in self.channelDict else None
+                        # TODO: how do we follow changes to selected AWG or generator/source?
+                        
+                        for paramName in chParams:
+                            if paramName in updateList:
+                                setattr(self.channelDict[chName], paramName, chParams[paramName])
 
 
 NewLogicalChannelList = [Qubit, LogicalMarkerChannel, Measurement]
