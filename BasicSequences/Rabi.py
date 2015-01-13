@@ -53,5 +53,37 @@ def RabiWidth(qubit, widths, amp=1, phase=0, shapeFun=QGL.PulseShapes.tanh, show
 	if showPlot:
 		plot_pulse_files(fileNames)
 	
+def RabiAmp_TwoQubits(qubit1, qubit2, amps, amps2, phase=0, showPlot=False, meas=[1,1],docals=False):
+	"""
+	
+	Variable amplitude Rabi nutation experiment for up to two qubits, with measurement on both. Need to be extended
+	to arbitrary number of qubits
 
+	Parameters
+	----------
+	qubit : logical channel to implement sequence (LogicalChannel) 
+	amps : pulse amplitudes to sweep over for qubit 1(iterable)
+	amps2: pulse amplitudes to sweep over for qubit 2(iterable, same index)
+	phase : phase of the pulses (radians)
+	showPlot : whether to plot (boolean)
+	meas: list of 1/0 for measurement on/off
+
+	Returns
+	-------
+	plotHandle : handle to plot window to prevent destruction
+	"""
+    meas1 = MEAS(qubit1) if meas[0]==1 else Id(qubit1)
+    meas2 = MEAS(qubit2) if meas[1]==1 else Id(qubit2)
+
+	seqs = [[Utheta(qubit1, amp=amp, phase=phase)*Utheta(qubit2, amp=amp2,phase=phase), meas1*meas2] for (amp,amp2) in zip(amps,amps2)]
+
+	if docals:
+		seqs += create_cal_seqs((qubit1,qubit2), 2)
+		create_cal_seqs((qubit1,qubit2), 2, measChans=(qubit1,qubit2))
+
+	fileNames = compile_to_hardware(seqs, 'Rabi/Rabi')
+	print(fileNames)
+
+	if showPlot:
+		plot_pulse_files(fileNames)
 
