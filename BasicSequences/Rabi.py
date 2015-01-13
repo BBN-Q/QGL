@@ -53,6 +53,7 @@ def RabiWidth(qubit, widths, amp=1, phase=0, shapeFun=QGL.PulseShapes.tanh, show
 	if showPlot:
 		plot_pulse_files(fileNames)
 	
+
 def RabiAmp_TwoQubits(qubit1, qubit2, amps, amps2, phase=0, showPlot=False, meas=[1,1],docals=False):
 	"""
 	
@@ -72,9 +73,8 @@ def RabiAmp_TwoQubits(qubit1, qubit2, amps, amps2, phase=0, showPlot=False, meas
 	-------
 	plotHandle : handle to plot window to prevent destruction
 	"""
-    meas1 = MEAS(qubit1) if meas[0]==1 else Id(qubit1)
-    meas2 = MEAS(qubit2) if meas[1]==1 else Id(qubit2)
-
+	meas1 = MEAS(qubit1) if meas[0]==1 else Id(qubit1)
+  	meas2 = MEAS(qubit2) if meas[1]==1 else Id(qubit2)
 	seqs = [[Utheta(qubit1, amp=amp, phase=phase)*Utheta(qubit2, amp=amp2,phase=phase), meas1*meas2] for (amp,amp2) in zip(amps,amps2)]
 
 	if docals:
@@ -86,4 +86,6 @@ def RabiAmp_TwoQubits(qubit1, qubit2, amps, amps2, phase=0, showPlot=False, meas
 
 	if showPlot:
 		plot_pulse_files(fileNames)
+
+
 
