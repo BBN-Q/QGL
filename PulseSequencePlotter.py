@@ -96,6 +96,9 @@ def plot_pulse_files(fileNames, firstSeqNum=-1):
         
         #Assume a naming convention path/to/file/SequenceName-AWGName.h5
         AWGName = (os.path.split(os.path.splitext(fileName)[0])[1]).split('-')[1]
+        #Strip any _ suffix
+        if '_' in AWGName:
+            AWGName = AWGName[:AWGName.index('_')]
 
         title += os.path.split(os.path.splitext(fileName)[0])[1] + "; "
 
