@@ -2,6 +2,7 @@ from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
 import QGL.PulseShapes
+from helpers import create_cal_seqs
 
 
 def RabiAmp(qubit, amps, phase=0, showPlot=False):
@@ -78,8 +79,7 @@ def RabiAmp_TwoQubits(qubit1, qubit2, amps, amps2, phase=0, showPlot=False, meas
 	seqs = [[Utheta(qubit1, amp=amp, phase=phase)*Utheta(qubit2, amp=amp2,phase=phase), meas1*meas2] for (amp,amp2) in zip(amps,amps2)]
 
 	if docals:
-		seqs += create_cal_seqs((qubit1,qubit2), 2)
-		create_cal_seqs((qubit1,qubit2), 2, measChans=(qubit1,qubit2))
+		seqs += create_cal_seqs((qubit1,qubit2), 2, measChans=(qubit1,qubit2))
 
 	fileNames = compile_to_hardware(seqs, 'Rabi/Rabi')
 	print(fileNames)
@@ -88,4 +88,27 @@ def RabiAmp_TwoQubits(qubit1, qubit2, amps, amps2, phase=0, showPlot=False, meas
 		plot_pulse_files(fileNames)
 
 
+def SingleShot(qubit, showPlot = False):
+	"""
+	2-segment sequence with qubit prepared in |0> and |1>, useful for single-shot fidelity measurements and kernel calibration
+    """
+	seqs = [[Id(qubit), MEAS(qubit)], [X(qubit), MEAS(qubit)]]
+	filenames = compile_to_hardware(seqs, 'SingleShot/SingleShot')
+	print(filenames)
 
+	if showPlot:
+		plot_pulse_files(filenames)
+
+
+
+def PulsedSpec(qubit, specOn = True, showPlot = False):
+	"""
+	Measurement preceded by a qubit pulse if specOn = True
+    """
+	qPulse = X(qubit) if specOn else Id(qubit)
+	seqs = [[qPulse, MEAS(qubit)]]
+	filenames = compile_to_hardware(seqs, 'Spec/Spec')
+	print(filenames)
+
+	if showPlot:
+		plot_pulse_files(filenames)
