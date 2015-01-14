@@ -306,13 +306,36 @@ def CNOT(source, target):
     shape = twoQChannel.pulseParams['shapeFun'](amp=twoQChannel.pulseParams['piAmp'], **overrideDefaults(twoQChannel, {}))
     return Pulse("CNOT", (source, target), shape, 0.0, 0.0)
 
-def echoCR(controlQ, CR, **kwargs):
+def flat_top_gaussian(chan, riseFall, length, amp, phase=0):
+    """ 
+    A square pulse with risingn and falling gaussian shape
     """
-    An echoed CR ZX90 pulse.  Uses pi2Amp for the pusle amplitude.
+    return [Utheta(chan, length=riseFall, amp=amp, phase=phase, shapeFun=PulseShapes.gaussOn),
+    Utheta(chan, length=length, amp=amp, phase=phase, shapeFun=PulseShapes.square), 
+    Utheta(chan, length=riseFall, amp=amp, phase=phase, shapeFun=PulseShapes.gaussOff)]
+
+def echoCR(controlQ, CRchan, amp=1, phase=0, length = 200e-9, riseFall= 40e-9):
     """
-    pulseParams = overrideDefaults(CR, kwargs)
-    amp = pulseParams['pi2Amp']
-    return [ Utheta(CR, amp=amp, **pulseParams), X(controlQ),Utheta(CR, amp=-amp, **pulseParams), X(controlQ) ]
+    An echoed CR pulse.  Used for calibration of CR gate
+    """
+    return flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase) + \
+    [X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi)
+
+def CNOT_CR(controlQ, CRchan, riseFall= 40e-9, **kwargs):
+    """
+    An calibrated CR ZX90 pulse.  Uses piAmp for the pulse amplitude and phase for its phase (in deg).
+    """
+    pulseParams = overrideDefaults(CRchan, kwargs)
+    amp = pulseParams['piAmp']
+    phase = pulseParams['phase']
+    length =pulseParams['length']
+    return flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase/180*np.pi) + \
+    [X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase/180*np.pi+np.pi)
+
+# @_memoize
+def Xm(qubit, **kwargs):
+    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['piAmp'], **overrideDefaults(qubit, kwargs))
+    return Pulse("Xm", qubit, shape, pi, 0.0)
 
 ## Measurement operators
 # @_memoize
@@ -350,3 +373,4 @@ def MEAS(*args, **kwargs):
 # Gating/blanking pulse primitives
 def BLANK(chan, width):
     return TAPulse("BLANK", chan.gateChan, width, 1, 0, 0)
+
