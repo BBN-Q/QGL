@@ -75,8 +75,8 @@ def EchoCRPhase(controlQ, targetQ, CRchan, phases, riseFall=40e-9, amp=1, length
 	-------
 	plotHandle : handle to plot window to prevent destruction
 	"""
-	seqs = [[Id(controlQ)] + echoCR(controlQ, CRchan, length=length, phase=ph) + [Id(controlQ), MEAS(targetQ)*MEAS(controlQ)] \
-	for ph in phases]+[[X(controlQ)] + echoCR(controlQ, CRchan, length=length, phase= ph) + [X(controlQ), MEAS(targetQ)*MEAS(controlQ)]\
+	seqs = [[Id(controlQ)] + echoCR(controlQ, CRchan, length=length, phase=ph) + [X90(targetQ)*Id(controlQ), MEAS(targetQ)*MEAS(controlQ)] \
+	for ph in phases]+[[X(controlQ)] + echoCR(controlQ, CRchan, length=length, phase= ph) + [X90(targetQ)*X(controlQ), MEAS(targetQ)*MEAS(controlQ)]\
 	 for ph in phases]+create_cal_seqs((targetQ,controlQ), calRepeats, measChans=(targetQ,controlQ))
 
 	fileNames = compile_to_hardware(seqs, 'EchoCR/EchoCR')
