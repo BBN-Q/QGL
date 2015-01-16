@@ -326,11 +326,8 @@ def CNOT_CR(controlQ, CRchan, riseFall= 40e-9, **kwargs):
     An calibrated CR ZX90 pulse.  Uses piAmp for the pulse amplitude and phase for its phase (in deg).
     """
     pulseParams = overrideDefaults(CRchan, kwargs)
-    amp = pulseParams['piAmp']
-    phase = pulseParams['phase']
-    length =pulseParams['length']
-    return flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase/180*np.pi) + \
-    [X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase/180*np.pi+np.pi)
+    return flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=0/180*np.pi) + \
+    [X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=0/180*np.pi+np.pi)
 
 # @_memoize
 def Xm(qubit, **kwargs):
