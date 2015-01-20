@@ -249,5 +249,6 @@ def show(seq):
         p = plt.plot(xpts, np.imag(waveformToPlot), 'b')
         plt.ylim((-1.05,1.05))
         plt.title(repr(chan))
+        plt.tight_layout()
     plt.show(p)
 
