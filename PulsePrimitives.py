@@ -319,7 +319,8 @@ def echoCR(controlQ, CRchan, amp=1, phase=0, length = 200e-9, riseFall= 40e-9):
     An echoed CR pulse.  Used for calibration of CR gate
     """
     return flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase) + \
-    [X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi)
+    [X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi) + \
+    [X(controlQ)]
 
 def CNOT_CR(controlQ, CRchan, riseFall= 40e-9, **kwargs):
     """
