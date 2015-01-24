@@ -52,15 +52,15 @@ enamldef PhysicalMarkerChannelView(GroupBox): curView:
     title := '{} (PhysicalMarker)'.format(chan.label)
     Form:
         Label:
-            text = 'Delay'
+            text = 'Delay (s)'
         FloatField:
             value := chan.delay
         Label:
-            text = 'Gate Buffer'
+            text = 'Gate Buffer (s)'
         FloatField:
             value := chan.gateBuffer
         Label:
-            text = 'Min Pulse Width'
+            text = 'Min Pulse Width (s)'
         FloatField:
             value := chan.gateMinWidth
         Label:
@@ -92,7 +92,7 @@ enamldef PhysicalQuadratureChannelView(GroupBox): curView:
             index ::
                 chan.generator = instrumentLib[selected_item]
         Label:
-            text = 'Delay'
+            text = 'Delay (s)'
         FloatField:
             value := chan.delay
         Label:
