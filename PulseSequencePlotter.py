@@ -1,3 +1,4 @@
+
 '''
 Created on Jan 8, 2012
 
@@ -76,7 +77,7 @@ def read_sequence_file(awg, filename):
 def all_zero_seqs(seqs):
     return all([np.all(seq == 0) for seq in seqs])
 
-def plot_pulse_files(fileNames, firstSeqNum=-1):
+def plot_pulse_files(fileNames, firstSeqNum=0):
     '''
     plot_pulse_files(fileNames, firstSeqNum=0)
 
@@ -107,8 +108,8 @@ def plot_pulse_files(fileNames, firstSeqNum=-1):
         for (k,seqs) in sorted(wfs[AWGName].items()):
             if not all_zero_seqs(seqs):
                 lineNames.append(AWGName + '-' + k)
-                dataDict[lineNames[-1] + "_x"] = np.arange(len(seqs[firstSeqNum-1]))
-                dataDict[lineNames[-1]] = seqs[firstSeqNum-1] + 2*(len(lineNames)-1)
+                dataDict[lineNames[-1] + "_x"] = np.arange(len(seqs[firstSeqNum]))
+                dataDict[lineNames[-1]] = seqs[firstSeqNum] + 2*(len(lineNames)-1)
                 
     #Remove trailing semicolon from title
     title = title[:-2]
@@ -135,7 +136,7 @@ def plot_pulse_files(fileNames, firstSeqNum=-1):
                 
         #widgets.interact(update_plot, seqNum=(1, len(wfs[AWGName]["ch1"])), div=widgets.HTMLWidget(value=notebook_div(figH)))
         
-        slider = widgets.IntSliderWidget(value=firstSeqNum, min=1, max=len(wfs[AWGName]["ch1"]), step=1, description="Sequence:")
+        slider = widgets.IntSliderWidget(value=firstSeqNum+1, min=1, max=len(wfs[AWGName]["ch1"]), step=1, description="Sequence:")
         slider.on_trait_change(update_plot, 'value')
         plotBox = widgets.HTMLWidget(value=notebook_div(figH))
         appBox = widgets.ContainerWidget()
