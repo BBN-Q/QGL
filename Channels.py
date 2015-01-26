@@ -272,7 +272,8 @@ class ChannelLibrary(Atom):
         Helps avoid both stale references from replacing whole channel objects (as in load_from_library)
         and the overhead of recreating everything.
         """
-        updateList = ['ampFactor', 'phaseSkew', 'SSBFreq', 'delay']
+        # ignored or specially handled parameters
+        ignoreList = ['pulseParams', 'physChan', 'gateChan', 'AWG', 'generator', 'x__class__', 'x__module__']
         if self.libFile:
             with open(self.libFile, 'r') as FID:
                 try:
@@ -295,7 +296,7 @@ class ChannelLibrary(Atom):
                         # TODO: how do we follow changes to selected AWG or generator/source?
                         
                         for paramName in chParams:
-                            if paramName in updateList:
+                            if paramName not in ignoreList:
                                 setattr(self.channelDict[chName], paramName, chParams[paramName])
 
 
