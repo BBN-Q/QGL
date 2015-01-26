@@ -29,6 +29,7 @@ import APSPattern
 ADDRESS_UNIT = 4 #everything is done in units of 4 timesteps
 MIN_ENTRY_LENGTH = 8
 MAX_WAVEFORM_PTS = 2**28 #maximum size of waveform memory
+WAVEFORM_CACHE_SIZE = 2**17
 MAX_WAVEFORM_VALUE = 2**13-1 #maximum waveform value i.e. 14bit DAC
 MAX_NUM_INSTRUCTIONS = 2**26
 MAX_REPEAT_COUNT = 2**16-1;
@@ -86,7 +87,9 @@ def create_wf_vector(wfLib):
 		trim = wf.size%ADDRESS_UNIT
 		if trim:
 			wf = wf[:-trim]
-		assert idx + wf.size < MAX_WAVEFORM_PTS, 'Oops! You have exceeded the waveform memory of the APS'
+		#For now assert we fit in a single waveform cache until we get PREFETCH working.
+		#assert idx + wf.size < MAX_WAVEFORM_PTS, 'Oops! You have exceeded the waveform memory of the APS'
+		assert idx + wf.size < WAVEFORM_CACHE_SIZE, 'Oops! You have exceeded the waveform cache of the APS'
 		wfVec[idx:idx+wf.size] = np.uint16(np.round(MAX_WAVEFORM_VALUE*wf))
 		offsets[key] = idx
 		idx += wf.size 
