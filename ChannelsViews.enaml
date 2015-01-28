@@ -126,7 +126,7 @@ enamldef LogicalQuadratureView(GroupBox): curView:
             Conditional:
                 condition << chan.measType == 'autodyne'
                 Label:
-                    text = 'Autodyne Freq.'
+                    text = 'Autodyne Freq. (Hz)'
                 FloatField:
                     value := chan.autodyneFreq
         Label:
