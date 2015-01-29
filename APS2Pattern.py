@@ -269,6 +269,24 @@ def timestamp_entries(seq):
 		seq[ct].startTime = t
 		t += seq[ct].totLength
 
+def synchronize_clocks(seqs):
+	# SYNC instructions "reset the clock", so when we encounter one, we need to
+	# synchronize the accumulated time to the largest value on any channel
+	syncInstructions = [filter(lambda s: isinstance(s, ControlFlow.ControlInstruction) and s.instruction == 'SYNC', seq) for seq in seqs if seq]
+
+	# add length to SYNC instructions to make accumulated time match at end of SYNCs
+	# keep running tally of how much each channel has been shifted so far
+	localShift = [0 for _ in syncInstructions]
+	for ct in range(len(syncInstructions[0])):
+		step = [seq[ct] for seq in syncInstructions]
+		endTime = max((s.startTime + shift for s, shift in zip(step, localShift)))
+		for ct, s in enumerate(step):
+			s.totLength = endTime - (s.startTime + localShift[ct])
+			localShift[ct] = endTime - s.startTime
+	# re-timestamp to propagate changes across the sequences
+	for seq in seqs:
+		timestamp_entries(seq)
+
 def create_seq_instructions(seqs, offsets):
 	'''
 	Helper function to create instruction vector from an IR sequence and an offset dictionary
@@ -284,6 +302,7 @@ def create_seq_instructions(seqs, offsets):
 	# timestamp all entries before filtering (where we lose time information on control flow)
 	for seq in seqs:
 		timestamp_entries(seq)
+	synchronize_clocks(seqs)
 
 	# filter out sequencing instructions from the waveform and marker lists, so that seqs becomes:
 	# [control-flow, wfs, m1, m2, m3, m4]
@@ -362,7 +381,6 @@ def create_seq_instructions(seqs, offsets):
 			elif entry.instruction == 'CMP':
 				instructions.append(Cmp(cmpTable[entry.operator], entry.mask, label=entry.label))
     
-
 	return instructions
 
 def create_instr_data(seqs, offsets):
