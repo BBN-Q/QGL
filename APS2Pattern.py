@@ -282,6 +282,8 @@ def synchronize_clocks(seqs):
 		endTime = max((s.startTime + shift for s, shift in zip(step, localShift)))
 		for ct, s in enumerate(step):
 			s.totLength = endTime - (s.startTime + localShift[ct])
+			# localShift[ct] += endTime - (s.startTime + localShift[ct])
+			# the += and the last term cancel, therefore:
 			localShift[ct] = endTime - s.startTime
 	# re-timestamp to propagate changes across the sequences
 	for seq in seqs:
