@@ -3,14 +3,15 @@ from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
 from helpers import create_cal_seqs
 
-def HahnEcho(qubit, pulseSpacings, calRepeats=2, showPlot=False):
+def HahnEcho(qubit, pulseSpacings, periods = 0, calRepeats=2, showPlot=False):
 	"""
-	A single pulse Hahn echo. 
+	A single pulse Hahn echo with variable phase of second pi/2 pulse. 
 
 	Parameters
 	----------
 	qubit : logical channel to implement sequence (LogicalChannel) 
 	pulseSpacings : pulse spacings to sweep over; the t in 90-t-180-t-180 (iterable)
+	periods: number of artificial oscillations
 	calRepeats : how many times to repeat calibration scalings (default 2)
 	showPlot : whether to plot (boolean)
 
@@ -18,8 +19,10 @@ def HahnEcho(qubit, pulseSpacings, calRepeats=2, showPlot=False):
 	-------
 	plotHandle : handle to plot window to prevent destruction
 	"""
-	seqs = [ [X90(qubit), Id(qubit, t), X(qubit), Id(qubit,t), X90(qubit), MEAS(qubit)] 
-					 for t in pulseSpacings]
+	seqs=[];
+	for k in range(len(pulseSpacings)):	
+		seqs.append([X90(qubit), Id(qubit, pulseSpacings[k]), Y(qubit), Id(qubit,pulseSpacings[k]), \
+			U90(qubit,phase=2*pi*periods/len(pulseSpacings)*k), MEAS(qubit)])
 
  	#Tack on the calibration scalings
 	seqs += create_cal_seqs((qubit,), calRepeats)
