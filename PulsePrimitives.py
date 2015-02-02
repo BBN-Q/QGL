@@ -322,13 +322,16 @@ def echoCR(controlQ, CRchan, amp=1, phase=0, length = 200e-9, riseFall= 40e-9):
     [X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi) + \
     [X(controlQ)]
 
-def CNOT_CR(controlQ, CRchan, riseFall= 40e-9, **kwargs):
+def CNOT_CR(controlQ, targetQ, CRchan, riseFall= 40e-9, **kwargs):
     """
-    An calibrated CR ZX90 pulse.  Uses piAmp for the pulse amplitude and phase for its phase (in deg).
+    A calibrated CR ZX90 pulse.  Uses piAmp for the pulse amplitude, phase for its phase (in deg).
     """
-    pulseParams = overrideDefaults(CRchan, kwargs)
-    return flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=0/180*np.pi) + \
-    [X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=0/180*np.pi+np.pi)
+    amp=CRchan.pulseParams['piAmp']   
+    phase=CRchan.pulseParams['phase']/180*np.pi 
+    length=CRchan.pulseParams['length']
+    return flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase) + \
+    [X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi) + \
+    [X(controlQ),X90(targetQ)]
 
 # @_memoize
 def Xm(qubit, **kwargs):
