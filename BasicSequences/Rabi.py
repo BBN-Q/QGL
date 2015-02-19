@@ -87,6 +87,30 @@ def RabiAmp_TwoQubits(qubit1, qubit2, amps, amps2, phase=0, showPlot=False, meas
 	if showPlot:
 		plot_pulse_files(fileNames)
 
+def RabiAmpPi(qubit, mqubit, amps, phase=0, showPlot=False):
+	"""
+	
+	Variable amplitude Rabi nutation experiment.
+
+	Parameters
+	----------
+	qubit : logical channel to implement sequence (LogicalChannel) 
+	amps : pulse amplitudes to sweep over (iterable)
+	phase : phase of the pulse (radians)
+	showPlot : whether to plot (boolean)
+
+	Returns
+	-------
+	plotHandle : handle to plot window to prevent destruction
+	"""
+	seqs = [[X(mqubit),Utheta(qubit, amp=amp, phase=phase), X(mqubit), MEAS(mqubit)] for amp in amps]
+
+	fileNames = compile_to_hardware(seqs, 'Rabi/Rabi')
+	print(fileNames)
+
+	if showPlot:
+		plotWin = plot_pulse_files(fileNames)
+		return plotWin
 
 def SingleShot(qubit, showPlot = False):
 	"""
@@ -99,8 +123,6 @@ def SingleShot(qubit, showPlot = False):
 	if showPlot:
 		plot_pulse_files(filenames)
 
-
-
 def PulsedSpec(qubit, specOn = True, showPlot = False):
 	"""
 	Measurement preceded by a qubit pulse if specOn = True
@@ -112,3 +134,34 @@ def PulsedSpec(qubit, specOn = True, showPlot = False):
 
 	if showPlot:
 		plot_pulse_files(filenames)
+	fileNames = compile_to_hardware(seqs, 'Rabi/Rabi')
+	print(fileNames)
+
+	if showPlot:
+		plotWin = plot_pulse_files(fileNames)
+		return plotWin
+
+def Swap(qubit, mqubit, delays, showPlot=False):
+	"""
+	
+	Variable amplitude Rabi nutation experiment.
+
+	Parameters
+	----------
+	qubit : logical channel to implement sequence (LogicalChannel) 
+	amps : pulse amplitudes to sweep over (iterable)
+	phase : phase of the pulse (radians)
+	showPlot : whether to plot (boolean)
+
+	Returns
+	-------
+	plotHandle : handle to plot window to prevent destruction
+	"""
+	seqs = [[X(qubit), X(mqubit), Id(mqubit, d), MEAS(mqubit)*MEAS(qubit)] for d in delays] + create_cal_seqs((mqubit,qubit), 2, measChans=(mqubit,qubit))
+
+	fileNames = compile_to_hardware(seqs, 'Rabi/Rabi')
+	print(fileNames)
+
+	if showPlot:
+		plotWin = plot_pulse_files(fileNames)
+		return plotWin

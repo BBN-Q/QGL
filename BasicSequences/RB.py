@@ -25,6 +25,12 @@ def create_RB_seqs(numQubits, lengths, repeats=32, interleaveGate=None):
 	for length in lengths:
 		seqs += np.random.random_integers(0, cliffGroupSize-1, (repeats, length-1)).tolist()
 
+	#Possibly inject the interleaved gate
+	if interleaveGate:
+		newSeqs = []
+		for seq in seqs:
+			newSeqs.append(np.vstack((np.array(seq, dtype=np.int), interleaveGate*np.ones(len(seq), dtype=np.int))).flatten(order='F').tolist())
+		seqs = newSeqs
 	#Calculate the recovery gate
 	for seq in seqs:
 		if len(seq) == 1:
@@ -68,7 +74,7 @@ def SingleQubitRB(qubit, seqs, showPlot=False):
 	if showPlot:
 		plot_pulse_files(fileNames)
 
-def TwoQubitRB(q1, q2, CR, seqs, showPlot=False):
+def TwoQubitRB(q1, q2, CR, seqs, showPlot=False, suffix=""):
 	"""
 
 	Two qubit randomized benchmarking using 90 and 180 single qubit generators and ZX90 
@@ -95,12 +101,11 @@ def TwoQubitRB(q1, q2, CR, seqs, showPlot=False):
 	#Tack on the calibration sequences
 	seqsBis += create_cal_seqs((q1,q2), 2)
 
-	fileNames = compile_to_hardware(seqsBis, 'RB/RB')
+	fileNames = compile_to_hardware(seqsBis, 'RB/RB', suffix=suffix)
 	print(fileNames)
 
 	if showPlot:
 		plot_pulse_files(fileNames)
-
 
 def SingleQubitRB_AC(qubit, seqFile, showPlot=False):
 	"""
