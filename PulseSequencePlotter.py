@@ -26,6 +26,7 @@ limitations under the License.
 import os.path
 import bokeh.plotting as bk
 from bokeh.embed import notebook_div
+from Plotting import in_ipynb
 
 from IPython.html import widgets
 from IPython.display import display
@@ -41,21 +42,6 @@ from instruments.AWGs import APS, APS2, Tek5014, Tek7000
 import uuid, tempfile
 
 import Libraries
-
-#TODO: handle console plotting to static html file
-def in_ipynb():
-    try:
-        cfg = get_ipython().config 
-        if cfg['IPKernelApp']['parent_appname'] == 'ipython-notebook':
-            return True
-        else:
-            return False
-    except NameError:
-        return False
-
-#Only load if in notebook
-if in_ipynb():
-    bk.output_notebook()
 
 # define sequence reader dispatch on awg type
 @multimethod(Tek5014, unicode)
@@ -144,8 +130,5 @@ def plot_pulse_files(fileNames, firstSeqNum=0):
         display(appBox)
 
     else:
-
         #Otherwise dump to a static file
-
-        bk.output_file(os.path.join(tempfile.gettempdir(), str(uuid.uuid4()) + ".html"))
         bk.show(figH)

@@ -19,7 +19,8 @@ limitations under the License.
 from copy import copy
 import json
 import numpy as np
-import matplotlib.pyplot as plt
+import bokeh.plotting as bk
+from Plotting import in_ipynb
 
 class Pulse(object):
     '''
@@ -241,14 +242,13 @@ def show(seq):
         concatShapes[q] = np.append(concatShapes[q], 0)
     
     # plot
+    plots = []
     for (ct,chan) in enumerate(channels):
-        plt.subplot(len(channels),1,ct+1)
+        fig = bk.figure(title=repr(chan), plot_width=800, plot_height=350, y_range=[-1.05, 1.05])
         waveformToPlot = concatShapes[chan]
         xpts = np.linspace(0,len(waveformToPlot)/AWGFreq/1e-6,len(waveformToPlot))
-        p = plt.plot(xpts, np.real(waveformToPlot), 'r')
-        p = plt.plot(xpts, np.imag(waveformToPlot), 'b')
-        plt.ylim((-1.05,1.05))
-        plt.title(repr(chan))
-        plt.tight_layout()
-    plt.show(p)
+        fig.line(xpts, np.real(waveformToPlot), color='red')
+        fig.line(xpts, np.imag(waveformToPlot), color='blue')
+        plots.append(fig)
+    bk.show(bk.VBox(*plots))
 
