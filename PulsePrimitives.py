@@ -371,6 +371,48 @@ def MEAS(*args, **kwargs):
 
     return reduce(operator.mul, [create_meas_pulse(qubit) for qubit in args])
 
+
+def MEASmux(*args, **kwargs):
+    '''
+    MEASmux(q1, ...) constructs a measurement pulse block of a measurement 
+    with different autodyne frequencies on the same channels
+    It needs a multi-qubit msm't pulse, e.g., M-q1q2.
+    Each pulse has its own parameters (e.g. M-q1).  
+    Use tuple-form for joint readout, e.g.
+        MEAS((q1, q2))
+    '''
+    def create_meas_pulse(qubit):
+        if isinstance(qubit, Channels.Qubit):
+            #Deal with single qubit readout channel
+            channelName = "M-" + qubit.label
+        elif isinstance(qubit, tuple):
+            #Deal with joint readout channel and MUX
+            measChanList = [];
+            paramsList = [];
+            lenList = [];
+            channelName = "M-"
+            for q in qubit:
+                channelName += q.label
+                measChanList += [Channels.MeasFactory("M-"+q.label)]
+                paramsList += [overrideDefaults(measChanList[-1], kwargs)]
+                lenList += [len(measChanList[-1].pulseParams['shapeFun'](**paramsList[-1]))]
+        measChan = Channels.MeasFactory(channelName)
+        
+        # measurement channels should have just an "amp" parameter
+        timeStep = 1.0/measChan.physChan.samplingRate
+        measShapeSum = np.zeros(max(lenList),dtype=complex);
+        for i,q in enumerate(qubit):
+            measShape = measChanList[i].pulseParams['shapeFun'](**paramsList[i])
+            timePts = np.linspace(0, paramsList[i]['length'], lenList[i])
+            measShape *= np.exp(-1j*2*pi*measChanList[i].autodyneFreq*timePts)
+            measShapeSum += np.array(measShape.tolist()+[0]*(max(lenList)-lenList[i]))
+            
+        return Pulse("MEAS", measChan, measShapeSum, 0.0, 0.0) 
+
+    return reduce(operator.mul, [create_meas_pulse(qubit) for qubit in args])
+
+
+
 # Gating/blanking pulse primitives
 def BLANK(chan, width):
     return TAPulse("BLANK", chan.gateChan, width, 1, 0, 0)
