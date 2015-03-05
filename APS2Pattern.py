@@ -308,14 +308,21 @@ def create_seq_instructions(seqs, offsets):
 
 	# filter out sequencing instructions from the waveform and marker lists, so that seqs becomes:
 	# [control-flow, wfs, m1, m2, m3, m4]
-	controlInstrs = filter(lambda s: isinstance(s, ControlFlow.ControlInstruction), seqs[0])
+	# control instructions get broadcast so pull them from the first non-empty sequence
+	try:
+		ct = next(i for i,j in enumerate(seqs) if j)
+	except StopIteration:
+		print("No non-empty sequences to create!")
+		raise
+	controlInstrs = filter(lambda s: isinstance(s, ControlFlow.ControlInstruction), seqs[ct])
 	for ct in range(len(seqs)):
-		localControl = filter(lambda s: isinstance(s, ControlFlow.ControlInstruction), seqs[ct])
-		seqs[ct] = filter(lambda s: isinstance(s, Compiler.LLWaveform), seqs[ct])
-		# update control instructions to have the earliest time stamp of any occurence on wfs, m1, m2, m3, or m4
-		if ct > 0:
-			for ct, (a, b) in enumerate(zip(controlInstrs, localControl)):
-				controlInstrs[ct].startTime = min(a.startTime, b.startTime)
+		if seqs[ct]:
+			localControl = filter(lambda s: isinstance(s, ControlFlow.ControlInstruction), seqs[ct])
+			seqs[ct] = filter(lambda s: isinstance(s, Compiler.LLWaveform), seqs[ct])
+			# update control instructions to have the earliest time stamp of any occurence on wfs, m1, m2, m3, or m4
+			if ct > 0:
+				for ct, (a, b) in enumerate(zip(controlInstrs, localControl)):
+					controlInstrs[ct].startTime = min(a.startTime, b.startTime)
 	seqs.insert(0, controlInstrs)
 
 	# create (seq, startTime) pairs over all sequences
@@ -400,7 +407,6 @@ def create_instr_data(seqs, offsets):
 		instructions.append(Goto(0))
 
 	assert len(instructions) < MAX_NUM_INSTRUCTIONS, 'Oops! too many instructions: {0}'.format(len(instructions))
-
 	data = np.array([instr.flatten() for instr in instructions], dtype=np.uint64)
 	return data
 
