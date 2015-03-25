@@ -20,9 +20,6 @@ def PiRabi(controlQ, targetQ, CRchan, lengths, riseFall=40e-9, amp=1, phase=0, c
 	plotHandle : handle to plot window to prevent destruction
 	"""
 
-	indentation_test = 2+2+2+\
-	2+2
-
 	seqs = [[Id(controlQ)] + flat_top_gaussian(CRchan, riseFall, amp=amp, phase=phase, length=l) \
 	+ [MEAS(targetQ)*MEAS(controlQ)] for l in lengths]+[[X(controlQ)] + flat_top_gaussian(CRchan, riseFall, amp=amp, phase=phase, length=l)\
 	+ [X(controlQ), MEAS(targetQ)*MEAS(controlQ)] for l in lengths] + create_cal_seqs([targetQ,controlQ], calRepeats, measChans=(targetQ,controlQ))
