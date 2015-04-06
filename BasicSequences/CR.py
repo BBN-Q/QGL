@@ -46,8 +46,8 @@ def EchoCRLen(controlQ, targetQ, CRchan, lengths, riseFall=40e-9, amp=1, phase=0
 	-------
 	plotHandle : handle to plot window to prevent destruction
 	"""
-	seqs = [[Id(controlQ)] + echoCR(controlQ, CRchan, length=l, phase=phase) + [Id(controlQ), MEAS(targetQ)*MEAS(controlQ)]\
-	 for l in lengths]+ [[X(controlQ)] + echoCR(controlQ, CRchan, length=l, phase= phase) + [X(controlQ), MEAS(targetQ)*MEAS(controlQ)]\
+	seqs = [[Id(controlQ)] + echoCR(controlQ, CRchan, length=l, phase=phase, riseFall=riseFall) + [Id(controlQ), MEAS(targetQ)*MEAS(controlQ)]\
+	 for l in lengths]+ [[X(controlQ)] + echoCR(controlQ, CRchan, length=l, phase= phase, riseFall=riseFall) + [X(controlQ), MEAS(targetQ)*MEAS(controlQ)]\
 	  for l in lengths] + create_cal_seqs((targetQ,controlQ), calRepeats, measChans=(targetQ,controlQ))
 
 	fileNames = compile_to_hardware(seqs, 'EchoCR/EchoCR')
@@ -72,8 +72,8 @@ def EchoCRPhase(controlQ, targetQ, CRchan, phases, riseFall=40e-9, amp=1, length
 	-------
 	plotHandle : handle to plot window to prevent destruction
 	"""
-	seqs = [[Id(controlQ)] + echoCR(controlQ, CRchan, length=length, phase=ph) + [X90(targetQ)*Id(controlQ), MEAS(targetQ)*MEAS(controlQ)] \
-	for ph in phases]+[[X(controlQ)] + echoCR(controlQ, CRchan, length=length, phase= ph) + [X90(targetQ)*X(controlQ), MEAS(targetQ)*MEAS(controlQ)]\
+	seqs = [[Id(controlQ)] + echoCR(controlQ, CRchan, length=length, phase=ph, riseFall=riseFall) + [X90(targetQ)*Id(controlQ), MEAS(targetQ)*MEAS(controlQ)] \
+	for ph in phases]+[[X(controlQ)] + echoCR(controlQ, CRchan, length=length, phase= ph, riseFall = riseFall) + [X90(targetQ)*X(controlQ), MEAS(targetQ)*MEAS(controlQ)]\
 	 for ph in phases]+create_cal_seqs((targetQ,controlQ), calRepeats, measChans=(targetQ,controlQ))
 
 	fileNames = compile_to_hardware(seqs, 'EchoCR/EchoCR')
