@@ -65,12 +65,79 @@ def setup_awg_channels(logicalChannels):
 def map_logical_to_physical(linkLists, wfLib):
     physicalChannels = {chan: channelLib[get_channel_label(chan)].physChan.label for chan in linkLists.keys()}
     awgData = setup_awg_channels(linkLists.keys())
-
     for chan in linkLists.keys():
         awgName, awgChan = physicalChannels[chan].split('-')
         awgData[awgName]['ch'+awgChan] = {'linkList': linkLists[chan], 'wfLib': wfLib[chan]}
 
     return awgData
+
+def map_logical_to_physical_mux(linkLists, wfLib):
+    physicalChannels = {chan: channelLib[get_channel_label(chan)].physChan.label for chan in linkLists.keys()}
+    awgData = setup_awg_channels(linkLists.keys())   
+    physChanDic={}
+    #group logical channels which share the same physical channels
+    for chan in linkLists.keys():
+        if physicalChannels[chan]  in physChanDic.keys():
+            physChanDic[physicalChannels[chan]]+=[chan]
+        else:
+            physChanDic[physicalChannels[chan]]=[chan]
+
+    #loop through the physical channels
+    for physChan, chan in physChanDic.items():
+        if len(chan)>1:
+            linkLists, wfLib = merge_waveforms(linkLists, wfLib, chan)
+
+        awgName, awgChan = physChan.split('-')
+        awgData[awgName]['ch'+awgChan] = {'linkList': linkLists[chan[0]], 'wfLib': wfLib[chan[0]]}
+
+    return awgData
+
+def merge_waveforms(linkLists, wfLib, chanList):
+    #chanlist: list of logical channels using the same physical channels
+    wfsum={} #dictionary with position:pulse sum
+    for count, chan in enumerate(chanList):
+        #if count>0:
+            #import pdb; pdb.set_trace()
+        curpos=0
+        linkList = linkLists[chan]
+        for kk in range(len(linkList)): #n. segments
+            for LL in linkList[kk]:
+                if isinstance(LL, LLWaveform): #need to check for timing, not done yet!
+                    wf = wfLib[chan][LL.key]
+                    if curpos in wfsum.keys():
+                        if len(wfsum[curpos])<len(wf): #pad with zero if different lengths
+                            wfsum[curpos] = np.array(wfsum[cuspos].tolist()+[0]*(len(wf)-len(wfsum[curpos])))
+                        elif len(wfsum)>len(wf):
+                            wf = np.array(wf.tolist()+[0]*(len(wfsum[curpos])-len(wf)))
+                        wfsum[curpos]+=wf #sum new waveforms
+                    else:
+                        wfsum[curpos]=wf 
+                    #delete all channels except one
+                    curpos+=LL.length
+        if(count>0):
+            del wfLib[chan]
+            del linkLists[chan]
+    #import pdb; pdb.set_trace()                
+    wfsum.update((x,y/len(chanList)) for x,y in wfsum.items())
+
+    #then replace original linkLists and wfs with the new ones
+    curpos=0
+    chan = chanList[0] #to start, replace only one of the channels
+    linkList = linkLists[chan] 
+    for kk in range(len(linkList)):
+        for LL in linkList[kk]:
+            if isinstance(LL,LLWaveform): 
+                wfnew = wfsum[curpos]
+                curpos+=LL.length
+                wfLib[chan][PatternUtils.hash_pulse(wfnew)]=wfnew
+                del wfLib[chan][LL.key] #delete original pulse
+                LL.key = PatternUtils.hash_pulse(wfnew) #update key
+                LL.length = len(wfnew) #update length
+    return linkLists, wfLib
+
+    #need to debug thoroughly
+
+
 
 def channel_delay_map(awgData):
     chanDelays = {}
