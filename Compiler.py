@@ -62,16 +62,16 @@ def setup_awg_channels(logicalChannels):
             awgdata[chan] = {'linkList': [], 'wfLib': {PatternUtils.TAZKey: np.zeros(1, dtype=np.complex)}}
     return data
 
-def map_logical_to_physical(linkLists, wfLib):
+def map_logical_to_physical_old(linkLists, wfLib):
     physicalChannels = {chan: channelLib[get_channel_label(chan)].physChan.label for chan in linkLists.keys()}
     awgData = setup_awg_channels(linkLists.keys())
     for chan in linkLists.keys():
         awgName, awgChan = physicalChannels[chan].split('-')
         awgData[awgName]['ch'+awgChan] = {'linkList': linkLists[chan], 'wfLib': wfLib[chan]}
 
-    return awgData
+    return awgData, linkLists, wfLib
 
-def map_logical_to_physical_mux(linkLists, wfLib):
+def map_logical_to_physical(linkLists, wfLib):
     physicalChannels = {chan: channelLib[get_channel_label(chan)].physChan.label for chan in linkLists.keys()}
     awgData = setup_awg_channels(linkLists.keys())   
     physChanDic={}
@@ -90,23 +90,21 @@ def map_logical_to_physical_mux(linkLists, wfLib):
         awgName, awgChan = physChan.split('-')
         awgData[awgName]['ch'+awgChan] = {'linkList': linkLists[chan[0]], 'wfLib': wfLib[chan[0]]}
 
-    return awgData
+    return awgData, linkLists, wfLib
 
 def merge_waveforms(linkLists, wfLib, chanList):
     #chanlist: list of logical channels using the same physical channels
     wfsum={} #dictionary with position:pulse sum
     for count, chan in enumerate(chanList):
-        #if count>0:
-            #import pdb; pdb.set_trace()
         curpos=0
         linkList = linkLists[chan]
         for kk in range(len(linkList)): #n. segments
             for LL in linkList[kk]:
-                if isinstance(LL, LLWaveform): #need to check for timing, not done yet!
+                if isinstance(LL, LLWaveform) and not LL.isTimeAmp: #need to check for timing, not done yet!
                     wf = wfLib[chan][LL.key]
                     if curpos in wfsum.keys():
                         if len(wfsum[curpos])<len(wf): #pad with zero if different lengths
-                            wfsum[curpos] = np.array(wfsum[cuspos].tolist()+[0]*(len(wf)-len(wfsum[curpos])))
+                            wfsum[curpos] = np.array(wfsum[curpos].tolist()+[0]*(len(wf)-len(wfsum[curpos])))
                         elif len(wfsum)>len(wf):
                             wf = np.array(wf.tolist()+[0]*(len(wfsum[curpos])-len(wf)))
                         wfsum[curpos]+=wf #sum new waveforms
@@ -117,7 +115,6 @@ def merge_waveforms(linkLists, wfLib, chanList):
         if(count>0):
             del wfLib[chan]
             del linkLists[chan]
-    #import pdb; pdb.set_trace()                
     wfsum.update((x,y/len(chanList)) for x,y in wfsum.items())
 
     #then replace original linkLists and wfs with the new ones
@@ -126,7 +123,7 @@ def merge_waveforms(linkLists, wfLib, chanList):
     linkList = linkLists[chan] 
     for kk in range(len(linkList)):
         for LL in linkList[kk]:
-            if isinstance(LL,LLWaveform): 
+            if isinstance(LL,LLWaveform) and not LL.isTimeAmp: 
                 wfnew = wfsum[curpos]
                 curpos+=LL.length
                 wfLib[chan][PatternUtils.hash_pulse(wfnew)]=wfnew
@@ -177,8 +174,7 @@ def compile_to_hardware(seqs, fileName, suffix='', alignMode="right"):
             linkLists[chan] = PatternUtils.apply_gating_constraints(chan.physChan, LL)
 
     # map logical to physical channels
-    awgData = map_logical_to_physical(linkLists, wfLib)
-
+    awgData, linkLists, wfLib = map_logical_to_physical(linkLists, wfLib)
     # construct channel delay map
     chanDelays = channel_delay_map(awgData)
 
@@ -221,7 +217,6 @@ def compile_to_hardware(seqs, fileName, suffix='', alignMode="right"):
         if not os.path.exists(targetFolder):
             os.mkdir(targetFolder)
         fullFileName = os.path.normpath(os.path.join(config.AWGDir, fileName + '-' + awgName + suffix + instrumentLib[awgName].seqFileExt))
-
         write_sequence_file(instrumentLib[awgName], data, fullFileName)
 
         fileList.append(fullFileName)
