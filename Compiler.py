@@ -105,17 +105,20 @@ def merge_waveforms(linkLists, wfLib, chanList):
                     if curpos in wfsum.keys():
                         if len(wfsum[curpos])<len(wf): #pad with zero if different lengths
                             wfsum[curpos] = np.array(wfsum[curpos].tolist()+[0]*(len(wf)-len(wfsum[curpos])))
-                        elif len(wfsum)>len(wf):
+                        elif len(wfsum[curpos])>len(wf):
                             wf = np.array(wf.tolist()+[0]*(len(wfsum[curpos])-len(wf)))
-                        wfsum[curpos]+=wf #sum new waveforms
+                        wfsum[curpos]=wfsum[curpos]+wf #sum new waveforms. Dictionaries can't do +=
+                    elif count==0:
+                        wfsum[curpos]=wf
                     else:
-                        wfsum[curpos]=wf 
+                        warn("Pulses to be combined are not simultaneous")
                     #delete all channels except one
                     curpos+=LL.length
         if(count>0):
             del wfLib[chan]
             del linkLists[chan]
-    wfsum.update((x,y/len(chanList)) for x,y in wfsum.items())
+    numChans = len(chanList)
+    wfsum.update((x,y/numChans) for x,y in wfsum.items())
 
     #then replace original linkLists and wfs with the new ones
     curpos=0
@@ -127,7 +130,8 @@ def merge_waveforms(linkLists, wfLib, chanList):
                 wfnew = wfsum[curpos]
                 curpos+=LL.length
                 wfLib[chan][PatternUtils.hash_pulse(wfnew)]=wfnew
-                del wfLib[chan][LL.key] #delete original pulse
+                if LL.key in wfLib[chan].keys(): 
+                    del wfLib[chan][LL.key] #delete original pulse
                 LL.key = PatternUtils.hash_pulse(wfnew) #update key
                 LL.length = len(wfnew) #update length
     return linkLists, wfLib
@@ -172,7 +176,6 @@ def compile_to_hardware(seqs, fileName, suffix='', alignMode="right"):
     for chan, LL in linkLists.items():
         if isinstance(chan, Channels.LogicalMarkerChannel):
             linkLists[chan] = PatternUtils.apply_gating_constraints(chan.physChan, LL)
-
     # map logical to physical channels
     awgData, linkLists, wfLib = map_logical_to_physical(linkLists, wfLib)
     # construct channel delay map
