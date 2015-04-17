@@ -188,6 +188,10 @@ def compile_to_hardware(seqs, fileName, suffix='', alignMode="right"):
     #Compile all the pulses/pulseblocks to linklists and waveform libraries
     linkLists, wfLib = compile_sequences(seqs, channels)
 
+    if not validate_linklist_channels(linkLists.keys()):
+        print "Compile to hardware failed"
+        return        
+
     # apply gating constraints
     for chan, LL in linkLists.items():
         if isinstance(chan, Channels.LogicalMarkerChannel):
@@ -585,3 +589,15 @@ def resolve_offsets(seqs):
                     assert targetidx[0] < len(seqs), "invalid target"
                 entry.target = label(seqs[targetidx[0]][targetidx[1]:])
 
+def validate_linklist_channels(linklistChannels):
+    errors = []
+    channels = channelLib.channelDict
+    for channel in linklistChannels:
+        if channel.label not in channels.keys() and channel.label not in errors:
+            print "{0} not found in channel library".format(repr(channel))
+            errors.append(channel.label)
+
+    if errors != []:
+        return False
+    return True
+        
