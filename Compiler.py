@@ -62,66 +62,58 @@ def setup_awg_channels(logicalChannels):
             awgdata[chan] = {'linkList': [], 'wfLib': {PatternUtils.TAZKey: np.zeros(1, dtype=np.complex)}}
     return data
 
-def map_logical_to_physical_old(linkLists, wfLib):
-    physicalChannels = {chan: channelLib[get_channel_label(chan)].physChan.label for chan in linkLists.keys()}
-    awgData = setup_awg_channels(linkLists.keys())
-    for chan in linkLists.keys():
-        awgName, awgChan = physicalChannels[chan].split('-')
-        awgData[awgName]['ch'+awgChan] = {'linkList': linkLists[chan], 'wfLib': wfLib[chan]}
-
-    return awgData, linkLists, wfLib
-
 def map_logical_to_physical(linkLists, wfLib):
-    physicalChannels = {chan: channelLib[get_channel_label(chan)].physChan.label for chan in linkLists.keys()}
     awgData = setup_awg_channels(linkLists.keys())   
-    physChanDic={}
-    #group logical channels which share the same physical channels
-    for chan in linkLists.keys():
-        if physicalChannels[chan]  in physChanDic.keys():
-            physChanDic[physicalChannels[chan]]+=[chan]
-        else:
-            physChanDic[physicalChannels[chan]]=[chan]
 
-    #loop through the physical channels
-    for physChan, chan in physChanDic.items():
-        if len(chan)>1:
-            linkLists, wfLib = merge_waveforms(linkLists, wfLib, chan)
+    # construct a mapping of physical channels to a list of logical channels
+    # (there may be more than one if multiple logical channels share a
+    # physical channel)
+    physicalChannels = {}
+    for logicalChan in linkLists.keys():
+        physChan = channelLib[get_channel_label(logicalChan)].physChan.label
+        physicalChannels[physChan] = physicalChannels.get(physChan, [])
+        physicalChannels[physChan].append(logicalChan)
+
+    # loop through the physical channels
+    for physChan, channels in physicalChannels.iteritems():
+        if len(channels)>1:
+            linkLists, wfLib = merge_waveforms(linkLists, wfLib, channels)
 
         awgName, awgChan = physChan.split('-')
-        awgData[awgName]['ch'+awgChan] = {'linkList': linkLists[chan[0]], 'wfLib': wfLib[chan[0]]}
+        awgData[awgName]['ch'+awgChan] = {'linkList': linkLists[channels[0]], 'wfLib': wfLib[channels[0]]}
 
-    return awgData, linkLists, wfLib
+    return awgData
 
 def merge_waveforms(linkLists, wfLib, chanList):
-    #chanlist: list of logical channels using the same physical channels
-    wfsum={} #dictionary with position:pulse sum
+    #chanlist: list of logical channels using the same physical channel
+    wfsum = {} #dictionary with position:pulse sum
     for count, chan in enumerate(chanList):
-        curpos=0
+        curpos = 0
         linkList = linkLists[chan]
-        for kk in range(len(linkList)): #n. segments
-            for LL in linkList[kk]:
+        for segment in linkList:
+            for LL in segment:
                 if isinstance(LL, LLWaveform) and not LL.isTimeAmp: #need to check for timing, not done yet!
                     wf = wfLib[chan][LL.key]
                     if curpos in wfsum.keys():
-                        if len(wfsum[curpos])<len(wf): #pad with zero if different lengths
+                        if len(wfsum[curpos]) < len(wf): #pad with zero if different lengths
                             wfsum[curpos] = np.array(wfsum[curpos].tolist()+[0]*(len(wf)-len(wfsum[curpos])))
-                        elif len(wfsum[curpos])>len(wf):
+                        elif len(wfsum[curpos]) > len(wf):
                             wf = np.array(wf.tolist()+[0]*(len(wfsum[curpos])-len(wf)))
-                        wfsum[curpos]=wfsum[curpos]+wf #sum new waveforms. Dictionaries can't do +=
-                    elif count==0:
-                        wfsum[curpos]=wf
+                        wfsum[curpos] = wfsum[curpos]+wf #sum new waveforms. Dictionaries can't do +=
+                    elif count == 0:
+                        wfsum[curpos] = wf
                     else:
                         warn("Pulses to be combined are not simultaneous")
                     #delete all channels except one
-                    curpos+=LL.length
-        if(count>0):
+                    curpos += LL.length
+        if (count > 0):
             del wfLib[chan]
             del linkLists[chan]
     numChans = len(chanList)
     wfsum.update((x,y/numChans) for x,y in wfsum.items())
 
     #then replace original linkLists and wfs with the new ones
-    curpos=0
+    curpos = 0
     chan = chanList[0] #to start, replace only one of the channels
     linkList = linkLists[chan] 
     for kk in range(len(linkList)):
@@ -135,10 +127,6 @@ def merge_waveforms(linkLists, wfLib, chanList):
                 LL.key = PatternUtils.hash_pulse(wfnew) #update key
                 LL.length = len(wfnew) #update length
     return linkLists, wfLib
-
-    #need to debug thoroughly
-
-
 
 def channel_delay_map(awgData):
     chanDelays = {}
@@ -177,7 +165,7 @@ def compile_to_hardware(seqs, fileName, suffix='', alignMode="right"):
         if isinstance(chan, Channels.LogicalMarkerChannel):
             linkLists[chan] = PatternUtils.apply_gating_constraints(chan.physChan, LL)
     # map logical to physical channels
-    awgData, linkLists, wfLib = map_logical_to_physical(linkLists, wfLib)
+    awgData = map_logical_to_physical(linkLists, wfLib)
     # construct channel delay map
     chanDelays = channel_delay_map(awgData)
 
