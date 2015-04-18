@@ -96,9 +96,9 @@ def merge_waveforms(linkLists, wfLib, chanList):
                     wf = wfLib[chan][LL.key]
                     if curpos in wfsum.keys():
                         if len(wfsum[curpos]) < len(wf): #pad with zero if different lengths
-                            wfsum[curpos] = np.array(wfsum[curpos].tolist()+[0]*(len(wf)-len(wfsum[curpos])))
+                            wfsum[curpos] = np.concatenate((wfsum[curpos]),zeros(len(wf)-len(wfsum[curpos])))
                         elif len(wfsum[curpos]) > len(wf):
-                            wf = np.array(wf.tolist()+[0]*(len(wfsum[curpos])-len(wf)))
+                            wf = np.concatenate((wf,zeros(len(wfsum[curpos])-len(wf))))
                         wfsum[curpos] = wfsum[curpos]+wf #sum new waveforms. Dictionaries can't do +=
                     elif count == 0:
                         wfsum[curpos] = wf
