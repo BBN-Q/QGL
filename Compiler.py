@@ -19,6 +19,7 @@ import numpy as np
 import os
 import collections
 import itertools
+import operator
 from warnings import warn
 from copy import copy
 
@@ -65,9 +66,9 @@ def setup_awg_channels(logicalChannels):
 def map_logical_to_physical(linkLists, wfLib):
     awgData = setup_awg_channels(linkLists.keys())   
 
-    # construct a mapping of physical channels to a list of logical channels
-    # (there may be more than one if multiple logical channels share a
-    # physical channel)
+    # construct a mapping of physical channels to lists of logical channels
+    # (there will be more than one logical channel if multiple logical
+    # channels share a physical channel)
     physicalChannels = {}
     for logicalChan in linkLists.keys():
         physChan = channelLib[get_channel_label(logicalChan)].physChan.label
@@ -75,58 +76,88 @@ def map_logical_to_physical(linkLists, wfLib):
         physicalChannels[physChan].append(logicalChan)
 
     # loop through the physical channels
-    for physChan, channels in physicalChannels.iteritems():
-        if len(channels)>1:
-            linkLists, wfLib = merge_waveforms(linkLists, wfLib, channels)
+    for physChan, channels in physicalChannels.items():
+        if len(channels) > 1:
+            chLL, chWf = merge_waveforms(linkLists, wfLib, channels)
+        else:
+            chLL = linklists[channels[0]]
+            chWf = wfLib[channels[0]]
 
         awgName, awgChan = physChan.split('-')
-        awgData[awgName]['ch'+awgChan] = {'linkList': linkLists[channels[0]], 'wfLib': wfLib[channels[0]]}
+        awgData[awgName]['ch'+awgChan] = {'linkList': chLL, 'wfLib': chWf}
 
     return awgData
 
-def merge_waveforms(linkLists, wfLib, chanList):
-    #chanlist: list of logical channels using the same physical channel
-    wfsum = {} #dictionary with position:pulse sum
-    for count, chan in enumerate(chanList):
-        curpos = 0
-        linkList = linkLists[chan]
-        for segment in linkList:
-            for LL in segment:
-                if isinstance(LL, LLWaveform) and not LL.isTimeAmp: #need to check for timing, not done yet!
-                    wf = wfLib[chan][LL.key]
-                    if curpos in wfsum.keys():
-                        if len(wfsum[curpos]) < len(wf): #pad with zero if different lengths
-                            wfsum[curpos] = np.concatenate((wfsum[curpos]),zeros(len(wf)-len(wfsum[curpos])))
-                        elif len(wfsum[curpos]) > len(wf):
-                            wf = np.concatenate((wf,zeros(len(wfsum[curpos])-len(wf))))
-                        wfsum[curpos] = wfsum[curpos]+wf #sum new waveforms. Dictionaries can't do +=
-                    elif count == 0:
-                        wfsum[curpos] = wf
-                    else:
-                        warn("Pulses to be combined are not simultaneous")
-                    #delete all channels except one
-                    curpos += LL.length
-        if (count > 0):
-            del wfLib[chan]
-            del linkLists[chan]
-    numChans = len(chanList)
-    wfsum.update((x,y/numChans) for x,y in wfsum.items())
+def merge_waveforms(linkLists, wfLib, channels):
+    chan = channels[0]
+    newLinkList = [[] for _ in len(linkLists[chan])]
+    newWfLib = {}
+    for segment in newLinkList:
+        entryIterators = [iter(linkLists[ch]) for ch in channels]
+        while True:
+            try:
+                entries = [e.next() for e in entryIterators]
+                # control flow on any channel should pass thru
+                if any(isinstance(e, ControlFlow.ControlInstruction) for e in entries):
+                    # for the moment require uniform control flow so that we
+                    # can pull from the first channel
+                    assert all(e == entries[0] for e in entries), "Non-uniform control flow"
+                    segment.append(entries[0])
+                    continue
+                # at this point we have at least one waveform instruction
+                # todo: what to do about pulse phase and frame update?? Just assert for now.
+                assert all(e.phase == entries[0].phase for e in entries), "Non-uniform pulse phase"
+                assert all(e.frameChange == entries[0].frameChange for e in entries), "Non-uniform frame change"
+                blocklength = pull_uniform_entries(entries, entryIterators, wfLib, channels)
+                newentry = copy(entries[0])
+                newentry.length = blocklength
+                # sum waveforms
+                wfnew = reduce(operator.add, [wfLib[e.key] for e in entries])
+                newentry.key = PatternUtils.hash_pulse(wfnew)
+                newWfLib[newentry.key] = wfnew
+                segment.append(newentry)
+            except StopIteration:
+                break
+    return newLinkList, newWfLib
 
-    #then replace original linkLists and wfs with the new ones
-    curpos = 0
-    chan = chanList[0] #to start, replace only one of the channels
-    linkList = linkLists[chan] 
-    for kk in range(len(linkList)):
-        for LL in linkList[kk]:
-            if isinstance(LL,LLWaveform) and not LL.isTimeAmp: 
-                wfnew = wfsum[curpos]
-                curpos+=LL.length
-                wfLib[chan][PatternUtils.hash_pulse(wfnew)]=wfnew
-                if LL.key in wfLib[chan].keys(): 
-                    del wfLib[chan][LL.key] #delete original pulse
-                LL.key = PatternUtils.hash_pulse(wfnew) #update key
-                LL.length = len(wfnew) #update length
-    return linkLists, wfLib
+def pull_uniform_entries(entries, entryIterators, wfLib, channels):
+    '''
+    Given entries from a set of logical channels (that share a physical
+    channel), pull enough entries from each channel so that the total pulse
+    length matches. e.g. if your entry data was like this:
+        ch1 : | A1 | B1 | C1 |      D1     | ...
+        ch2 : |      A2      |      B2     | ...
+
+    and initially entries = [A1, A2], we would construct
+        A1* = A1 + B1 + C1
+    and update entries such that entries = [A1*, A2].
+    The function returns the resulting block length.
+    '''
+    for ct in range(len(entries)):
+        while len(entries[ct]) < max(len(e) for e in entries):
+            # concatenate with following entry to make up the length difference
+            try:
+                nextentry = entryIterators[ct].next()
+            except StopIteration:
+                raise NameError("Could not find a uniform section of entries")
+            entries[ct] = concatenate_entries(entries[ct], nextentry, wfLib[channels[ct]])
+    return max(len(e) for e in entries)
+
+def concatenate_entries(entry1, entry2, wfLib):
+    newentry = copy(entry1)
+    # TA waveforms with the same amplitude can be merged with a just length update
+    # otherwise, new to concatenate the pulse shapes
+    if not (entry1.isTimeAmp and entry2.isTimeAmp and entry1.key == entry2.key and entry1.phase == entry2.phase and entry1.frameChange == 0):
+        # otherwise, need to expand pulses and stack them
+        wf = np.hstack((np.resize(wfLib[entry1.key], len(entry1)),
+                        np.exp(1j*(entry1.frameChange + entry2.phase - entry1.phase))*np.resize(wfLib[entry2.key], len(entry2))))
+        newentry.isTimeAmp = False
+        newentry.key = PatternUtils.hash_pulse(wf)
+        newentry.frameChange += entry2.frameChange
+        wfLib[newentry.key] = wf
+    newentry.repeat = 1
+    newentry.length = len(entry1) + len(entry2)
+    return newentry
 
 def channel_delay_map(awgData):
     chanDelays = {}
@@ -422,6 +453,9 @@ class LLWaveform(object):
             return labelPart + "LLWaveform-TA(" + TA + ", " + str(self.length) + ")"
         else:
             return labelPart + "LLWaveform(" + self.key[:6] + ", " + str(self.length) + ")"
+
+    def __len__(self):
+        return self.totLength
 
     @property
     def isZero(self):
