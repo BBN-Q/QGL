@@ -80,7 +80,7 @@ def map_logical_to_physical(linkLists, wfLib):
         if len(channels) > 1:
             chLL, chWf = merge_channels(linkLists, wfLib, channels)
         else:
-            chLL = linklists[channels[0]]
+            chLL = linkLists[channels[0]]
             chWf = wfLib[channels[0]]
 
         awgName, awgChan = physChan.split('-')
