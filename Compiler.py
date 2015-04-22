@@ -78,7 +78,7 @@ def map_logical_to_physical(linkLists, wfLib):
     # loop through the physical channels
     for physChan, channels in physicalChannels.items():
         if len(channels) > 1:
-            chLL, chWf = merge_waveforms(linkLists, wfLib, channels)
+            chLL, chWf = merge_channels(linkLists, wfLib, channels)
         else:
             chLL = linklists[channels[0]]
             chWf = wfLib[channels[0]]
@@ -88,7 +88,7 @@ def map_logical_to_physical(linkLists, wfLib):
 
     return awgData
 
-def merge_waveforms(linkLists, wfLib, channels):
+def merge_channels(linkLists, wfLib, channels):
     chan = channels[0]
     newLinkList = [[] for _ in len(linkLists[chan])]
     newWfLib = {}
@@ -146,11 +146,11 @@ def pull_uniform_entries(entries, entryIterators, wfLib, channels):
 def concatenate_entries(entry1, entry2, wfLib):
     newentry = copy(entry1)
     # TA waveforms with the same amplitude can be merged with a just length update
-    # otherwise, new to concatenate the pulse shapes
+    # otherwise, need to concatenate the pulse shapes
     if not (entry1.isTimeAmp and entry2.isTimeAmp and entry1.key == entry2.key and entry1.phase == entry2.phase and entry1.frameChange == 0):
         # otherwise, need to expand pulses and stack them
         wf = np.hstack((np.resize(wfLib[entry1.key], len(entry1)),
-                        np.exp(1j*(entry1.frameChange + entry2.phase - entry1.phase))*np.resize(wfLib[entry2.key], len(entry2))))
+                        np.resize(wfLib[entry2.key], len(entry2))))
         newentry.isTimeAmp = False
         newentry.key = PatternUtils.hash_pulse(wf)
         newentry.frameChange += entry2.frameChange
