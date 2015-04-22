@@ -314,7 +314,7 @@ def flat_top_gaussian(chan, riseFall, length, amp, phase=0):
     Utheta(chan, length=length, amp=amp, phase=phase, shapeFun=PulseShapes.square),
     Utheta(chan, length=riseFall, amp=amp, phase=phase, shapeFun=PulseShapes.gaussOff)]
 
-def echoCR(controlQ, CRchan, amp=1, phase=0, length = 200e-9, riseFall= 40e-9):
+def echoCR(controlQ, CRchan, amp=1, phase=0, length = 200e-9, riseFall= 20e-9):
     """
     An echoed CR pulse.  Used for calibration of CR gate
     """
@@ -322,7 +322,7 @@ def echoCR(controlQ, CRchan, amp=1, phase=0, length = 200e-9, riseFall= 40e-9):
     [X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi) + \
     [X(controlQ)]
 
-def ZX90_CR(controlQ, targetQ, CRchan, riseFall= 40e-9, **kwargs):
+def ZX90_CR(controlQ, targetQ, CRchan, riseFall= 20e-9, **kwargs):
     """
     A calibrated CR ZX90 pulse.  Uses piAmp for the pulse amplitude, phase for its phase (in deg).
     """
@@ -332,6 +332,22 @@ def ZX90_CR(controlQ, targetQ, CRchan, riseFall= 40e-9, **kwargs):
     return flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase) + \
     [X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi) + \
     [X(controlQ)]
+
+def CNOT_CRa(controlQ, targetQ, CRchan, riseFall= 20e-9, **kwargs):
+    """
+    CNOT made of a CR pulse and single qubit gates. Control and target are the same for CR and CNOT 
+    controlQ, targetQ: of the CR gate (= CNOT)
+    """
+    return ZX90_CR(controlQ, targetQ,CRchan,riseFall=riseFall) +\
+    [Z90(controlQ)*X90m(targetQ),X(controlQ)*Id(targetQ)]
+
+def CNOT_CRb(controlQ, targetQ, CRchan, riseFall= 20e-9, **kwargs):
+    """
+    CNOT made of a CR pulse and single qubit gates. Control and target are inverted for the CNOT
+    controlQ, targetQ: of the CR gate 
+    """
+    return [Y90(controlQ)*Y90(targetQ),X(controlQ)*X(targetQ)]+ZX90_CR(controlQ, targetQ,CRchan,riseFall=riseFall) +\
+    [X(controlQ)*X90m(targetQ),Z90(controlQ)*Y90(targetQ),Y90m(controlQ)*X(targetQ)]
 
 ## Measurement operators
 # @_memoize
