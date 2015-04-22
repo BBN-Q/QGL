@@ -90,10 +90,10 @@ def map_logical_to_physical(linkLists, wfLib):
 
 def merge_channels(linkLists, wfLib, channels):
     chan = channels[0]
-    newLinkList = [[] for _ in len(linkLists[chan])]
+    newLinkList = [[] for _ in range(len(linkLists[chan]))]
     newWfLib = {}
-    for segment in newLinkList:
-        entryIterators = [iter(linkLists[ch]) for ch in channels]
+    for ct, segment in enumerate(newLinkList):
+        entryIterators = [iter(linkLists[ch][ct]) for ch in channels]
         while True:
             try:
                 entries = [e.next() for e in entryIterators]
@@ -105,14 +105,11 @@ def merge_channels(linkLists, wfLib, channels):
                     segment.append(entries[0])
                     continue
                 # at this point we have at least one waveform instruction
-                # todo: what to do about pulse phase and frame update?? Just assert for now.
-                assert all(e.phase == entries[0].phase for e in entries), "Non-uniform pulse phase"
-                assert all(e.frameChange == entries[0].frameChange for e in entries), "Non-uniform frame change"
                 blocklength = pull_uniform_entries(entries, entryIterators, wfLib, channels)
                 newentry = copy(entries[0])
                 newentry.length = blocklength
                 # sum waveforms
-                wfnew = reduce(operator.add, [wfLib[e.key] for e in entries])
+                wfnew = reduce(operator.add, [wfLib[channel][e.key] for channel, e in zip(channels, entries)])
                 newentry.key = PatternUtils.hash_pulse(wfnew)
                 newWfLib[newentry.key] = wfnew
                 segment.append(newentry)
