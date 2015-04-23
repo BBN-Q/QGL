@@ -339,7 +339,7 @@ def CNOT_CRa(controlQ, targetQ, CRchan, riseFall= 20e-9, **kwargs):
     controlQ, targetQ: of the CR gate (= CNOT)
     """
     return ZX90_CR(controlQ, targetQ,CRchan,riseFall=riseFall) +\
-    [Z90(controlQ)*X90m(targetQ),X(controlQ)*Id(targetQ)]
+    [x(controlQ)*X90m(targetQ),Z90(controlQ),X(controlQ)]
 
 def CNOT_CRb(controlQ, targetQ, CRchan, riseFall= 20e-9, **kwargs):
     """
