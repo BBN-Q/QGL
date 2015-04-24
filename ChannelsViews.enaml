@@ -69,7 +69,10 @@ enamldef PhysicalMarkerChannelView(GroupBox): curView:
             items << instrumentLib.AWGs.displayList
             index << instrumentLib.AWGs.displayList.index(chan.AWG.label) if (chan.AWG.label in instrumentLib.AWGs.displayList) else -1
             index ::
-                chan.AWG = instrumentLib[selected_item]
+                if selected_item != '':
+                    chan.AWG = instrumentLib[selected_item]
+                else:
+                    chan.AWG.label = ''
 
 enamldef PhysicalQuadratureChannelView(GroupBox): curView:
     attr chan
@@ -83,14 +86,20 @@ enamldef PhysicalQuadratureChannelView(GroupBox): curView:
             items << instrumentLib.AWGs.displayList
             index << instrumentLib.AWGs.displayList.index(chan.AWG.label) if (chan.AWG.label in instrumentLib.AWGs.displayList) else -1
             index ::
-                chan.AWG = instrumentLib[selected_item]
+                if selected_item != '':
+                    chan.AWG = instrumentLib[selected_item]
+                else:
+                    chan.AWG.label = ''
         Label:
             text = 'Source'
         ComboBox:
             items << instrumentLib.sources.displayList
             index << instrumentLib.sources.displayList.index(chan.generator.label) if (chan.generator and chan.generator.label in instrumentLib.sources.displayList) else -1
             index ::
-                chan.generator = instrumentLib[selected_item]
+                if selected_item != '':
+                    chan.generator = instrumentLib[selected_item]
+                else:
+                    chan.generator.label = ''
         Label:
             text = 'Delay (s)'
         FloatField:
