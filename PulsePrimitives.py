@@ -339,7 +339,7 @@ def CNOT_CRa(controlQ, targetQ, CRchan, riseFall= 20e-9, **kwargs):
     controlQ, targetQ: of the CR gate (= CNOT)
     """
     return ZX90_CR(controlQ, targetQ,CRchan,riseFall=riseFall) +\
-    [x(controlQ)*X90m(targetQ),Z90(controlQ),X(controlQ)]
+    [Z90m(controlQ)*X90m(targetQ)]
 
 def CNOT_CRb(controlQ, targetQ, CRchan, riseFall= 20e-9, **kwargs):
     """
@@ -347,7 +347,7 @@ def CNOT_CRb(controlQ, targetQ, CRchan, riseFall= 20e-9, **kwargs):
     controlQ, targetQ: of the CR gate 
     """
     return [Y90(controlQ)*Y90(targetQ),X(controlQ)*X(targetQ)]+ZX90_CR(controlQ, targetQ,CRchan,riseFall=riseFall) +\
-    [X(controlQ)*X90m(targetQ),Z90(controlQ)*Y90(targetQ),Y90m(controlQ)*X(targetQ)]
+    [Z90(controlQ), Y90(controlQ)*X90(targetQ),X(controlQ)*Y90m(targetQ)]
 
 ## Measurement operators
 # @_memoize
