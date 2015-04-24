@@ -299,6 +299,17 @@ class ChannelLibrary(Atom):
                             if paramName not in ignoreList:
                                 setattr(self.channelDict[chName], paramName, chParams[paramName])
 
+    def on_awg_change(self, oldName, newName):
+        print "Change AWG", oldName, newName
+        for chName in self.channelDict:
+            if (isinstance(self.channelDict[chName], PhysicalMarkerChannel) or
+               isinstance(self.channelDict[chName], PhysicalQuadratureChannel)):
+                awgName, awgChannel = chName.split('-')
+                if awgName == oldName:
+                    newLabel = "{0}-{1}".format(newName,awgChannel)
+                    print "Changing {0} to {1}".format(chName, newLabel)
+                    self.physicalChannelManager.name_changed(chName, newLabel)
+
 
 NewLogicalChannelList = [Qubit, LogicalMarkerChannel, Measurement]
 NewPhysicalChannelList = [PhysicalMarkerChannel, PhysicalQuadratureChannel]
