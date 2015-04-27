@@ -15,6 +15,12 @@ import QGL.PulseShapes
 from types import FunctionType
 psList = [f for f in QGL.PulseShapes.__dict__.values() if isinstance(f, FunctionType)]
 
+def setIfNotEmpty(lvalue, library, item):
+    if item != '':
+        lvalue = library[item]
+    else:
+        lvalue.label = ''
+
 enamldef LogicalMarkerChannelView(GroupBox): curView:
     attr chan
     attr channelLib
@@ -69,10 +75,7 @@ enamldef PhysicalMarkerChannelView(GroupBox): curView:
             items << instrumentLib.AWGs.displayList
             index << instrumentLib.AWGs.displayList.index(chan.AWG.label) if (chan.AWG.label in instrumentLib.AWGs.displayList) else -1
             index ::
-                if selected_item != '':
-                    chan.AWG = instrumentLib[selected_item]
-                else:
-                    chan.AWG.label = ''
+                setIfNotEmpty(chan.AWG, instrumentLib, selected_item)
 
 enamldef PhysicalQuadratureChannelView(GroupBox): curView:
     attr chan
@@ -86,20 +89,14 @@ enamldef PhysicalQuadratureChannelView(GroupBox): curView:
             items << instrumentLib.AWGs.displayList
             index << instrumentLib.AWGs.displayList.index(chan.AWG.label) if (chan.AWG.label in instrumentLib.AWGs.displayList) else -1
             index ::
-                if selected_item != '':
-                    chan.AWG = instrumentLib[selected_item]
-                else:
-                    chan.AWG.label = ''
+                setIfNotEmpty(chan.AWG, instrumentLib, selected_item)
         Label:
             text = 'Source'
         ComboBox:
             items << instrumentLib.sources.displayList
             index << instrumentLib.sources.displayList.index(chan.generator.label) if (chan.generator and chan.generator.label in instrumentLib.sources.displayList) else -1
             index ::
-                if selected_item != '':
-                    chan.generator = instrumentLib[selected_item]
-                else:
-                    chan.generator.label = ''
+                setIfNotEmpty(chan.generator, instrumentLib, selected_item)
         Label:
             text = 'Delay (s)'
         FloatField:
@@ -144,20 +141,14 @@ enamldef LogicalQuadratureView(GroupBox): curView:
             items << channelLib.physicalChannelManager.displayList
             index << channelLib.physicalChannelManager.displayList.index(chan.physChan.label) if (chan.physChan and chan.physChan.label in channelLib.physicalChannelManager.displayList) else -1
             index ::
-                if selected_item != '':
-                    chan.physChan = channelLib[selected_item]
-                else:
-                    chan.physChan.label = ''
+                setIfNotEmpty(chan.physChan, channelLib, selected_item)
         Label:
             text = 'Gate Chan.'
         ComboBox:
             items << channelLib.logicalChannelManager.displayList
             index << channelLib.logicalChannelManager.displayList.index(chan.gateChan.label) if (chan.gateChan and chan.gateChan.label in channelLib.logicalChannelManager.displayList) else -1
             index ::
-                if selected_item != '':
-                    chan.gateChan = channelLib[selected_item]
-                else:
-                    chan.gateChan.label = ''
+                setIfNotEmpty(chan.gateChan, channelLib, selected_item)
         Looper:
             iterable << sorted(chan.pulseParams.keys())
             Label:
