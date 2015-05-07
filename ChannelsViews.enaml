@@ -15,6 +15,8 @@ import QGL.PulseShapes
 from types import FunctionType
 psList = [f for f in QGL.PulseShapes.__dict__.values() if isinstance(f, FunctionType)]
 
+from ExpSettingsVal import is_valid_awg_channel_name
+
 def setIfNotEmpty(lvalue, library, item):
     if item != '':
         lvalue = library[item]
@@ -202,6 +204,7 @@ enamldef ChannelLibraryView(Container): channelLibCont:
                 viewMap = ChannelViewMap
                 viewkwargs = {'instrumentLib': instrumentLib, 
                                 'channelLib': channelLib}
+                labelValidator = is_valid_awg_channel_name
                 # newClassList = QGL.Channels.NewPhysicalChannelList
 
 enamldef ChannelLibraryWindow(Window): channelLibWin:
