@@ -304,7 +304,7 @@ class ChannelLibrary(Atom):
         for chName in self.channelDict:
             if (isinstance(self.channelDict[chName], PhysicalMarkerChannel) or
                isinstance(self.channelDict[chName], PhysicalQuadratureChannel)):
-                awgName, awgChannel = chName.split('-')
+                awgName, awgChannel = chName.rsplit('-',1)
                 if awgName == oldName:
                     newLabel = "{0}-{1}".format(newName,awgChannel)
                     print "Changing {0} to {1}".format(chName, newLabel)
