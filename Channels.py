@@ -36,6 +36,8 @@ from atom.api import Atom, Str, Unicode, Float, Instance, Property, cached_prope
 
 import FileWatcher
 
+import importlib
+
 from copy import deepcopy
 
 class Channel(Atom):
@@ -272,8 +274,7 @@ class ChannelLibrary(Atom):
         Helps avoid both stale references from replacing whole channel objects (as in load_from_library)
         and the overhead of recreating everything.
         """
-        # ignored or specially handled parameters
-        ignoreList = ['pulseParams', 'physChan', 'gateChan', 'AWG', 'generator', 'x__class__', 'x__module__']
+        
         if self.libFile:
             with open(self.libFile, 'r') as FID:
                 try:
@@ -281,23 +282,45 @@ class ChannelLibrary(Atom):
                 except ValueError:
                     print('Failed to update channel library from file. Probably is just half-written.')
                     return
+
+                # update & insert
                 for chName, chParams in allParams.items():
                     if chName in self.channelDict:
-                        if 'pulseParams' in chParams.keys():
-                            paramDict = {k.encode('ascii'):v for k,v in chParams['pulseParams'].items()}
-                            shapeFunName = paramDict.pop('shapeFun', None)
-                            if shapeFunName:
-                                paramDict['shapeFun'] = getattr(PulseShapes, shapeFunName)
-                            self.channelDict[chName].pulseParams = paramDict
-                        if 'physChan' in chParams.keys():
-                            self.channelDict[chName].physChan = self.channelDict[chParams['physChan']] if chParams['physChan'] in self.channelDict else None
-                        if 'gateChan' in chParams.keys():
-                            self.channelDict[chName].gateChan = self.channelDict[chParams['gateChan']] if chParams['gateChan'] in self.channelDict else None
-                        # TODO: how do we follow changes to selected AWG or generator/source?
-                        
-                        for paramName in chParams:
-                            if paramName not in ignoreList:
-                                setattr(self.channelDict[chName], paramName, chParams[paramName])
+                        self.update_from_json(chName, chParams)
+                    else:
+                        # load class from name and update from json
+                        className = chParams['x__class__']
+                        moduleName = chParams['x__module__']
+
+                        mod = importlib.import_module(moduleName)
+                        cls = getattr(mod, className)
+                        self.channelDict[chName]  = cls()
+                        self.update_from_json(chName, chParams)
+
+                # remove
+                for chName in self.channelDict.keys():
+                    if chName not in allParams:
+                        del self.channelDict[chName]
+
+
+    def update_from_json(self,chName, chParams):
+        # ignored or specially handled parameters
+        ignoreList = ['pulseParams', 'physChan', 'gateChan', 'AWG', 'generator', 'x__class__', 'x__module__']
+        if 'pulseParams' in chParams.keys():
+            paramDict = {k.encode('ascii'):v for k,v in chParams['pulseParams'].items()}
+            shapeFunName = paramDict.pop('shapeFun', None)
+            if shapeFunName:
+                paramDict['shapeFun'] = getattr(PulseShapes, shapeFunName)
+            self.channelDict[chName].pulseParams = paramDict
+        if 'physChan' in chParams.keys():
+            self.channelDict[chName].physChan = self.channelDict[chParams['physChan']] if chParams['physChan'] in self.channelDict else None
+        if 'gateChan' in chParams.keys():
+            self.channelDict[chName].gateChan = self.channelDict[chParams['gateChan']] if chParams['gateChan'] in self.channelDict else None
+        # TODO: how do we follow changes to selected AWG or generator/source?
+        
+        for paramName in chParams:
+            if paramName not in ignoreList:
+                setattr(self.channelDict[chName], paramName, chParams[paramName])
 
     def on_awg_change(self, oldName, newName):
         print "Change AWG", oldName, newName
