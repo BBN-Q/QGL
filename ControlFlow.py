@@ -101,7 +101,7 @@ def Wait(kind="TRIG"):
 	if kind == "TRIG":
 		return ControlInstruction("WAIT")
 	else:
-		return ControlInstruction("WAITCMP")
+		return ControlInstruction("LOADCMP")
 qwait = Wait
 
 def Sync():
