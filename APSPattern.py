@@ -301,7 +301,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 	#Step through the all the miniLL's together
 	for miniLL_IQ, miniLL_m in zip(IQLL, markerLL):
 		#Find the cummulative length for each entry of IQ channel
-		timePts = np.cumsum([0] + [entry.totLength for entry in miniLL_IQ])
+		timePts = np.cumsum([0] + [len(entry) for entry in miniLL_IQ])
 
 		#Find the switching points of the marker channels
 		switchPts = []
@@ -311,7 +311,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 			if hasattr(entry, 'key') and prevKey != entry.key:
 				switchPts.append(t)
 				prevKey = entry.key
-			t += entry.totLength
+			t += len(entry)
 
 		# Push on an extra switch point if we have an odd number of switches (to maintain state)
 		if len(switchPts) % 2 == 1:
@@ -369,7 +369,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 					miniLL_IQ[curIQIdx].markerDelay2 = None
 					setattr(miniLL_IQ[curIQIdx], markerAttr, ADDRESS_UNIT)
 					#Recalculate the timePts
-					timePts = np.cumsum([0] + [entry.totLength for entry in miniLL_IQ])
+					timePts = np.cumsum([0] + [len(entry) for entry in miniLL_IQ])
 				else:
 					setattr(miniLL_IQ[curIQIdx], markerAttr, 0)
 					print("Had to push marker blip out to start of next entry.")

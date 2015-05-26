@@ -267,7 +267,7 @@ def timestamp_entries(seq):
 	t = 0
 	for ct in range(len(seq)):
 		seq[ct].startTime = t
-		t += seq[ct].totLength
+		t += len(seq[ct])
 
 def synchronize_clocks(seqs):
 	# SYNC instructions "reset the clock", so when we encounter one, we need to
@@ -281,7 +281,7 @@ def synchronize_clocks(seqs):
 		step = [seq[ct] for seq in syncInstructions]
 		endTime = max((s.startTime + shift for s, shift in zip(step, localShift)))
 		for ct, s in enumerate(step):
-			s.totLength = endTime - (s.startTime + localShift[ct])
+			s.length = endTime - (s.startTime + localShift[ct])
 			# localShift[ct] += endTime - (s.startTime + localShift[ct])
 			# the += and the last term cancel, therefore:
 			localShift[ct] = endTime - s.startTime

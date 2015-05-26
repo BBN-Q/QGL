@@ -455,15 +455,11 @@ class LLWaveform(object):
             return labelPart + "LLWaveform(" + self.key[:6] + ", " + str(self.length) + ")"
 
     def __len__(self):
-        return self.totLength
+        return self.length*self.repeat
 
     @property
     def isZero(self):
         return self.key == PatternUtils.TAZKey
-
-    @property
-    def totLength(self):
-        return self.length*self.repeat
 
 def create_padding_LL(length=0):
     tmpLL = LLWaveform()

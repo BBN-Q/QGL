@@ -69,7 +69,7 @@ class ControlInstruction(object):
 		self.target = target #refactor into payload field??
 		self.value = value
 		self.label = None
-		self.totLength = 0
+		self.length = 0
 
 	def __repr__(self):
 		return self.__str__()
@@ -94,9 +94,8 @@ class ControlInstruction(object):
 	def promote(self):
 		return self
 
-	@property
-	def length(self):
-		return 0
+	def __len__(self):
+		return self.length
 
 class Goto(ControlInstruction):
 	def __init__(self, target):
