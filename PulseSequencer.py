@@ -20,7 +20,6 @@ from copy import copy
 import json
 import numpy as np
 import bokeh.plotting as bk
-from Plotting import in_ipynb
 
 class Pulse(object):
     '''
@@ -205,8 +204,7 @@ class PulseBlock(object):
         return [channel.name for channel in self.pulses.keys()]
 
     #The maximum number of points needed for any channel on this block
-    @property
-    def maxPts(self):
+    def __len__(self):
         return max([p.length for p in self.pulses.values()])
 
 def align(pulseBlock, mode="center"):
