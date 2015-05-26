@@ -1,6 +1,7 @@
 from BlockLabel import label, endlabel
+from PulseSequencer import Pulse
 from functools import wraps
-
+from mm import multimethod
 
 ## QGL control-flow statements ##
 
@@ -30,7 +31,13 @@ def qfunction(func):
 		return [Call(target[args])], seq[args] + [Return()] # TODO: update me to only return seq[args] on first call
 	return crfunc
 
-def qrepeat(n, seq):
+@multimethod(int, Pulse)
+def repeat(n, p):
+    p.repeat = round(n)
+    return p
+
+@multimethod(int, list)
+def repeat(n, seq):
 	if n < 1:
 		return None
 	elif n == 1:
@@ -40,9 +47,9 @@ def qrepeat(n, seq):
 		return [LoadRepeat(n)] + seq + [Repeat(label(seq))]
 
 # utility to repeat all sequences the same number of times
-def qrepeatall(n, seqs):
+def repeatall(n, seqs):
 	for ct in range(len(seqs)):
-		seqs[ct] = qrepeat(n, seqs[ct])
+		seqs[ct] = repeat(n, seqs[ct])
 	return seqs
 
 def qwait(kind="TRIG"):
