@@ -45,12 +45,21 @@ def qrepeatall(n, seqs):
 		seqs[ct] = qrepeat(n, seqs[ct])
 	return seqs
 
+def qwait(kind="TRIG"):
+	if kind == "TRIG":
+		return Wait()
+	else:
+		return LoadCmp()
+
+def qsync():
+	return Sync()
+
 ## Sequencer primitives ##
 
 class ControlInstruction(object):
 	def __init__(self, instruction, target=None, value=None):
 		self.instruction = instruction
-		self.target = target
+		self.target = target #refactor into payload field??
 		self.value = value
 		self.label = None
 		self.totLength = 0
@@ -82,31 +91,37 @@ class ControlInstruction(object):
 	def length(self):
 		return 0
 
-def Goto(target):
-	return ControlInstruction("GOTO", target=target)
+class Goto(ControlInstruction):
+	def __init__(self, target):
+		super(Goto, self).__init__("GOTO", target=target)
 
-def Call(target):
-	return ControlInstruction("CALL", target=target)
+class Call(ControlInstruction):
+	def __init__(self, target):
+		super(Call, self).__init__("CALL", target=target)
 
-def Return():
-	return ControlInstruction("RETURN")
+class Return(ControlInstruction):
+	def __init__(self):
+		super(Return, self).__init__("RETURN")
 
-def LoadRepeat(n):
-	return ControlInstruction("LOAD", value=n)
+class LoadRepeat(ControlInstruction):
+	def __init__(self, n):
+		super(LoadRepeat, self).__init__("LOAD", value=n)
 
-def Repeat(target):
-	return ControlInstruction("REPEAT", target=target)
+class Repeat(ControlInstruction):
+	def __init__(self, target):
+		super(Repeat, self).__init__("REPEAT", target=target)
 
-def Wait(kind="TRIG"):
-	if kind == "TRIG":
-		return ControlInstruction("WAIT")
-	else:
-		return ControlInstruction("LOADCMP")
-qwait = Wait
+class Wait(ControlInstruction):
+	def __init__(self):
+		super(Wait, self).__init__("WAIT")
 
-def Sync():
-	return ControlInstruction("SYNC")
-qsync = Sync
+class LoadCmp(ControlInstruction):
+	def __init__(self):
+		super(LoadCmp, self).__init__("LOADCMP")
+
+class Sync(ControlInstruction):
+	def __init__(self):
+		super(Sync, self).__init__("SYNC")
 
 class ComparisonInstruction(ControlInstruction):
 	def __init__(self, mask, operator):

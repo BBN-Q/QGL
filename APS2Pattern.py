@@ -272,7 +272,7 @@ def timestamp_entries(seq):
 def synchronize_clocks(seqs):
 	# SYNC instructions "reset the clock", so when we encounter one, we need to
 	# synchronize the accumulated time to the largest value on any channel
-	syncInstructions = [filter(lambda s: isinstance(s, ControlFlow.ControlInstruction) and s.instruction == 'SYNC', seq) for seq in seqs if seq]
+	syncInstructions = [filter(lambda s: isinstance(s, ControlFlow.Sync), seq) for seq in seqs if seq]
 
 	# add length to SYNC instructions to make accumulated time match at end of SYNCs
 	# keep running tally of how much each channel has been shifted so far
