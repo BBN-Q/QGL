@@ -300,11 +300,11 @@ def compile_sequence(seq, wfLib={}, channels=None):
             for chan in channels:
                 logicalLLs[chan] += [copy(block)]
             continue
-        # Align the block
         # drop length 0 blocks but push frame change onto next non-zero entry
         if len(block) == 0:
             carriedPhase = {ch: carriedPhase[ch]+block.pulses[ch].frameChange for ch in channels}
             continue
+        # Align the block
         for chan in channels:
             # add aligned LL entry(ies) (if the block contains a composite pulse, may get back multiple waveforms and LL entries)
             wfs, LLentries = align(block.label, block.pulses[chan], len(block), block.alignment)

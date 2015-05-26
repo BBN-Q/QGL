@@ -29,10 +29,11 @@ class Pulse(object):
         shape - numpy array pulse shape
         frameChange - accumulated phase from the pulse
     '''
-    def __init__(self, label, qubits, shape, phase, frameChange):
+    def __init__(self, label, qubits, shapeFun, shapeParams, phase, frameChange):
         self.label = label
         self.qubits = qubits
-        self.shape = shape.astype(np.complex)
+        self.shapeFun = shapeFun
+        self.shapeParams = shapeParams
         self.phase = phase
         self.frameChange = frameChange
         self.isTimeAmp = False
@@ -54,9 +55,14 @@ class Pulse(object):
             raise NameError("Can only concatenate pulses acting on the same channel")
         return CompositePulse([self, other])
 
-    # unary negation inverts the pulse shape and frame change
+    # unary negation inverts the pulse amplitude and frame change
     def __neg__(self):
-        return Pulse(self.label, self.qubits, -self.shape, self.phase, -self.frameChange)
+        shapeParams = copy(self.shapeParams)
+        if hasattr(shapeParams, 'amp'):
+            shapeParams.amp = -shapeParams.amp
+        else:
+            raise NameError("Can only negate a pulse with an 'amp' shape parameter")
+        return Pulse(self.label, self.qubits, self.shapeFun, shapeParams, self.phase, -self.frameChange)
 
     def __mul__(self, other):
         return self.promote()*other.promote()
