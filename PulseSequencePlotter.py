@@ -122,10 +122,10 @@ def plot_pulse_files(fileNames, firstSeqNum=0):
 
         #widgets.interact(update_plot, seqNum=(1, len(wfs[AWGName]["ch1"])), div=widgets.HTMLWidget(value=notebook_div(figH)))
 
-        slider = widgets.IntSliderWidget(value=firstSeqNum+1, min=1, max=len(wfs[AWGName]["ch1"]), step=1, description="Sequence (of {}):".format(len(seqs)))
+        slider = widgets.IntSlider(value=firstSeqNum+1, min=1, max=len(wfs[AWGName]["ch1"]), step=1, description="Sequence (of {}):".format(len(seqs)))
         slider.on_trait_change(update_plot, 'value')
-        plotBox = widgets.HTMLWidget(value=notebook_div(figH))
-        appBox = widgets.ContainerWidget()
+        plotBox = widgets.HTML(value=notebook_div(figH))
+        appBox = widgets.Box()
         appBox.children = [slider, plotBox]
         display(appBox)
 
