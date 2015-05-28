@@ -67,8 +67,8 @@ def plot_pulse_files(fileNames, firstSeqNum=0):
     '''
     plot_pulse_files(fileNames, firstSeqNum=0)
 
-    Helper function to plot a list of AWG files.  In an iPython notebook the plots will be in line with 
-    dynamic updating.  For iPython consoles a static html file will be generated with the firstSeqNum. 
+    Helper function to plot a list of AWG files.  In an iPython notebook the plots will be in line with
+    dynamic updating.  For iPython consoles a static html file will be generated with the firstSeqNum.
     '''
     #If we only go one filename turn it into a list
     if isinstance(fileNames, str):
@@ -78,9 +78,9 @@ def plot_pulse_files(fileNames, firstSeqNum=0):
     dataDict = {}
     lineNames = []
     title = ""
-    
+
     for fileName in sorted(fileNames):
-        
+
         #Assume a naming convention path/to/file/SequenceName-AWGName.h5
         AWGName = (os.path.split(os.path.splitext(fileName)[0])[1]).split('-')[1]
         #Strip any _ suffix
@@ -90,19 +90,19 @@ def plot_pulse_files(fileNames, firstSeqNum=0):
         title += os.path.split(os.path.splitext(fileName)[0])[1] + "; "
 
         wfs[AWGName] = read_sequence_file(Libraries.instrumentLib[AWGName], fileName)
-    
+
         for (k,seqs) in sorted(wfs[AWGName].items()):
             if not all_zero_seqs(seqs):
                 lineNames.append(AWGName + '-' + k)
                 dataDict[lineNames[-1] + "_x"] = np.arange(len(seqs[firstSeqNum]))
                 dataDict[lineNames[-1]] = seqs[firstSeqNum] + 2*(len(lineNames)-1)
-                
+
     #Remove trailing semicolon from title
     title = title[:-2]
-        
+
     source = bk.ColumnDataSource(data=dataDict)
     figH = bk.figure(title=title, plot_width=1000, y_range=(-1,len(dataDict)+1))
-    
+
     #Colorbrewer2 qualitative Set3 (http://colorbrewer2.org)
     colours = ["#8dd3c7", "#ffffb3", "#bebada", "#fb8072", "#80b1d3", "#fdb462",
                  "#b3de69", "#fccde5", "#d9d9d9", "#bc80bd", "#ccebc5", "#ffed6f"]
@@ -119,9 +119,9 @@ def plot_pulse_files(fileNames, firstSeqNum=0):
                 source.data[k+"_x"] = np.arange(len(wfs[AWGName][chName][seqNum-1]))
                 source.data[k] = wfs[AWGName][chName][seqNum-1] + 2*ct
             source.push_notebook()
-                
+
         #widgets.interact(update_plot, seqNum=(1, len(wfs[AWGName]["ch1"])), div=widgets.HTMLWidget(value=notebook_div(figH)))
-        
+
         slider = widgets.IntSliderWidget(value=firstSeqNum+1, min=1, max=len(wfs[AWGName]["ch1"]), step=1, description="Sequence (of {}):".format(len(seqs)))
         slider.on_trait_change(update_plot, 'value')
         plotBox = widgets.HTMLWidget(value=notebook_div(figH))

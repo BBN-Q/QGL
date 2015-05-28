@@ -21,20 +21,24 @@ limitations under the License.
 '''
 
 import os.path, uuid, tempfile
-from bokeh.plotting import output_notebook, output_file
+import bokeh.plotting as bk
+
+#Effective global of whether we are interactive plottinn in a notebook or to a
+#static html file
+_in_ipynb = False
+
+def output_notebook():
+    global _in_ipynb
+    bk.output_notebook()
+    _in_ipynb = True
+
+def output_file():
+    global _in_ipynb
+    bk.output_file(os.path.join(tempfile.gettempdir(), str(uuid.uuid4()) + ".html"))
+    _in_ipynb = False
 
 def in_ipynb():
-    try:
-        cfg = get_ipython().config 
-        if cfg['IPKernelApp']['parent_appname'] == 'ipython-notebook':
-            return True
-        else:
-            return False
-    except NameError:
-        return False
+    return _in_ipynb
 
-#Only load if in notebook
-if in_ipynb():
-    output_notebook()
-else:
-    output_file(os.path.join(tempfile.gettempdir(), str(uuid.uuid4()) + ".html"))
+#Default to output_file
+output_file()
