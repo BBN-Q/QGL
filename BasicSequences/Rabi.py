@@ -7,12 +7,12 @@ from helpers import create_cal_seqs
 
 def RabiAmp(qubit, amps, phase=0, showPlot=False):
 	"""
-	
+
 	Variable amplitude Rabi nutation experiment.
 
 	Parameters
 	----------
-	qubit : logical channel to implement sequence (LogicalChannel) 
+	qubit : logical channel to implement sequence (LogicalChannel)
 	amps : pulse amplitudes to sweep over (iterable)
 	phase : phase of the pulse (radians)
 	showPlot : whether to plot (boolean)
@@ -28,7 +28,7 @@ def RabiAmp(qubit, amps, phase=0, showPlot=False):
 
 	if showPlot:
 		plot_pulse_files(fileNames)
-	
+
 def RabiWidth(qubit, widths, amp=1, phase=0, shapeFun=QGL.PulseShapes.tanh, showPlot=False):
 	"""
 
@@ -36,7 +36,7 @@ def RabiWidth(qubit, widths, amp=1, phase=0, shapeFun=QGL.PulseShapes.tanh, show
 
 	Parameters
 	----------
-	qubit : logical channel to implement sequence (LogicalChannel) 
+	qubit : logical channel to implement sequence (LogicalChannel)
 	widths : pulse widths to sweep over (iterable)
 	phase : phase of the pulse (radians, default = 0)
 	shapeFun : shape of pulse (function, default = PulseShapes.tanh)
@@ -53,17 +53,17 @@ def RabiWidth(qubit, widths, amp=1, phase=0, shapeFun=QGL.PulseShapes.tanh, show
 
 	if showPlot:
 		plot_pulse_files(fileNames)
-	
+
 
 def RabiAmp_TwoQubits(qubit1, qubit2, amps, amps2, phase=0, showPlot=False, meas=[1,1],docals=False):
 	"""
-	
+
 	Variable amplitude Rabi nutation experiment for up to two qubits, with measurement on both. Need to be extended
 	to arbitrary number of qubits
 
 	Parameters
 	----------
-	qubit : logical channel to implement sequence (LogicalChannel) 
+	qubit : logical channel to implement sequence (LogicalChannel)
 	amps : pulse amplitudes to sweep over for qubit 1(iterable)
 	amps2: pulse amplitudes to sweep over for qubit 2(iterable, same index)
 	phase : phase of the pulses (radians)
@@ -89,12 +89,12 @@ def RabiAmp_TwoQubits(qubit1, qubit2, amps, amps2, phase=0, showPlot=False, meas
 
 def RabiAmpPi(qubit, mqubit, amps, phase=0, showPlot=False):
 	"""
-	
+
 	Variable amplitude Rabi nutation experiment.
 
 	Parameters
 	----------
-	qubit : logical channel to implement sequence (LogicalChannel) 
+	qubit : logical channel to implement sequence (LogicalChannel)
 	amps : pulse amplitudes to sweep over (iterable)
 	phase : phase of the pulse (radians)
 	showPlot : whether to plot (boolean)
@@ -134,21 +134,15 @@ def PulsedSpec(qubit, specOn = True, showPlot = False):
 
 	if showPlot:
 		plot_pulse_files(filenames)
-	fileNames = compile_to_hardware(seqs, 'Rabi/Rabi')
-	print(fileNames)
-
-	if showPlot:
-		plotWin = plot_pulse_files(fileNames)
-		return plotWin
 
 def Swap(qubit, mqubit, delays, showPlot=False):
 	"""
-	
+
 	Variable amplitude Rabi nutation experiment.
 
 	Parameters
 	----------
-	qubit : logical channel to implement sequence (LogicalChannel) 
+	qubit : logical channel to implement sequence (LogicalChannel)
 	amps : pulse amplitudes to sweep over (iterable)
 	phase : phase of the pulse (radians)
 	showPlot : whether to plot (boolean)
