@@ -253,10 +253,10 @@ def compile_sequences(seqs, channels=None):
     '''
     # all sequences should start with a WAIT
     for seq in seqs:
-        if seq[0] != ControlFlow.Wait():
+        if not isinstance(seq[0], ControlFlow.Wait):
             seq.insert(0, ControlFlow.Wait())
     # last sequence should end with a GOTO back to the first sequence
-    if not (hasattr(seqs[-1][-1], 'instruction') and seqs[-1][-1].instruction == 'GOTO'):
+    if not isinstance(seqs[-1][-1], ControlFlow.Goto):
         seqs[-1].append(ControlFlow.Goto(label(seqs[0])))
 
     resolve_offsets(seqs)
@@ -300,15 +300,14 @@ def compile_sequence(seq, wfLib={}, channels=None):
             for chan in channels:
                 logicalLLs[chan] += [copy(block)]
             continue
-        #Align the block
-        blockLength = block.maxPts
+        # Align the block
         # drop length 0 blocks but push frame change onto next non-zero entry
-        if blockLength == 0:
+        if len(block) == 0:
             carriedPhase = {ch: carriedPhase[ch]+block.pulses[ch].frameChange for ch in channels}
             continue
         for chan in channels:
             # add aligned LL entry(ies) (if the block contains a composite pulse, may get back multiple waveforms and LL entries)
-            wfs, LLentries = align(block.label, block.pulses[chan], blockLength, block.alignment)
+            wfs, LLentries = align(block.label, block.pulses[chan], len(block), block.alignment)
             for wf in wfs:
                 if isinstance(chan, Channels.LogicalMarkerChannel):
                     wf = wf.astype(np.bool)
@@ -456,15 +455,11 @@ class LLWaveform(object):
             return labelPart + "LLWaveform(" + self.key[:6] + ", " + str(self.length) + ")"
 
     def __len__(self):
-        return self.totLength
+        return self.length*self.repeat
 
     @property
     def isZero(self):
         return self.key == PatternUtils.TAZKey
-
-    @property
-    def totLength(self):
-        return self.length*self.repeat
 
 def create_padding_LL(length=0):
     tmpLL = LLWaveform()

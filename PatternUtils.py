@@ -103,7 +103,7 @@ def apply_SSB(linkList, wfLib, SSBFreq, samplingRate):
 
 def align(linkList, mode, length):
     for miniLL in linkList:
-        miniLL_length = sum([entry.totLength for entry in miniLL])
+        miniLL_length = sum([len(entry) for entry in miniLL])
         paddingEntry = Compiler.create_padding_LL(length - miniLL_length)
         if mode == 'left':
             miniLL.append(paddingEntry)

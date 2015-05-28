@@ -47,7 +47,7 @@ CALL   = 0x7
 RET    = 0x8
 SYNC   = 0x9
 PFETCH = 0xA
-WAITCMP = 0XB
+LOADCMP = 0XB
 
 # WFM/MARKER op codes
 PLAY      = 0x0
@@ -133,7 +133,7 @@ class Instruction(object):
 
 	def __str__(self):
 
-		opCodes = ["WFM", "MARKER", "WAIT", "LOAD", "REPEAT", "CMP", "GOTO", "CALL", "RET", "SYNC", "PFETCH", "WAITCMP"]
+		opCodes = ["WFM", "MARKER", "WAIT", "LOAD", "REPEAT", "CMP", "GOTO", "CALL", "RET", "SYNC", "PFETCH", "LOADCMP"]
 
 
 		labelPart = "{0}: ".format(self.label) if self.label else ""
@@ -242,8 +242,8 @@ def Sync(label=None):
 def Wait(label=None):
 	return Command(WAIT, WAIT_TRIG << WFM_OP_OFFSET, write=True, label=label)
 
-def WaitCmp(label=None):
-	return Command(WAITCMP, 0, label=label)
+def LoadCmp(label=None):
+	return Command(LOADCMP, 0, label=label)
 
 def Cmp(op, mask, label=None):
 	return Command(CMP, (op << 8) | (mask & 0xff), label=label)
@@ -267,12 +267,12 @@ def timestamp_entries(seq):
 	t = 0
 	for ct in range(len(seq)):
 		seq[ct].startTime = t
-		t += seq[ct].totLength
+		t += len(seq[ct])
 
 def synchronize_clocks(seqs):
 	# SYNC instructions "reset the clock", so when we encounter one, we need to
 	# synchronize the accumulated time to the largest value on any channel
-	syncInstructions = [filter(lambda s: isinstance(s, ControlFlow.ControlInstruction) and s.instruction == 'SYNC', seq) for seq in seqs if seq]
+	syncInstructions = [filter(lambda s: isinstance(s, ControlFlow.Sync), seq) for seq in seqs if seq]
 
 	# add length to SYNC instructions to make accumulated time match at end of SYNCs
 	# keep running tally of how much each channel has been shifted so far
@@ -281,7 +281,7 @@ def synchronize_clocks(seqs):
 		step = [seq[ct] for seq in syncInstructions]
 		endTime = max((s.startTime + shift for s, shift in zip(step, localShift)))
 		for ct, s in enumerate(step):
-			s.totLength = endTime - (s.startTime + localShift[ct])
+			s.length = endTime - (s.startTime + localShift[ct])
 			# localShift[ct] += endTime - (s.startTime + localShift[ct])
 			# the += and the last term cancel, therefore:
 			localShift[ct] = endTime - s.startTime
@@ -371,8 +371,8 @@ def create_seq_instructions(seqs, offsets):
 			# zero argument commands
 			if entry.instruction == 'WAIT':
 				instructions.append(Wait(label=entry.label))
-			elif entry.instruction == 'WAITCMP':
-				instructions.append(WaitCmp(label=entry.label))
+			elif entry.instruction == 'LOADCMP':
+				instructions.append(LoadCmp(label=entry.label))
 			elif entry.instruction == 'SYNC':
 				instructions.append(Sync(label=entry.label))
 			elif entry.instruction == 'RETURN':

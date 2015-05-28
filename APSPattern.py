@@ -234,10 +234,10 @@ def create_LL_data(LLs, offsets, AWGName=''):
 		miniStart = True
 		for entry in miniLL:
 			if isinstance(entry, ControlFlow.ControlInstruction):
-				if entry.instruction == 'WAIT':
+				if isinstance(entry, ControlFlow.Wait):
 					waitFlag = True
 					continue
-				elif entry.instruction == 'GOTO' and entry.target == LLs[0][0].label:
+				elif isinstance(entry, ControlFlow.Goto) and entry.target == LLs[0][0].label:
 					# can safely skip a goto with a target of the first instruction
 					continue
 				else:
@@ -301,7 +301,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 	#Step through the all the miniLL's together
 	for miniLL_IQ, miniLL_m in zip(IQLL, markerLL):
 		#Find the cummulative length for each entry of IQ channel
-		timePts = np.cumsum([0] + [entry.totLength for entry in miniLL_IQ])
+		timePts = np.cumsum([0] + [len(entry) for entry in miniLL_IQ])
 
 		#Find the switching points of the marker channels
 		switchPts = []
@@ -311,7 +311,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 			if hasattr(entry, 'key') and prevKey != entry.key:
 				switchPts.append(t)
 				prevKey = entry.key
-			t += entry.totLength
+			t += len(entry)
 
 		# Push on an extra switch point if we have an odd number of switches (to maintain state)
 		if len(switchPts) % 2 == 1:
@@ -369,7 +369,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 					miniLL_IQ[curIQIdx].markerDelay2 = None
 					setattr(miniLL_IQ[curIQIdx], markerAttr, ADDRESS_UNIT)
 					#Recalculate the timePts
-					timePts = np.cumsum([0] + [entry.totLength for entry in miniLL_IQ])
+					timePts = np.cumsum([0] + [len(entry) for entry in miniLL_IQ])
 				else:
 					setattr(miniLL_IQ[curIQIdx], markerAttr, 0)
 					print("Had to push marker blip out to start of next entry.")
@@ -396,17 +396,15 @@ def unroll_loops(LLs):
 
 	# if all sequences start and end with LOAD and REPEAT, respectively, and all load values
 	# are the same, we can just drop these instructions and return a miniLLrepeat value
-	if isinstance(LLs[0][0], ControlFlow.ControlInstruction) and LLs[0][0].instruction == 'LOAD':
+	if isinstance(LLs[0][0], ControlFlow.LoadRepeat):
 		repeats = LLs[0][0].value
 	else:
 		repeats = -1
 
 	simpleUnroll = True
 	for seq in LLs:
-		if not isinstance(seq[0], ControlFlow.ControlInstruction) or \
-			not isinstance(seq[-1], ControlFlow.ControlInstruction) or \
-			seq[0].instruction != 'LOAD' or \
-			seq[-1].instruction != 'REPEAT' or \
+		if not isinstance(seq[0], ControlFlow.LoadRepeat) or \
+			not isinstance(seq[-1], ControlFlow.Repeat) or \
 			seq[0].value != repeats or \
 			seq[-1].target != seq[1].label:
 			simpleUnroll = False
@@ -426,7 +424,7 @@ def unroll_loops(LLs):
 				entry.label and entry.label not in symbols:
 				symbols[entry.label] = ct
 			# look for the end of a repeated block
-			if isinstance(entry, ControlFlow.ControlInstruction) and entry.instruction == 'REPEAT':
+			if isinstance(entry, ControlFlow.Repeat):
 				repeatedBlock = seq[symbols[entry.target]:ct]
 				numRepeats = seq[symbols[entry.target]-1].value
 				# unroll the block (dropping the LOAD and REPEAT)
