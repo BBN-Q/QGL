@@ -44,7 +44,8 @@ def in_ipynb():
 output_file()
 
 def build_waveforms(seq):
-    from Compiler import compile_sequence
+    import Compiler
+    from Compiler import compile_sequence #import here to avoid circular imports
     #compile
     linkList, wfLib = compile_sequence(seq)
 

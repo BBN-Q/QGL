@@ -27,7 +27,7 @@ def delay(length=0, samplingRate=1e9, **params):
     '''
     A delay between pulses.
     '''
-    return constant(amp=0, length, samplingRate)
+    return constant(0, length, samplingRate)
 
 def constant(amp=1, length=0, samplingRate=1e9, **params):
     '''
@@ -123,3 +123,13 @@ def measPulse(amp=1, length=0, sigma=0, samplingRate=1e9, **params):
     numPts = np.round(length*samplingRate)
     timePts = (1.0/samplingRate)*np.arange(numPts)
     return amp*(0.8*np.exp(-timePts/sigma) + 0.2).astype(np.complex)
+
+def autodyne(frequency=10e6, baseShape=constant, **params):
+    '''
+    A pulse with modulation at a particular frequency baked in.
+    '''
+    shape = baseShape(**params)
+    # Apply the autodyne frequency
+    timePts = np.linspace(0, params['length'], len(shape))
+    shape *= np.exp(-1j*2*np.pi*frequency*timePts)
+    return shape

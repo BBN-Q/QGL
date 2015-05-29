@@ -24,12 +24,10 @@ from functools import wraps
 
 def overrideDefaults(chan, updateParams):
     '''Helper function to update any parameters passed in and fill in the defaults otherwise.'''
-    #The default parameter list depends on the channel type so pull out of channel
-    #First get the default or updated values
+    # The default parameter list depends on the channel type so pull out of channel
+    # Then update passed values
     paramDict = chan.pulseParams.copy()
     paramDict.update(updateParams)
-    # pull in the samplingRate from the physicalChannel
-    paramDict['samplingRate'] = chan.physChan.samplingRate
     return paramDict
 
 def _memoize(pulseFunc):
@@ -67,88 +65,96 @@ def Id(qubit, *args, **kwargs):
 def Xtheta(qubit, amp=0, **kwargs):
     '''  A generic X rotation with a variable amplitude  '''
     params = overrideDefaults(qubit, kwargs)
-    shape = params['shapeFun'](amp=amp, **params)
-    return Pulse("Xtheta", qubit, shape, 0, 0.0)
+    params['amp'] = amp
+    return Pulse("Xtheta", qubit, params, 0, 0.0)
 
 def Ytheta(qubit, amp=0, **kwargs):
     ''' A generic Y rotation with a variable amplitude '''
     params = overrideDefaults(qubit, kwargs)
-    shape = params['shapeFun'](amp=amp, **params)
-    return Pulse("Ytheta", qubit, shape, pi/2, 0.0)
+    params['amp'] = amp
+    return Pulse("Ytheta", qubit, params, pi/2, 0.0)
 
 def U90(qubit, phase=0, **kwargs):
     ''' A generic 90 degree rotation with variable phase. '''
     params = overrideDefaults(qubit, kwargs)
-    shape = params['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **params)
-    return Pulse("U90", qubit, shape, phase, 0.0)
+    params['amp'] = qubit.pulseParams['pi2Amp']
+    return Pulse("U90", qubit, params, phase, 0.0)
 
 def U(qubit, phase=0, **kwargs):
     ''' A generic 180 degree rotation with variable phase.  '''
     params = overrideDefaults(qubit, kwargs)
-    shape = params['shapeFun'](amp=qubit.pulseParams['piAmp'], **params)
-    return Pulse("U", qubit, shape, phase, 0.0)
+    params['amp'] = qubit.pulseParams['piAmp']
+    return Pulse("U", qubit, params, phase, 0.0)
 
 def Utheta(qubit, amp=0, phase=0, **kwargs):
     '''  A generic rotation with variable amplitude and phase. '''
     params = overrideDefaults(qubit, kwargs)
-    shape = params['shapeFun'](amp=amp, **params)
-    return Pulse("Utheta", qubit, shape, phase, 0.0)
+    params['amp'] = amp
+    return Pulse("Utheta", qubit, params, phase, 0.0)
 
 #Setup the default 90/180 rotations
 # @_memoize
 def X(qubit, **kwargs):
-    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['piAmp'], **overrideDefaults(qubit, kwargs))
-    return Pulse("X", qubit, shape, 0, 0.0)
+    params = overrideDefaults(qubit, kwargs)
+    params['amp'] = qubit.pulseParams['piAmp']
+    return Pulse("X", qubit, params, 0, 0.0)
 
 # @_memoize
 def X90(qubit, **kwargs):
-    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **overrideDefaults(qubit, kwargs))
-    return Pulse("X90", qubit, shape, 0, 0.0)
+    params = overrideDefaults(qubit, kwargs)
+    params['amp'] = qubit.pulseParams['pi2Amp']
+    return Pulse("X90", qubit, params, 0, 0.0)
 
 # @_memoize
 def Xm(qubit, **kwargs):
-    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['piAmp'], **overrideDefaults(qubit, kwargs))
-    return Pulse("Xm", qubit, shape, pi, 0.0)
+    params = overrideDefaults(qubit, kwargs)
+    params['amp'] = qubit.pulseParams['piAmp']
+    return Pulse("Xm", qubit, params, pi, 0.0)
 
 # @_memoize
 def X90m(qubit, **kwargs):
-    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **overrideDefaults(qubit, kwargs))
-    return Pulse("X90m", qubit, shape, pi, 0.0)
+    params = overrideDefaults(qubit, kwargs)
+    params['amp'] = qubit.pulseParams['pi2Amp']
+    return Pulse("X90m", qubit, params, pi, 0.0)
 
 # @_memoize
 def Y(qubit, **kwargs):
-    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['piAmp'], **overrideDefaults(qubit, kwargs))
-    return Pulse("Y", qubit, shape, pi/2, 0.0)
+    params = overrideDefaults(qubit, kwargs)
+    params['amp'] = qubit.pulseParams['piAmp']
+    return Pulse("Y", qubit, params, pi/2, 0.0)
 
 # @_memoize
 def Y90(qubit, **kwargs):
-    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **overrideDefaults(qubit, kwargs))
-    return Pulse("Y90", qubit, shape, pi/2, 0.0)
+    params = overrideDefaults(qubit, kwargs)
+    params['amp'] = qubit.pulseParams['pi2Amp']
+    return Pulse("Y90", qubit, params, pi/2, 0.0)
 
 # @_memoize
 def Ym(qubit, **kwargs):
-    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['piAmp'], **overrideDefaults(qubit, kwargs))
-    return Pulse("Ym", qubit, shape, -pi/2, 0.0)
+    params = overrideDefaults(qubit, kwargs)
+    params['amp'] = qubit.pulseParams['piAmp']
+    return Pulse("Ym", qubit, params, -pi/2, 0.0)
 
 # @_memoize
 def Y90m(qubit, **kwargs):
-    shape = qubit.pulseParams['shapeFun'](amp=qubit.pulseParams['pi2Amp'], **overrideDefaults(qubit, kwargs))
-    return Pulse("Y90m", qubit, shape, -pi/2, 0.0)
+    params = overrideDefaults(qubit, kwargs)
+    params['amp'] = qubit.pulseParams['pi2Amp']
+    return Pulse("Y90m", qubit, params, -pi/2, 0.0)
 
 # @_memoize
 def Z(qubit, **kwargs):
-    return Pulse("Z", qubit, np.array([], dtype=np.complex128), 0, pi)
+    return TAPulse("Z", qubit, length=0, amp=0, phase=0, frameChange=pi)
 
 # @_memoize
 def Z90(qubit, **kwargs):
-    return Pulse("Z90", qubit, np.array([], dtype=np.complex128), 0, -pi/2)
+    return TAPulse("Z90", qubit, length=0, amp=0, phase=0, frameChange=-pi/2)
 
 # @_memoize
 def Z90m(qubit, **kwargs):
-    return Pulse("Z90m", qubit, np.array([], dtype=np.complex128), 0, pi/2)
+    return TAPulse("Z90m", qubit, length=0, amp=0, phase=0, frameChange=pi/2)
 
 def Ztheta(qubit, angle=0, **kwargs):
-    return Pulse("Ztheta", qubit, np.array([], dtype=np.complex128), 0, -angle)
+    return TAPulse("Z", qubit, length=0, amp=0, phase=0, frameChange=-angle)
 
 def arb_axis_drag(qubit, nutFreq, rotAngle=0, polarAngle=0, aziAngle=0, **kwargs):
     """
@@ -301,9 +307,10 @@ def AC(qubit, cliffNum):
 # @_memoize
 def CNOT(source, target):
     # construct (source, target) channel and pull parameters from there
-    twoQChannel = Channels.QubitFactory(source.label + target.label)
-    shape = twoQChannel.pulseParams['shapeFun'](amp=twoQChannel.pulseParams['piAmp'], **overrideDefaults(twoQChannel, {}))
-    return Pulse("CNOT", (source, target), shape, 0.0, 0.0)
+    channel = Channels.QubitFactory(source.label + target.label)
+    params = overrideDefaults(channel, kwargs)
+    params['amp'] = channel.pulseParams['piAmp']
+    return Pulse("CNOT", (source, target), params, 0.0, 0.0)
 
 def flat_top_gaussian(chan, riseFall, length, amp, phase=0):
     """
@@ -370,59 +377,13 @@ def MEAS(*args, **kwargs):
                 channelName += q.label
         measChan = Channels.MeasFactory(channelName)
         params = overrideDefaults(measChan, kwargs)
-
-        # measurement channels should have just an "amp" parameter
-        measShape = measChan.pulseParams['shapeFun'](**params)
-        #Apply the autodyne frequency
-        timeStep = 1.0/measChan.physChan.samplingRate
-        timePts = np.linspace(0, params['length'], len(measShape))
-        measShape *= np.exp(-1j*2*pi*measChan.autodyneFreq*timePts)
-        return Pulse("MEAS", measChan, measShape, 0.0, 0.0)
+        params['frequency'] = measChan.autodyneFreq
+        params['baseShape'] = params.pop('shapeFun')
+        params['shapeFun'] = PulseShapes.autodyne
+        return Pulse("MEAS", measChan, params, 0.0, 0.0)
 
     return reduce(operator.mul, [create_meas_pulse(qubit) for qubit in args])
-
-
-def MEASmux(*args, **kwargs):
-    '''
-    MEASmux(q1, ...) constructs a measurement pulse block of a measurement
-    with different autodyne frequencies on the same channels
-    It needs a multi-qubit msm't pulse, e.g., M-q1q2.
-    Each pulse has its own parameters (e.g. M-q1).
-    Use tuple-form for joint readout, e.g.
-        MEAS((q1, q2))
-    '''
-    def create_meas_pulse(qubit):
-        if isinstance(qubit, Channels.Qubit):
-            #Deal with single qubit readout channel
-            channelName = "M-" + qubit.label
-        elif isinstance(qubit, tuple):
-            #Deal with joint readout channel and MUX
-            measChanList = [];
-            paramsList = [];
-            lenList = [];
-            channelName = "M-"
-            for q in qubit:
-                channelName += q.label
-                measChanList += [Channels.MeasFactory("M-"+q.label)]
-                paramsList += [overrideDefaults(measChanList[-1], kwargs)]
-                lenList += [len(measChanList[-1].pulseParams['shapeFun'](**paramsList[-1]))]
-        measChan = Channels.MeasFactory(channelName)
-
-        # measurement channels should have just an "amp" parameter
-        timeStep = 1.0/measChan.physChan.samplingRate
-        measShapeSum = np.zeros(max(lenList),dtype=complex);
-        for i,q in enumerate(qubit):
-            measShape = measChanList[i].pulseParams['shapeFun'](**paramsList[i])
-            timePts = np.linspace(0, paramsList[i]['length'], lenList[i])
-            measShape *= np.exp(-1j*2*pi*measChanList[i].autodyneFreq*timePts)
-            measShapeSum += np.array(measShape.tolist()+[0]*(max(lenList)-lenList[i]))
-
-        return Pulse("MEAS", measChan, measShapeSum, 0.0, 0.0)
-
-    return reduce(operator.mul, [create_meas_pulse(qubit) for qubit in args])
-
-
 
 # Gating/blanking pulse primitives
-def BLANK(chan, width):
-    return TAPulse("BLANK", chan.gateChan, width, 1, 0, 0)
+def BLANK(chan, length):
+    return TAPulse("BLANK", chan.gateChan, length, 1, 0, 0)

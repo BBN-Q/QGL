@@ -20,6 +20,8 @@ from copy import copy
 import json
 import numpy as np
 
+import Channels, PulseShapes
+
 class Pulse(object):
     '''
     A single channel pulse object
@@ -28,17 +30,20 @@ class Pulse(object):
         shape - numpy array pulse shape
         frameChange - accumulated phase from the pulse
     '''
-    def __init__(self, label, qubits, shapeFun, shapeParams, phase=0, frameChange=0):
+    def __init__(self, label, qubits, shapeParams, phase=0, frameChange=0):
         self.label = label
-        self.qubits = qubits
-        self.shapeFun = shapeFun
+        if isinstance(qubits, (list, tuple)):
+            # with more than one qubit, need to look up the channel
+            self.qubits = Channels.QubitFactory(reduce(operator.add, [q.label for q in qubits]))
+        else:
+            self.qubits = qubits
         self.shapeParams = shapeParams
         self.phase = phase
         self.frameChange = frameChange
         self.isTimeAmp = False
-        requiredParams = ['amp', 'length']
+        requiredParams = ['amp', 'length', 'shapeFun']
         for param in requiredParams:
-            if not hasattr(shapeParams, param):
+            if param not in shapeParams.keys():
                 raise NameError("ShapeParams must incluce {0}".format(param))
 
     def __repr__(self):
@@ -88,15 +93,16 @@ class Pulse(object):
     @property
     def shape(self):
         params = copy(self.shapeParams)
-        params['samplingRate'] = self.qubit.physChan.samplingRate
-        return self.shapeFun(**params)
+        params['samplingRate'] = self.qubits.physChan.samplingRate
+        params.pop('shapeFun')
+        return self.shapeParams['shapeFun'](**params)
 
 def TAPulse(label, qubits, length, amp, phase=0, frameChange=0):
     '''
     Creates a time/amplitude pulse with the given pulse length and amplitude
     '''
-    params = {'amp': amp, 'length': length}
-    p = Pulse(label, qubits, PulseShapes.constant, params, phase, frameChange)
+    params = {'amp': amp, 'length': length, 'shapeFun': PulseShapes.constant}
+    p = Pulse(label, qubits, params, phase, frameChange)
     p.isTimeAmp = True
     return p
 
