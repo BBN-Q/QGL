@@ -42,3 +42,44 @@ def in_ipynb():
 
 #Default to output_file
 output_file()
+
+def build_waveforms(seq):
+    from Compiler import compile_sequence
+    #compile
+    linkList, wfLib = compile_sequence(seq)
+
+    # build a concatenated waveform for each channel
+    channels = linkList.keys()
+    concatShapes = {q: np.array([0], dtype=np.complex128) for q in channels}
+    for q in channels:
+        # TODO: deal with repeated sections
+        for entry in filter(lambda x: isinstance(x, Compiler.LLWaveform), linkList[q]):
+            if entry.isTimeAmp:
+                concatShapes[q] = np.append(concatShapes[q], wfLib[q][entry.key][0]*np.ones(entry.length))
+            else:
+                concatShapes[q] = np.append(concatShapes[q], wfLib[q][entry.key])
+    # add an extra zero to make things look more normal
+    for q in channels:
+        concatShapes[q] = np.append(concatShapes[q], 0)  
+    return concatShapes
+
+
+def plot_waveforms(waveforms, figTitle = ''):
+    AWGFreq = 1.2e9 # TODO: make this independent of sampling rate
+
+    channels = waveforms.keys()
+     # plot
+    plots = []
+    for (ct,chan) in enumerate(channels):
+        fig = bk.figure(title=figTitle + repr(chan), plot_width=800, plot_height=350, y_range=[-1.05, 1.05])
+        waveformToPlot = waveforms[chan]
+        xpts = np.linspace(0,len(waveformToPlot)/AWGFreq/1e-6,len(waveformToPlot))
+        fig.line(xpts, np.real(waveformToPlot), color='red')
+        fig.line(xpts, np.imag(waveformToPlot), color='blue')
+        plots.append(fig)
+    bk.show(bk.VBox(*plots))
+
+def show(seq):
+    from Compiler import build_waveforms
+    waveforms = build_waveforms(seq)
+    plot_waveforms(waveforms)

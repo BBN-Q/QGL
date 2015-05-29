@@ -592,4 +592,3 @@ def validate_linklist_channels(linklistChannels):
     if errors != []:
         return False
     return True
-        
