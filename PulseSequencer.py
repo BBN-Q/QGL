@@ -28,7 +28,7 @@ class Pulse(object):
         shape - numpy array pulse shape
         frameChange - accumulated phase from the pulse
     '''
-    def __init__(self, label, qubits, shapeFun, shapeParams, phase, frameChange):
+    def __init__(self, label, qubits, shapeFun, shapeParams, phase=0, frameChange=0):
         self.label = label
         self.qubits = qubits
         self.shapeFun = shapeFun
@@ -36,7 +36,10 @@ class Pulse(object):
         self.phase = phase
         self.frameChange = frameChange
         self.isTimeAmp = False
-        self.TALength = 0
+        requiredParams = ['amp', 'length']
+        for param in requiredParams:
+            if not hasattr(shapeParams, param):
+                raise NameError("ShapeParams must incluce {0}".format(param))
 
     def __repr__(self):
         return str(self)
@@ -66,12 +69,7 @@ class Pulse(object):
         return self.promote()*other.promote()
 
     def __eq__(self, other):
-        mydict = self.__dict__.copy()
-        otherdict = other.__dict__.copy()
-        # element-wise comparison of shape
-        mydict.pop('shape')
-        otherdict.pop('shape')
-        return mydict == otherdict and all(self.shape == other.shape)
+        return self.__dict__ == other.__dict__
 
     def promote(self):
         # promote a Pulse to a PulseBlock
@@ -81,14 +79,17 @@ class Pulse(object):
 
     @property
     def length(self):
-        if self.isTimeAmp:
-            return self.TALength
-        else:
-            return len(self.shape)
+        return self.shapeParams['length']
 
     @property
     def isZero(self):
         return np.all(self.shape == 0)
+
+    @property
+    def shape(self):
+        params = copy(self.shapeParams)
+        params['samplingRate'] = self.qubit.physChan.samplingRate
+        return self.shapeFun(**params)
 
 def TAPulse(label, qubits, length, amp, phase, frameChange):
     '''

@@ -27,11 +27,14 @@ def delay(length=0, samplingRate=1e9, **params):
     '''
     A delay between pulses.
     '''
-    #Return a single point at 0
-    # return np.zeros(1, dtype=np.complex)
-    numPts = np.round(length*samplingRate)
-    return np.zeros(numPts, dtype=np.complex)
+    return constant(amp=0, length, samplingRate)
 
+def constant(amp=1, length=0, samplingRate=1e9, **params):
+    '''
+    A constant section.
+    '''
+    numPts = np.round(length*samplingRate)
+    return amp*np.ones(numPts, dtype=np.complex)
 
 def drag(amp=1, length=0, cutoff=2, dragScaling=0.5, samplingRate=1e9, **params):
     '''
