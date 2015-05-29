@@ -45,7 +45,7 @@ def drag(amp=1, length=0, cutoff=2, dragScaling=0.5, samplingRate=1e9, **params)
     #The derivative needs to be scaled in terms of AWG points from the normalized xPts units.
     #The pulse length is 2*cutoff xPts
     derivScale = 1/(length/2/cutoff*samplingRate)
-    QQuad = dragScaling*derivScale*xPts*IQuad
+    QQuad = dragScaling*derivScale*xPts * np.exp(-0.5*(xPts**2))
     return amp * (IQuad+1j*QQuad)
         
 def gaussOn(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
