@@ -44,7 +44,7 @@ def _memoize(pulseFunc):
 
 def Id(qubit, *args, **kwargs):
     '''
-    A delay or do-nothing in the form of a pulse i.e. it will take pulseLength+2*bufferTime.
+    A delay or no-op in the form of a pulse.
     Accepts the following pulse signatures:
         Id(qubit, [kwargs])
         Id(qubit, delay, [kwargs])
@@ -62,8 +62,7 @@ def Id(qubit, *args, **kwargs):
     if len(args) > 0 and isinstance(args[0], (int,float)):
         params['length'] = args[0]
 
-    numPts = np.round(params['length']*params['samplingRate'])
-    return TAPulse("Id", qubit, numPts, 0, 0, 0)
+    return TAPulse("Id", qubit, params['length'], 0)
 
 def Xtheta(qubit, amp=0, **kwargs):
     '''  A generic X rotation with a variable amplitude  '''

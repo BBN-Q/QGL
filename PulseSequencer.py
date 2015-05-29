@@ -91,13 +91,13 @@ class Pulse(object):
         params['samplingRate'] = self.qubit.physChan.samplingRate
         return self.shapeFun(**params)
 
-def TAPulse(label, qubits, length, amp, phase, frameChange):
+def TAPulse(label, qubits, length, amp, phase=0, frameChange=0):
     '''
     Creates a time/amplitude pulse with the given pulse length and amplitude
     '''
-    p = Pulse(label, qubits, np.array([amp], np.complex), phase, frameChange)
+    params = {'amp': amp, 'length': length}
+    p = Pulse(label, qubits, PulseShapes.constant, params, phase, frameChange)
     p.isTimeAmp = True
-    p.TALength = int(round(length))
     return p
 
 class CompositePulse(object):
