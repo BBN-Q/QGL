@@ -434,7 +434,6 @@ def compress_marker(markerLL):
 				and isinstance(seq[idx+1], Compiler.LLWaveform)
 				and seq[idx].key == seq[idx+1].key):
 
-				# TODO: handle repeats != 0 ?
 				seq[idx].length += seq[idx+1].length
 				del seq[idx+1]
 			else:

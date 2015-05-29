@@ -152,7 +152,6 @@ def concatenate_entries(entry1, entry2, wfLib):
         newentry.key = PatternUtils.hash_pulse(wf)
         newentry.frameChange += entry2.frameChange
         wfLib[newentry.key] = wf
-    newentry.repeat = 1
     newentry.length = len(entry1) + len(entry2)
     return newentry
 
@@ -427,7 +426,6 @@ class LLWaveform(object):
     IQ LL elements for quadrature mod channels.
     '''
     def __init__(self, pulse=None, label=None):
-        self.repeat = 1
         self.label = label
         if pulse is None:
             self.key = None
@@ -435,7 +433,6 @@ class LLWaveform(object):
             self.phase = 0
             self.frameChange = 0
             self.isTimeAmp = False
-            self.repeat = 1
         else:
             self.key = PatternUtils.hash_pulse(pulse.shape)
             self.length = pulse.length
@@ -455,7 +452,7 @@ class LLWaveform(object):
             return labelPart + "LLWaveform(" + self.key[:6] + ", " + str(self.length) + ")"
 
     def __len__(self):
-        return self.length*self.repeat
+        return self.length
 
     @property
     def isZero(self):

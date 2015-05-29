@@ -38,7 +38,6 @@ class Pulse(object):
         self.frameChange = frameChange
         self.isTimeAmp = False
         self.TALength = 0
-        self.repeat = 1
 
     def __repr__(self):
         return str(self)
@@ -145,7 +144,7 @@ class CompositePulse(object):
 
     @property
     def length(self):
-        return sum([p.length*p.repeat for p in self.pulses])
+        return sum([p.length for p in self.pulses])
 
     @property
     def frameChange(self):
@@ -231,11 +230,12 @@ def build_waveforms(seq):
     channels = linkList.keys()
     concatShapes = {q: np.array([0], dtype=np.complex128) for q in channels}
     for q in channels:
+        # TODO: deal with repeated sections
         for entry in filter(lambda x: isinstance(x, Compiler.LLWaveform), linkList[q]):
             if entry.isTimeAmp:
-                concatShapes[q] = np.append(concatShapes[q], wfLib[q][entry.key][0]*np.ones(entry.length*entry.repeat))
+                concatShapes[q] = np.append(concatShapes[q], wfLib[q][entry.key][0]*np.ones(entry.length))
             else:
-                concatShapes[q] = np.append(concatShapes[q], np.tile(wfLib[q][entry.key], (1, entry.repeat)) )
+                concatShapes[q] = np.append(concatShapes[q], wfLib[q][entry.key])
     # add an extra zero to make things look more normal
     for q in channels:
         concatShapes[q] = np.append(concatShapes[q], 0)  
