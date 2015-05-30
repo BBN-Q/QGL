@@ -429,12 +429,15 @@ class LLWaveform(object):
         self.label = label
         if pulse is None:
             self.key = None
+            self.amp = 0
             self.length = 0
             self.phase = 0
             self.frameChange = 0
             self.isTimeAmp = False
         else:
-            self.key = PatternUtils.hash_pulse(pulse.shape)
+            # self.key = PatternUtils.hash_pulse(pulse.shape)
+            self.key = hash(pulse)
+            self.amp = pulse.amp
             self.length = pulse.length
             self.phase = pulse.phase
             self.frameChange = pulse.frameChange
@@ -466,6 +469,12 @@ def create_padding_LL(length=0):
     return tmpLL
 
 def align(label, pulse, blockLength, alignment, cutoff=12):
+    '''
+    Converts a Pulse or a CompositePulses into an aligned sequence of LLWaveforms
+    by injecting padding entries before and/or after such that the resulting sequence
+    duration is `blockLength`.
+        alignment = "left", "right", or "center"
+    '''
     # check for composite pulses
     if hasattr(pulse, 'pulses'):
         entries = [LLWaveform(p) for p in pulse.pulses]

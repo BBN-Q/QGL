@@ -38,6 +38,7 @@ class Pulse(object):
         else:
             self.qubits = qubits
         self.shapeParams = shapeParams
+        self.amp = shapeParams['amp']
         self.phase = phase
         self.frameChange = frameChange
         self.isTimeAmp = False
@@ -64,11 +65,8 @@ class Pulse(object):
     # unary negation inverts the pulse amplitude and frame change
     def __neg__(self):
         shapeParams = copy(self.shapeParams)
-        if hasattr(shapeParams, 'amp'):
-            shapeParams.amp = -shapeParams.amp
-        else:
-            raise NameError("Can only negate a pulse with an 'amp' shape parameter")
-        return Pulse(self.label, self.qubits, self.shapeFun, shapeParams, self.phase, -self.frameChange)
+        shapeParams['amp'] *= -1
+        return Pulse(self.label, self.qubits, shapeParams, self.phase, -self.frameChange)
 
     def __mul__(self, other):
         return self.promote()*other.promote()
