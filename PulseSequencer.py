@@ -215,7 +215,7 @@ def align(pulseBlock, mode="center"):
 
 AWGFreq = 1.2e9
 
-def show(seq):
+def build_waveforms(seq):
     import Compiler
     from Compiler import compile_sequence #import here to avoid circular imports 
     #compile
@@ -232,16 +232,25 @@ def show(seq):
                 concatShapes[q] = np.append(concatShapes[q], np.tile(wfLib[q][entry.key], (1, entry.repeat)) )
     # add an extra zero to make things look more normal
     for q in channels:
-        concatShapes[q] = np.append(concatShapes[q], 0)
-    
-    # plot
+        concatShapes[q] = np.append(concatShapes[q], 0)  
+    return concatShapes
+
+def plot_waveforms(waveforms, figTitle = ''):
+    channels = waveforms.keys()
+     # plot
     plots = []
     for (ct,chan) in enumerate(channels):
-        fig = bk.figure(title=repr(chan), plot_width=800, plot_height=350, y_range=[-1.05, 1.05])
-        waveformToPlot = concatShapes[chan]
+        fig = bk.figure(title=figTitle + repr(chan), plot_width=800, plot_height=350, y_range=[-1.05, 1.05])
+        waveformToPlot = waveforms[chan]
         xpts = np.linspace(0,len(waveformToPlot)/AWGFreq/1e-6,len(waveformToPlot))
         fig.line(xpts, np.real(waveformToPlot), color='red')
         fig.line(xpts, np.imag(waveformToPlot), color='blue')
         plots.append(fig)
     bk.show(bk.VBox(*plots))
+
+def show(seq):
+    waveforms = build_waveforms(seq)
+    plot_waveforms(waveforms)
+    
+   
 
