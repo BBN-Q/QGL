@@ -100,15 +100,11 @@ class LogicalChannel(Channel):
     '''
     #During initilization we may just have a string reference to the channel
     physChan = Instance((unicode,PhysicalChannel))
-    AWG = Property()
 
     def __init__(self, **kwargs):
         super(LogicalChannel, self).__init__(**kwargs)
         if self.physChan is None:
             self.physChan = PhysicalChannel(label=kwargs['label']+'-phys')
-
-    def _get_AWG(self):
-        return self.physChan.AWG
 
 class PhysicalMarkerChannel(PhysicalChannel):
     '''

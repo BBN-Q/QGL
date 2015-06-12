@@ -38,7 +38,6 @@ class Pulse(object):
         else:
             self.qubits = qubits
         self.shapeParams = shapeParams
-        self.amp = shapeParams['amp']
         self.phase = phase
         self.frameChange = frameChange
         self.isTimeAmp = False
@@ -74,6 +73,9 @@ class Pulse(object):
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
 
+    def hashshape(self):
+        return hash(frozenset(self.shapeParams.iteritems()))
+
     def promote(self):
         # promote a Pulse to a PulseBlock
         pb =  PulseBlock()
@@ -86,13 +88,14 @@ class Pulse(object):
 
     @property
     def isZero(self):
-        return np.all(self.shape == 0)
+        return self.shapeParams['amp'] == 0 or np.all(self.shape == 0)
 
     @property
     def shape(self):
         params = copy(self.shapeParams)
         params['samplingRate'] = self.qubits.physChan.samplingRate
         params.pop('shapeFun')
+        params.pop('amp')
         return self.shapeParams['shapeFun'](**params)
 
 def TAPulse(label, qubits, length, amp, phase=0, frameChange=0):
@@ -122,11 +125,13 @@ class CompositePulse(object):
             return "+".join([str(p) for p in self.pulses])
 
     def __add__(self, other):
-        if self.qubits != other.qubits:
-            raise NameError("Can only concatenate pulses acting on the same channel")
         if hasattr(other, 'pulses'):
+            if self.pulses.keys() != other.pulses.keys():
+                raise NameError("Can only concatenate pulses acting on the same channel")
             return CompositePulse(self.pulses + other.pulses)
         else:
+            if self.pulses.keys() != other.qubits:
+                raise NameError("Can only concatenate pulses acting on the same channel")
             return CompositePulse(self.pulses + [other])
 
     def __mul__(self, other):
@@ -213,7 +218,8 @@ class PulseBlock(object):
         return [channel.name for channel in self.pulses.keys()]
 
     #The maximum number of points needed for any channel on this block
-    def __len__(self):
+    @property
+    def length(self):
         return max([p.length for p in self.pulses.values()])
 
 def align(pulseBlock, mode="center"):

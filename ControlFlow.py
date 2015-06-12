@@ -94,9 +94,6 @@ class ControlInstruction(object):
 	def promote(self):
 		return self
 
-	def __len__(self):
-		return self.length
-
 class Goto(ControlInstruction):
 	def __init__(self, target):
 		super(Goto, self).__init__("GOTO", target=target)

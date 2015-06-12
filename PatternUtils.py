@@ -237,3 +237,35 @@ def add_slave_trigger(seqs, slaveChan):
         if hasattr(seq[0], 'qubits') and seq[0].qubits == slaveChan:
             continue
         seq.insert(0, TAPulse("TRIG", slaveChan, pulseLength, 1.0, 0.0, 0.0))
+
+def propagate_frame(entries, frame):
+    '''
+    Propagates a frame change through a list of LL entries, dropping zero length entries
+    '''
+    # The first LL entry picks up the carried phase.
+    entries[0].phase += frame
+    entries[0].frameChange += frame
+    # then push frame changes from zero length entries forward
+    for prevEntry, thisEntry in zip(entries, entries[1:]):
+        if prevEntry.length == 0:
+            thisEntry.phase += prevEntry.frameChange
+            thisEntry.frameChange += prevEntry.frameChange
+    # then drop zero length entries
+    for ct in reversed(range(len(entries))):
+        if entries[ct].length == 0:
+            del entries[ct]
+    return entries
+
+def compress_wfLib(seqs, wfLib):
+    '''
+    Helper function to remove unused waveforms from the library.
+    '''
+    usedKeys = set([PatternUtils.TAZKey, PatternUtils.markerHighKey])
+    for miniLL in seqs:
+        for entry in miniLL:
+            if isinstance(entry, Waveform):
+                usedKeys.add(entry.key)
+
+    unusedKeys = set(wfLib.keys()) - usedKeys
+    for key in unusedKeys:
+        del wfLib[key]

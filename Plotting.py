@@ -22,6 +22,7 @@ limitations under the License.
 
 import os.path, uuid, tempfile
 import bokeh.plotting as bk
+import numpy as np
 
 #Effective global of whether we are interactive plottinn in a notebook or to a
 #static html file
