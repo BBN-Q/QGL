@@ -138,6 +138,12 @@ def has_gate(channel):
 
 def apply_gating_constraints(chan, linkList):
     # get channel parameters in samples
+    if not hasattr(chan,'gateBuffer'):
+        raise AttributeError("{0} does not have gateBuffer".format(chan.label))
+
+    if not hasattr(chan,'gateMinWidth'):
+        raise AttributeError("{0} does not have gateMinWidth".format(chan.label))
+      
     gateBuffer = int(round(chan.gateBuffer * chan.samplingRate))
     gateMinWidth = int(round(chan.gateMinWidth * chan.samplingRate))
 
