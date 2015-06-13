@@ -328,9 +328,10 @@ def normalize(seq, channels=None):
 
     # inject Id's for PulseBlocks not containing every channel
     for block in filter(lambda x: isinstance(x, PulseSequencer.PulseBlock), seq):
+        blocklen = block.length
         emptyChannels = channels - set(block.pulses.keys())
         for ch in emptyChannels:
-            block.pulses[ch] = Id(ch, length=0)
+            block.pulses[ch] = Id(ch, length=blocklen)
     return seq
 
 @multimethod(instruments.AWGs.APS, dict, unicode)
