@@ -29,7 +29,7 @@ import Channels
 from PulsePrimitives import Id
 import PulseSequencer
 import ControlFlow
-from BlockLabel import label
+import BlockLabel
 import instruments
 from instruments.AWGs import get_empty_channel_set
 
@@ -254,9 +254,7 @@ def compile_sequences(seqs, channels=None):
             seq.insert(0, ControlFlow.Wait())
     # turn into a loop, by appending GOTO(0) at end of last sequence
     if not isinstance(seqs[-1][-1], ControlFlow.Goto):
-        seqs[-1].append(ControlFlow.Goto(label(seqs[0])))
-
-    resolve_offsets(seqs)
+        seqs[-1].append(ControlFlow.Goto(BlockLabel.label(seqs[0])))
 
     # use seqs[0] as prototype in case we were not given a set of channels
     wires = compile_sequence(seqs[0], channels)
@@ -283,8 +281,8 @@ def compile_sequence(seq, channels=None):
     wires = {chan: [] for chan in channels}
 
     for block in normalize(flatten(seq), channels):
-        # control flow instructions just need to broadcast to all channels
-        if isinstance(block, ControlFlow.ControlInstruction):
+        # labels and control flow instructions broadcast to all channels
+        if isinstance(block, (BlockLabel.BlockLabel, ControlFlow.ControlInstruction)):
             for chan in channels:
                 wires[chan] += [copy(block)]
             continue
@@ -299,7 +297,7 @@ def compile_sequence(seq, channels=None):
         # Align the block
         for chan in channels:
             # add aligned Pulses (if the block contains a composite pulse, may get back multiple pulses)
-            wires[chan] += align(chan, block.label, block.pulses[chan], block.length, block.alignment)
+            wires[chan] += align(chan, block.pulses[chan], block.length, block.alignment)
 
     return wires
 
@@ -387,7 +385,7 @@ class Waveform(object):
     def isZero(self):
         return self.key == PatternUtils.TAZKey
 
-def align(channel, label, pulse, blockLength, alignment):
+def align(channel, pulse, blockLength, alignment):
     '''
     Converts a Pulse or a CompositePulses into an aligned sequence of Pulses
     by injecting TAPulses before and/or after such that the resulting sequence
@@ -399,10 +397,6 @@ def align(channel, label, pulse, blockLength, alignment):
         pulses = [pulse.pulses]
     else:
         pulses = [pulse]
-    # TODO: make labels independent objects so that we can inject them
-    if label:
-        pulses.insert(0, Id(channel, 0))
-        pulses[0].label = label
 
     padLength = blockLength - pulse.length
     if padLength == 0:
@@ -479,7 +473,7 @@ def resolve_offsets(seqs):
                 while targetidx[1] >= len(seqs[targetidx[0]]):
                     targetidx = (targetidx[0]+1, targetidx[1]-len(seqs[targetidx[0]]))
                     assert targetidx[0] < len(seqs), "invalid target"
-                entry.target = label(seqs[targetidx[0]][targetidx[1]:])
+                entry.target = BlockLabel.label(seqs[targetidx[0]][targetidx[1]:])
 
 def validate_linklist_channels(linklistChannels):
     errors = []

@@ -1,25 +1,14 @@
 import string
 
 class BlockLabel(object):
-	def __init__(self, label, offset=0):
+	def __init__(self, label):
 		self.label = label
-		self.offset = offset
-
-	def __add__(self, offset):
-		# allows for addition/subtraction of offsets to labeled blocks
-		return BlockLabel(self.label, self.offset + offset)
-
-	def __sub__(self, offset):
-		return self.__add__(-offset)
 
 	def __repr__(self):
 		return self.__str__()
 
 	def __str__(self):
-		if self.offset == 0:
-			return self.label
-		else:
-			return "{0}+{1}".format(self.label, self.offset)
+		return "{0}:".format(self.label)
 
 	def __eq__(self, other):
 		if isinstance(other, self.__class__):
@@ -27,18 +16,20 @@ class BlockLabel(object):
 		return False
 
 	def __hash__(self):
-		return hash(self.label) ^ hash(self.offset)
+		return hash(self.label)
+
+	def promote(self):
+		return self
 
 def label(seq):
-	# label's are attached to the first block in a sequence
-	# make sure we have a PulseBlock
-	seq[0] = seq[0].promote()
-	if seq[0].label == None:
-		seq[0].label = newlabel()
-	return seq[0].label
+	if not isinstance(seq[0], BlockLabel):
+		seq.insert(0, newlabel())
+	return seq[0]
 
 def endlabel(seq):
-	return label(seq) + len(seq)
+	if not isinstance(seq[-1], BlockLabel):
+		seq.append(newlabel())
+	return seq[-1]
 
 def newlabel():
 	label = BlockLabel(asciibase(newlabel.numlabels))

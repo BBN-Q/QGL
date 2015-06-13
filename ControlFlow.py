@@ -7,7 +7,6 @@ from mm import multimethod
 
 def qif(mask, ifSeq, elseSeq=None):
 	if elseSeq:
-		endlabel(elseSeq) # make sure to populate label of elseSeq before using it
 		return [CmpEq(mask), Goto(label(ifSeq))] + elseSeq + [Goto(endlabel(ifSeq))] + ifSeq
 	else:
 		endlabel(ifSeq)
