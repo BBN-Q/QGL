@@ -179,11 +179,10 @@ def bundle_wires(physWires, wfs):
         awgData[chan.AWG.label][awgChan]['wfLib'] = wfs[chan]
     return awgData
 
-def compile_to_hardware(seqs, fileName, suffix='', alignMode="right"):
+def compile_to_hardware(seqs, fileName, suffix=''):
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'. Other inputs:
         suffix : string to append to end of fileName (e.g. with fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5)
-        alignMode : 'left' or 'right' (default 'left')
     '''
 
     #Add the digitizer trigger to measurements
@@ -294,10 +293,10 @@ def compile_sequence(seq, channels=None):
                 else:
                     warn("Dropping initial frame change")
             continue
-        # Align the block
+        # schedule the block
         for chan in channels:
             # add aligned Pulses (if the block contains a composite pulse, may get back multiple pulses)
-            wires[chan] += align(chan, block.pulses[chan], block.length, block.alignment)
+            wires[chan] += schedule(chan, block.pulses[chan], block.length, block.alignment)
 
     return wires
 
@@ -385,7 +384,7 @@ class Waveform(object):
     def isZero(self):
         return self.key == PatternUtils.TAZKey
 
-def align(channel, pulse, blockLength, alignment):
+def schedule(channel, pulse, blockLength, alignment):
     '''
     Converts a Pulse or a CompositePulses into an aligned sequence of Pulses
     by injecting TAPulses before and/or after such that the resulting sequence
