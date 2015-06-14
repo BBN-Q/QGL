@@ -86,6 +86,11 @@ class Pulse(object):
     def length(self):
         return self.shapeParams['length']
 
+    @length.setter
+    def length(self, value):
+        self.shapeParams['length'] = value
+        return value
+
     @property
     def isZero(self):
         return self.shapeParams['amp'] == 0 or np.all(self.shape == 0)

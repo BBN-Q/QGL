@@ -17,7 +17,7 @@ import numpy as np
 from warnings import warn
 from PulseSequencer import Pulse, TAPulse
 from PulsePrimitives import BLANK
-import ControlFlow, Compiler
+import ControlFlow, BlockLabel, Compiler
 from math import pi
 import hashlib
 
@@ -155,7 +155,7 @@ def apply_gating_constraints(chan, linkList):
         # first pass consolidates entries
         previousEntry = None
         for entry in miniLL:
-            if isinstance(entry, ControlFlow.ControlInstruction):
+            if isinstance(entry, (ControlFlow.ControlInstruction, BlockLabel.BlockLabel)):
                 if previousEntry:
                     gateSeq.append(previousEntry)
                     previousEntry = None
@@ -191,7 +191,7 @@ def apply_gating_constraints(chan, linkList):
             # look for pulse, delay, pulse pattern and ensure delay is long enough
             if [isNonZeroWaveform(x) for x in gateSeq[ct:ct+3]] == [True, False, True] and \
                 gateSeq[ct+1].length < gateMinWidth and \
-                [isinstance(x, ControlFlow.ControlInstruction) for x in gateSeq[ct:ct+3]] == [False, False, False]:
+                [isinstance(x, (ControlFlow.ControlInstruction, BlockLabel.BlockLabel)) for x in gateSeq[ct:ct+3]] == [False, False, False]:
                 gateSeq[ct].length += gateSeq[ct+1].length + gateSeq[ct+2].length
                 del gateSeq[ct+1:ct+3]
             else:
@@ -202,18 +202,17 @@ def apply_gating_constraints(chan, linkList):
     return gateSeqs
 
 def isNonZeroWaveform(entry):
-    return not isinstance(entry, ControlFlow.ControlInstruction) and not entry.isZero
+    return isinstance(entry, Pulse) and not entry.isZero
 
 def add_digitizer_trigger(seqs, trigChan):
     '''
     Add the digitizer trigger to a logical LL (pulse blocks).
     '''
     # Attach a trigger to any pulse block containing a measurement
-    pulseLength = trigChan.pulseParams['length'] * trigChan.physChan.samplingRate
     for seq in seqs:
         for ct in range(len(seq)):
             if contains_measurement(seq[ct]) and not (hasattr(seq[ct], 'pulses') and trigChan in seq[ct].pulses.keys()):
-                seq[ct] *= TAPulse("TRIG", trigChan, pulseLength, 1.0, 0.0, 0.0)
+                seq[ct] *= TAPulse("TRIG", trigChan, trigChan.pulseParams['length'], 1.0, 0.0, 0.0)
 
 def contains_measurement(entry):
     '''
@@ -231,12 +230,11 @@ def add_slave_trigger(seqs, slaveChan):
     '''
     Add the slave trigger to each sequence.
     '''
-    pulseLength = slaveChan.pulseParams['length'] * slaveChan.physChan.samplingRate
     for seq in seqs:
         # skip if the sequence already starts with a slave trig
         if hasattr(seq[0], 'qubits') and seq[0].qubits == slaveChan:
             continue
-        seq.insert(0, TAPulse("TRIG", slaveChan, pulseLength, 1.0, 0.0, 0.0))
+        seq.insert(0, TAPulse("TRIG", slaveChan, slaveChan.pulseParams['length'], 1.0, 0.0, 0.0))
 
 def propagate_frame(entries, frame):
     '''

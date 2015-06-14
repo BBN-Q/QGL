@@ -187,13 +187,13 @@ def compile_to_hardware(seqs, fileName, suffix='', alignMode="right"):
     '''
 
     #Add the digitizer trigger to measurements
-    # PatternUtils.add_digitizer_trigger(seqs, channelLib['digitizerTrig'])
+    PatternUtils.add_digitizer_trigger(seqs, channelLib['digitizerTrig'])
 
     # Add gating/blanking pulses
-    # PatternUtils.add_gate_pulses(seqs)
+    PatternUtils.add_gate_pulses(seqs)
 
     # Add the slave trigger
-    # PatternUtils.add_slave_trigger(seqs, channelLib['slaveTrig'])
+    PatternUtils.add_slave_trigger(seqs, channelLib['slaveTrig'])
 
     # find channel set at top level to account for individual sequence channel variability
     channels = set([])
