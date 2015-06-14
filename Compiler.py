@@ -42,8 +42,6 @@ from mm import multimethod
 channelLib = {}
 instrumentLib = {}
 
-markerWFLib = {PatternUtils.TAZKey:np.zeros(1, dtype=np.bool), PatternUtils.markerHighKey:np.ones(1, dtype=np.bool) }
-
 def map_logical_to_physical(wires):
     # construct a mapping of physical channels to lists of logical channels
     # (there will be more than one logical channel if multiple logical
@@ -416,27 +414,6 @@ def flatten(l):
                 yield sub
         else:
             yield el
-
-def resolve_offsets(seqs):
-    # create symbol look-up table
-    symbols = {}
-    for i, seq in enumerate(seqs):
-        for j, entry in enumerate(seq):
-            if entry.label and entry.label not in symbols:
-                symbols[entry.label] = (i, j)
-    # re-label targets with offsets
-    for seq in seqs:
-        for entry in seq:
-            if hasattr(entry, 'target') and entry.target and entry.target.offset != 0:
-                noOffsetLabel = copy(entry.target)
-                noOffsetLabel.offset = 0
-                baseidx = symbols[noOffsetLabel]
-                targetidx = (baseidx[0], baseidx[1]+entry.target.offset)
-                # targets are allowed to point beyond the end of the current sequence
-                while targetidx[1] >= len(seqs[targetidx[0]]):
-                    targetidx = (targetidx[0]+1, targetidx[1]-len(seqs[targetidx[0]]))
-                    assert targetidx[0] < len(seqs), "invalid target"
-                entry.target = BlockLabel.label(seqs[targetidx[0]][targetidx[1]:])
 
 def validate_linklist_channels(linklistChannels):
     errors = []
