@@ -62,99 +62,79 @@ def Id(qubit, *args, **kwargs):
 
     return TAPulse("Id", qubit, params['length'], 0)
 
-def Xtheta(qubit, amp=0, **kwargs):
-    '''  A generic X rotation with a variable amplitude  '''
-    params = overrideDefaults(qubit, kwargs)
-    params['amp'] = amp
-    return Pulse("Xtheta", qubit, params, 0, 0.0)
-
-def Ytheta(qubit, amp=0, **kwargs):
-    ''' A generic Y rotation with a variable amplitude '''
-    params = overrideDefaults(qubit, kwargs)
-    params['amp'] = amp
-    return Pulse("Ytheta", qubit, params, pi/2, 0.0)
-
-def U90(qubit, phase=0, **kwargs):
-    ''' A generic 90 degree rotation with variable phase. '''
-    params = overrideDefaults(qubit, kwargs)
-    params['amp'] = qubit.pulseParams['pi2Amp']
-    return Pulse("U90", qubit, params, phase, 0.0)
-
-def U(qubit, phase=0, **kwargs):
-    ''' A generic 180 degree rotation with variable phase.  '''
-    params = overrideDefaults(qubit, kwargs)
-    params['amp'] = qubit.pulseParams['piAmp']
-    return Pulse("U", qubit, params, phase, 0.0)
-
-def Utheta(qubit, amp=0, phase=0, **kwargs):
+# the most generic pulse is Utheta
+def Utheta(qubit, amp=0, phase=0, label='Utheta', **kwargs):
     '''  A generic rotation with variable amplitude and phase. '''
     params = overrideDefaults(qubit, kwargs)
     params['amp'] = amp
-    return Pulse("Utheta", qubit, params, phase, 0.0)
+    return Pulse(label, qubit, params, phase, 0.0)
+
+# generic pulses around X, Y, and Z axes
+def Xtheta(qubit, amp=0, label='Xtheta', **kwargs):
+    '''  A generic X rotation with a variable amplitude  '''
+    return Utheta(qubit, amp, 0, label=label, **kwargs)
+
+def Ytheta(qubit, amp=0, label='Ytheta', **kwargs):
+    ''' A generic Y rotation with a variable amplitude '''
+    return Utheta(qubit, amp, pi/2, label=label, **kwargs)
+
+def Ztheta(qubit, angle=0, label='Ztheta', **kwargs):
+    # special cased because it can be done with a frame update
+    return TAPulse(label, qubit, length=0, amp=0, phase=0, frameChange=-angle)
 
 #Setup the default 90/180 rotations
 # @_memoize
 def X(qubit, **kwargs):
-    params = overrideDefaults(qubit, kwargs)
-    params['amp'] = qubit.pulseParams['piAmp']
-    return Pulse("X", qubit, params, 0, 0.0)
+    return Xtheta(qubit, qubit.pulseParams['piAmp'], label="X", **kwargs)
 
 # @_memoize
 def X90(qubit, **kwargs):
-    params = overrideDefaults(qubit, kwargs)
-    params['amp'] = qubit.pulseParams['pi2Amp']
-    return Pulse("X90", qubit, params, 0, 0.0)
+    return Xtheta(qubit, qubit.pulseParams['pi2Amp'], label="X90", **kwargs)
 
 # @_memoize
 def Xm(qubit, **kwargs):
-    params = overrideDefaults(qubit, kwargs)
-    params['amp'] = qubit.pulseParams['piAmp']
-    return Pulse("Xm", qubit, params, pi, 0.0)
+    return Xtheta(qubit, -qubit.pulseParams['piAmp'], label="Xm", **kwargs)
 
 # @_memoize
 def X90m(qubit, **kwargs):
-    params = overrideDefaults(qubit, kwargs)
-    params['amp'] = qubit.pulseParams['pi2Amp']
-    return Pulse("X90m", qubit, params, pi, 0.0)
+    return Xtheta(qubit, -qubit.pulseParams['pi2Amp'], label="X90m", **kwargs)
 
 # @_memoize
 def Y(qubit, **kwargs):
-    params = overrideDefaults(qubit, kwargs)
-    params['amp'] = qubit.pulseParams['piAmp']
-    return Pulse("Y", qubit, params, pi/2, 0.0)
+    return Ytheta(qubit, qubit.pulseParams['piAmp'], label="Y", **kwargs)
 
 # @_memoize
 def Y90(qubit, **kwargs):
-    params = overrideDefaults(qubit, kwargs)
-    params['amp'] = qubit.pulseParams['pi2Amp']
-    return Pulse("Y90", qubit, params, pi/2, 0.0)
+    return Ytheta(qubit, qubit.pulseParams['pi2Amp'], label="Y90", **kwargs)
 
 # @_memoize
 def Ym(qubit, **kwargs):
-    params = overrideDefaults(qubit, kwargs)
-    params['amp'] = qubit.pulseParams['piAmp']
-    return Pulse("Ym", qubit, params, -pi/2, 0.0)
+    return Ytheta(qubit, -qubit.pulseParams['piAmp'], label="Ym", **kwargs)
 
 # @_memoize
 def Y90m(qubit, **kwargs):
-    params = overrideDefaults(qubit, kwargs)
-    params['amp'] = qubit.pulseParams['pi2Amp']
-    return Pulse("Y90m", qubit, params, -pi/2, 0.0)
+    return Ytheta(qubit, -qubit.pulseParams['pi2Amp'], label="Y90m", **kwargs)
 
 # @_memoize
 def Z(qubit, **kwargs):
-    return TAPulse("Z", qubit, length=0, amp=0, phase=0, frameChange=pi)
+    return Ztheta(qubit, pi, label="Z", **kwargs)
 
 # @_memoize
 def Z90(qubit, **kwargs):
-    return TAPulse("Z90", qubit, length=0, amp=0, phase=0, frameChange=-pi/2)
+    return Ztheta(qubit, pi/2, label="Z90", **kwargs)
 
 # @_memoize
 def Z90m(qubit, **kwargs):
-    return TAPulse("Z90m", qubit, length=0, amp=0, phase=0, frameChange=pi/2)
+    return Ztheta(qubit, -pi/2, label="Z90m", **kwargs)
 
-def Ztheta(qubit, angle=0, **kwargs):
-    return TAPulse("Z", qubit, length=0, amp=0, phase=0, frameChange=-angle)
+# 90/180 degree rotations with control over the rotation axis
+def U90(qubit, phase=0, **kwargs):
+    ''' A generic 90 degree rotation with variable phase. '''
+    return Utheta(qubit, qubit.pulseParams['pi2Amp'], phase, label="U90", **kwargs)
+
+def U(qubit, phase=0, **kwargs):
+    ''' A generic 180 degree rotation with variable phase.  '''
+    return Utheta(qubit, qubit.pulseParams['piAmp'], phase, label="U90", **kwargs)
 
 def arb_axis_drag(qubit, nutFreq, rotAngle=0, polarAngle=0, aziAngle=0, **kwargs):
     """
