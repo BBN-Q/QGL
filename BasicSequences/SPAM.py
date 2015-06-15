@@ -24,7 +24,7 @@ def SPAM(qubit, angleSweep, maxSpamBlocks=10, showPlot=False):
 
 	def spam_seqs(angle):
 		""" Helper function to create a list of sequences increasing SPAM blocks with a given angle. """
-		SPAMBlock = [X(qubit), U180(qubit, phase=pi/2+angle), X(qubit), U180(qubit, phase=pi/2+angle)]
+		SPAMBlock = [X(qubit), U(qubit, phase=pi/2+angle), X(qubit), U(qubit, phase=pi/2+angle)]
 		return [[Y90(qubit)] + SPAMBlock*rep + [X90(qubit)] for rep in range(maxSpamBlocks)]
 
 	#Insert an identity at the start of every set to mark them off
