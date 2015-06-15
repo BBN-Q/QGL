@@ -18,17 +18,21 @@ def qwhile(mask, seq):
 def qdowhile(mask, seq):
 	return seq + [CmpEq(mask), Goto(label(seq))]
 
+# caches for sequences and labels
+qfunction_seq = {}
 def qfunction(func):
-	# caches for sequences and labels
-	seq = {}
 	target = {}
 	@wraps(func)
 	def crfunc(*args):
 		if args not in target:
-			seq[args] = func(*args)
-			target[args] = label(seq[args])
-		return [Call(target[args])], seq[args] + [Return()] # TODO: update me to only return seq[args] on first call
+			seq = func(*args) + [Return()]
+			target[args] = label(seq)
+			qfunction_seq[label(seq)] = seq
+		return Call(target[args])
 	return crfunc
+
+def qfunction_specialization(target):
+	return qfunction_seq[target]
 
 @multimethod(int, Pulse)
 def repeat(n, p):
