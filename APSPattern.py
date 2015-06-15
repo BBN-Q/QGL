@@ -21,9 +21,8 @@ import os
 import numpy as np
 from warnings import warn
 from itertools import chain, izip_longest
-import Compiler, ControlFlow
-import PulseSequencer
-from PatternUtils import hash_pulse, TAZKey
+import Compiler, ControlFlow, PulseSequencer, BlockLabel
+from PatternUtils import hash_pulse
 from copy import copy, deepcopy
 
 
@@ -52,7 +51,7 @@ def preprocess_APS(miniLL, wfLib):
 	entryct = 0
 	while entryct < len(miniLL):
 		curEntry = miniLL[entryct]
-		if not isinstance(curEntry, Compiler.LLWaveform) or curEntry.length >= MIN_ENTRY_LENGTH:
+		if not isinstance(curEntry, Compiler.Waveform) or curEntry.length >= MIN_ENTRY_LENGTH:
 			newMiniLL.append(curEntry)
 			entryct += 1
 			continue
@@ -65,9 +64,9 @@ def preprocess_APS(miniLL, wfLib):
 		previousEntry = miniLL[entryct-1] if entryct > 0 else None
 
 		#For short TA pairs we see if we can add them to the next waveform
-		if curEntry.key == TAZKey and not nextEntry.key == TAZKey:
+		if curEntry.isZero and not nextEntry.isZero:
 			#Concatenate the waveforms
-			paddedWF = np.hstack((wfLib[curEntry.key]*np.ones(curEntry.length), wfLib[nextEntry.key]))
+			paddedWF = np.hstack((np.zeros(curEntry.length, dtype=np.complex), wfLib[nextEntry.key]))
 			#Hash the result to generate a new unique key and add
 			newKey = hash_pulse(paddedWF)
 			wfLib[newKey] = paddedWF
@@ -77,14 +76,18 @@ def preprocess_APS(miniLL, wfLib):
 			entryct += 2
 
 		#For short pulses we see if we can steal some padding from the previous or next entry
-		elif isinstance(previousEntry, Compiler.LLWaveform) and previousEntry.key == TAZKey and previousEntry.length > 2*MIN_ENTRY_LENGTH:
+		elif isinstance(previousEntry, Compiler.Waveform) and previousEntry.isZero and previousEntry.length > 2*MIN_ENTRY_LENGTH:
 			padLength = MIN_ENTRY_LENGTH - curEntry.length
 			newMiniLL[-1].length -= padLength
 			#Concatenate the waveforms
-			if curEntry.isTimeAmp:
+			if curEntry.isZero:
+				curEntry.length += padLength
+				entryct += 1
+				curEntry.isTimeAmp = True
+				continue
+			elif curEntry.isTimeAmp: #non-zero
 				paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[curEntry.key]*np.ones(curEntry.length)))
-				if curEntry.key != TAZKey:
-					curEntry.isTimeAmp = False
+				curEntry.isTimeAmp = False
 			else:
 				paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[curEntry.key]))
 			#Hash the result to generate a new unique key and add
@@ -95,14 +98,18 @@ def preprocess_APS(miniLL, wfLib):
 			newMiniLL.append(curEntry)
 			entryct += 1
 
-		elif isinstance(nextEntry, Compiler.LLWaveform) and nextEntry.key == TAZKey and nextEntry.length > 2*MIN_ENTRY_LENGTH:
+		elif isinstance(nextEntry, Compiler.Waveform) and nextEntry.isZero and nextEntry.length > 2*MIN_ENTRY_LENGTH:
 			padLength = MIN_ENTRY_LENGTH - curEntry.length
 			nextEntry.length -= padLength
 			#Concatenate the waveforms
-			if curEntry.isTimeAmp:
+			if curEntry.isZero:
+				curEntry.length += padLength
+				entryct += 1
+				curEntry.isTimeAmp = True
+				continue
+			elif curEntry.isTimeAmp: #non-zero
 				paddedWF = np.hstack((wfLib[curEntry.key]*np.ones(curEntry.length), np.zeros(padLength, dtype=np.complex)))
-				if curEntry.key != TAZKey:
-					curEntry.isTimeAmp = False
+				curEntry.isTimeAmp = False
 			else:
 				paddedWF = np.hstack((wfLib[curEntry.key], np.zeros(padLength, dtype=np.complex)))
 			#Hash the result to generate a new unique key and add
@@ -233,11 +240,14 @@ def create_LL_data(LLs, offsets, AWGName=''):
 	for miniLL in LLs:
 		miniStart = True
 		for entry in miniLL:
-			if isinstance(entry, ControlFlow.ControlInstruction):
+			if isinstance(entry, BlockLabel.BlockLabel):
+				# don't emit any instructions for labels
+				continue
+			elif isinstance(entry, ControlFlow.ControlInstruction):
 				if isinstance(entry, ControlFlow.Wait):
 					waitFlag = True
 					continue
-				elif isinstance(entry, ControlFlow.Goto) and entry.target == LLs[0][0].label:
+				elif isinstance(entry, ControlFlow.Goto) and entry.target == LLs[0][0]:
 					# can safely skip a goto with a target of the first instruction
 					continue
 				else:
@@ -249,7 +259,7 @@ def create_LL_data(LLs, offsets, AWGName=''):
 					count = entry.length//ADDRESS_UNIT - 1,
 					trig1 = t1,
 					trig2 = t2,
-					repeat = entry.repeat -1)
+					repeat = 0) # TODO: look for single pulse repeats
 				# set flags
 				instr.TAPair = entry.isTimeAmp
 				instr.wait = waitFlag
@@ -282,6 +292,13 @@ def create_LL_data(LLs, offsets, AWGName=''):
 
 	return LLData, numEntries, miniLLrepeat
 
+TAZKey = hash_pulse(np.zeros(1, dtype=np.complex))
+def padding_entry(length):
+	entry = Compiler.Waveform()
+	entry.length = length
+	entry.key = TAZKey
+	return entry
+
 def merge_APS_markerData(IQLL, markerLL, markerNum):
 	'''
 	Helper function to merge two marker channels into an IQ channel.
@@ -294,14 +311,14 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 	# expand link lists to the same length (copying first element of shorter one)
 	for miniLL_IQ, miniLL_m in izip_longest(IQLL, markerLL):
 		if not miniLL_IQ:
-			IQLL.append([ControlFlow.Wait(), Compiler.create_padding_LL(MIN_ENTRY_LENGTH), Compiler.create_padding_LL(MIN_ENTRY_LENGTH)])
+			IQLL.append([ControlFlow.Wait(), padding_entry(MIN_ENTRY_LENGTH), padding_entry(MIN_ENTRY_LENGTH)])
 		if not miniLL_m:
-			markerLL.append([Compiler.create_padding_LL(MIN_ENTRY_LENGTH)])
+			markerLL.append([padding_entry(MIN_ENTRY_LENGTH)])
 
 	#Step through the all the miniLL's together
 	for miniLL_IQ, miniLL_m in zip(IQLL, markerLL):
 		#Find the cummulative length for each entry of IQ channel
-		timePts = np.cumsum([0] + [len(entry) for entry in miniLL_IQ])
+		timePts = np.cumsum([0] + [entry.length for entry in miniLL_IQ])
 
 		#Find the switching points of the marker channels
 		switchPts = []
@@ -331,7 +348,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 				idx = len(miniLL_IQ)
 				while idx > 0 and isinstance(miniLL_IQ[idx-1], ControlFlow.ControlInstruction):
 					idx -=1
-				miniLL_IQ.insert(idx, Compiler.create_padding_LL(max(dt+4, MIN_ENTRY_LENGTH)))
+				miniLL_IQ.insert(idx, padding_entry(max(dt+4, MIN_ENTRY_LENGTH)))
 
 		#Now map onto linklist elements
 		curIQIdx = 0
@@ -351,7 +368,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 				# add padding pulses if needed
 				if curIQIdx >= len(miniLL_IQ):
 					pad = max(MIN_ENTRY_LENGTH, min(trigQueue, 0))
-					miniLL_IQ.append(Compiler.create_padding_LL(pad))
+					miniLL_IQ.append(padding_entry(pad))
 			#Push on the trigger count
 
 			#If are switch point is before the start of the LL entry then we are in trouble...

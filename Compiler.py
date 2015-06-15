@@ -142,7 +142,10 @@ def generate_waveforms(physicalWires):
             if not isinstance(pulse, PulseSequencer.Pulse):
                 continue
             if pulse.hashshape() not in wfs[ch]:
-                wfs[ch][pulse.hashshape()] = pulse.shape
+                if pulse.isTimeAmp:
+                    wfs[ch][pulse.hashshape()] = pulse.shapeParams['amp']
+                else:
+                    wfs[ch][pulse.hashshape()] = pulse.shape
     return wfs
 
 def pulses_to_waveforms(physicalWires):
@@ -374,14 +377,14 @@ class Waveform(object):
     def __str__(self):
         labelPart = "{0}: ".format(self.label) if self.label else ""
         if self.isTimeAmp:
-            TA = 'HIGH' if self.shapeParams['amp'] != 0 else 'LOW'
+            TA = 'HIGH' if self.amp != 0 else 'LOW'
             return labelPart + "Waveform-TA(" + TA + ", " + str(self.length) + ")"
         else:
             return labelPart + "Waveform(" + str(self.key)[:6] + ", " + str(self.length) + ")"
 
     @property
     def isZero(self):
-        return self.key == PatternUtils.TAZKey
+        return self.amp == 0
 
 def schedule(channel, pulse, blockLength, alignment):
     '''
