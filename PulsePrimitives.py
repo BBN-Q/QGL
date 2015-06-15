@@ -134,7 +134,7 @@ def U90(qubit, phase=0, **kwargs):
 
 def U(qubit, phase=0, **kwargs):
     ''' A generic 180 degree rotation with variable phase.  '''
-    return Utheta(qubit, qubit.pulseParams['piAmp'], phase, label="U90", **kwargs)
+    return Utheta(qubit, qubit.pulseParams['piAmp'], phase, label="U", **kwargs)
 
 def arb_axis_drag(qubit, nutFreq, rotAngle=0, polarAngle=0, aziAngle=0, **kwargs):
     """
