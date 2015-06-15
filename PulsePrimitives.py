@@ -285,10 +285,10 @@ def AC(qubit, cliffNum):
 
 ## two-qubit primitivies
 # @_memoize
-def CNOT(source, target):
+def CNOT(source, target, **kwargs):
     # construct (source, target) channel and pull parameters from there
     channel = Channels.QubitFactory(source.label + target.label)
-    params = overrideDefaults(channel, **kwargs)
+    params = overrideDefaults(channel, kwargs)
     params['amp'] = channel.pulseParams['piAmp']
     return Pulse("CNOT", (source, target), params, 0.0, 0.0)
 
