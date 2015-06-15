@@ -1,4 +1,4 @@
-from BlockLabel import label, endlabel
+from BlockLabel import newlabel, label, endlabel
 from PulseSequencer import Pulse
 from functools import wraps
 from mm import multimethod
@@ -13,7 +13,9 @@ def qif(mask, ifSeq, elseSeq=None):
 		return [CmpNeq(mask), Goto(endlabel(ifSeq))] + ifSeq
 
 def qwhile(mask, seq):
-	return [CmpNeq(mask), Goto(endlabel(seq))] + seq
+	label1 = newlabel()
+	label2 = newlabel()
+	return [label1, CmpNeq(mask), Goto(label2)] + seq + [Goto(label1), label2]
 
 def qdowhile(mask, seq):
 	return seq + [CmpEq(mask), Goto(label(seq))]
