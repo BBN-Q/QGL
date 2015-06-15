@@ -122,16 +122,16 @@ def concatenate_entries(entry1, entry2):
     newentry = copy(entry1)
     # TA waveforms with the same amplitude can be merged with a just length update
     # otherwise, need to concatenate the pulse shapes
-    if not (entry1.isTimeAmp and entry2.isTimeAmp and entry1.shapeParams['amp'] == entry2.shapeParams['amp'] and entry1.phase == entry2.phase and entry1.frameChange == 0):
+    if not (entry1.isTimeAmp and entry2.isTimeAmp and entry1.shapeParams['amp'] == entry2.shapeParams['amp'] and entry1.phase == (entry1.frameChange + entry2.phase)):
         # otherwise, need to build a closure to stack them
         def stackShapes(**kwargs):
             return np.hstack((entry1.shapeParams['amp'] * np.exp(1j*entry1.phase) * entry1.shape,
-                              entry2.shapeParams['amp'] * np.exp(1j*entry2.phase) * entry2.shape))
+                              entry2.shapeParams['amp'] * np.exp(1j*(entry1.frameChange + entry2.phase)) * entry2.shape))
 
         newentry.isTimeAmp = False
         newentry.shapeParams = {'amp' : 1, 'shapeFun' : stackShapes}
-        newentry.frameChange += entry2.frameChange
         newentry.label = entry1.label + '+' + entry2.label
+    newentry.frameChange += entry2.frameChange
     newentry.length = entry1.length + entry2.length
     return newentry
 
