@@ -20,7 +20,7 @@ from copy import copy
 import json
 import numpy as np
 
-import Channels, PulseShapes
+import Channels, PulseShapes, operator
 
 class Pulse(object):
     '''

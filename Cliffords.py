@@ -6,6 +6,7 @@ from scipy.linalg import expm
 from numpy import pi
 from itertools import product
 from random import choice
+import operator
 
 from PulsePrimitives import *
 
