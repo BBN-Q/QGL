@@ -130,13 +130,11 @@ class CompositePulse(object):
             return "+".join([str(p) for p in self.pulses])
 
     def __add__(self, other):
+        if self.qubits != other.qubits:
+            raise NameError("Can only concatenate pulses acting on the same channel")
         if hasattr(other, 'pulses'):
-            if self.pulses.keys() != other.pulses.keys():
-                raise NameError("Can only concatenate pulses acting on the same channel")
             return CompositePulse(self.pulses + other.pulses)
         else:
-            if self.pulses.keys() != other.qubits:
-                raise NameError("Can only concatenate pulses acting on the same channel")
             return CompositePulse(self.pulses + [other])
 
     def __mul__(self, other):
