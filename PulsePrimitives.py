@@ -288,7 +288,7 @@ def AC(qubit, cliffNum):
 def CNOT(source, target):
     # construct (source, target) channel and pull parameters from there
     channel = Channels.QubitFactory(source.label + target.label)
-    params = overrideDefaults(channel, kwargs)
+    params = overrideDefaults(channel, **kwargs)
     params['amp'] = channel.pulseParams['piAmp']
     return Pulse("CNOT", (source, target), params, 0.0, 0.0)
 
