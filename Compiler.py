@@ -64,36 +64,38 @@ def map_logical_to_physical(wires):
 
     return physicalWires
 
-def merge_channels(linkLists, wfLib, channels):
+def merge_channels(wires, channels):
     chan = channels[0]
-    newLinkList = [[] for _ in range(len(linkLists[chan]))]
-    newWfLib = {}
-    for ct, segment in enumerate(newLinkList):
-        entryIterators = [iter(linkLists[ch][ct]) for ch in channels]
+    mergedWire = [[] for _ in range(len(wires[chan]))]
+    for ct, segment in enumerate(mergedWire):
+        entryIterators = [iter(wires[ch][ct]) for ch in channels]
         while True:
             try:
                 entries = [e.next() for e in entryIterators]
                 # control flow on any channel should pass thru
-                if any(isinstance(e, ControlFlow.ControlInstruction) for e in entries):
+                if any(isinstance(e, (ControlFlow.ControlInstruction, BlockLabel.BlockLabel)) for e in entries):
                     # for the moment require uniform control flow so that we
                     # can pull from the first channel
                     assert all(e == entries[0] for e in entries), "Non-uniform control flow"
                     segment.append(entries[0])
                     continue
                 # at this point we have at least one waveform instruction
-                blocklength = pull_uniform_entries(entries, entryIterators, wfLib, channels)
+                blocklength = pull_uniform_entries(entries, entryIterators, channels)
                 newentry = copy(entries[0])
                 newentry.length = blocklength
-                # sum waveforms
-                wfnew = reduce(operator.add, [wfLib[channel][e.key] for channel, e in zip(channels, entries)])
-                newentry.key = PatternUtils.hash_pulse(wfnew)
-                newWfLib[newentry.key] = wfnew
+                newentry.phase = 0
+
+                # create closure to sum waveforms
+                def sumShapes(**kwargs):
+                    return reduce(operator.add, [e.shapeParams['amp'] * np.exp(1j*e.phase) * e.shape for e in entries])
+                newentry.shapeParams = {'amp' : 1, 'shapeFun' : sumShapes}
+                newentry.label = "*".join([e.label for e in entries])
                 segment.append(newentry)
             except StopIteration:
                 break
-    return newLinkList, newWfLib
+    return mergedWire
 
-def pull_uniform_entries(entries, entryIterators, wfLib, channels):
+def pull_uniform_entries(entries, entryIterators, channels):
     '''
     Given entries from a set of logical channels (that share a physical
     channel), pull enough entries from each channel so that the total pulse
@@ -107,28 +109,30 @@ def pull_uniform_entries(entries, entryIterators, wfLib, channels):
     The function returns the resulting block length.
     '''
     for ct in range(len(entries)):
-        while len(entries[ct]) < max(len(e) for e in entries):
+        while entries[ct].length < max(e.length for e in entries):
             # concatenate with following entry to make up the length difference
             try:
                 nextentry = entryIterators[ct].next()
             except StopIteration:
                 raise NameError("Could not find a uniform section of entries")
-            entries[ct] = concatenate_entries(entries[ct], nextentry, wfLib[channels[ct]])
-    return max(len(e) for e in entries)
+            entries[ct] = concatenate_entries(entries[ct], nextentry)
+    return max(e.length for e in entries)
 
-def concatenate_entries(entry1, entry2, wfLib):
+def concatenate_entries(entry1, entry2):
     newentry = copy(entry1)
     # TA waveforms with the same amplitude can be merged with a just length update
     # otherwise, need to concatenate the pulse shapes
-    if not (entry1.isTimeAmp and entry2.isTimeAmp and entry1.key == entry2.key and entry1.phase == entry2.phase and entry1.frameChange == 0):
-        # otherwise, need to expand pulses and stack them
-        wf = np.hstack((np.resize(wfLib[entry1.key], len(entry1)),
-                        np.resize(wfLib[entry2.key], len(entry2))))
+    if not (entry1.isTimeAmp and entry2.isTimeAmp and entry1.shapeParams['amp'] == entry2.shapeParams['amp'] and entry1.phase == entry2.phase and entry1.frameChange == 0):
+        # otherwise, need to build a closure to stack them
+        def stackShapes(**kwargs):
+            return np.hstack((entry1.shapeParams['amp'] * np.exp(1j*entry1.phase) * entry1.shape,
+                              entry2.shapeParams['amp'] * np.exp(1j*entry2.phase) * entry2.shape))
+
         newentry.isTimeAmp = False
-        newentry.key = PatternUtils.hash_pulse(wf)
+        newentry.shapeParams = {'amp' : 1, 'shapeFun' : stackShapes}
         newentry.frameChange += entry2.frameChange
-        wfLib[newentry.key] = wf
-    newentry.length = len(entry1) + len(entry2)
+        newentry.label = entry1.label + '+' + entry2.label
+    newentry.length = entry1.length + entry2.length
     return newentry
 
 def generate_waveforms(physicalWires):
@@ -375,9 +379,6 @@ class Waveform(object):
         else:
             return labelPart + "Waveform(" + str(self.key)[:6] + ", " + str(self.length) + ")"
 
-    def __len__(self):
-        return self.length
-
     @property
     def isZero(self):
         return self.key == PatternUtils.TAZKey
@@ -391,7 +392,7 @@ def schedule(channel, pulse, blockLength, alignment):
     '''
     # make everything look like a sequence
     if isinstance(pulse, PulseSequencer.CompositePulse):
-        pulses = [pulse.pulses]
+        pulses = pulse.pulses
     else:
         pulses = [pulse]
 
