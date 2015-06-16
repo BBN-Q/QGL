@@ -206,8 +206,8 @@ def write_Tek_file(awgData, fileName, seqName, options=None):
     #If we have only one step then we specify the waveform names
     if numSeqs == 1:
         for chanct in range(1,5):
-            write_field(FID, 'OUTPUT_WAVEFORM_NAME_'+str(chanct), seqName+'Ch'+str(chanct)+'001', 'char')
-    
+            write_field(FID, 'OUTPUT_WAVEFORM_NAME_'+str(chanct), str(seqName)+'Ch'+str(chanct)+'001', 'char')
+            
     #Now write the waveforms
     wfs = range(4)
     for ct in range(numSeqs):
