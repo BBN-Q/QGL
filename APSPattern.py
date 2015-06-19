@@ -27,6 +27,7 @@ from copy import copy, deepcopy
 
 
 #Some constants
+SAMPLING_RATE = 1.2e9
 ADDRESS_UNIT = 4 #everything is done in units of 4 timesteps
 MIN_ENTRY_LENGTH = 12
 MIN_LL_ENTRY_COUNT = 2 #minimum length of mini link list
@@ -47,6 +48,8 @@ def preprocess_APS(miniLL, wfLib):
 	Helper function to deal with LL elements less than minimum LL entry count
 	by trying to concatenate them into neighbouring entries
 	'''
+	miniLL = convert_lengths_to_samples(miniLL)
+
 	newMiniLL = []
 	entryct = 0
 	while entryct < len(miniLL):
@@ -126,6 +129,11 @@ def preprocess_APS(miniLL, wfLib):
 
 	#Update the miniLL
 	return newMiniLL
+
+def convert_lengths_to_samples(instructions):
+	for entry in instructions:
+		entry.length = int(round(entry.length * SAMPLING_RATE))
+	return instructions
 
 def create_wf_vector(wfLib):
 	'''
@@ -297,6 +305,7 @@ def padding_entry(length):
 	entry = Compiler.Waveform()
 	entry.length = length
 	entry.key = TAZKey
+	entry.isTimeAmp = True
 	return entry
 
 def merge_APS_markerData(IQLL, markerLL, markerNum):
@@ -305,6 +314,8 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 	'''
 	if len(markerLL) == 0:
 		return
+
+	markerLL = convert_lengths_to_samples(markerLL)
 
 	markerAttr = 'markerDelay' + str(markerNum)
 
@@ -322,12 +333,12 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 
 		#Find the switching points of the marker channels
 		switchPts = []
-		prevKey = TAZKey
+		prevAmplitude = 0
 		t = 0
 		for entry in miniLL_m:
-			if hasattr(entry, 'key') and prevKey != entry.key:
+			if hasattr(entry, 'amp') and prevAmplitude != entry.amp:
 				switchPts.append(t)
-				prevKey = entry.key
+				prevAmplitude = entry.amp
 			t += len(entry)
 
 		# Push on an extra switch point if we have an odd number of switches (to maintain state)
@@ -355,10 +366,10 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 		trigQueue = []
 		for switchPt in switchPts:
 			# skip if:
-			#   1) control-flow instruction
+			#   1) control-flow instruction or label (i.e. not a waveform)
 			#   2) the trigger count is too long
 			#   3) the previous trigger pulse entends into the current entry
-			while (isinstance(miniLL_IQ[curIQIdx], ControlFlow.ControlInstruction) or
+			while (not isinstance(miniLL_IQ[curIQIdx], Compiler.Waveform) or
 				(switchPt - timePts[curIQIdx]) > (ADDRESS_UNIT * MAX_TRIGGER_COUNT) or
 				len(trigQueue) > 1):
 				# update the trigger queue, dropping triggers that have played
@@ -375,7 +386,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 			if switchPt - timePts[curIQIdx] < 0:
 				#See if the previous entry was a TA pair and whether we can split it
 				needToShift = switchPt - timePts[curIQIdx-1]
-				if isinstance(miniLL_IQ[curIQIdx-1], Compiler.LLWaveform) and \
+				if isinstance(miniLL_IQ[curIQIdx-1], Compiler.Waveform) and \
 					miniLL_IQ[curIQIdx-1].isTimeAmp and \
 					miniLL_IQ[curIQIdx-1].length > (needToShift + MIN_ENTRY_LENGTH):
 
@@ -423,7 +434,7 @@ def unroll_loops(LLs):
 		if not isinstance(seq[0], ControlFlow.LoadRepeat) or \
 			not isinstance(seq[-1], ControlFlow.Repeat) or \
 			seq[0].value != repeats or \
-			seq[-1].target != seq[1].label:
+			seq[-1].target != seq[1]:
 			simpleUnroll = False
 
 	if simpleUnroll:
@@ -437,12 +448,12 @@ def unroll_loops(LLs):
 		while ct < len(seq):
 			entry = seq[ct]
 			# fill symbol table
-			if isinstance(entry, (ControlFlow.ControlInstruction, PulseSequencer.PulseBlock)) and \
-				entry.label and entry.label not in symbols:
-				symbols[entry.label] = ct
+			if isinstance(entry, BlockLabel.BlockLabel) and \
+				entry not in symbols:
+				symbols[entry] = ct
 			# look for the end of a repeated block
 			if isinstance(entry, ControlFlow.Repeat):
-				repeatedBlock = seq[symbols[entry.target]:ct]
+				repeatedBlock = seq[symbols[entry.target]+1:ct]
 				numRepeats = seq[symbols[entry.target]-1].value
 				# unroll the block (dropping the LOAD and REPEAT)
 				seq = seq[:symbols[entry.target]-1] + repeatedBlock*numRepeats + seq[ct+1:]
