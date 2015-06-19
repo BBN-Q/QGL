@@ -25,22 +25,20 @@ def hash_pulse(shape):
     return hashlib.sha1(shape.tostring()).hexdigest()
 
 TAZKey = hash_pulse(np.zeros(1, dtype=np.complex))
-markerHighKey = hash_pulse(np.ones(1, dtype=np.bool))
 
-def delay(linkList, delay, samplingRate):
+def delay(sequences, delay):
     '''
-    Delays a mini link list by the given amount.
+    Delays a sequence by the given amount.
     '''
-    sampShift = int(round(delay * samplingRate))
-    if sampShift <= 0: # no need to inject zero delays
+    if delay <= 0: # no need to inject zero delays
         return
-    for miniLL in linkList:
+    for seq in sequences:
         # loop through and look for WAIT instructions
-        # use while loop because len(miniLL) will change as we inject delays
+        # use while loop because len(seq) will change as we inject delays
         ct = 0
-        while ct < len(miniLL):
-            if miniLL[ct] == ControlFlow.Wait() or miniLL[ct] == ControlFlow.Sync():
-                miniLL.insert(ct+1, Compiler.create_padding_LL(sampShift))
+        while ct < len(seq)-1:
+            if seq[ct] == ControlFlow.Wait() or seq[ct] == ControlFlow.Sync():
+                seq.insert(ct+1, TAPulse("Id", seq[ct+1].qubits, delay, 0))
             ct += 1
 
 def normalize_delays(delays):
@@ -101,17 +99,6 @@ def apply_SSB(linkList, wfLib, SSBFreq, samplingRate):
                 entry.key = shapeHash
             curFrame += phaseStep*entry.length
 
-def align(linkList, mode, length):
-    for miniLL in linkList:
-        miniLL_length = sum([len(entry) for entry in miniLL])
-        paddingEntry = Compiler.create_padding_LL(length - miniLL_length)
-        if mode == 'left':
-            miniLL.append(paddingEntry)
-        elif mode == 'right':
-            miniLL.insert(0, paddingEntry)
-        else:
-            raise NameError("Unknown aligment mode")
-
 def correctMixer(wfLib, T):
     for k, v in wfLib.items():
         # To get the broadcast to work in numpy, need to do the multiplication one row at a time
@@ -144,8 +131,9 @@ def apply_gating_constraints(chan, linkList):
     if not hasattr(chan,'gateMinWidth'):
         raise AttributeError("{0} does not have gateMinWidth".format(chan.label))
       
-    gateBuffer = int(round(chan.gateBuffer * chan.samplingRate))
-    gateMinWidth = int(round(chan.gateMinWidth * chan.samplingRate))
+    # get channel parameters
+    gateBuffer = chan.gateBuffer
+    gateMinWidth = chan.gateMinWidth
 
     #Initialize list of sequences to return
     gateSeqs = []
@@ -182,7 +170,7 @@ def apply_gating_constraints(chan, linkList):
             if isNonZeroWaveform(gateSeq[ct]):
                 gateSeq[ct].length += gateBuffer
                 # contract the next pulse by the same amount
-                if ct + 1 < len(gateSeq) - 1 and not isinstance(gateSeq[ct+1], ControlFlow.ControlInstruction):
+                if ct + 1 < len(gateSeq) - 1 and isinstance(gateSeq[ct+1], Pulse):
                     gateSeq[ct+1].length -= gateBuffer #TODO: what if this becomes negative?
 
         # third pass ensures gateMinWidth
@@ -191,7 +179,7 @@ def apply_gating_constraints(chan, linkList):
             # look for pulse, delay, pulse pattern and ensure delay is long enough
             if [isNonZeroWaveform(x) for x in gateSeq[ct:ct+3]] == [True, False, True] and \
                 gateSeq[ct+1].length < gateMinWidth and \
-                [isinstance(x, (ControlFlow.ControlInstruction, BlockLabel.BlockLabel)) for x in gateSeq[ct:ct+3]] == [False, False, False]:
+                [isinstance(x, Pulse) for x in gateSeq[ct:ct+3]] == [True, True, True]:
                 gateSeq[ct].length += gateSeq[ct+1].length + gateSeq[ct+2].length
                 del gateSeq[ct+1:ct+3]
             else:
@@ -258,10 +246,10 @@ def compress_wfLib(seqs, wfLib):
     '''
     Helper function to remove unused waveforms from the library.
     '''
-    usedKeys = set([PatternUtils.TAZKey, PatternUtils.markerHighKey])
+    usedKeys = set()
     for miniLL in seqs:
         for entry in miniLL:
-            if isinstance(entry, Waveform):
+            if isinstance(entry, Compiler.Waveform):
                 usedKeys.add(entry.key)
 
     unusedKeys = set(wfLib.keys()) - usedKeys

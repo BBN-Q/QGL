@@ -190,7 +190,7 @@ def compile_to_hardware(seqs, fileName, suffix=''):
         suffix : string to append to end of fileName (e.g. with fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5)
     '''
 
-    #Add the digitizer trigger to measurements
+    # Add the digitizer trigger to measurements
     PatternUtils.add_digitizer_trigger(seqs, channelLib['digitizerTrig'])
 
     # Add gating/blanking pulses
@@ -204,7 +204,7 @@ def compile_to_hardware(seqs, fileName, suffix=''):
     for seq in seqs:
         channels |= find_unique_channels(seq)
 
-    #Compile all the pulses/pulseblocks to sequences of pulses and control flow
+    # Compile all the pulses/pulseblocks to sequences of pulses and control flow
     wireSeqs = compile_sequences(seqs, channels)
 
     if not validate_linklist_channels(wireSeqs.keys()):
@@ -218,17 +218,18 @@ def compile_to_hardware(seqs, fileName, suffix=''):
     # map logical to physical channels
     physWires = map_logical_to_physical(wireSeqs)
 
-    # generate wf library (base shapes), replacing Pulse objects with Waveforms
-    wfs = generate_waveforms(physWires)
-
-    physWires = pulses_to_waveforms(physWires)
-
     # construct channel delay map
     delays = channel_delay_map(physWires)
 
     # apply delays
     for chan, wire in physWires.items():
-        PatternUtils.delay(wire, delays[chan], chan.samplingRate)
+        PatternUtils.delay(wire, delays[chan])
+
+    # generate wf library (base shapes)
+    wfs = generate_waveforms(physWires)
+
+    # replace Pulse objects with Waveforms
+    physWires = pulses_to_waveforms(physWires)
 
     # bundle wires on instruments
     awgData = bundle_wires(physWires, wfs)
@@ -245,7 +246,7 @@ def compile_to_hardware(seqs, fileName, suffix=''):
 
         fileList.append(fullFileName)
 
-    #Return the filenames we wrote
+    # Return the filenames we wrote
     return fileList
 
 def compile_sequences(seqs, channels=None):
@@ -381,6 +382,12 @@ class Waveform(object):
             return labelPart + "Waveform-TA(" + TA + ", " + str(self.length) + ")"
         else:
             return labelPart + "Waveform(" + str(self.key)[:6] + ", " + str(self.length) + ")"
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __hash__(self):
+        return hash(frozenset(self.__dict__))
 
     @property
     def isZero(self):

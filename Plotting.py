@@ -47,7 +47,6 @@ output_file()
 def build_waveforms(seq):
     import PulseSequencer, Compiler #import here to avoid circular imports
     wires = Compiler.compile_sequence(seq)
-    # import ipdb; ipdb.set_trace()
 
     # build a concatenated waveform for each channel
     channels = wires.keys()

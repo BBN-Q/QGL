@@ -21,7 +21,7 @@ import os
 import numpy as np
 from warnings import warn
 from itertools import chain, izip_longest
-import Compiler, ControlFlow, PulseSequencer, BlockLabel
+import Compiler, ControlFlow, PulseSequencer, BlockLabel, PatternUtils
 from PatternUtils import hash_pulse
 from copy import copy, deepcopy
 
@@ -44,12 +44,28 @@ WAIT_TRIG_BIT = 13;
 TA_PAIR_BIT = 12;
 
 def preprocess_APS(miniLL, wfLib):
+	# miniLL = PatternUtils.apply_SSB(miniLL)
+	# miniLL = PatternUtils.propagate_frame(miniLL)
+	miniLL = convert_lengths_to_samples(miniLL)
+	build_waveforms(miniLL, wfLib)
+	apply_min_pulse_constraints(miniLL, wfLib)
+	return miniLL
+
+def build_waveforms(seq, wfLib):
+	# apply amplitude, phase, and modulation and add the resulting waveforms to the library
+	for wf in seq:
+		if isinstance(wf, Compiler.Waveform) and wf not in wfLib:
+			shape = np.exp(1j*wf.phase) * wf.amp * wfLib[wf.key]
+			if wf.frequency != 0:
+				shape *= np.exp(1j*wf.frequency*np.linspace(0, len(shape)/SAMPLING_RATE))
+			wfLib[wf] = shape
+
+def apply_min_pulse_constraints(miniLL, wfLib):
 	'''
 	Helper function to deal with LL elements less than minimum LL entry count
 	by trying to concatenate them into neighbouring entries
 	'''
-	miniLL = convert_lengths_to_samples(miniLL)
-
+	
 	newMiniLL = []
 	entryct = 0
 	while entryct < len(miniLL):
@@ -132,7 +148,8 @@ def preprocess_APS(miniLL, wfLib):
 
 def convert_lengths_to_samples(instructions):
 	for entry in instructions:
-		entry.length = int(round(entry.length * SAMPLING_RATE))
+		if isinstance(entry, Compiler.Waveform):
+			entry.length = int(round(entry.length * SAMPLING_RATE))
 	return instructions
 
 def create_wf_vector(wfLib):
@@ -315,7 +332,8 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 	if len(markerLL) == 0:
 		return
 
-	markerLL = convert_lengths_to_samples(markerLL)
+	for seq in markerLL:
+		convert_lengths_to_samples(seq)
 
 	markerAttr = 'markerDelay' + str(markerNum)
 
@@ -339,7 +357,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 			if hasattr(entry, 'amp') and prevAmplitude != entry.amp:
 				switchPts.append(t)
 				prevAmplitude = entry.amp
-			t += len(entry)
+			t += entry.length
 
 		# Push on an extra switch point if we have an odd number of switches (to maintain state)
 		if len(switchPts) % 2 == 1:
@@ -397,7 +415,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 					miniLL_IQ[curIQIdx].markerDelay2 = None
 					setattr(miniLL_IQ[curIQIdx], markerAttr, ADDRESS_UNIT)
 					#Recalculate the timePts
-					timePts = np.cumsum([0] + [len(entry) for entry in miniLL_IQ])
+					timePts = np.cumsum([0] + [entry.length for entry in miniLL_IQ])
 				else:
 					setattr(miniLL_IQ[curIQIdx], markerAttr, 0)
 					print("Had to push marker blip out to start of next entry.")
@@ -468,10 +486,13 @@ def write_APS_file(awgData, fileName, miniLLRepeat=1):
 	'''
 	Main function to pack channel LLs into an APS h5 file.
 	'''
-
 	#Preprocess the LL data to handle APS restrictions
 	LLs12 = [preprocess_APS(miniLL, awgData['ch12']['wfLib']) for miniLL in awgData['ch12']['linkList']]
 	LLs34 = [preprocess_APS(miniLL, awgData['ch34']['wfLib']) for miniLL in awgData['ch34']['linkList']]
+
+	# compress wf libraries
+	PatternUtils.compress_wfLib(LLs12, awgData['ch12']['wfLib'])
+	PatternUtils.compress_wfLib(LLs34, awgData['ch34']['wfLib'])
 
 	#Merge the the marker data into the IQ linklists
 	merge_APS_markerData(LLs12, awgData['ch1m1']['linkList'], 1)

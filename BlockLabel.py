@@ -21,6 +21,10 @@ class BlockLabel(object):
 	def promote(self):
 		return self
 
+	@property
+	def length(self):
+		return 0
+
 def label(seq):
 	if not isinstance(seq[0], BlockLabel):
 		seq.insert(0, newlabel())
