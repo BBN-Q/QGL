@@ -54,51 +54,6 @@ def normalize_delays(delays):
             out[chan] += -min_delay
     return out
 
-def apply_SSB(linkList, wfLib, SSBFreq, samplingRate):
-    #Negative because of negative frequency qubits
-    phaseStep = -2*pi*SSBFreq/samplingRate
-
-    #Bits of phase precision
-    #Choose usual DAC vertical precision arbirarily
-    phasePrecision = 2**14
-    def round_phase(phase, precision):
-        """
-        Helper function to round a phase to a certain binary precision.
-        """
-        #Convert radians to portion of circle and then to integer precision round to precision
-        intPhase = round(phasePrecision*np.mod(phase/2.0/pi,1))
-        return int(intPhase), 2*pi*(intPhase/phasePrecision)
-
-    #Keep a dictionary of pulses and phases
-    pulseDict = {}
-    for miniLL in linkList:
-        curFrame = 0.0
-        for entry in miniLL:
-            #If it's a zero then just adjust the frame and move on
-            if not hasattr(entry, 'key') or entry.key == TAZKey:
-                curFrame += phaseStep*entry.length
-                continue
-            # expand time-amplitude pulses in-place
-            if entry.isTimeAmp:
-                entry.isTimeAmp = False
-                shape = wfLib[entry.key][0] * np.ones(entry.length, dtype=np.complex)
-            else:
-                shape = np.copy(wfLib[entry.key])
-
-            intPhase, truncPhase = round_phase(curFrame, 14)
-            pulseTuple = (entry.key, intPhase, entry.length)
-            if pulseTuple in pulseDict:
-                entry.key = pulseDict[pulseTuple]
-            else:
-                phaseRamp = phaseStep*np.arange(0.5, shape.size)
-                shape *= np.exp(1j*(truncPhase + phaseRamp))
-                shapeHash = hash_pulse(shape)
-                if shapeHash not in wfLib:
-                    wfLib[shapeHash] = shape
-                pulseDict[pulseTuple] = shapeHash
-                entry.key = shapeHash
-            curFrame += phaseStep*entry.length
-
 def correct_mixers(wfLib, T):
     for k, v in wfLib.items():
         # To get the broadcast to work in numpy, need to do the multiplication one row at a time
@@ -224,23 +179,28 @@ def add_slave_trigger(seqs, slaveChan):
             continue
         seq.insert(0, TAPulse("TRIG", slaveChan, slaveChan.pulseParams['length'], 1.0, 0.0, 0.0))
 
-def propagate_frame(entries, frame):
+def propagate_frame_changes(seq):
     '''
-    Propagates a frame change through a list of LL entries, dropping zero length entries
+    Propagates all frame changes through sequence
     '''
-    # The first LL entry picks up the carried phase.
-    entries[0].phase += frame
-    entries[0].frameChange += frame
-    # then push frame changes from zero length entries forward
-    for prevEntry, thisEntry in zip(entries, entries[1:]):
-        if prevEntry.length == 0:
-            thisEntry.phase += prevEntry.frameChange
-            thisEntry.frameChange += prevEntry.frameChange
-    # then drop zero length entries
-    for ct in reversed(range(len(entries))):
-        if entries[ct].length == 0:
-            del entries[ct]
-    return entries
+    frame = 0
+    for entry in seq:
+        if not isinstance(entry, Compiler.Waveform):
+            continue
+        entry.phase = np.mod(frame + entry.phase, 2*pi)
+        frame += entry.frameChange + (2*np.pi * entry.frequency * entry.length)
+    return seq
+
+def quantize_phase(seqs, precision):
+    '''
+    Quantizes waveform phases with given precision (in fractions of a circle).
+    '''
+    for entry in flatten(seqs):
+        if not isinstance(entry, Compiler.Waveform):
+            continue
+        phase = np.mod(int(round(entry.phase/2.0/pi / precision)), int(1/precision))
+        entry.phase = 2*pi*precision*phase
+    return seqs
 
 def compress_wfLib(seqs, wfLib):
     '''

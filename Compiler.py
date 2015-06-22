@@ -143,7 +143,7 @@ def generate_waveforms(physicalWires):
                 continue
             if pulse.hashshape() not in wfs[ch]:
                 if pulse.isTimeAmp:
-                    wfs[ch][pulse.hashshape()] = np.array(pulse.shapeParams['amp'], dtype=np.complex)
+                    wfs[ch][pulse.hashshape()] = np.ones(1, dtype=np.complex)
                 else:
                     wfs[ch][pulse.hashshape()] = pulse.shape
     return wfs
@@ -157,7 +157,11 @@ def pulses_to_waveforms(physicalWires):
                 if not isinstance(pulse, PulseSequencer.Pulse):
                     wireOuts[ch][-1].append(pulse)
                 else:
-                    wireOuts[ch][-1].append(Waveform(pulse))
+                    wf = Waveform(pulse)
+                    if isinstance(ch, Channels.PhysicalQuadratureChannel):
+                        # TODO: move frequency information into the abstract channel
+                        wf.frequency = ch.SSBFreq
+                    wireOuts[ch][-1].append(wf)
     return wireOuts
 
 def channel_delay_map(physicalWires):
@@ -209,7 +213,7 @@ def compile_to_hardware(seqs, fileName, suffix=''):
 
     if not validate_linklist_channels(wireSeqs.keys()):
         print "Compile to hardware failed"
-        return        
+        return
 
     # apply gating constraints
     for chan, seq in wireSeqs.items():
@@ -295,6 +299,7 @@ def compile_sequence(seq, channels=None):
         if block.length == 0:
             for chan in channels:
                 if len(wires[chan]) > 0:
+                    wires[chan][-1] = copy(wires[chan][-1])
                     wires[chan][-1].frameChange += block.pulses[chan].frameChange
                 else:
                     warn("Dropping initial frame change")

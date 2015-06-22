@@ -45,9 +45,10 @@ TA_PAIR_BIT = 12;
 
 def preprocess_APS(seqs, shapeLib):
 	seqs, miniLLrepeat = unroll_loops(seqs)
-	# seqs = PatternUtils.apply_SSB(seqs)
-	# seqs = PatternUtils.propagate_frame(seqs)
+	for seq in seqs:
+		PatternUtils.propagate_frame_changes(seq)
 	seqs = convert_lengths_to_samples(seqs)
+	PatternUtils.quantize_phase(seqs, 1.0/2**14)
 	wfLib = build_waveforms(seqs, shapeLib)
 	# T = ... (get correction matrix)
 	# PatternUtils.correct_mixers(wfLib, T)
@@ -61,9 +62,8 @@ def build_waveforms(seqs, shapeLib):
 	for wf in flatten(seqs):
 		if isinstance(wf, Compiler.Waveform) and wf_hash(wf) not in wfLib:
 			shape = np.exp(1j*wf.phase) * wf.amp * shapeLib[wf.key]
-			if wf.frequency != 0:
-				# TODO: time-amplitude pulses need to be extended
-				shape *= np.exp(1j*wf.frequency*np.linspace(0, wf.length)/SAMPLING_RATE)
+			if wf.frequency != 0 and wf.amp != 0:
+				shape *= np.exp(1j*2*np.pi*wf.frequency*np.arange(wf.length)/SAMPLING_RATE)
 			wfLib[wf_hash(wf)] = shape
 	return wfLib
 
