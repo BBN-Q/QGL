@@ -17,7 +17,6 @@ limitations under the License.
 '''
 import numpy as np
 import os
-import collections
 import itertools
 import operator
 from warnings import warn
@@ -25,6 +24,7 @@ from copy import copy
 
 import config
 import PatternUtils
+from PatternUtils import flatten
 import Channels
 from PulsePrimitives import Id
 import PulseSequencer
@@ -416,15 +416,6 @@ def schedule(channel, pulse, blockLength, alignment):
         return [Id(channel, padLength)] + pulses
     else: # center
         return [Id(channel, padLength/2)] + pulses + [Id(channel, padLength/2)]
-
-# from Stack Overflow: http://stackoverflow.com/questions/2158395/flatten-an-irregular-list-of-lists-in-python/2158532#2158532
-def flatten(l):
-    for el in l:
-        if isinstance(el, collections.Iterable) and not isinstance(el, basestring):
-            for sub in flatten(el):
-                yield sub
-        else:
-            yield el
 
 def validate_linklist_channels(linklistChannels):
     errors = []

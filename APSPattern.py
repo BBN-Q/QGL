@@ -22,7 +22,7 @@ import numpy as np
 from warnings import warn
 from itertools import chain, izip_longest
 import Compiler, ControlFlow, PulseSequencer, BlockLabel, PatternUtils
-from PatternUtils import hash_pulse
+from PatternUtils import hash_pulse, flatten
 from copy import copy, deepcopy
 
 
@@ -43,24 +43,44 @@ END_MINILL_BIT = 14;
 WAIT_TRIG_BIT = 13;
 TA_PAIR_BIT = 12;
 
-def preprocess_APS(miniLL, wfLib):
-	# miniLL = PatternUtils.apply_SSB(miniLL)
-	# miniLL = PatternUtils.propagate_frame(miniLL)
-	miniLL = convert_lengths_to_samples(miniLL)
-	build_waveforms(miniLL, wfLib)
+def preprocess_APS(seqs, shapeLib):
+	seqs, miniLLrepeat = unroll_loops(seqs)
+	# seqs = PatternUtils.apply_SSB(seqs)
+	# seqs = PatternUtils.propagate_frame(seqs)
+	seqs = convert_lengths_to_samples(seqs)
+	wfLib = build_waveforms(seqs, shapeLib)
 	# T = ... (get correction matrix)
 	# PatternUtils.correct_mixers(wfLib, T)
-	apply_min_pulse_constraints(miniLL, wfLib)
-	return miniLL
+	for seq in seqs:
+		apply_min_pulse_constraints(seq, wfLib)
+	return seqs, miniLLrepeat, wfLib
 
-def build_waveforms(seq, wfLib):
+def build_waveforms(seqs, shapeLib):
 	# apply amplitude, phase, and modulation and add the resulting waveforms to the library
-	for wf in seq:
-		if isinstance(wf, Compiler.Waveform) and wf not in wfLib:
-			shape = np.exp(1j*wf.phase) * wf.amp * wfLib[wf.key]
+	wfLib = {wf_hash(padding_entry(0)) : TAZShape}
+	for wf in flatten(seqs):
+		if isinstance(wf, Compiler.Waveform) and wf_hash(wf) not in wfLib:
+			shape = np.exp(1j*wf.phase) * wf.amp * shapeLib[wf.key]
 			if wf.frequency != 0:
-				shape *= np.exp(1j*wf.frequency*np.linspace(0, len(shape)/SAMPLING_RATE))
-			wfLib[wf] = shape
+				# TODO: time-amplitude pulses need to be extended
+				shape *= np.exp(1j*wf.frequency*np.linspace(0, wf.length)/SAMPLING_RATE)
+			wfLib[wf_hash(wf)] = shape
+	return wfLib
+
+def wf_hash(wf):
+	if wf.isTimeAmp and wf.frequency == 0: # 2nd condition necessary until we support RT SSB
+		return hash((wf.amp, wf.phase))
+	else:
+		return hash((wf.key, wf.amp, wf.phase, wf.length, wf.frequency))
+
+TAZShape = np.zeros(1, dtype=np.complex)
+TAZKey = hash_pulse(TAZShape)
+def padding_entry(length):
+	entry = Compiler.Waveform()
+	entry.length = length
+	entry.key = TAZKey
+	entry.isTimeAmp = True
+	return entry
 
 def apply_min_pulse_constraints(miniLL, wfLib):
 	'''
@@ -84,45 +104,43 @@ def apply_min_pulse_constraints(miniLL, wfLib):
 		nextEntry = miniLL[entryct+1]
 		previousEntry = miniLL[entryct-1] if entryct > 0 else None
 
-		#For short TA pairs we see if we can add them to the next waveform
+		# For short TA pairs we see if we can add them to the next waveform
 		if curEntry.isZero and not nextEntry.isZero:
-			#Concatenate the waveforms
-			paddedWF = np.hstack((np.zeros(curEntry.length, dtype=np.complex), wfLib[nextEntry.key]))
-			#Hash the result to generate a new unique key and add
-			newKey = hash_pulse(paddedWF)
-			wfLib[newKey] = paddedWF
-			nextEntry.key = newKey
-			nextEntry.length = wfLib[newKey].size
+			# Concatenate the waveforms
+			paddedWF = np.hstack((np.zeros(curEntry.length, dtype=np.complex), wfLib[wf_hash(nextEntry)]))
+			# Generate a new key
+			nextEntry.key = hash_pulse(paddedWF)
+			nextEntry.length = paddedWF.size
+			wfLib[wf_hash(nextEntry)] = paddedWF
 			newMiniLL.append(nextEntry)
 			entryct += 2
 
-		#For short pulses we see if we can steal some padding from the previous or next entry
+		# For short pulses we see if we can steal some padding from the previous or next entry
 		elif isinstance(previousEntry, Compiler.Waveform) and previousEntry.isZero and previousEntry.length > 2*MIN_ENTRY_LENGTH:
 			padLength = MIN_ENTRY_LENGTH - curEntry.length
 			newMiniLL[-1].length -= padLength
-			#Concatenate the waveforms
+			# Concatenate the waveforms
 			if curEntry.isZero:
 				curEntry.length += padLength
 				entryct += 1
 				curEntry.isTimeAmp = True
 				continue
-			elif curEntry.isTimeAmp: #non-zero
-				paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[curEntry.key]*np.ones(curEntry.length)))
+			elif curEntry.isTimeAmp: # non-zero
+				paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[wf_hash(curEntry)]*np.ones(curEntry.length)))
 				curEntry.isTimeAmp = False
 			else:
-				paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[curEntry.key]))
-			#Hash the result to generate a new unique key and add
-			newKey = hash_pulse(paddedWF)
-			wfLib[newKey] = paddedWF
-			curEntry.key = newKey
-			curEntry.length = wfLib[newKey].size
+				paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[wf_hash(curEntry)]))
+			# Generate a new key
+			curEntry.key = hash_pulse(paddedWF)
+			curEntry.length = paddedWF.size
+			wfLib[wf_hash(curEntry)] = paddedWF
 			newMiniLL.append(curEntry)
 			entryct += 1
 
 		elif isinstance(nextEntry, Compiler.Waveform) and nextEntry.isZero and nextEntry.length > 2*MIN_ENTRY_LENGTH:
 			padLength = MIN_ENTRY_LENGTH - curEntry.length
 			nextEntry.length -= padLength
-			#Concatenate the waveforms
+			# Concatenate the waveforms
 			if curEntry.isZero:
 				curEntry.length += padLength
 				entryct += 1
@@ -133,11 +151,10 @@ def apply_min_pulse_constraints(miniLL, wfLib):
 				curEntry.isTimeAmp = False
 			else:
 				paddedWF = np.hstack((wfLib[curEntry.key], np.zeros(padLength, dtype=np.complex)))
-			#Hash the result to generate a new unique key and add
-			newKey = hash_pulse(paddedWF)
-			wfLib[newKey] = paddedWF
-			curEntry.key = newKey
-			curEntry.length = wfLib[newKey].size
+			# Generate a new key
+			curEntry.key = hash_pulse(paddedWF)
+			curEntry.length = paddedWF.size
+			wfLib[wf_hash(curEntry)] = paddedWF
 			newMiniLL.append(curEntry)
 			entryct += 1
 
@@ -145,11 +162,11 @@ def apply_min_pulse_constraints(miniLL, wfLib):
 			warn("Unable to handle too short LL element, dropping.")
 			entryct += 1
 
-	#Update the miniLL
+	# Update the miniLL
 	return newMiniLL
 
 def convert_lengths_to_samples(instructions):
-	for entry in instructions:
+	for entry in flatten(instructions):
 		if isinstance(entry, Compiler.Waveform):
 			entry.length = int(round(entry.length * SAMPLING_RATE))
 	return instructions
@@ -263,7 +280,7 @@ def create_LL_data(LLs, offsets, AWGName=''):
 
 	instructions = []
 	waitFlag = False
-	LLs, miniLLrepeat = unroll_loops(LLs)
+	
 	for miniLL in LLs:
 		miniStart = True
 		for entry in miniLL:
@@ -282,7 +299,7 @@ def create_LL_data(LLs, offsets, AWGName=''):
 			else: # waveform instructions
 				t1, t2 = calc_marker_delay(entry)
 				instr = Instruction(
-					addr = offsets[entry.key]//ADDRESS_UNIT,
+					addr = offsets[wf_hash(entry)]//ADDRESS_UNIT,
 					count = entry.length//ADDRESS_UNIT - 1,
 					trig1 = t1,
 					trig2 = t2,
@@ -317,15 +334,7 @@ def create_LL_data(LLs, offsets, AWGName=''):
 		maxRepInterval = timePerEntry*llLengths[1]
 		print('Maximum suggested sequence rate is {:.3f}ms, or for 100us rep. rate this would be {} miniLL repeats'.format(1e3*maxRepInterval, int(maxRepInterval/100e-6)))
 
-	return LLData, numEntries, miniLLrepeat
-
-TAZKey = hash_pulse(np.zeros(1, dtype=np.complex))
-def padding_entry(length):
-	entry = Compiler.Waveform()
-	entry.length = length
-	entry.key = TAZKey
-	entry.isTimeAmp = True
-	return entry
+	return LLData, numEntries
 
 def merge_APS_markerData(IQLL, markerLL, markerNum):
 	'''
@@ -433,7 +442,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 	#Replace any remaining empty entries with None
 	for miniLL_IQ in IQLL:
 		for entry in miniLL_IQ:
-			if not hasattr(entry, markerAttr):
+			if isinstance(entry, Compiler.Waveform) and not hasattr(entry, markerAttr):
 				setattr(entry, markerAttr, None)
 
 def unroll_loops(LLs):
@@ -441,10 +450,11 @@ def unroll_loops(LLs):
 	Unrolls repeated sequences in place, unless the sequence can be unrolled with a miniLL repeat
 	attribute. Returns the (potentially) modified sequence and the miniLL repeat value.
 	'''
-
 	# if all sequences start and end with LOAD and REPEAT, respectively, and all load values
 	# are the same, we can just drop these instructions and return a miniLLrepeat value
-	if isinstance(LLs[0][0], ControlFlow.LoadRepeat):
+	if not LLs or not LLs[0] or not LLs[0][0]:
+		return LLs, 0
+	elif isinstance(LLs[0][0], ControlFlow.LoadRepeat):
 		repeats = LLs[0][0].value
 	else:
 		repeats = -1
@@ -488,13 +498,12 @@ def write_APS_file(awgData, fileName, miniLLRepeat=1):
 	'''
 	Main function to pack channel LLs into an APS h5 file.
 	'''
-	#Preprocess the LL data to handle APS restrictions
-	LLs12 = [preprocess_APS(miniLL, awgData['ch12']['wfLib']) for miniLL in awgData['ch12']['linkList']]
-	LLs34 = [preprocess_APS(miniLL, awgData['ch34']['wfLib']) for miniLL in awgData['ch34']['linkList']]
-
-	# compress wf libraries
-	PatternUtils.compress_wfLib(LLs12, awgData['ch12']['wfLib'])
-	PatternUtils.compress_wfLib(LLs34, awgData['ch34']['wfLib'])
+	#Preprocess the sequence data to handle APS restrictions
+	LLs12, repeat12, wfLib12 = preprocess_APS(awgData['ch12']['linkList'], awgData['ch12']['wfLib'])
+	LLs34, repeat34, wfLib34 = preprocess_APS(awgData['ch34']['linkList'], awgData['ch34']['wfLib'])
+	assert repeat12 == repeat34, 'Failed to unroll sequence'
+	if repeat12 != 0:
+		miniLLRepeat *= repeat12
 
 	#Merge the the marker data into the IQ linklists
 	merge_APS_markerData(LLs12, awgData['ch1m1']['linkList'], 1)
@@ -517,7 +526,7 @@ def write_APS_file(awgData, fileName, miniLLRepeat=1):
 
 		#Create the waveform vectors
 		wfInfo = []
-		for wfLib in (awgData['ch12']['wfLib'], awgData['ch34']['wfLib']):
+		for wfLib in (wfLib12, wfLib34):
 			wfInfo.append(create_wf_vector({key:wf.real for key,wf in wfLib.items()}))
 			wfInfo.append(create_wf_vector({key:wf.imag for key,wf in wfLib.items()}))
 
@@ -535,15 +544,12 @@ def write_APS_file(awgData, fileName, miniLLRepeat=1):
 			if (np.mod(chanct,2) == 0) and LLData[chanct//2]:
 				groupStr = chanStr+'/linkListData'
 				LLGroup = FID.create_group(groupStr)
-				LLDataVecs, numEntries, repeats[chanct//2] = create_LL_data(LLData[chanct//2], wfInfo[chanct][1], os.path.basename(fileName))
+				LLDataVecs, numEntries = create_LL_data(LLData[chanct//2], wfInfo[chanct][1], os.path.basename(fileName))
 				LLGroup.attrs['length'] = numEntries
 				for key,dataVec in LLDataVecs.items():
 					FID.create_dataset(groupStr+'/' + key, data=dataVec)
 			else:
 				chanGroup.attrs['isLinkListData'] = np.uint8(0)
-		if repeats != [0, 0]:
-			assert repeats[0] == repeats[1], 'Failed to unroll sequence'
-			FID['/'].attrs['miniLLRepeat'] = np.uint16(miniLLRepeat * repeats[0] - 1)
 
 def read_APS_file(fileName):
 	'''

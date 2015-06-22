@@ -19,7 +19,7 @@ from PulseSequencer import Pulse, TAPulse
 from PulsePrimitives import BLANK
 import ControlFlow, BlockLabel, Compiler
 from math import pi
-import hashlib
+import hashlib, collections
 
 def hash_pulse(shape):
     return hashlib.sha1(shape.tostring()).hexdigest()
@@ -255,3 +255,12 @@ def compress_wfLib(seqs, wfLib):
     unusedKeys = set(wfLib.keys()) - usedKeys
     for key in unusedKeys:
         del wfLib[key]
+
+# from Stack Overflow: http://stackoverflow.com/questions/2158395/flatten-an-irregular-list-of-lists-in-python/2158532#2158532
+def flatten(l):
+    for el in l:
+        if isinstance(el, collections.Iterable) and not isinstance(el, basestring):
+            for sub in flatten(el):
+                yield sub
+        else:
+            yield el
