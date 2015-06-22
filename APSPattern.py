@@ -48,6 +48,8 @@ def preprocess_APS(miniLL, wfLib):
 	# miniLL = PatternUtils.propagate_frame(miniLL)
 	miniLL = convert_lengths_to_samples(miniLL)
 	build_waveforms(miniLL, wfLib)
+	# T = ... (get correction matrix)
+	# PatternUtils.correct_mixers(wfLib, T)
 	apply_min_pulse_constraints(miniLL, wfLib)
 	return miniLL
 

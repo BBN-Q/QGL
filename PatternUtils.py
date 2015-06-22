@@ -99,7 +99,7 @@ def apply_SSB(linkList, wfLib, SSBFreq, samplingRate):
                 entry.key = shapeHash
             curFrame += phaseStep*entry.length
 
-def correctMixer(wfLib, T):
+def correct_mixers(wfLib, T):
     for k, v in wfLib.items():
         # To get the broadcast to work in numpy, need to do the multiplication one row at a time
         iqWF = np.vstack((np.real(v), np.imag(v)))

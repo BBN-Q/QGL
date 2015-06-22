@@ -143,7 +143,7 @@ def generate_waveforms(physicalWires):
                 continue
             if pulse.hashshape() not in wfs[ch]:
                 if pulse.isTimeAmp:
-                    wfs[ch][pulse.hashshape()] = pulse.shapeParams['amp']
+                    wfs[ch][pulse.hashshape()] = np.array(pulse.shapeParams['amp'], dtype=np.complex)
                 else:
                     wfs[ch][pulse.hashshape()] = pulse.shape
     return wfs
