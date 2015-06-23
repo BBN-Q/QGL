@@ -176,7 +176,7 @@ def setup_awg_channels(physicalChannels):
     data = {awg.label:get_empty_channel_set(awg) for awg in awgs}
     for awgdata in data.values():
         for chan in awgdata.keys():
-            awgdata[chan] = {'linkList': [], 'wfLib': {}}
+            awgdata[chan] = {'linkList': [], 'wfLib': {}, 'correctionT': np.identity(2)}
     return data
 
 def bundle_wires(physWires, wfs):
@@ -186,6 +186,8 @@ def bundle_wires(physWires, wfs):
         awgChan = 'ch' + awgChan
         awgData[chan.AWG.label][awgChan]['linkList'] = physWires[chan]
         awgData[chan.AWG.label][awgChan]['wfLib'] = wfs[chan]
+        if hasattr(chan, 'correctionT'):
+            awgData[chan.AWG.label][awgChan]['correctionT'] = chan.correctionT
     return awgData
 
 def compile_to_hardware(seqs, fileName, suffix=''):

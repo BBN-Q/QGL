@@ -43,15 +43,14 @@ END_MINILL_BIT = 14;
 WAIT_TRIG_BIT = 13;
 TA_PAIR_BIT = 12;
 
-def preprocess_APS(seqs, shapeLib):
+def preprocess_APS(seqs, shapeLib, T):
 	seqs, miniLLrepeat = unroll_loops(seqs)
 	for seq in seqs:
 		PatternUtils.propagate_frame_changes(seq)
 	seqs = convert_lengths_to_samples(seqs)
 	PatternUtils.quantize_phase(seqs, 1.0/2**14)
 	wfLib = build_waveforms(seqs, shapeLib)
-	# T = ... (get correction matrix)
-	# PatternUtils.correct_mixers(wfLib, T)
+	PatternUtils.correct_mixers(wfLib, T)
 	for seq in seqs:
 		apply_min_pulse_constraints(seq, wfLib)
 	return seqs, miniLLrepeat, wfLib
@@ -499,8 +498,12 @@ def write_APS_file(awgData, fileName, miniLLRepeat=1):
 	Main function to pack channel LLs into an APS h5 file.
 	'''
 	#Preprocess the sequence data to handle APS restrictions
-	LLs12, repeat12, wfLib12 = preprocess_APS(awgData['ch12']['linkList'], awgData['ch12']['wfLib'])
-	LLs34, repeat34, wfLib34 = preprocess_APS(awgData['ch34']['linkList'], awgData['ch34']['wfLib'])
+	LLs12, repeat12, wfLib12 = preprocess_APS(awgData['ch12']['linkList'],
+		                                      awgData['ch12']['wfLib'],
+		                                      awgData['ch12']['correctionT'])
+	LLs34, repeat34, wfLib34 = preprocess_APS(awgData['ch34']['linkList'],
+		                                      awgData['ch34']['wfLib'],
+		                                      awgData['ch34']['correctionT'])
 	assert repeat12 == repeat34, 'Failed to unroll sequence'
 	if repeat12 != 0:
 		miniLLRepeat *= repeat12
