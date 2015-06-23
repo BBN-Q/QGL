@@ -322,7 +322,7 @@ def echoCR(controlQ, CRchan, amp=1, phase=0, length = 200e-9, riseFall= 20e-9):
     [X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi) + \
     [X(controlQ)]
 
-def ZX90_CR(controlQ, targetQ, CRchan, riseFall= 20e-9, **kwargs):
+def ZX90_CR(controlQ, CRchan, riseFall= 20e-9, **kwargs):
     """
     A calibrated CR ZX90 pulse.  Uses piAmp for the pulse amplitude, phase for its phase (in deg).
     """

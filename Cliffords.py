@@ -155,11 +155,11 @@ def entangling_seq(gate, q1, q2, CR):
 	Helper function to create the entangling gate sequence
 	"""
 	if gate == "CNOT":
-		return echoCR(q2, CR)
+		return ZX90_CR(q2, CR)
 	elif gate == "iSWAP":
-		return echoCR(q2, CR) + [Y90m(q1)*Y90m(q2)] +  echoCR(q2, CR)
+		return ZX90_CR(q2, CR) + [Y90m(q1)*Y90m(q2)] +  ZX90_CR(q2, CR)
 	elif gate == "SWAP":
-		return echoCR(q2, CR) + [Y90m(q1)*Y90m(q2)] + echoCR(q2, CR) + [(X90(q1)+Y90m(q1))*X90(q2)] + echoCR(q2, CR)
+		return ZX90_CR(q2, CR) + [Y90m(q1)*Y90m(q2)] + ZX90_CR(q2, CR) + [(X90(q1)+Y90m(q1))*X90(q2)] + ZX90_CR(q2, CR)
 
 def entangling_mat(gate):
 	"""
