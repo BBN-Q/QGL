@@ -32,7 +32,7 @@ from instruments.MicrowaveSources import MicrowaveSource
 from DictManager import DictManager
 
 from atom.api import Atom, Str, Unicode, Float, Instance, Property, cached_property, \
-                        Dict, Enum, Bool, Typed, observe
+                        Dict, Enum, Bool, Typed, observe, Int
 
 import FileWatcher
 
@@ -122,7 +122,6 @@ class PhysicalQuadratureChannel(PhysicalChannel):
     #During initilization we may just have a string reference to the channel
     ampFactor = Float(1.0)
     phaseSkew = Float(0.0)
-    SSBFreq = Float(0.0)
 
     @cached_property
     def correctionT(self):
@@ -145,6 +144,7 @@ class Qubit(LogicalChannel):
     '''
     pulseParams = Dict(default={'length':20e-9, 'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.gaussian, 'buffer':0.0, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9})
     gateChan = Instance((unicode, LogicalMarkerChannel))
+    frequency = Float(0.0)
 
     def __init__(self, **kwargs):
         super(Qubit, self).__init__(**kwargs)
@@ -161,7 +161,8 @@ class Measurement(LogicalChannel):
     autodyneFreq = Float()
     pulseParams = Dict(default={'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'buffer':0.0, 'cutoff':2, 'sigma':1e-9})
     gateChan = Instance((unicode, LogicalMarkerChannel))
-
+    frequency = Float(0.0)
+    
     def __init__(self, **kwargs):
         super(Measurement, self).__init__(**kwargs)
         if self.gateChan is None:
@@ -188,6 +189,7 @@ class ChannelLibrary(Atom):
     physicalChannelManager = Typed(DictManager)
     libFile = Str()
     fileWatcher = Typed(FileWatcher.LibraryFileWatcher)
+    version = Int(1)
 
     def __init__(self, channelDict={}, **kwargs):
         super(ChannelLibrary, self).__init__(channelDict=channelDict, **kwargs)
