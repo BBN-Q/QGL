@@ -202,19 +202,11 @@ def quantize_phase(seqs, precision):
         entry.phase = 2*pi*precision*phase
     return seqs
 
-def compress_wfLib(seqs, wfLib):
-    '''
-    Helper function to remove unused waveforms from the library.
-    '''
-    usedKeys = set()
-    for miniLL in seqs:
-        for entry in miniLL:
-            if isinstance(entry, Compiler.Waveform):
-                usedKeys.add(entry.key)
-
-    unusedKeys = set(wfLib.keys()) - usedKeys
-    for key in unusedKeys:
-        del wfLib[key]
+def convert_lengths_to_samples(instructions, samplingRate):
+    for entry in flatten(instructions):
+        if isinstance(entry, Compiler.Waveform):
+            entry.length = int(round(entry.length * samplingRate))
+    return instructions
 
 # from Stack Overflow: http://stackoverflow.com/questions/2158395/flatten-an-irregular-list-of-lists-in-python/2158532#2158532
 def flatten(l):

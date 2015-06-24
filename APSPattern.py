@@ -21,7 +21,7 @@ import os
 import numpy as np
 from warnings import warn
 from itertools import chain, izip_longest
-import Compiler, ControlFlow, PulseSequencer, BlockLabel, PatternUtils
+import Compiler, ControlFlow, BlockLabel, PatternUtils
 from PatternUtils import hash_pulse, flatten
 from copy import copy, deepcopy
 
@@ -43,11 +43,11 @@ END_MINILL_BIT = 14;
 WAIT_TRIG_BIT = 13;
 TA_PAIR_BIT = 12;
 
-def preprocess_APS(seqs, shapeLib, T):
+def preprocess(seqs, shapeLib, T):
 	seqs, miniLLrepeat = unroll_loops(seqs)
 	for seq in seqs:
 		PatternUtils.propagate_frame_changes(seq)
-	seqs = convert_lengths_to_samples(seqs)
+	seqs = PatternUtils.convert_lengths_to_samples(seqs, SAMPLING_RATE)
 	PatternUtils.quantize_phase(seqs, 1.0/2**14)
 	wfLib = build_waveforms(seqs, shapeLib)
 	PatternUtils.correct_mixers(wfLib, T)
@@ -67,6 +67,11 @@ def build_waveforms(seqs, shapeLib):
 	return wfLib
 
 def wf_hash(wf):
+	'''
+	Compute a hash of a Compiler.Waveform with intentional hash collisions on Waveforms that 
+	have identity wfLib representations. For example, TA waveforms with the same amplitude
+	but different durations should hash the same.
+	'''
 	if wf.isTimeAmp and wf.frequency == 0: # 2nd condition necessary until we support RT SSB
 		return hash((wf.amp, wf.phase))
 	else:
@@ -163,12 +168,6 @@ def apply_min_pulse_constraints(miniLL, wfLib):
 
 	# Update the miniLL
 	return newMiniLL
-
-def convert_lengths_to_samples(instructions):
-	for entry in flatten(instructions):
-		if isinstance(entry, Compiler.Waveform):
-			entry.length = int(round(entry.length * SAMPLING_RATE))
-	return instructions
 
 def create_wf_vector(wfLib):
 	'''
@@ -343,7 +342,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 		return
 
 	for seq in markerLL:
-		convert_lengths_to_samples(seq)
+		PatternUtils.convert_lengths_to_samples(seq, SAMPLING_RATE)
 
 	markerAttr = 'markerDelay' + str(markerNum)
 
@@ -498,10 +497,10 @@ def write_APS_file(awgData, fileName, miniLLRepeat=1):
 	Main function to pack channel LLs into an APS h5 file.
 	'''
 	#Preprocess the sequence data to handle APS restrictions
-	LLs12, repeat12, wfLib12 = preprocess_APS(awgData['ch12']['linkList'],
+	LLs12, repeat12, wfLib12 = preprocess(awgData['ch12']['linkList'],
 		                                      awgData['ch12']['wfLib'],
 		                                      awgData['ch12']['correctionT'])
-	LLs34, repeat34, wfLib34 = preprocess_APS(awgData['ch34']['linkList'],
+	LLs34, repeat34, wfLib34 = preprocess(awgData['ch34']['linkList'],
 		                                      awgData['ch34']['wfLib'],
 		                                      awgData['ch34']['correctionT'])
 	assert repeat12 == repeat34, 'Failed to unroll sequence'

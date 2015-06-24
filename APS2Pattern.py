@@ -1,5 +1,5 @@
 '''
-Module for writing hdf5 APS2 files from LL's and patterns
+Module for writing hdf5 APS2 files from sequences and patterns
 
 Copyright 2014 Raytheon BBN Technologies
 
@@ -21,11 +21,11 @@ import os
 import numpy as np
 from warnings import warn
 from copy import copy
-import Compiler, ControlFlow
-import PatternUtils
-import APSPattern
+import Compiler, ControlFlow, BlockLabel, PatternUtils
+from PatternUtils import hash_pulse, flatten
 
 #Some constants
+SAMPLING_RATE = 1.2e9
 ADDRESS_UNIT = 4 #everything is done in units of 4 timesteps
 MIN_ENTRY_LENGTH = 8
 MAX_WAVEFORM_PTS = 2**28 #maximum size of waveform memory
@@ -136,7 +136,7 @@ class Instruction(object):
 		opCodes = ["WFM", "MARKER", "WAIT", "LOAD", "REPEAT", "CMP", "GOTO", "CALL", "RET", "SYNC", "PFETCH", "LOADCMP"]
 
 
-		labelPart = "{0}: ".format(self.label) if self.label else ""
+		labelPart = "{0} ".format(self.label) if self.label else ""
 
 		instrOpCode = (self.header >> 4) & 0xf
 		out = labelPart + "Instruction(" + opCodes[instrOpCode] + '|'
@@ -271,11 +271,42 @@ def Load(count, label=None):
 def Repeat(addr, label=None):
 	return Command(REPEAT, 0, label=label)
 
+def preprocess(seqs, shapeLib, T):
+	for seq in seqs:
+		PatternUtils.propagate_frame_changes(seq)
+	seqs = PatternUtils.convert_lengths_to_samples(seqs, SAMPLING_RATE)
+	PatternUtils.quantize_phase(seqs, 1.0/2**14)
+	wfLib = build_waveforms(seqs, shapeLib)
+	PatternUtils.correct_mixers(wfLib, T)
+	return seqs, wfLib
+
+def wf_hash(wf):
+	'''
+	Compute a hash of a Compiler.Waveform with intentional hash collisions on Waveforms that 
+	have identity wfLib representations. For example, TA waveforms with the same amplitude
+	but different durations should hash the same.
+	'''
+	if wf.isTimeAmp and wf.frequency == 0: # 2nd condition necessary until we support RT SSB
+		return hash((wf.amp, wf.phase))
+	else:
+		return hash((wf.key, wf.amp, wf.phase, wf.length, wf.frequency))
+
+def build_waveforms(seqs, shapeLib):
+	# apply amplitude, phase, and modulation and add the resulting waveforms to the library
+	wfLib = {}
+	for wf in flatten(seqs):
+		if isinstance(wf, Compiler.Waveform) and wf_hash(wf) not in wfLib:
+			shape = np.exp(1j*wf.phase) * wf.amp * shapeLib[wf.key]
+			if wf.frequency != 0 and wf.amp != 0:
+				shape *= np.exp(1j*2*np.pi*wf.frequency*np.arange(wf.length)/SAMPLING_RATE)
+			wfLib[wf_hash(wf)] = shape
+	return wfLib
+
 def timestamp_entries(seq):
 	t = 0
 	for ct in range(len(seq)):
 		seq[ct].startTime = t
-		t += len(seq[ct])
+		t += seq[ct].length
 
 def synchronize_clocks(seqs):
 	# SYNC instructions "reset the clock", so when we encounter one, we need to
@@ -322,12 +353,20 @@ def create_seq_instructions(seqs, offsets):
 	except StopIteration:
 		print("No non-empty sequences to create!")
 		raise
-	controlInstrs = filter(lambda s: isinstance(s, ControlFlow.ControlInstruction), seqs[ct])
+	controlInstrs = filter(lambda s: isinstance(s, (ControlFlow.ControlInstruction, BlockLabel.BlockLabel)),
+		                   seqs[ct])
 	for ct in range(len(seqs)):
 		if seqs[ct]:
-			localControl = filter(lambda s: isinstance(s, ControlFlow.ControlInstruction), seqs[ct])
-			seqs[ct] = filter(lambda s: isinstance(s, Compiler.LLWaveform), seqs[ct])
-			# update control instructions to have the earliest time stamp of any occurence on wfs, m1, m2, m3, or m4
+			localControl = filter(lambda s: isinstance(s, (ControlFlow.ControlInstruction, BlockLabel.BlockLabel)),
+				                  seqs[ct])
+			seqs[ct] = filter(lambda s: isinstance(s, Compiler.Waveform), seqs[ct])
+			# Individual channel delays can cause control-flow instructions to appear at
+			# different start times on the various channels (wfs, m1, m2, etc...). Update
+			# control instructions to have the earliest time stamp of any occurence on
+			# any channel.
+			# n.b.: we are assuming that control instructions have been uniformly
+			# broadcast onto all channels, so that it is sufficient to refer to them by
+			# a common index.
 			if ct > 0:
 				for ct, (a, b) in enumerate(zip(controlInstrs, localControl)):
 					controlInstrs[ct].startTime = min(a.startTime, b.startTime)
@@ -344,9 +383,15 @@ def create_seq_instructions(seqs, offsets):
 	
 	cmpTable = {'==': EQUAL, '!=': NOTEQUAL, '>': GREATERTHAN, '<': LESSTHAN}
 
-	# always start with SYNC (stealing label from first pulse)
-	firstLabel = seqs[timeTuples[0][1]][0].label
-	instructions = [Sync(label=firstLabel)]
+	# always start with SYNC (stealing label from beginning of sequence)
+	if isinstance(seqs[0][0], BlockLabel.BlockLabel):
+		label = seqs[0][0]
+		timeTuples.pop(0)
+		curIdx[0] += 1
+	else:
+		label = None
+	instructions = [Sync(label=label)]
+	label = None
 
 	while len(timeTuples) > 0:
 		startTime, curSeq = timeTuples.pop(0)
@@ -359,11 +404,11 @@ def create_seq_instructions(seqs, offsets):
 		if curSeq == 1: # waveform channel
 			if entry.length < MIN_ENTRY_LENGTH:
 				continue
-			instructions.append(Waveform(offsets[entry.key],
+			instructions.append(Waveform(offsets[wf_hash(entry)],
 				                         entry.length,
 				                         entry.isTimeAmp,
 				                         write=writeFlag,
-				                         label=entry.label))
+				                         label=label))
 		elif curSeq > 1: # a marker channel
 			if entry.length < MIN_ENTRY_LENGTH:
 				continue
@@ -373,31 +418,36 @@ def create_seq_instructions(seqs, offsets):
 				                       state,
 				                       entry.length,
 				                       write=writeFlag,
-				                       label=entry.label))
+				                       label=label))
 
-		else: # otherwise we are dealing with control-flow
+		else: # otherwise we are dealing with labels and control-flow
+			if isinstance(entry, BlockLabel.BlockLabel):
+				# carry label forward to next entry
+				label = entry
+				continue
 			# zero argument commands
-			if entry.instruction == 'WAIT':
-				instructions.append(Wait(label=entry.label))
-			elif entry.instruction == 'LOADCMP':
-				instructions.append(LoadCmp(label=entry.label))
-			elif entry.instruction == 'SYNC':
-				instructions.append(Sync(label=entry.label))
-			elif entry.instruction == 'RETURN':
-				instructions.append(Return(label=entry.label))
+			elif isinstance(entry, ControlFlow.Wait):
+				instructions.append(Wait(label=label))
+			elif isinstance(entry, ControlFlow.LoadCmp):
+				instructions.append(LoadCmp(label=label))
+			elif isinstance(entry, ControlFlow.Sync):
+				instructions.append(Sync(label=label))
+			elif isinstance(entry, ControlFlow.Return):
+				instructions.append(Return(label=label))
 			# target argument commands
-			elif entry.instruction == 'GOTO':
-				instructions.append(Goto(entry.target, label=entry.label))
-			elif entry.instruction == 'CALL':
-				instructions.append(Call(entry.target, label=entry.label))
-			elif entry.instruction == 'REPEAT':
-				instructions.append(Call(entry.target, label=entry.label))
+			elif isinstance(entry, ControlFlow.Goto):
+				instructions.append(Goto(entry.target, label=label))
+			elif isinstance(entry, ControlFlow.Call):
+				instructions.append(Call(entry.target, label=label))
+			elif isinstance(entry, ControlFlow.Repeat):
+				instructions.append(Repeat(entry.target, label=label))
 			# value argument commands
-			elif entry.instruction == 'LOAD':
-				instructions.append(Load(entry.value-1, label=entry.label))
-			elif entry.instruction == 'CMP':
-				instructions.append(Cmp(cmpTable[entry.operator], entry.mask, label=entry.label))
-    
+			elif isinstance(entry, ControlFlow.Load):
+				instructions.append(Load(entry.value-1, label=label))
+			elif isinstance(entry, ControlFlow.ComparisonInstruction):
+				instructions.append(Cmp(cmpTable[entry.operator], entry.mask, label=label))
+		label = None
+
 	return instructions
 
 def create_instr_data(seqs, offsets):
@@ -427,9 +477,7 @@ def resolve_symbols(seq):
 	# then update
 	for entry in seq:
 		if entry.target:
-			noOffsetLabel = copy(entry.target)
-			noOffsetLabel.offset = 0
-			entry.address = symbols[noOffsetLabel] + entry.target.offset
+			entry.address = symbols[entry.target]
 
 def compress_marker(markerLL):
 	'''
@@ -438,8 +486,8 @@ def compress_marker(markerLL):
 	for seq in markerLL:
 		idx = 0
 		while idx+1 < len(seq):
-			if (isinstance(seq[idx], Compiler.LLWaveform)
-				and isinstance(seq[idx+1], Compiler.LLWaveform)
+			if (isinstance(seq[idx], Compiler.Waveform)
+				and isinstance(seq[idx+1], Compiler.Waveform)
 				and seq[idx].key == seq[idx+1].key):
 
 				seq[idx].length += seq[idx+1].length
@@ -449,23 +497,25 @@ def compress_marker(markerLL):
 
 def write_APS2_file(awgData, fileName):
 	'''
-	Main function to pack channel LLs into an APS h5 file.
+	Main function to pack channel sequences into an APS2 h5 file.
 	'''
-
-	#Preprocess the LL data to handle APS restrictions
-	# seqs = [APSPattern.preprocess_APS(seq, awgData['ch12']['wfLib']) for seq in awgData['ch12']['linkList']]
+	# Convert QGL IR into a representation that is closer to the hardware.
+	awgData['ch12']['linkList'], wfLib = preprocess(awgData['ch12']['linkList'],
+	                                                awgData['ch12']['wfLib'],
+	                                                awgData['ch12']['correctionT'])
 
 	# compress marker data
 	for field in ['ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']:
 		if 'linkList' in awgData[field].keys():
+			PatternUtils.convert_lengths_to_samples(awgData[field]['linkList'], SAMPLING_RATE)
 			compress_marker(awgData[field]['linkList'])
 		else:
 			awgData[field]['linkList'] = []
 
 	#Create the waveform vectors
 	wfInfo = []
-	wfInfo.append(create_wf_vector({key:wf.real for key,wf in awgData['ch12']['wfLib'].items()}))
-	wfInfo.append(create_wf_vector({key:wf.imag for key,wf in awgData['ch12']['wfLib'].items()}))
+	wfInfo.append(create_wf_vector({key:wf.real for key,wf in wfLib.items()}))
+	wfInfo.append(create_wf_vector({key:wf.imag for key,wf in wfLib.items()}))
 
 	# build instruction vector
 	instructions = create_instr_data([awgData[s]['linkList'] for s in ['ch12', 'ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']],

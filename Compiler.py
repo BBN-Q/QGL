@@ -158,7 +158,7 @@ def pulses_to_waveforms(physicalWires):
                     wireOuts[ch][-1].append(pulse)
                 else:
                     wf = Waveform(pulse)
-                    if isinstance(ch, Channels.PhysicalQuadratureChannel):
+                    if hasattr(ch, 'SSBFreq'):
                         # TODO: move frequency information into the abstract channel
                         wf.frequency = ch.SSBFreq
                     wireOuts[ch][-1].append(wf)
