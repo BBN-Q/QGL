@@ -181,6 +181,14 @@ class Instruction(object):
 
 		return out
 
+	def __eq__(self, other):
+		return self.header == other.header and self.payload == other.payload and self.label == other.label
+
+	def __ne__(self, other):
+		return not self == other
+
+	def __hash__(self):
+		return hash((self.header, self.payload, self.label))
 
 	@property
 	def address(self):

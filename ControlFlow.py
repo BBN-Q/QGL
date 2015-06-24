@@ -89,12 +89,17 @@ class ControlInstruction(object):
 		return result
 
 	def __eq__(self, other):
-		# ignore label in equality testing
-		mydict = self.__dict__.copy()
-		otherdict = other.__dict__.copy()
-		mydict.pop('label')
-		otherdict.pop('label')
-		return mydict == otherdict
+		if isinstance(other, self.__class__):
+			# ignore label in equality testing
+			mydict = self.__dict__.copy()
+			otherdict = other.__dict__.copy()
+			mydict.pop('label')
+			otherdict.pop('label')
+			return mydict == otherdict
+		return False
+
+	def __ne__(self, other):
+		return not self == other
 
 	def promote(self):
 		return self

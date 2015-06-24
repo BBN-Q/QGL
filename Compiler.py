@@ -391,7 +391,12 @@ class Waveform(object):
             return labelPart + "Waveform(" + str(self.key)[:6] + ", " + str(self.length) + ")"
 
     def __eq__(self, other):
-        return self.__dict__ == other.__dict__
+        if isinstance(other, self.__class__):
+            return self.__dict__ == other.__dict__
+        return False
+
+    def __ne__(self, other):
+        return not self == other
 
     def __hash__(self):
         return hash(frozenset(self.__dict__))
