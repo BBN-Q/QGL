@@ -151,12 +151,13 @@ def arb_axis_drag(qubit, nutFreq, rotAngle=0, polarAngle=0, aziAngle=0, **kwargs
     """
     params = overrideDefaults(qubit, kwargs)
 
+    # TODO: figure out way to reduce code duplication between this and the pulse shape
     if params['length'] > 0:
-        #Start from a gaussian shaped pulse
-        gaussPulse = PulseShapes.gaussian(amp=1, **params)
-
         #To calculate the phase ramping we'll need the sampling rate
         sampRate = qubit.physChan.samplingRate
+
+        #Start from a gaussian shaped pulse
+        gaussPulse = PulseShapes.gaussian(amp=1, samplingRate=sampRate, **params).real
 
         #Scale to achieve to the desired rotation
         calScale = (rotAngle/2/pi)*sampRate/sum(gaussPulse)
@@ -169,21 +170,21 @@ def arb_axis_drag(qubit, nutFreq, rotAngle=0, polarAngle=0, aziAngle=0, **kwargs
         beta = params['dragScaling']/sampRate
         instantaneousDetuning = beta*(2*pi*calScale*sin(polarAngle)*gaussPulse)**2
         phaseSteps = phaseSteps + instantaneousDetuning*(1.0/sampRate)
-        #center phase ramp around the middle of the pulse time steps
-        phaseRamp = np.cumsum(phaseSteps) - phaseSteps/2
 
         frameChange = sum(phaseSteps);
-
-        shape = (1.0/nutFreq)*sin(polarAngle)*calScale*np.exp(1j*aziAngle)*gaussPulse*np.exp(1j*phaseRamp)
 
     elif abs(polarAngle) < 1e-10:
         #Otherwise assume we have a zero-length Z rotation
         frameChange = -rotAngle;
-        shape = np.array([], dtype=np.complex128)
     else:
         raise ValueError('Non-zero transverse rotation with zero-length pulse.')
 
-    return Pulse("ArbAxis", qubit, shape, 0.0, frameChange)
+    params['amp'] = 1
+    params['nutFreq'] = nutFreq
+    params['rotAngle'] = rotAngle
+    params['polarAngle'] = polarAngle
+    params['shapeFun'] = PulseShapes.arb_axis_drag
+    return Pulse("ArbAxis", qubit, params, aziAngle, frameChange)
 
 def AC(qubit, cliffNum):
     """

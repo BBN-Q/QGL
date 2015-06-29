@@ -3,6 +3,7 @@ All generic pulse shapes are defined here.
 '''
 
 import numpy as np
+from math import pi, sin, cos, acos, sqrt
 
 def gaussian(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
     '''
@@ -132,4 +133,48 @@ def autodyne(frequency=10e6, baseShape=constant, **params):
     # Apply the autodyne frequency
     timePts = np.linspace(0, params['length'], len(shape))
     shape *= np.exp(-1j*2*np.pi*frequency*timePts)
+    return shape
+
+def arb_axis_drag(nutFreq, rotAngle=0, polarAngle=0, aziAngle=0, length=0, dragScaling=0.5, samplingRate=1e9, **params):
+    """
+    Single-qubit arbitrary axis pulse implemented with phase ramping and frame change.
+    For now we assume gaussian shape.
+
+    Parameters
+    ----------
+    nutFreq: effective nutation frequency per unit of drive amplitude (Hz)
+    rotAngle : effective rotation rotAngle (radians)
+    polarAngle : polar angle of rotation axis (radians)
+    aziAngle : azimuthal (radians)
+    """
+
+    if length > 0:
+        #Start from a gaussian shaped pulse
+        gaussPulse = gaussian(amp=1, length=length, samplingRate=samplingRate, **params)
+
+        #Scale to achieve to the desired rotation
+        calScale = (rotAngle/2/pi)*samplingRate/sum(gaussPulse)
+
+        #Calculate the phase ramp steps to achieve the desired Z component to the rotation axis
+        phaseSteps = -2*pi*cos(polarAngle)*calScale*gaussPulse/samplingRate
+
+        #Calculate Z DRAG correction to phase steps
+        #beta is a conversion between XY drag scaling and Z drag scaling
+        beta = dragScaling/samplingRate
+        instantaneousDetuning = beta*(2*pi*calScale*sin(polarAngle)*gaussPulse)**2
+        phaseSteps = phaseSteps + instantaneousDetuning*(1.0/samplingRate)
+        #center phase ramp around the middle of the pulse time steps
+        phaseRamp = np.cumsum(phaseSteps) - phaseSteps/2
+
+        frameChange = sum(phaseSteps);
+
+        shape = (1.0/nutFreq)*sin(polarAngle)*calScale*gaussPulse*np.exp(1j*phaseRamp)
+
+    elif abs(polarAngle) < 1e-10:
+        #Otherwise assume we have a zero-length Z rotation
+        frameChange = -rotAngle;
+        shape = np.array([], dtype=np.complex128)
+    else:
+        raise ValueError('Non-zero transverse rotation with zero-length pulse.')
+
     return shape
