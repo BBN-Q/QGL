@@ -340,24 +340,18 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 	'''
 	if len(markerLL) == 0:
 		return
+	assert(len(IQLL) <= len(markerLL), "Sequence length mismatch")
+	if len(IQLL) < len(markerLL):
+		for ct in range(len(markerLL) - len(IQLL)):
+			IQLL.append([])
 
 	for seq in markerLL:
 		PatternUtils.convert_lengths_to_samples(seq, SAMPLING_RATE)
 
 	markerAttr = 'markerDelay' + str(markerNum)
 
-	# expand link lists to the same length (copying first element of shorter one)
-	for miniLL_IQ, miniLL_m in izip_longest(IQLL, markerLL):
-		if not miniLL_IQ:
-			IQLL.append([ControlFlow.Wait(), padding_entry(MIN_ENTRY_LENGTH), padding_entry(MIN_ENTRY_LENGTH)])
-		if not miniLL_m:
-			markerLL.append([padding_entry(MIN_ENTRY_LENGTH)])
-
 	#Step through the all the miniLL's together
-	for miniLL_IQ, miniLL_m in zip(IQLL, markerLL):
-		#Find the cummulative length for each entry of IQ channel
-		timePts = np.cumsum([0] + [entry.length for entry in miniLL_IQ])
-
+	for miniLL_IQ, miniLL_m in izip_longest(IQLL, markerLL):
 		#Find the switching points of the marker channels
 		switchPts = []
 		prevAmplitude = 0
@@ -368,6 +362,9 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 				prevAmplitude = entry.amp
 			t += entry.length
 
+		if len(switchPts) == 0:
+			continue
+
 		# Push on an extra switch point if we have an odd number of switches (to maintain state)
 		if len(switchPts) % 2 == 1:
 			switchPts.append(t)
@@ -376,8 +373,18 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 		blipPts = (np.diff(switchPts) == 1).nonzero()[0]
 		for pt in blipPts[::-1]:
 			del switchPts[pt+1]
+
+		# if the IQ sequence is empty, make an ideally length-matched sequence
+		if len(miniLL_IQ) == 0:
+			miniLL_IQ.append(padding_entry(switchPts[0]))
+			for length in np.diff(switchPts):
+				miniLL_IQ.append(padding_entry(length))
+
+		#Find the cummulative length for each entry of IQ channel
+		timePts = np.cumsum([0] + [entry.length for entry in miniLL_IQ])
+
 		#Ensure the IQ LL is long enough to support the blips
-		if switchPts and max(switchPts) >= timePts[-1]:
+		if max(switchPts) >= timePts[-1]:
 			dt = max(switchPts) - timePts[-1]
 			if hasattr(miniLL_IQ[-1], 'isTimeAmp') and miniLL_IQ[-1].isTimeAmp:
 				miniLL_IQ[-1].length += dt + 4
@@ -409,7 +416,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 					miniLL_IQ.append(padding_entry(pad))
 			#Push on the trigger count
 
-			#If are switch point is before the start of the LL entry then we are in trouble...
+			#If our switch point is before the start of the LL entry then we are in trouble...
 			if switchPt - timePts[curIQIdx] < 0:
 				#See if the previous entry was a TA pair and whether we can split it
 				needToShift = switchPt - timePts[curIQIdx-1]
