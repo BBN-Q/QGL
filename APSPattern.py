@@ -273,8 +273,11 @@ def create_LL_data(LLs, offsets, AWGName=''):
 
 	# Do some checking on miniLL lengths
 	seqLengths = np.array([len(miniLL) for miniLL in LLs])
-	assert np.all(seqLengths >= MIN_LL_ENTRY_COUNT), 'Oops! mini LL''s needs to have at least two elements.'
 	assert np.all(seqLengths < MAX_LL_ENTRIES), 'Oops! mini LL''s cannot have length greater than {0}, you have {1} entries'.format(MAX_BANK_SIZE, len(miniLL))
+
+	for miniLL in LLs:
+		while len(miniLL) < MIN_LL_ENTRY_COUNT:
+			miniLL.append(padding_entry(MIN_ENTRY_LENGTH))
 
 	instructions = []
 	waitFlag = False
@@ -340,7 +343,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 	'''
 	if len(markerLL) == 0:
 		return
-	assert(len(IQLL) <= len(markerLL), "Sequence length mismatch")
+	assert len(IQLL) <= len(markerLL), "Sequence length mismatch"
 	if len(IQLL) < len(markerLL):
 		for ct in range(len(markerLL) - len(IQLL)):
 			IQLL.append([])
