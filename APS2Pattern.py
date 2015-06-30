@@ -413,7 +413,7 @@ def create_seq_instructions(seqs, offsets):
 			if entry.length < MIN_ENTRY_LENGTH:
 				continue
 			markerSel = curSeq - 2
-			state = (entry.key != PatternUtils.TAZKey)
+			state = not entry.isZero
 			instructions.append(Marker(markerSel,
 				                       state,
 				                       entry.length,
