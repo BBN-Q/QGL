@@ -299,12 +299,16 @@ def create_LL_data(LLs, offsets, AWGName=''):
 					warn("skipping instruction {0}".format(entry))
 			else: # waveform instructions
 				t1, t2 = calc_marker_delay(entry)
+				if hasattr(entry, 'repeat'):
+					repeat = entry.repeat - 1
+				else:
+					repeat = 0
 				instr = Instruction(
 					addr = offsets[wf_hash(entry)]//ADDRESS_UNIT,
 					count = entry.length//ADDRESS_UNIT - 1,
 					trig1 = t1,
 					trig2 = t2,
-					repeat = 0) # TODO: look for single pulse repeats
+					repeat = repeat)
 				# set flags
 				instr.TAPair = entry.isTimeAmp
 				instr.wait = waitFlag
@@ -379,9 +383,9 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 
 		# if the IQ sequence is empty, make an ideally length-matched sequence
 		if len(miniLL_IQ) == 0:
-			miniLL_IQ.append(padding_entry(switchPts[0]))
+			miniLL_IQ.append(padding_entry(max(switchPts[0], MIN_ENTRY_LENGTH)))
 			for length in np.diff(switchPts):
-				miniLL_IQ.append(padding_entry(length))
+				miniLL_IQ.append(padding_entry(max(length, MIN_ENTRY_LENGTH)))
 
 		#Find the cummulative length for each entry of IQ channel
 		timePts = np.cumsum([0] + [entry.length for entry in miniLL_IQ])
@@ -494,9 +498,15 @@ def unroll_loops(LLs):
 				repeatedBlock = seq[symbols[entry.target]+1:ct]
 				numRepeats = seq[symbols[entry.target]-1].value
 				# unroll the block (dropping the LOAD and REPEAT)
-				seq = seq[:symbols[entry.target]-1] + repeatedBlock*numRepeats + seq[ct+1:]
-				# advance the count (minus 2 for dropped instructions)
-				ct += (numRepeats-1) * len(repeatedBlock) - 2
+				if len(repeatedBlock) == 1:
+					repeatedBlock[0].repeat = numRepeats
+					seq[symbols[entry.target]-1:ct+1] = repeatedBlock
+					# dropped two instructions and a label
+					ct -= 3
+				else:
+					seq[symbols[entry.target]-1:ct+1] = repeatedBlock*numRepeats
+					# advance the count (minus 3 for dropped instructions and label)
+					ct += (numRepeats-1) * len(repeatedBlock) - 3
 			ct += 1
 		# add unrolled sequence to instruction list
 		instructions.append(seq)
