@@ -48,7 +48,7 @@ def preprocess(seqs, shapeLib, T):
 	for seq in seqs:
 		PatternUtils.propagate_frame_changes(seq)
 	seqs = PatternUtils.convert_lengths_to_samples(seqs, SAMPLING_RATE)
-	PatternUtils.quantize_phase(seqs, 1.0/2**14)
+	PatternUtils.quantize_phase(seqs, 1.0/2**13)
 	wfLib = build_waveforms(seqs, shapeLib)
 	PatternUtils.correct_mixers(wfLib, T)
 	for seq in seqs:
@@ -75,7 +75,7 @@ def wf_hash(wf):
 	if wf.isTimeAmp and wf.frequency == 0: # 2nd condition necessary until we support RT SSB
 		return hash((wf.amp, wf.phase))
 	else:
-		return hash((wf.key, wf.amp, wf.phase, wf.length, wf.frequency))
+		return hash((wf.key, wf.amp, round(wf.phase * 2**13), wf.length, wf.frequency))
 
 TAZShape = np.zeros(1, dtype=np.complex)
 TAZKey = hash_pulse(TAZShape)

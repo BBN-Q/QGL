@@ -399,7 +399,7 @@ class Waveform(object):
         return not self == other
 
     def __hash__(self):
-        return hash(frozenset(self.__dict__))
+        return hash(frozenset(self.__dict__.iteritems()))
 
     @property
     def isZero(self):

@@ -198,8 +198,8 @@ def quantize_phase(seqs, precision):
     for entry in flatten(seqs):
         if not isinstance(entry, Compiler.Waveform):
             continue
-        phase = np.mod(int(round(entry.phase/2.0/pi / precision)), int(1/precision))
-        entry.phase = 2*pi*precision*phase
+        phase = np.mod(int(round(entry.phase / precision)), int(round(2*np.pi/precision)))
+        entry.phase = precision*phase
     return seqs
 
 def convert_lengths_to_samples(instructions, samplingRate):
