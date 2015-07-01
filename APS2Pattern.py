@@ -99,24 +99,6 @@ def create_wf_vector(wfLib):
 
 	return wfVec, offsets
 
-def calc_marker_delay(entry):
-	#The firmware cannot handle 0 delay markers so push out one clock cycle
-	if entry.markerDelay1 is not None:
-		if entry.markerDelay1 < ADDRESS_UNIT:
-			entry.markerDelay1 = ADDRESS_UNIT
-		markerDelay1 = entry.markerDelay1//ADDRESS_UNIT
-	else:
-		markerDelay1 = 0
-
-	if entry.markerDelay2 is not None:
-		if entry.markerDelay2 < ADDRESS_UNIT:
-			entry.markerDelay2 = ADDRESS_UNIT
-		markerDelay2 = entry.markerDelay2//ADDRESS_UNIT
-	else:
-		markerDelay2 = 0
-
-	return markerDelay1, markerDelay2
-
 class Instruction(object):
 	def __init__(self, header, payload, label=None, target=None):
 		self.header = header
