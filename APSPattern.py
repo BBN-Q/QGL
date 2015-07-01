@@ -57,25 +57,25 @@ def preprocess(seqs, shapeLib, T):
 
 def build_waveforms(seqs, shapeLib):
 	# apply amplitude, phase, and modulation and add the resulting waveforms to the library
-	wfLib = {wf_hash(padding_entry(0)) : TAZShape}
+	wfLib = {wf_sig(padding_entry(0)) : TAZShape}
 	for wf in flatten(seqs):
-		if isinstance(wf, Compiler.Waveform) and wf_hash(wf) not in wfLib:
+		if isinstance(wf, Compiler.Waveform) and wf_sig(wf) not in wfLib:
 			shape = np.exp(1j*wf.phase) * wf.amp * shapeLib[wf.key]
 			if wf.frequency != 0 and wf.amp != 0:
 				shape *= np.exp(1j*2*np.pi*wf.frequency*np.arange(wf.length)/SAMPLING_RATE)
-			wfLib[wf_hash(wf)] = shape
+			wfLib[wf_sig(wf)] = shape
 	return wfLib
 
-def wf_hash(wf):
+def wf_sig(wf):
 	'''
-	Compute a hash of a Compiler.Waveform with intentional hash collisions on Waveforms that 
-	have identity wfLib representations. For example, TA waveforms with the same amplitude
-	but different durations should hash the same.
+	Compute a signature of a Compiler.Waveform that identifies the relevant properties for
+	two Waveforms to be considered "equal" in the waveform library. For example, we ignore
+	length of TA waveforms.
 	'''
 	if wf.isTimeAmp and wf.frequency == 0: # 2nd condition necessary until we support RT SSB
-		return hash((wf.amp, wf.phase))
+		return (wf.amp, wf.phase)
 	else:
-		return hash((wf.key, wf.amp, round(wf.phase * 2**13), wf.length, wf.frequency))
+		return (wf.key, wf.amp, round(wf.phase * 2**13), wf.length, wf.frequency)
 
 TAZShape = np.zeros(1, dtype=np.complex)
 TAZKey = hash_pulse(TAZShape)
@@ -111,11 +111,11 @@ def apply_min_pulse_constraints(miniLL, wfLib):
 		# For short TA pairs we see if we can add them to the next waveform
 		if curEntry.isZero and not nextEntry.isZero:
 			# Concatenate the waveforms
-			paddedWF = np.hstack((np.zeros(curEntry.length, dtype=np.complex), wfLib[wf_hash(nextEntry)]))
+			paddedWF = np.hstack((np.zeros(curEntry.length, dtype=np.complex), wfLib[wf_sig(nextEntry)]))
 			# Generate a new key
 			nextEntry.key = hash_pulse(paddedWF)
 			nextEntry.length = paddedWF.size
-			wfLib[wf_hash(nextEntry)] = paddedWF
+			wfLib[wf_sig(nextEntry)] = paddedWF
 			newMiniLL.append(nextEntry)
 			entryct += 2
 
@@ -130,14 +130,14 @@ def apply_min_pulse_constraints(miniLL, wfLib):
 				curEntry.isTimeAmp = True
 				continue
 			elif curEntry.isTimeAmp: # non-zero
-				paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[wf_hash(curEntry)]*np.ones(curEntry.length)))
+				paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[wf_sig(curEntry)]*np.ones(curEntry.length)))
 				curEntry.isTimeAmp = False
 			else:
-				paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[wf_hash(curEntry)]))
+				paddedWF = np.hstack((np.zeros(padLength, dtype=np.complex), wfLib[wf_sig(curEntry)]))
 			# Generate a new key
 			curEntry.key = hash_pulse(paddedWF)
 			curEntry.length = paddedWF.size
-			wfLib[wf_hash(curEntry)] = paddedWF
+			wfLib[wf_sig(curEntry)] = paddedWF
 			newMiniLL.append(curEntry)
 			entryct += 1
 
@@ -158,7 +158,7 @@ def apply_min_pulse_constraints(miniLL, wfLib):
 			# Generate a new key
 			curEntry.key = hash_pulse(paddedWF)
 			curEntry.length = paddedWF.size
-			wfLib[wf_hash(curEntry)] = paddedWF
+			wfLib[wf_sig(curEntry)] = paddedWF
 			newMiniLL.append(curEntry)
 			entryct += 1
 
@@ -304,7 +304,7 @@ def create_LL_data(LLs, offsets, AWGName=''):
 				else:
 					repeat = 0
 				instr = Instruction(
-					addr = offsets[wf_hash(entry)]//ADDRESS_UNIT,
+					addr = offsets[wf_sig(entry)]//ADDRESS_UNIT,
 					count = entry.length//ADDRESS_UNIT - 1,
 					trig1 = t1,
 					trig2 = t2,

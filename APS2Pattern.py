@@ -280,26 +280,26 @@ def preprocess(seqs, shapeLib, T):
 	PatternUtils.correct_mixers(wfLib, T)
 	return seqs, wfLib
 
-def wf_hash(wf):
+def wf_sig(wf):
 	'''
-	Compute a hash of a Compiler.Waveform with intentional hash collisions on Waveforms that 
-	have identity wfLib representations. For example, TA waveforms with the same amplitude
-	but different durations should hash the same.
+	Compute a signature of a Compiler.Waveform that identifies the relevant properties for
+	two Waveforms to be considered "equal" in the waveform library. For example, we ignore
+	length of TA waveforms.
 	'''
 	if wf.isTimeAmp and wf.frequency == 0: # 2nd condition necessary until we support RT SSB
-		return hash((wf.amp, wf.phase))
+		return (wf.amp, wf.phase)
 	else:
-		return hash((wf.key, wf.amp, round(wf.phase * 2**13), wf.length, wf.frequency))
+		return (wf.key, wf.amp, round(wf.phase * 2**13), wf.length, wf.frequency)
 
 def build_waveforms(seqs, shapeLib):
 	# apply amplitude, phase, and modulation and add the resulting waveforms to the library
 	wfLib = {}
 	for wf in flatten(seqs):
-		if isinstance(wf, Compiler.Waveform) and wf_hash(wf) not in wfLib:
+		if isinstance(wf, Compiler.Waveform) and wf_sig(wf) not in wfLib:
 			shape = np.exp(1j*wf.phase) * wf.amp * shapeLib[wf.key]
 			if wf.frequency != 0 and wf.amp != 0:
 				shape *= np.exp(1j*2*np.pi*wf.frequency*np.arange(wf.length)/SAMPLING_RATE)
-			wfLib[wf_hash(wf)] = shape
+			wfLib[wf_sig(wf)] = shape
 	return wfLib
 
 def timestamp_entries(seq):
@@ -404,7 +404,7 @@ def create_seq_instructions(seqs, offsets):
 		if curSeq == 1: # waveform channel
 			if entry.length < MIN_ENTRY_LENGTH:
 				continue
-			instructions.append(Waveform(offsets[wf_hash(entry)],
+			instructions.append(Waveform(offsets[wf_sig(entry)],
 				                         entry.length,
 				                         entry.isTimeAmp,
 				                         write=writeFlag,
