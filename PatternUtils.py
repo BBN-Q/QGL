@@ -193,13 +193,13 @@ def propagate_frame_changes(seq):
 
 def quantize_phase(seqs, precision):
     '''
-    Quantizes waveform phases with given precision (in fractions of a circle).
+    Quantizes waveform phases with given precision (in radians).
     '''
     for entry in flatten(seqs):
         if not isinstance(entry, Compiler.Waveform):
             continue
-        phase = np.mod(int(round(entry.phase / precision)), int(round(2*np.pi/precision)))
-        entry.phase = precision*phase
+        phase = np.mod(entry.phase, 2*np.pi)
+        entry.phase = precision * round(phase / precision)
     return seqs
 
 def convert_lengths_to_samples(instructions, samplingRate):
