@@ -24,6 +24,8 @@ import os.path, uuid, tempfile
 import bokeh.plotting as bk
 import numpy as np
 
+import config
+
 #Effective global of whether we are interactive plottinn in a notebook or to a
 #static html file
 _in_ipynb = False
@@ -72,6 +74,7 @@ def plot_waveforms(waveforms, figTitle = ''):
     plots = []
     for (ct,chan) in enumerate(channels):
         fig = bk.figure(title=figTitle + repr(chan), plot_width=800, plot_height=350, y_range=[-1.05, 1.05])
+        fig.background_fill = config.plotBackground
         waveformToPlot = waveforms[chan]
         xpts = np.linspace(0,len(waveformToPlot)/chan.physChan.samplingRate/1e-6,len(waveformToPlot))
         fig.line(xpts, np.real(waveformToPlot), color='red')

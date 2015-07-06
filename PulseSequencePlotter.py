@@ -43,6 +43,8 @@ import uuid, tempfile
 
 import Libraries
 
+import config
+
 # define sequence reader dispatch on awg type
 @multimethod(Tek5014, unicode)
 def read_sequence_file(awg, filename):
@@ -102,6 +104,7 @@ def plot_pulse_files(fileNames, firstSeqNum=0):
 
     source = bk.ColumnDataSource(data=dataDict)
     figH = bk.figure(title=title, plot_width=1000, y_range=(-1,len(dataDict)+1))
+    figH.background_fill = config.plotBackground
 
     #Colorbrewer2 qualitative Set3 (http://colorbrewer2.org)
     colours = ["#8dd3c7", "#ffffb3", "#bebada", "#fb8072", "#80b1d3", "#fdb462",
