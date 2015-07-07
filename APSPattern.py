@@ -426,6 +426,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 			if switchPt - timePts[curIQIdx] < 0:
 				#See if the previous entry was a TA pair and whether we can split it
 				needToShift = switchPt - timePts[curIQIdx-1]
+				assert needToShift > MIN_ENTRY_LENGTH + ADDRESS_UNIT, "Sequential marker blips too close together."
 				if isinstance(miniLL_IQ[curIQIdx-1], Compiler.Waveform) and \
 					miniLL_IQ[curIQIdx-1].isTimeAmp and \
 					miniLL_IQ[curIQIdx-1].length > (needToShift + MIN_ENTRY_LENGTH):
