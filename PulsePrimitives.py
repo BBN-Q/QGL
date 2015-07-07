@@ -306,7 +306,7 @@ def echoCR(controlQ, CRchan, amp=1, phase=0, length = 200e-9, riseFall= 20e-9, l
     An echoed CR pulse.  Used for calibration of CR gate
     """
     seq = flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase) + \
-    [Id(controlQ, 100e-9), X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi) 
+    [X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi) 
     if lastPi:
         seq += [X(controlQ)]
     return seq
