@@ -72,7 +72,7 @@ def wf_sig(wf):
 	two Waveforms to be considered "equal" in the waveform library. For example, we ignore
 	length of TA waveforms.
 	'''
-	if wf.isTimeAmp and wf.frequency == 0: # 2nd condition necessary until we support RT SSB
+	if wf.isZero or (wf.isTimeAmp and wf.frequency == 0): # 2nd condition necessary until we support RT SSB
 		return (wf.amp, wf.phase)
 	else:
 		return (wf.key, wf.amp, round(wf.phase * 2**13), wf.length, wf.frequency)
@@ -281,7 +281,6 @@ def create_LL_data(LLs, offsets, AWGName=''):
 
 	instructions = []
 	waitFlag = False
-	
 	for miniLL in LLs:
 		miniStart = True
 		for entry in miniLL:
