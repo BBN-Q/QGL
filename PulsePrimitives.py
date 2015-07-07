@@ -301,13 +301,15 @@ def flat_top_gaussian(chan, riseFall, length, amp, phase=0):
     Utheta(chan, length=length, amp=amp, phase=phase, shapeFun=PulseShapes.square),
     Utheta(chan, length=riseFall, amp=amp, phase=phase, shapeFun=PulseShapes.gaussOff)]
 
-def echoCR(controlQ, CRchan, amp=1, phase=0, length = 200e-9, riseFall= 20e-9):
+def echoCR(controlQ, CRchan, amp=1, phase=0, length = 200e-9, riseFall= 20e-9, lastPi=True):
     """
     An echoed CR pulse.  Used for calibration of CR gate
     """
-    return flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase) + \
-    [X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi) + \
-    [X(controlQ)]
+    seq = flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase) + \
+    [Id(controlQ, 100e-9), X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi) 
+    if lastPi:
+        seq += [X(controlQ)]
+    return seq
 
 def ZX90_CR(controlQ, targetQ, CRchan, riseFall= 20e-9, **kwargs):
     """
