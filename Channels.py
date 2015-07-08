@@ -95,7 +95,7 @@ class PhysicalChannel(Channel):
 
 class LogicalChannel(Channel):
     '''
-    The main class from which we will generate sequences. 
+    The main class from which we will generate sequences.
     At some point it needs to be assigned to a physical channel.
     '''
     #During initilization we may just have a string reference to the channel
@@ -112,7 +112,7 @@ class PhysicalMarkerChannel(PhysicalChannel):
     '''
     gateBuffer = Float(0.0).tag(desc="How much extra time should be added onto the beginning of a gating pulse")
     gateMinWidth = Float(0.0).tag(desc="The minimum marker pulse width")
-        
+
 class PhysicalQuadratureChannel(PhysicalChannel):
     '''
     Something used to implement a standard qubit channel with two analog channels and a microwave gating channel.
@@ -153,9 +153,9 @@ class Qubit(LogicalChannel):
 
 class Measurement(LogicalChannel):
     '''
-    A class for measurement channels. 
+    A class for measurement channels.
     Measurments are special because they can be different types:
-    autodyne which needs an IQ pair or hetero/homodyne which needs just a marker channel. 
+    autodyne which needs an IQ pair or hetero/homodyne which needs just a marker channel.
     '''
     measType = Enum('autodyne','homodyne').tag(desc='Type of measurment (autodyne, homodyne)')
     autodyneFreq = Float()
@@ -270,7 +270,7 @@ class ChannelLibrary(Atom):
         Helps avoid both stale references from replacing whole channel objects (as in load_from_library)
         and the overhead of recreating everything.
         """
-        
+
         if self.libFile:
             with open(self.libFile, 'r') as FID:
                 try:
@@ -313,7 +313,7 @@ class ChannelLibrary(Atom):
         if 'gateChan' in chParams.keys():
             self.channelDict[chName].gateChan = self.channelDict[chParams['gateChan']] if chParams['gateChan'] in self.channelDict else None
         # TODO: how do we follow changes to selected AWG or generator/source?
-        
+
         for paramName in chParams:
             if paramName not in ignoreList:
                 setattr(self.channelDict[chName], paramName, chParams[paramName])

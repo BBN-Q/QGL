@@ -83,12 +83,13 @@ def merge_channels(wires, channels):
                 blocklength = pull_uniform_entries(entries, entryIterators, channels)
                 newentry = copy(entries[0])
                 newentry.length = blocklength
+                newentry.amp = 1.0
                 newentry.phase = 0
 
                 # create closure to sum waveforms
                 def sumShapes(**kwargs):
-                    return reduce(operator.add, [e.shapeParams['amp'] * np.exp(1j*e.phase) * e.shape for e in entries])
-                newentry.shapeParams = {'amp' : 1, 'shapeFun' : sumShapes}
+                    return reduce(operator.add, [e.amp * np.exp(1j*e.phase) * e.shape for e in entries])
+                newentry.shapeParams = {'shapeFun' : sumShapes}
                 newentry.label = "*".join([e.label for e in entries])
                 segment.append(newentry)
             except StopIteration:
@@ -122,17 +123,19 @@ def concatenate_entries(entry1, entry2):
     newentry = copy(entry1)
     # TA waveforms with the same amplitude can be merged with a just length update
     # otherwise, need to concatenate the pulse shapes
-    if not (entry1.isTimeAmp and entry2.isTimeAmp and entry1.shapeParams['amp'] == entry2.shapeParams['amp'] and entry1.phase == (entry1.frameChange + entry2.phase)):
+    if not (entry1.isTimeAmp and entry2.isTimeAmp and entry1.amp == entry2.amp and entry1.phase == (entry1.frameChange + entry2.phase)):
         # otherwise, need to build a closure to stack them
         def stackShapes(**kwargs):
-            return np.hstack((entry1.shapeParams['amp'] * np.exp(1j*entry1.phase) * entry1.shape,
-                              entry2.shapeParams['amp'] * np.exp(1j*(entry1.frameChange + entry2.phase)) * entry2.shape))
+            return np.hstack((entry1.amp * np.exp(1j*entry1.phase) * entry1.shape,
+                              entry2.amp * np.exp(1j*(entry1.frameChange + entry2.phase)) * entry2.shape))
 
         newentry.isTimeAmp = False
-        newentry.shapeParams = {'amp' : 1, 'shapeFun' : stackShapes}
+        newentry.shapeParams = {'shapeFun' : stackShapes}
         newentry.label = entry1.label + '+' + entry2.label
     newentry.frameChange += entry2.frameChange
     newentry.length = entry1.length + entry2.length
+    newentry.amp = 1.0
+    
     return newentry
 
 def generate_waveforms(physicalWires):
@@ -150,7 +153,7 @@ def generate_waveforms(physicalWires):
 
 def pulses_to_waveforms(physicalWires):
     wireOuts = {ch : [] for ch in physicalWires.keys()}
-    for ch, seqs in physicalWires.items():
+    for ch, seqs in physicalWires.iteritems():
         for seq in seqs:
             wireOuts[ch].append([])
             for pulse in seq:
@@ -373,7 +376,7 @@ class Waveform(object):
         else:
             # self.key = PatternUtils.hash_pulse(pulse.shape)
             self.key = pulse.hashshape()
-            self.amp = pulse.shapeParams['amp']
+            self.amp = pulse.amp
             self.length = pulse.shapeParams['length']
             self.phase = pulse.phase
             self.frameChange = pulse.frameChange

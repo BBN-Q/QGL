@@ -66,8 +66,7 @@ def Id(qubit, *args, **kwargs):
 def Utheta(qubit, amp=0, phase=0, label='Utheta', **kwargs):
     '''  A generic rotation with variable amplitude and phase. '''
     params = overrideDefaults(qubit, kwargs)
-    params['amp'] = amp
-    return Pulse(label, qubit, params, phase, 0.0)
+    return Pulse(label, qubit, params, amp, phase, 0.0)
 
 # generic pulses around X, Y, and Z axes
 def Xtheta(qubit, amp=0, label='Xtheta', **kwargs):
@@ -179,12 +178,11 @@ def arb_axis_drag(qubit, nutFreq, rotAngle=0, polarAngle=0, aziAngle=0, **kwargs
     else:
         raise ValueError('Non-zero transverse rotation with zero-length pulse.')
 
-    params['amp'] = 1
     params['nutFreq'] = nutFreq
     params['rotAngle'] = rotAngle
     params['polarAngle'] = polarAngle
     params['shapeFun'] = PulseShapes.arb_axis_drag
-    return Pulse("ArbAxis", qubit, params, aziAngle, frameChange)
+    return Pulse("ArbAxis", qubit, params, 1.0, aziAngle, frameChange)
 
 def AC(qubit, cliffNum):
     """
@@ -290,8 +288,7 @@ def CNOT(source, target, **kwargs):
     # construct (source, target) channel and pull parameters from there
     channel = Channels.QubitFactory(source.label + target.label)
     params = overrideDefaults(channel, kwargs)
-    params['amp'] = channel.pulseParams['piAmp']
-    return Pulse("CNOT", (source, target), params, 0.0, 0.0)
+    return Pulse("CNOT", (source, target), params, channel.pulseParams['piAmp'], 0.0, 0.0)
 
 def flat_top_gaussian(chan, riseFall, length, amp, phase=0):
     """
@@ -306,7 +303,7 @@ def echoCR(controlQ, CRchan, amp=1, phase=0, length = 200e-9, riseFall= 20e-9, l
     An echoed CR pulse.  Used for calibration of CR gate
     """
     seq = flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase) + \
-    [X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi) 
+    [X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi)
     if lastPi:
         seq += [X(controlQ)]
     return seq
@@ -324,7 +321,7 @@ def ZX90_CR(controlQ, targetQ, CRchan, riseFall= 20e-9, **kwargs):
 
 def CNOT_CRa(controlQ, targetQ, CRchan, riseFall= 20e-9, **kwargs):
     """
-    CNOT made of a CR pulse and single qubit gates. Control and target are the same for CR and CNOT 
+    CNOT made of a CR pulse and single qubit gates. Control and target are the same for CR and CNOT
     controlQ, targetQ: of the CR gate (= CNOT)
     """
     return ZX90_CR(controlQ, targetQ,CRchan,riseFall=riseFall) +\
@@ -333,7 +330,7 @@ def CNOT_CRa(controlQ, targetQ, CRchan, riseFall= 20e-9, **kwargs):
 def CNOT_CRb(controlQ, targetQ, CRchan, riseFall= 20e-9, **kwargs):
     """
     CNOT made of a CR pulse and single qubit gates. Control and target are inverted for the CNOT
-    controlQ, targetQ: of the CR gate 
+    controlQ, targetQ: of the CR gate
     """
     return [Y90(controlQ)*Y90(targetQ),X(controlQ)*X(targetQ)]+ZX90_CR(controlQ, targetQ,CRchan,riseFall=riseFall) +\
     [Z90(controlQ), Y90(controlQ)*X90(targetQ),X(controlQ)*Y90m(targetQ)]
@@ -363,7 +360,8 @@ def MEAS(*args, **kwargs):
         params['frequency'] = measChan.autodyneFreq
         params['baseShape'] = params.pop('shapeFun')
         params['shapeFun'] = PulseShapes.autodyne
-        return Pulse("MEAS", measChan, params, 0.0, 0.0)
+        amp = params.pop('amp')
+        return Pulse("MEAS", measChan, params, amp, 0.0, 0.0)
 
     return reduce(operator.mul, [create_meas_pulse(qubit) for qubit in args])
 

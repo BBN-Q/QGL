@@ -58,13 +58,13 @@ def build_waveforms(seq):
         frame = 0
         for pulse in wires[q]:
             if isinstance(pulse, PulseSequencer.Pulse):
-                shape = np.exp(1j*(frame+pulse.phase)) * pulse.shapeParams['amp'] * pulse.shape
+                shape = np.exp(1j*(frame+pulse.phase)) * pulse.amp * pulse.shape
                 frame += pulse.frameChange
                 concatShapes[q] = np.append(concatShapes[q], shape)
 
     # add an extra zero to make things look more normal
     for q in channels:
-        concatShapes[q] = np.append(concatShapes[q], 0)  
+        concatShapes[q] = np.append(concatShapes[q], 0)
     return concatShapes
 
 

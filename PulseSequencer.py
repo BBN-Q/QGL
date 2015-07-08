@@ -30,7 +30,7 @@ class Pulse(object):
         shape - numpy array pulse shape
         frameChange - accumulated phase from the pulse
     '''
-    def __init__(self, label, qubits, shapeParams, phase=0, frameChange=0):
+    def __init__(self, label, qubits, shapeParams, amp=1.0, phase=0, frameChange=0):
         self.label = label
         if isinstance(qubits, (list, tuple)):
             # with more than one qubit, need to look up the channel
@@ -39,9 +39,10 @@ class Pulse(object):
             self.qubits = qubits
         self.shapeParams = shapeParams
         self.phase = phase
+        self.amp = amp
         self.frameChange = frameChange
         self.isTimeAmp = False
-        requiredParams = ['amp', 'length', 'shapeFun']
+        requiredParams = ['length', 'shapeFun']
         for param in requiredParams:
             if param not in shapeParams.keys():
                 raise NameError("ShapeParams must incluce {0}".format(param))
@@ -63,9 +64,7 @@ class Pulse(object):
 
     # unary negation inverts the pulse amplitude and frame change
     def __neg__(self):
-        shapeParams = copy(self.shapeParams)
-        shapeParams['amp'] *= -1
-        return Pulse(self.label, self.qubits, shapeParams, self.phase, -self.frameChange)
+        return Pulse(self.label, self.qubits, copy(self.shapeParams), -self.amp, self.phase, -self.frameChange)
 
     def __mul__(self, other):
         return self.promote()*other.promote()
@@ -98,22 +97,21 @@ class Pulse(object):
 
     @property
     def isZero(self):
-        return self.shapeParams['amp'] == 0 or np.all(self.shape == 0)
+        return self.amp == 0
 
     @property
     def shape(self):
         params = copy(self.shapeParams)
         params['samplingRate'] = self.qubits.physChan.samplingRate
         params.pop('shapeFun')
-        params.pop('amp')
         return self.shapeParams['shapeFun'](**params)
 
 def TAPulse(label, qubits, length, amp, phase=0, frameChange=0):
     '''
     Creates a time/amplitude pulse with the given pulse length and amplitude
     '''
-    params = {'amp': amp, 'length': length, 'shapeFun': PulseShapes.constant}
-    p = Pulse(label, qubits, params, phase, frameChange)
+    params = {'length': length, 'shapeFun': PulseShapes.constant}
+    p = Pulse(label, qubits, params, amp, phase, frameChange)
     p.isTimeAmp = True
     return p
 
@@ -201,7 +199,7 @@ class PulseBlock(object):
         # should bundle this behavior into a __copy__ method
         result = copy(self)
         result.pulses = copy(self.pulses)
-        
+
         for (k, v) in rhs.pulses.items():
             if k in result.pulses.keys():
                 raise NameError("Attempted to multiply pulses acting on the same space")
