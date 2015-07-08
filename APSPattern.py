@@ -91,7 +91,7 @@ def apply_min_pulse_constraints(miniLL, wfLib):
 	Helper function to deal with LL elements less than minimum LL entry count
 	by trying to concatenate them into neighbouring entries
 	'''
-	
+
 	newMiniLL = []
 	entryct = 0
 	while entryct < len(miniLL):
@@ -309,7 +309,7 @@ def create_LL_data(LLs, offsets, AWGName=''):
 					trig2 = t2,
 					repeat = repeat)
 				# set flags
-				instr.TAPair = entry.isTimeAmp
+				instr.TAPair = entry.isTimeAmp or entry.isZero
 				instr.wait = waitFlag
 				instr.start = miniStart
 				waitFlag = False

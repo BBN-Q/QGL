@@ -83,7 +83,7 @@ def create_wf_vector(wfLib):
 		#TA pairs need to be repeated ADDRESS_UNIT times
 		if wf.size == 1:
 			wf = wf.repeat(ADDRESS_UNIT)
-		#Ensure the wf is an integer number of ADDRESS_UNIT's 
+		#Ensure the wf is an integer number of ADDRESS_UNIT's
 		trim = wf.size%ADDRESS_UNIT
 		if trim:
 			wf = wf[:-trim]
@@ -92,9 +92,9 @@ def create_wf_vector(wfLib):
 		assert idx + wf.size < WAVEFORM_CACHE_SIZE, 'Oops! You have exceeded the waveform cache of the APS'
 		wfVec[idx:idx+wf.size] = np.uint16(np.round(MAX_WAVEFORM_VALUE*wf))
 		offsets[key] = idx
-		idx += wf.size 
-					
-	#Trim the waveform 
+		idx += wf.size
+
+	#Trim the waveform
 	wfVec.resize(idx)
 
 	return wfVec, offsets
@@ -134,7 +134,7 @@ class Instruction(object):
 
 		if self.target:
 			out += str(self.target) + "/"
-		
+
 		if instrOpCode == 0x0:
 			wfOpCode = (self.payload >> 46) & 0x3
 			wfOpCodes = ["PLAY", "TRIG", "SYNC"]
@@ -362,7 +362,7 @@ def create_seq_instructions(seqs, offsets):
 
 	# keep track of where we are in each sequence
 	curIdx = np.zeros(len(seqs), dtype=np.int64)
-	
+
 	cmpTable = {'==': EQUAL, '!=': NOTEQUAL, '>': GREATERTHAN, '<': LESSTHAN}
 
 	# always start with SYNC (stealing label from beginning of sequence)
@@ -388,7 +388,7 @@ def create_seq_instructions(seqs, offsets):
 				continue
 			instructions.append(Waveform(offsets[wf_sig(entry)],
 				                         entry.length,
-				                         entry.isTimeAmp,
+				                         entry.isTimeAmp or entry.isZero,
 				                         write=writeFlag,
 				                         label=label))
 		elif curSeq > 1: # a marker channel
@@ -506,7 +506,7 @@ def write_APS2_file(awgData, fileName):
 	#Open the HDF5 file
 	if os.path.isfile(fileName):
 		os.remove(fileName)
-	with h5py.File(fileName, 'w') as FID:  
+	with h5py.File(fileName, 'w') as FID:
 		FID['/'].attrs['Version'] = 3.0
 		FID['/'].attrs['channelDataFor'] = np.uint16([1,2])
 
