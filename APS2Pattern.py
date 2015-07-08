@@ -470,7 +470,7 @@ def compress_marker(markerLL):
 		while idx+1 < len(seq):
 			if (isinstance(seq[idx], Compiler.Waveform)
 				and isinstance(seq[idx+1], Compiler.Waveform)
-				and seq[idx].key == seq[idx+1].key):
+				and seq[idx].isZero == seq[idx+1].isZero):
 
 				seq[idx].length += seq[idx+1].length
 				del seq[idx+1]
