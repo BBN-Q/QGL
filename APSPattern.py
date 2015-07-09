@@ -47,7 +47,7 @@ def preprocess(seqs, shapeLib, T):
 	seqs, miniLLrepeat = unroll_loops(seqs)
 	for seq in seqs:
 		PatternUtils.propagate_frame_changes(seq)
-	seqs = PatternUtils.convert_lengths_to_samples(seqs, SAMPLING_RATE)
+	seqs = PatternUtils.convert_lengths_to_samples(seqs, SAMPLING_RATE, ADDRESS_UNIT)
 	PatternUtils.quantize_phase(seqs, 1.0/2**13)
 	wfLib = build_waveforms(seqs, shapeLib)
 	PatternUtils.correct_mixers(wfLib, T)
@@ -352,7 +352,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 			IQLL.append([])
 
 	for seq in markerLL:
-		PatternUtils.convert_lengths_to_samples(seq, SAMPLING_RATE)
+		PatternUtils.convert_lengths_to_samples(seq, SAMPLING_RATE, ADDRESS_UNIT)
 
 	markerAttr = 'markerDelay' + str(markerNum)
 

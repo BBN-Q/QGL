@@ -202,10 +202,12 @@ def quantize_phase(seqs, precision):
         entry.phase = precision * round(phase / precision)
     return seqs
 
-def convert_lengths_to_samples(instructions, samplingRate):
+def convert_lengths_to_samples(instructions, samplingRate, quantization=1):
     for entry in flatten(instructions):
         if isinstance(entry, Compiler.Waveform):
             entry.length = int(round(entry.length * samplingRate))
+            # TODO: warn when truncating?
+            entry.length -= entry.length % quantization
     return instructions
 
 # from Stack Overflow: http://stackoverflow.com/questions/2158395/flatten-an-irregular-list-of-lists-in-python/2158532#2158532

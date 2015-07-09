@@ -256,7 +256,7 @@ def Repeat(addr, label=None):
 def preprocess(seqs, shapeLib, T):
 	for seq in seqs:
 		PatternUtils.propagate_frame_changes(seq)
-	seqs = PatternUtils.convert_lengths_to_samples(seqs, SAMPLING_RATE)
+	seqs = PatternUtils.convert_lengths_to_samples(seqs, SAMPLING_RATE, ADDRESS_UNIT)
 	PatternUtils.quantize_phase(seqs, 1.0/2**13)
 	wfLib = build_waveforms(seqs, shapeLib)
 	PatternUtils.correct_mixers(wfLib, T)
