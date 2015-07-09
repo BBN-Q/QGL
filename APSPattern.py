@@ -49,11 +49,32 @@ def preprocess(seqs, shapeLib, T):
 		PatternUtils.propagate_frame_changes(seq)
 	seqs = PatternUtils.convert_lengths_to_samples(seqs, SAMPLING_RATE, ADDRESS_UNIT)
 	PatternUtils.quantize_phase(seqs, 1.0/2**13)
+	compress_sequences(seqs)
 	wfLib = build_waveforms(seqs, shapeLib)
 	PatternUtils.correct_mixers(wfLib, T)
-	for seq in seqs:
-		apply_min_pulse_constraints(seq, wfLib)
+	for ct in range(len(seqs)):
+		seqs[ct] = apply_min_pulse_constraints(seqs[ct], wfLib)
 	return seqs, miniLLrepeat, wfLib
+
+def compress_sequences(seqs):
+	'''
+	Drop zero-length pulses and combine adjacent TA pairs into single entries
+	'''
+	for seq in seqs:
+		ct = 1
+		while ct < len(seq):
+			prevEntry = seq[ct-1]
+			curEntry = seq[ct]
+			if isinstance(curEntry, Compiler.Waveform) and curEntry.length == 0:
+				del seq[ct]
+			elif isinstance(prevEntry, Compiler.Waveform) and isinstance(curEntry, Compiler.Waveform) and \
+			   prevEntry.isTimeAmp and curEntry.isTimeAmp and \
+			   prevEntry.amp == curEntry.amp and \
+			   prevEntry.phase == curEntry.phase:
+				prevEntry.length += curEntry.length
+				prevEntry.frameChange += curEntry.frameChange
+				del seq[ct]
+			ct += 1
 
 def build_waveforms(seqs, shapeLib):
 	# apply amplitude, phase, and modulation and add the resulting waveforms to the library
