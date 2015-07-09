@@ -105,10 +105,22 @@ def plot_pulse_files(fileNames, firstSeqNum=0):
     source = bk.ColumnDataSource(data=dataDict)
     figH = bk.figure(title=title, plot_width=1000, y_range=(-1,len(dataDict)+1))
     figH.background_fill = config.plotBackground
+    if config.gridColor:
+        figH.xgrid.grid_line_color = config.gridColor
+        figH.ygrid.grid_line_color = config.gridColor
 
-    #Colorbrewer2 qualitative Set3 (http://colorbrewer2.org)
-    colours = ["#8dd3c7", "#ffffb3", "#bebada", "#fb8072", "#80b1d3", "#fdb462",
-                 "#b3de69", "#fccde5", "#d9d9d9", "#bc80bd", "#ccebc5", "#ffed6f"]
+    # Colobrewer2 qualitative Set1 (http://colorbrewer2.org)
+    colours = [
+        "#e41a1c",
+        "#377eb8",
+        "#4daf4a",
+        "#984ea3",
+        "#ff7f00",
+        "#ffff33",
+        "#a65628",
+        "#f781bf",
+        "#999999"
+    ]
 
     for ct,k in enumerate(lineNames):
         figH.line(k+"_x", k, source=source, color=colours[ct%len(colours)], line_width=2, legend=k)
