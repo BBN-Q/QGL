@@ -375,8 +375,8 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 		if len(switchPts) % 2 == 1:
 			switchPts.append(t)
 
-		#Assume switch pts seperated by 1 point are single trigger blips
-		blipPts = (np.diff(switchPts) == 1).nonzero()[0]
+		#Assume switch pts seperated by 0 or 1 point are single trigger blips
+		blipPts = (np.diff(switchPts) <= 1).nonzero()[0]
 		for pt in blipPts[::-1]:
 			del switchPts[pt+1]
 
