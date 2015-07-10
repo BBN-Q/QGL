@@ -135,9 +135,10 @@ enamldef LogicalQuadratureView(GroupBox): curView:
             Conditional:
                 condition << chan.measType == 'autodyne'
                 Label:
-                    text = 'Autodyne Freq. (Hz)'
+                    text = 'Autodyne Freq. (MHz)'
                 FloatField:
-                    value := chan.autodyneFreq
+                    value << chan.autodyneFreq/1e6
+                    value :: chan.autodyneFreq*1e6
         Label:
             text = 'Physical Chan.'
         ComboBox:
@@ -174,7 +175,7 @@ enamldef EmptyChannelView(Container):
     attr channelLib
     attr instrumentLib
 
-ChannelViewMap = {type(None):EmptyChannelView, QGL.Channels.Qubit:LogicalQuadratureView, QGL.Channels.Measurement:LogicalQuadratureView, 
+ChannelViewMap = {type(None):EmptyChannelView, QGL.Channels.Qubit:LogicalQuadratureView, QGL.Channels.Measurement:LogicalQuadratureView,
                     QGL.Channels.LogicalMarkerChannel:LogicalMarkerChannelView, QGL.Channels.PhysicalQuadratureChannel:PhysicalQuadratureChannelView,
                     QGL.Channels.PhysicalMarkerChannel:PhysicalMarkerChannelView}
 
@@ -191,7 +192,7 @@ enamldef ChannelLibraryView(Container): channelLibCont:
                 # displayFilter = lambda x : isinstance(x, QGL.Channels.LogicalChannel)
                 modelName = 'chan'
                 viewMap = ChannelViewMap
-                viewkwargs = {'instrumentLib': instrumentLib, 
+                viewkwargs = {'instrumentLib': instrumentLib,
                                 'channelLib': channelLib}
                 # newClassList = QGL.Channels.NewLogicalChannelList
         Page:
@@ -202,7 +203,7 @@ enamldef ChannelLibraryView(Container): channelLibCont:
                 # displayFilter = lambda x : isinstance(x, QGL.Channels.PhysicalChannel)
                 modelName = 'chan'
                 viewMap = ChannelViewMap
-                viewkwargs = {'instrumentLib': instrumentLib, 
+                viewkwargs = {'instrumentLib': instrumentLib,
                                 'channelLib': channelLib}
                 labelValidator = is_valid_awg_channel_name
                 # newClassList = QGL.Channels.NewPhysicalChannelList
