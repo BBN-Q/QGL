@@ -83,7 +83,7 @@ def build_waveforms(seqs, shapeLib):
 		if isinstance(wf, Compiler.Waveform) and wf_sig(wf) not in wfLib:
 			shape = np.exp(1j*wf.phase) * wf.amp * shapeLib[wf.key]
 			if wf.frequency != 0 and wf.amp != 0:
-				shape *= np.exp(1j*2*np.pi*wf.frequency*np.arange(wf.length)/SAMPLING_RATE)
+				shape *= np.exp(-1j*2*np.pi*wf.frequency*np.arange(wf.length)/SAMPLING_RATE) #minus from negative frequency qubits
 			wfLib[wf_sig(wf)] = shape
 	return wfLib
 

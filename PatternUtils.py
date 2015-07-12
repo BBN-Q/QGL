@@ -85,7 +85,7 @@ def apply_gating_constraints(chan, linkList):
 
     if not hasattr(chan,'gateMinWidth'):
         raise AttributeError("{0} does not have gateMinWidth".format(chan.label))
-      
+
     # get channel parameters
     gateBuffer = chan.gateBuffer
     gateMinWidth = chan.gateMinWidth
@@ -188,7 +188,7 @@ def propagate_frame_changes(seq):
         if not isinstance(entry, Compiler.Waveform):
             continue
         entry.phase = np.mod(frame + entry.phase, 2*pi)
-        frame += entry.frameChange + (2*np.pi * entry.frequency * entry.length)
+        frame += entry.frameChange + (-2*np.pi * entry.frequency * entry.length) #minus from negative frequency qubits
     return seq
 
 def quantize_phase(seqs, precision):
