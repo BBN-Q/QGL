@@ -158,10 +158,10 @@ class Measurement(LogicalChannel):
     autodyne which needs an IQ pair or hetero/homodyne which needs just a marker channel.
     '''
     measType = Enum('autodyne','homodyne').tag(desc='Type of measurment (autodyne, homodyne)')
-    autodyneFreq = Float()
+    autodyneFreq = Float() # use 'autodyneFreq' to bake in the modulation at compile-time
+    frequency = Float(0.0) # use 'frequency' instead if the modulation should happen at run-time.
     pulseParams = Dict(default={'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'buffer':0.0, 'cutoff':2, 'sigma':1e-9})
     gateChan = Instance((unicode, LogicalMarkerChannel))
-    frequency = Float(0.0)
     
     def __init__(self, **kwargs):
         super(Measurement, self).__init__(**kwargs)
