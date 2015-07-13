@@ -67,6 +67,7 @@ def map_logical_to_physical(wires):
 def merge_channels(wires, channels):
     chan = channels[0]
     mergedWire = [[] for _ in range(len(wires[chan]))]
+    shapeFunLib = {}
     for ct, segment in enumerate(mergedWire):
         entryIterators = [iter(wires[ch][ct]) for ch in channels]
         while True:
@@ -82,16 +83,24 @@ def merge_channels(wires, channels):
                 # at this point we have at least one waveform instruction
                 blocklength = pull_uniform_entries(entries, entryIterators, channels)
                 newentry = copy(entries[0])
-                newentry.length = blocklength
+                #TODO properly deal with constant pulses
                 newentry.amp = 1.0
+                if all([e.amp == 0 for e in entries]):
+                    newentry.amp = 0
+
                 newentry.phase = 0
 
-                # create closure to sum waveforms
-                def sumShapes(**kwargs):
-                    return reduce(operator.add, [e.amp * np.exp(1j*e.phase) * e.shape for e in entries])
-                newentry.shapeParams = {'shapeFun' : sumShapes}
+                pulsesHash = tuple([e.hashshape() for e in entries])
+                if pulsesHash not in shapeFunLib:
+                    # create closure to sum waveforms
+                    def sumShapes(entries=entries, **kwargs):
+                        return reduce(operator.add, [e.amp * np.exp(1j*e.phase) * e.shape for e in entries])
+                    shapeFunLib[pulsesHash] = sumShapes
+                newentry.shapeParams = {'shapeFun':shapeFunLib[pulsesHash], 'length':blocklength}
                 newentry.label = "*".join([e.label for e in entries])
                 segment.append(newentry)
+
+
             except StopIteration:
                 break
     return mergedWire
