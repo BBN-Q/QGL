@@ -200,7 +200,7 @@ def Waveform(addr, count, isTA, write=False, label=None):
 	count = int(count)
 	count = ((count // ADDRESS_UNIT)-1) & 0x000fffff # 20 bit count
 	addr = (addr // ADDRESS_UNIT) & 0x00ffffff # 24 bit addr
-	payload = (PLAY << WFM_OP_OFFSET) | ((isTA & 0x1) << TA_PAIR_BIT) | (count << 24) | addr
+	payload = (PLAY << WFM_OP_OFFSET) | ((int(isTA) & 0x1) << TA_PAIR_BIT) | (count << 24) | addr
 	return Instruction(header, payload, label)
 
 def Marker(sel, state, count, write=False, label=None):
