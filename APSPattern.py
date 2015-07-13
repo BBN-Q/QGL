@@ -391,6 +391,9 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 			t += entry.length
 
 		if len(switchPts) == 0:
+			# need at least a WAIT on an empty IQ LL in order to match segment sequencing
+			if len(miniLL_IQ) == 0:
+				miniLL_IQ.append(ControlFlow.qwait())
 			continue
 
 		# Push on an extra switch point if we have an odd number of switches (to maintain state)
