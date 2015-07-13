@@ -297,7 +297,8 @@ def create_LL_data(LLs, offsets, AWGName=''):
 	assert np.all(seqLengths < MAX_LL_ENTRIES), 'Oops! mini LL''s cannot have length greater than {0}, you have {1} entries'.format(MAX_BANK_SIZE, len(miniLL))
 
 	for miniLL in LLs:
-		while len(miniLL) < MIN_LL_ENTRY_COUNT:
+		# add one because we need at least one control instruction (WAIT) plus MIN_LL_ENTRY_COUNT waveforms
+		while len(miniLL) < MIN_LL_ENTRY_COUNT + 1:
 			miniLL.append(padding_entry(MIN_ENTRY_LENGTH))
 
 	instructions = []
@@ -403,6 +404,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 
 		# if the IQ sequence is empty, make an ideally length-matched sequence
 		if len(miniLL_IQ) == 0:
+			miniLL_IQ.append(ControlFlow.qwait())
 			miniLL_IQ.append(padding_entry(max(switchPts[0], MIN_ENTRY_LENGTH)))
 			for length in np.diff(switchPts):
 				miniLL_IQ.append(padding_entry(max(length, MIN_ENTRY_LENGTH)))
