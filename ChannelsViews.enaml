@@ -138,7 +138,7 @@ enamldef LogicalQuadratureView(GroupBox): curView:
                     text = 'Autodyne Freq. (MHz)'
                 FloatField:
                     value << chan.autodyneFreq/1e6
-                    value :: chan.autodyneFreq*1e6
+                    value :: chan.autodyneFreq = value*1e6
         Label:
             text = 'Physical Chan.'
         ComboBox:
