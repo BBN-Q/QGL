@@ -144,7 +144,7 @@ class Qubit(LogicalChannel):
     '''
     pulseParams = Dict(default={'length':20e-9, 'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.gaussian, 'buffer':0.0, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9})
     gateChan = Instance((unicode, LogicalMarkerChannel))
-    frequency = Float(0.0)
+    frequency = Float(0.0).tag(desc='modulation frequency of the channel (can be positive or negative)')
 
     def __init__(self, **kwargs):
         super(Qubit, self).__init__(**kwargs)
@@ -158,8 +158,8 @@ class Measurement(LogicalChannel):
     autodyne which needs an IQ pair or hetero/homodyne which needs just a marker channel.
     '''
     measType = Enum('autodyne','homodyne').tag(desc='Type of measurment (autodyne, homodyne)')
-    autodyneFreq = Float() # use 'autodyneFreq' to bake in the modulation at compile-time
-    frequency = Float(0.0) # use 'frequency' instead if the modulation should happen at run-time.
+    autodyneFreq = Float(0.0).tag(desc='use to bake the modulation into the pulse, so that it has constant phase')
+    frequency = Float(0.0).tag(desc='use frequency to asssociate modulation with the channel')
     pulseParams = Dict(default={'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'buffer':0.0, 'cutoff':2, 'sigma':1e-9})
     gateChan = Instance((unicode, LogicalMarkerChannel))
     
