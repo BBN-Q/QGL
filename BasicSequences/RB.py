@@ -107,7 +107,7 @@ def TwoQubitRB(q1, q2, CR, seqs, showPlot=False, suffix=""):
 	if showPlot:
 		plot_pulse_files(fileNames)
 
-def SingleQubitRB_AC(qubit, seqFile, showPlot=False):
+def SingleQubitRB_AC(qubit, seqs, showPlot=False):
 	"""
 
 	Single qubit randomized benchmarking using atomic Clifford pulses. 
@@ -122,37 +122,19 @@ def SingleQubitRB_AC(qubit, seqFile, showPlot=False):
 	-------
 	plotHandle : handle to plot window to prevent destruction
 	"""	
-	#Setup a pulse library
-	pulseLib = [AC(qubit, cliffNum) for cliffNum in range(24)]
-	pulseLib.append(pulseLib[0])
-	measBlock = MEAS(qubit)
+	seqsBis = []
+	for seq in seqs:
+		seqsBis.append([AC(qubit, c) for c in seq])
 
-	with open(seqFile,'r') as FID:
-		fileReader = reader(FID)
-		seqs = []
-		for pulseSeqStr in fileReader:
-			seq = []
-			for pulseStr in pulseSeqStr:
-				seq.append(pulseLib[int(pulseStr)])
-			seq.append(measBlock)
-			seqs.append(seq)
+	#Add the measurement to all sequences
+	for seq in seqsBis:
+		seq.append(MEAS(qubit))
 
-	# #Tack on the calibration scalings
-	# seqs += [[Id(qubit), measBlock], [Id(qubit), measBlock], [X(qubit), measBlock], [X(qubit), measBlock]]
-	# print('Number of sequences: {0}'.format(len(seqs)))
+	#Tack on the calibration sequences
+	seqsBis += create_cal_seqs((qubit,), 2)
 
-	# fileNames = compile_to_hardware(seqs, 'RB/RB')
-	# print fileNames
-	#Hack for limited APS waveform memory and break it up into multiple files
-	#We've shuffled the sequences so that we loop through each gate length on the inner loop
-	numRandomizations = 36
-	# numGateLengths = 17
-	for ct in range(numRandomizations):
-		# chunk = seqs[2*numGateLengths*ct:2*numGateLengths*(ct+1)]
-		chunk = seqs[ct::numRandomizations]
-		#Tack on the calibration scalings
-		chunk += [[Id(qubit), measBlock], [X(qubit), measBlock]]
-		fileNames = compile_to_hardware(chunk, 'RB/RB', suffix='_{0}'.format(ct+1))
+	fileNames = compile_to_hardware(seqsBis, 'RB/RB')
+	print(fileNames)
 
 	if showPlot:
 		plot_pulse_files(fileNames)
