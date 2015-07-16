@@ -135,7 +135,7 @@ def autodyne(frequency=10e6, baseShape=constant, **params):
     shape *= np.exp(-1j*2*np.pi*frequency*timePts)
     return shape
 
-def arb_axis_drag(nutFreq, rotAngle=0, polarAngle=0, aziAngle=0, length=0, dragScaling=0.5, samplingRate=1e9, **params):
+def arb_axis_drag(nutFreq=10e6, rotAngle=0, polarAngle=0, aziAngle=0, length=0, dragScaling=0.5, samplingRate=1e9, **params):
     """
     Single-qubit arbitrary axis pulse implemented with phase ramping and frame change.
     For now we assume gaussian shape.

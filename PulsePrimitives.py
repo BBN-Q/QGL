@@ -201,7 +201,7 @@ def AC(qubit, cliffNum):
 
     #Figure out the approximate nutation frequency calibration from the X180 and the samplingRate
     Xp = X(qubit)
-    xpulse = Xp.shape
+    xpulse = Xp.amp * Xp.shape
     nutFreq = 0.5/(sum(xpulse)/qubit.physChan.samplingRate);
 
 
