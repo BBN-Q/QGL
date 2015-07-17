@@ -170,9 +170,6 @@ def pulses_to_waveforms(physicalWires):
                     wireOuts[ch][-1].append(pulse)
                 else:
                     wf = Waveform(pulse)
-                    if hasattr(ch, 'SSBFreq'):
-                        # TODO: move frequency information into the abstract channel
-                        wf.frequency = ch.SSBFreq
                     wireOuts[ch][-1].append(wf)
     return wireOuts
 
@@ -383,13 +380,14 @@ class Waveform(object):
             self.frameChange = 0
             self.isTimeAmp = False
         else:
-            # self.key = PatternUtils.hash_pulse(pulse.shape)
             self.key = pulse.hashshape()
             self.amp = pulse.amp
             self.length = pulse.shapeParams['length']
             self.phase = pulse.phase
             self.frameChange = pulse.frameChange
             self.isTimeAmp = pulse.isTimeAmp
+            if hasattr(pulse.qubits, 'frequency'):
+                self.frequency = pulse.qubits.frequency
 
     def __repr__(self):
         return self.__str__()

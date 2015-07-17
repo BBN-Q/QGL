@@ -112,12 +112,7 @@ enamldef PhysicalQuadratureChannelView(GroupBox): curView:
             text = 'Phase Skew (deg.)'
         FloatField:
             value := chan.phaseSkew
-        Label:
-            text = 'SSB Frequency (MHz)'
-
-        FloatField:
-            value << chan.SSBFreq/1e6
-            value :: chan.SSBFreq = value*1e6
+        
 
 enamldef LogicalQuadratureView(GroupBox): curView:
     attr chan
@@ -139,6 +134,13 @@ enamldef LogicalQuadratureView(GroupBox): curView:
                 FloatField:
                     value << chan.autodyneFreq/1e6
                     value :: chan.autodyneFreq = value*1e6
+                    tool_tip = chan.get_member('autodyneFreq').metadata["desc"]
+        Label:
+            text = 'Frequency (MHz)'
+        FloatField:
+            value << chan.frequency/1e6
+            value :: chan.frequency = value*1e6
+            tool_tip = chan.get_member('frequency').metadata["desc"]
         Label:
             text = 'Physical Chan.'
         ComboBox:
