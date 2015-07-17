@@ -189,7 +189,7 @@ class ChannelLibrary(Atom):
     physicalChannelManager = Typed(DictManager)
     libFile = Str()
     fileWatcher = Typed(FileWatcher.LibraryFileWatcher)
-    version = Int(1)
+    version = Int(0)
 
     def __init__(self, channelDict={}, **kwargs):
         super(ChannelLibrary, self).__init__(channelDict=channelDict, **kwargs)
@@ -242,7 +242,10 @@ class ChannelLibrary(Atom):
                 self.fileWatcher.resume()
 
     def json_encode(self, matlabCompatible=False):
-        return {"channelDict":self.channelDict}
+        return {
+            "channelDict": self.channelDict,
+            "version": self.version
+        }
 
     def load_from_library(self):
         import JSONHelpers
@@ -260,7 +263,8 @@ class ChannelLibrary(Atom):
                         if hasattr(chan, 'gateChan'):
                             chan.gateChan = tmpLib[chan.gateChan] if chan.gateChan in tmpLib.channelDict else None
                     self.channelDict.update(tmpLib.channelDict)
-
+                    # grab library version
+                    self.version = tmpLib.version
             except IOError:
                 print('No channel library found.')
             except ValueError:
