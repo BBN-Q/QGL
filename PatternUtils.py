@@ -38,7 +38,7 @@ def delay(sequences, delay):
         ct = 0
         while ct < len(seq)-1:
             if seq[ct] == ControlFlow.Wait() or seq[ct] == ControlFlow.Sync():
-                seq.insert(ct+1, TAPulse("Id", seq[ct+1].qubits, delay, 0))
+                seq.insert(ct+1, TAPulse("Id", seq[ct+1].channel, delay, 0))
             ct += 1
 
 def normalize_delays(delays):
@@ -70,8 +70,8 @@ def add_gate_pulses(seqs):
                 for chan, pulse in seq[ct].pulses.items():
                     if has_gate(chan) and not pulse.isZero and not (chan.gateChan in seq[ct].pulses.keys()):
                         seq[ct] *= BLANK(chan, pulse.length)
-            elif hasattr(seq[ct], 'qubits'):
-                chan = seq[ct].qubits
+            elif hasattr(seq[ct], 'channel'):
+                chan = seq[ct].channel
                 if has_gate(chan) and not seq[ct].isZero:
                     seq[ct] *= BLANK(chan, seq[ct].length)
 
@@ -175,7 +175,7 @@ def add_slave_trigger(seqs, slaveChan):
     '''
     for seq in seqs:
         # skip if the sequence already starts with a slave trig
-        if hasattr(seq[0], 'qubits') and seq[0].qubits == slaveChan:
+        if hasattr(seq[0], 'channel') and seq[0].channel == slaveChan:
             continue
         seq.insert(0, TAPulse("TRIG", slaveChan, slaveChan.pulseParams['length'], 1.0, 0.0, 0.0))
 

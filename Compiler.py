@@ -326,10 +326,10 @@ def find_unique_channels(seq):
     channels = set([])
     for step in flatten(seq):
         if isinstance(step, PulseSequencer.Pulse):
-            if isinstance(step.qubits, Channels.Channel):
-                channels |= set([step.qubits])
+            if isinstance(step.channel, Channels.Channel):
+                channels |= set([step.channel])
             else:
-                channels |= set(step.qubits)
+                channels |= set(step.channel)
         elif hasattr(step, 'pulses'):
             channels |= set(step.pulses.keys())
     return channels
@@ -386,8 +386,8 @@ class Waveform(object):
             self.phase = pulse.phase
             self.frameChange = pulse.frameChange
             self.isTimeAmp = pulse.isTimeAmp
-            if hasattr(pulse.qubits, 'frequency'):
-                self.frequency = pulse.qubits.frequency
+            if hasattr(pulse.channel, 'frequency'):
+                self.frequency = pulse.channel.frequency
 
     def __repr__(self):
         return self.__str__()

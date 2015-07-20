@@ -26,17 +26,17 @@ class Pulse(object):
     '''
     A single channel pulse object
         label - name of the pulse
-        qubits - array of qubit/channel objects the pulse acts upon
+        channel - logical channel the pulse acts upon
         shape - numpy array pulse shape
         frameChange - accumulated phase from the pulse
     '''
-    def __init__(self, label, qubits, shapeParams, amp=1.0, phase=0, frameChange=0):
+    def __init__(self, label, channel, shapeParams, amp=1.0, phase=0, frameChange=0):
         self.label = label
-        if isinstance(qubits, (list, tuple)):
+        if isinstance(channel, (list, tuple)):
             # with more than one qubit, need to look up the channel
-            self.qubits = Channels.QubitFactory(reduce(operator.add, [q.label for q in qubits]))
+            self.channel = Channels.QubitFactory(reduce(operator.add, [c.label for c in channel]))
         else:
-            self.qubits = qubits
+            self.channel = channel
         self.shapeParams = shapeParams
         self.phase = phase
         self.amp = amp
@@ -51,20 +51,20 @@ class Pulse(object):
         return str(self)
 
     def __str__(self):
-        if isinstance(self.qubits, tuple):
-            return '{0}({1})'.format(self.label, ','.join([qubit.label for qubit in self.qubits]))
+        if isinstance(self.channel, tuple):
+            return '{0}({1})'.format(self.label, ','.join([channel.label for channel in self.channel]))
         else:
-            return '{0}({1})'.format(self.label, self.qubits.label)
+            return '{0}({1})'.format(self.label, self.channel.label)
 
     # adding pulses concatenates the pulse shapes
     def __add__(self, other):
-        if self.qubits != other.qubits:
+        if self.channel != other.channel:
             raise NameError("Can only concatenate pulses acting on the same channel")
         return CompositePulse([self, other])
 
     # unary negation inverts the pulse amplitude and frame change
     def __neg__(self):
-        return Pulse(self.label, self.qubits, copy(self.shapeParams), -self.amp, self.phase, -self.frameChange)
+        return Pulse(self.label, self.channel, copy(self.shapeParams), -self.amp, self.phase, -self.frameChange)
 
     def __mul__(self, other):
         return self.promote()*other.promote()
@@ -83,7 +83,7 @@ class Pulse(object):
     def promote(self):
         # promote a Pulse to a PulseBlock
         pb =  PulseBlock()
-        pb.pulses = {self.qubits: self}
+        pb.pulses = {self.channel: self}
         return pb
 
     @property
@@ -102,16 +102,16 @@ class Pulse(object):
     @property
     def shape(self):
         params = copy(self.shapeParams)
-        params['samplingRate'] = self.qubits.physChan.samplingRate
+        params['samplingRate'] = self.channel.physChan.samplingRate
         params.pop('shapeFun')
         return self.shapeParams['shapeFun'](**params)
 
-def TAPulse(label, qubits, length, amp, phase=0, frameChange=0):
+def TAPulse(label, channel, length, amp, phase=0, frameChange=0):
     '''
     Creates a time/amplitude pulse with the given pulse length and amplitude
     '''
     params = {'length': length, 'shapeFun': PulseShapes.constant}
-    p = Pulse(label, qubits, params, amp, phase, frameChange)
+    p = Pulse(label, channel, params, amp, phase, frameChange)
     p.isTimeAmp = True
     return p
 
@@ -133,7 +133,7 @@ class CompositePulse(object):
             return "+".join([str(p) for p in self.pulses])
 
     def __add__(self, other):
-        if self.qubits != other.qubits:
+        if self.channel != other.channel:
             raise NameError("Can only concatenate pulses acting on the same channel")
         if hasattr(other, 'pulses'):
             return CompositePulse(self.pulses + other.pulses)
@@ -154,13 +154,13 @@ class CompositePulse(object):
     def promote(self):
         # promote a CompositePulse to a PulseBlock
         pb =  PulseBlock()
-        pb.pulses = {self.qubits: self}
+        pb.pulses = {self.channel: self}
         return pb
 
     @property
-    def qubits(self):
-        # Assume that the first pulse in the composite contains the qubit information
-        return self.pulses[0].qubits
+    def channel(self):
+        # Assume that the first pulse in the composite contains the channel information
+        return self.pulses[0].channel
 
     @property
     def length(self):
@@ -195,7 +195,7 @@ class PulseBlock(object):
     def __mul__(self, rhs):
         # make sure RHS is a PulseBlock
         rhs = rhs.promote()
-        # we need to go one layer deep in the copy so that we can manipulate self.pulses and self.channels w/o affecting the original object
+        # we need to go one layer deep in the copy so that we can manipulate self.pulses and self.channel w/o affecting the original object
         # should bundle this behavior into a __copy__ method
         result = copy(self)
         result.pulses = copy(self.pulses)
@@ -225,13 +225,8 @@ class PulseBlock(object):
         return self
 
     @property
-    def qubits(self):
+    def channel(self):
         return self.pulses.keys()
-
-    #A list of the channels used in this block
-    @property
-    def channelNames(self):
-        return [channel.name for channel in self.pulses.keys()]
 
     #The maximum number of points needed for any channel on this block
     @property
