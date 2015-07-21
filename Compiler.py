@@ -93,9 +93,9 @@ def merge_channels(wires, channels):
                 pulsesHash = tuple([e.hashshape() for e in entries])
                 if pulsesHash not in shapeFunLib:
                     # create closure to sum waveforms
-                    def sumShapes(entries=entries, **kwargs):
+                    def sum_shapes(entries=entries, **kwargs):
                         return reduce(operator.add, [e.amp * np.exp(1j*e.phase) * e.shape for e in entries])
-                    shapeFunLib[pulsesHash] = sumShapes
+                    shapeFunLib[pulsesHash] = sum_shapes
                 newentry.shapeParams = {'shapeFun':shapeFunLib[pulsesHash], 'length':blocklength}
                 newentry.label = "*".join([e.label for e in entries])
                 segment.append(newentry)
@@ -134,12 +134,12 @@ def concatenate_entries(entry1, entry2):
     # otherwise, need to concatenate the pulse shapes
     if not (entry1.isTimeAmp and entry2.isTimeAmp and entry1.amp == entry2.amp and entry1.phase == (entry1.frameChange + entry2.phase)):
         # otherwise, need to build a closure to stack them
-        def stackShapes(**kwargs):
+        def stack_shapes(entry1=entry1, entry2=entry2, **kwargs):
             return np.hstack((entry1.amp * np.exp(1j*entry1.phase) * entry1.shape,
                               entry2.amp * np.exp(1j*(entry1.frameChange + entry2.phase)) * entry2.shape))
 
         newentry.isTimeAmp = False
-        newentry.shapeParams = {'shapeFun' : stackShapes}
+        newentry.shapeParams = {'shapeFun' : stack_shapes}
         newentry.label = entry1.label + '+' + entry2.label
     newentry.frameChange += entry2.frameChange
     newentry.length = entry1.length + entry2.length
