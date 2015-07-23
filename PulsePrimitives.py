@@ -292,34 +292,33 @@ def CNOT(source, target, **kwargs):
 
 def flat_top_gaussian(chan, riseFall, length, amp, phase=0):
     """
-    A square pulse with risingn and falling gaussian shape
+    A square pulse with rising and falling gaussian shape
     """
-    return [Utheta(chan, length=riseFall, amp=amp, phase=phase, shapeFun=PulseShapes.gaussOn),
-    Utheta(chan, length=length, amp=amp, phase=phase, shapeFun=PulseShapes.square),
-    Utheta(chan, length=riseFall, amp=amp, phase=phase, shapeFun=PulseShapes.gaussOff)]
+    return Utheta(chan, length=riseFall, amp=amp, phase=phase, shapeFun=PulseShapes.gaussOn) + \
+           Utheta(chan, length=length, amp=amp, phase=phase, shapeFun=PulseShapes.square) + \
+           Utheta(chan, length=riseFall, amp=amp, phase=phase, shapeFun=PulseShapes.gaussOff)
 
-def echoCR(controlQ, CRchan, amp=1, phase=0, length = 200e-9, riseFall= 20e-9, lastPi=True):
+def echoCR(controlQ, CRchan, amp=1, phase=0, length=200e-9, riseFall=20e-9, lastPi=True):
     """
     An echoed CR pulse.  Used for calibration of CR gate
     """
-    seq = flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase) + \
-    [X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi)
+    seq = [flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase),
+           X(controlQ),
+           flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi)]
     if lastPi:
         seq += [X(controlQ)]
     return seq
 
-def ZX90_CR(controlQ, targetQ, CRchan, riseFall= 20e-9, **kwargs):
+def ZX90_CR(controlQ, targetQ, CRchan, riseFall=20e-9, **kwargs):
     """
     A calibrated CR ZX90 pulse.  Uses piAmp for the pulse amplitude, phase for its phase (in deg).
     """
     amp=CRchan.pulseParams['piAmp']
     phase=CRchan.pulseParams['phase']/180*np.pi
     length=CRchan.pulseParams['length']
-    return flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase) + \
-    [X(controlQ)] + flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi) + \
-    [X(controlQ)]
+    return echoCR(controlQ, CRchan, amp=amp, phase=phase, length=length, riseFall=riseFall)
 
-def CNOT_CRa(controlQ, targetQ, CRchan, riseFall= 20e-9, **kwargs):
+def CNOT_CRa(controlQ, targetQ, CRchan, riseFall=20e-9, **kwargs):
     """
     CNOT made of a CR pulse and single qubit gates. Control and target are the same for CR and CNOT
     controlQ, targetQ: of the CR gate (= CNOT)

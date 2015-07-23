@@ -20,9 +20,14 @@ def PiRabi(controlQ, targetQ, CRchan, lengths, riseFall=40e-9, amp=1, phase=0, c
 	plotHandle : handle to plot window to prevent destruction
 	"""
 
-	seqs = [[Id(controlQ)] + flat_top_gaussian(CRchan, riseFall, amp=amp, phase=phase, length=l) \
-	+ [MEAS(targetQ)*MEAS(controlQ)] for l in lengths]+[[X(controlQ)] + flat_top_gaussian(CRchan, riseFall, amp=amp, phase=phase, length=l)\
-	+ [X(controlQ), MEAS(targetQ)*MEAS(controlQ)] for l in lengths] + create_cal_seqs([targetQ,controlQ], calRepeats, measChans=(targetQ,controlQ))
+	seqs = [[Id(controlQ),
+	         flat_top_gaussian(CRchan, riseFall, amp=amp, phase=phase, length=l),
+	         MEAS(targetQ)*MEAS(controlQ)] for l in lengths] + \
+	       [[X(controlQ),
+	         flat_top_gaussian(CRchan, riseFall, amp=amp, phase=phase, length=l),
+	         X(controlQ),
+	         MEAS(targetQ)*MEAS(controlQ)] for l in lengths] + \
+           create_cal_seqs([targetQ,controlQ], calRepeats, measChans=(targetQ,controlQ))
 
 	fileNames = compile_to_hardware(seqs, 'PiRabi/PiRabi')
 	print(fileNames)
