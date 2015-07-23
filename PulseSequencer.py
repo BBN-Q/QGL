@@ -164,11 +164,15 @@ class CompositePulse(object):
 
     @property
     def length(self):
-        return sum([p.length for p in self.pulses])
+        return sum(p.length for p in self.pulses)
 
     @property
     def frameChange(self):
-        return sum([p.frameChange for p in self.pulses])
+        return sum(p.frameChange for p in self.pulses)
+
+    @property
+    def isZero(self):
+        return all(p.isZero for p in self.pulses)
 
 
 class PulseBlock(object):

@@ -15,7 +15,7 @@ limitations under the License.
 '''
 import numpy as np
 from warnings import warn
-from PulseSequencer import Pulse, TAPulse
+from PulseSequencer import Pulse, TAPulse, PulseBlock
 from PulsePrimitives import BLANK
 import ControlFlow, BlockLabel, Compiler
 from math import pi
@@ -66,7 +66,7 @@ def add_gate_pulses(seqs):
     '''
     for seq in seqs:
         for ct in range(len(seq)):
-            if hasattr(seq[ct], 'pulses'):
+            if isinstance(seq[ct], PulseBlock):
                 for chan, pulse in seq[ct].pulses.items():
                     if has_gate(chan) and not pulse.isZero and not (chan.gateChan in seq[ct].pulses.keys()):
                         seq[ct] *= BLANK(chan, pulse.length)
@@ -163,7 +163,7 @@ def contains_measurement(entry):
     '''
     if entry.label == "MEAS":
         return True
-    elif hasattr(entry, 'pulses'):
+    elif isinstance(entry, PulseBlock):
         for p in entry.pulses.values():
             if p.label == "MEAS":
                 return True

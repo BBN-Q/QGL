@@ -325,13 +325,12 @@ def compile_sequence(seq, channels=None):
 def find_unique_channels(seq):
     channels = set([])
     for step in flatten(seq):
-        if isinstance(step, PulseSequencer.Pulse):
-            if isinstance(step.channel, Channels.Channel):
-                channels |= set([step.channel])
-            else:
-                channels |= set(step.channel)
-        elif hasattr(step, 'pulses'):
-            channels |= set(step.pulses.keys())
+        if not hasattr(step, 'channel'):
+            continue
+        if isinstance(step.channel, Channels.Channel):
+            channels |= set([step.channel])
+        else:
+            channels |= set(step.channel)
     return channels
 
 def normalize(seq, channels=None):
