@@ -62,7 +62,7 @@ class Channel(Atom):
                 del jsonDict[k]
 
         #Turn instruments back into unicode labels
-        for member in ["AWG", "generator", "physChan", "gateChan"]:
+        for member in ["AWG", "generator", "physChan", "gateChan", "source", "target"]:
             if member in jsonDict:
                 obj = jsonDict.pop(member)
                 if obj:
@@ -142,7 +142,7 @@ class Qubit(LogicalChannel):
     '''
     The main class for generating qubit pulses.  Effectively a logical "QuadratureChannel".
     '''
-    pulseParams = Dict(default={'length':20e-9, 'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.gaussian, 'buffer':0.0, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9})
+    pulseParams = Dict(default={'length':20e-9, 'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.gaussian, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9})
     gateChan = Instance((unicode, LogicalMarkerChannel))
     frequency = Float(0.0).tag(desc='modulation frequency of the channel (can be positive or negative)')
 
@@ -160,11 +160,31 @@ class Measurement(LogicalChannel):
     measType = Enum('autodyne','homodyne').tag(desc='Type of measurment (autodyne, homodyne)')
     autodyneFreq = Float(0.0).tag(desc='use to bake the modulation into the pulse, so that it has constant phase')
     frequency = Float(0.0).tag(desc='use frequency to asssociate modulation with the channel')
-    pulseParams = Dict(default={'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'buffer':0.0, 'cutoff':2, 'sigma':1e-9})
+    pulseParams = Dict(default={'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'cutoff':2, 'sigma':1e-9})
     gateChan = Instance((unicode, LogicalMarkerChannel))
     
     def __init__(self, **kwargs):
         super(Measurement, self).__init__(**kwargs)
+        if self.gateChan is None:
+            self.gateChan = LogicalMarkerChannel(label=kwargs['label']+'-gate')
+
+class Edge(LogicalChannel):
+    '''
+    Defines an arc/directed edge between qubit vertices. If a device supports bi-directional
+    connectivity, that is represented with two independent Edges.
+
+    An Edge is also effectively an abstract channel, so it carries the same properties as a 
+    Qubit channel.
+    '''
+    # allow unicode in source and target so that we can store a label or an object
+    source = Instance((unicode, Qubit))
+    target = Instance((unicode, Qubit))
+    pulseParams = Dict(default={'length':20e-9, 'amp':1.0, 'phase':0.0, 'shapeFun':PulseShapes.gaussian, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9})
+    gateChan = Instance((unicode, LogicalMarkerChannel))
+    frequency = Float(0.0).tag(desc='modulation frequency of the channel (can be positive or negative)')
+
+    def __init__(self, **kwargs):
+        super(Edge, self).__init__(**kwargs)
         if self.gateChan is None:
             self.gateChan = LogicalMarkerChannel(label=kwargs['label']+'-gate')
 
@@ -262,6 +282,10 @@ class ChannelLibrary(Atom):
                             chan.physChan = tmpLib[chan.physChan] if chan.physChan in tmpLib.channelDict else None
                         if hasattr(chan, 'gateChan'):
                             chan.gateChan = tmpLib[chan.gateChan] if chan.gateChan in tmpLib.channelDict else None
+                        if hasattr(chan, 'source'):
+                            chan.source = tmpLib[chan.source] if chan.source in tmpLib.channelDict else None
+                        if hasattr(chan, 'target'):
+                            chan.target = tmpLib[chan.target] if chan.target in tmpLib.channelDict else None
                     self.channelDict.update(tmpLib.channelDict)
                     # grab library version
                     self.version = tmpLib.version
@@ -307,7 +331,7 @@ class ChannelLibrary(Atom):
 
     def update_from_json(self,chName, chParams):
         # ignored or specially handled parameters
-        ignoreList = ['pulseParams', 'physChan', 'gateChan', 'AWG', 'generator', 'x__class__', 'x__module__']
+        ignoreList = ['pulseParams', 'physChan', 'gateChan', 'source', 'target', 'AWG', 'generator', 'x__class__', 'x__module__']
         if 'pulseParams' in chParams.keys():
             paramDict = {k.encode('ascii'):v for k,v in chParams['pulseParams'].items()}
             shapeFunName = paramDict.pop('shapeFun', None)
@@ -318,7 +342,11 @@ class ChannelLibrary(Atom):
             self.channelDict[chName].physChan = self.channelDict[chParams['physChan']] if chParams['physChan'] in self.channelDict else None
         if 'gateChan' in chParams.keys():
             self.channelDict[chName].gateChan = self.channelDict[chParams['gateChan']] if chParams['gateChan'] in self.channelDict else None
-        # TODO: how do we follow changes to selected AWG or generator/source?
+        if 'source' in chParams.keys():
+            self.channelDict[chName].source = self.channelDict[chParams['source']] if chParams['source'] in self.channelDict else None
+        if 'target' in chParams.keys():
+            self.channelDict[chName].target = self.channelDict[chParams['target']] if chParams['target'] in self.channelDict else None
+        # TODO: how do we follow changes to selected AWG or generator?
 
         for paramName in chParams:
             if paramName not in ignoreList:
@@ -336,7 +364,7 @@ class ChannelLibrary(Atom):
                     self.physicalChannelManager.name_changed(chName, newLabel)
 
 
-NewLogicalChannelList = [Qubit, LogicalMarkerChannel, Measurement]
+NewLogicalChannelList = [Qubit, Edge, LogicalMarkerChannel, Measurement]
 NewPhysicalChannelList = [PhysicalMarkerChannel, PhysicalQuadratureChannel]
 
 if __name__ == '__main__':

@@ -117,7 +117,6 @@ enamldef PhysicalQuadratureChannelView(GroupBox): curView:
 enamldef LogicalQuadratureView(GroupBox): curView:
     attr chan
     attr channelLib
-    attr instrumentLib
     title := '{} ({})'.format(chan.label, chan.__class__.__name__)
     Form:
         Conditional:
@@ -135,6 +134,22 @@ enamldef LogicalQuadratureView(GroupBox): curView:
                     value << chan.autodyneFreq/1e6
                     value :: chan.autodyneFreq = value*1e6
                     tool_tip = chan.get_member('autodyneFreq').metadata["desc"]
+        Conditional:
+            condition = isinstance(chan, QGL.Channels.Edge)
+            Label:
+                text = 'Source Qubit'
+            ComboBox:
+                items << channelLib.logicalChannelManager.displayList
+                index << channelLib.logicalChannelManager.displayList.index(chan.source.label) if (chan.source and chan.source.label in channelLib.logicalChannelManager.displayList) else -1
+                index ::
+                    chan.source = setIfNotEmpty(chan.source, channelLib, selected_item)
+            Label:
+                text = 'Target Qubit'
+            ComboBox:
+                items << channelLib.logicalChannelManager.displayList
+                index << channelLib.logicalChannelManager.displayList.index(chan.target.label) if (chan.target and chan.target.label in channelLib.logicalChannelManager.displayList) else -1
+                index ::
+                    chan.target = setIfNotEmpty(chan.target, channelLib, selected_item)
         Label:
             text = 'Frequency (MHz)'
         FloatField:
@@ -177,9 +192,15 @@ enamldef EmptyChannelView(Container):
     attr channelLib
     attr instrumentLib
 
-ChannelViewMap = {type(None):EmptyChannelView, QGL.Channels.Qubit:LogicalQuadratureView, QGL.Channels.Measurement:LogicalQuadratureView,
-                    QGL.Channels.LogicalMarkerChannel:LogicalMarkerChannelView, QGL.Channels.PhysicalQuadratureChannel:PhysicalQuadratureChannelView,
-                    QGL.Channels.PhysicalMarkerChannel:PhysicalMarkerChannelView}
+ChannelViewMap = {
+    type(None): EmptyChannelView,
+    QGL.Channels.Qubit: LogicalQuadratureView,
+    QGL.Channels.Measurement: LogicalQuadratureView,
+    QGL.Channels.Edge: LogicalQuadratureView,
+    QGL.Channels.LogicalMarkerChannel: LogicalMarkerChannelView,
+    QGL.Channels.PhysicalQuadratureChannel: PhysicalQuadratureChannelView,
+    QGL.Channels.PhysicalMarkerChannel: PhysicalMarkerChannelView
+}
 
 enamldef ChannelLibraryView(Container): channelLibCont:
     attr channelLib
@@ -194,8 +215,7 @@ enamldef ChannelLibraryView(Container): channelLibCont:
                 # displayFilter = lambda x : isinstance(x, QGL.Channels.LogicalChannel)
                 modelName = 'chan'
                 viewMap = ChannelViewMap
-                viewkwargs = {'instrumentLib': instrumentLib,
-                                'channelLib': channelLib}
+                viewkwargs = {'channelLib': channelLib}
                 # newClassList = QGL.Channels.NewLogicalChannelList
         Page:
             title = "Physical"
