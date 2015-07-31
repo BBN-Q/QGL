@@ -203,6 +203,12 @@ def MeasFactory(label, measType='autodyne', **kwargs):
     else:
         return Measurement(label=label, measType=measType, **kwargs)
 
+def EdgeFactory(source, target):
+    if Compiler.channelLib and Compiler.channelLib.connectivityG.has_edge(source, target):
+        return Compiler.channelLib.connectivityG[source][target]['channel']
+    else:
+        raise NameError('Edge {0} not found in connectivity graph'.format((source, target)))
+
 class ChannelLibrary(Atom):
     # channelDict = Dict(Str, Channel)
     channelDict = Typed(dict)
@@ -262,6 +268,7 @@ class ChannelLibrary(Atom):
         for chan in self.channelDict.values():
             if isinstance(chan, Edge):
                 self.connectivityG.add_edge(chan.source, chan.target)
+                self.connectivityG[chan.source][chan.target]['channel'] = chan
 
     def write_to_file(self):
         import JSONHelpers

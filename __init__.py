@@ -1,4 +1,4 @@
-from Channels import QubitFactory, MeasFactory, Qubit
+from Channels import QubitFactory, MeasFactory, EdgeFactory, Qubit
 from PulsePrimitives import *
 from Compiler import compile_to_hardware
 from PulseSequencer import align
