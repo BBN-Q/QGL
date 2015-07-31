@@ -189,6 +189,16 @@ class Edge(LogicalChannel):
         if self.gateChan is None:
             self.gateChan = LogicalMarkerChannel(label=kwargs['label']+'-gate')
 
+    def isforward(self, source, target):
+        ''' Test whether (source, target) matches the directionality of the edge. '''
+        nodes = (self.source, self.target)
+        if (source not in nodes) or (target not in nodes):
+            raise ValueError('One of {0} is not a node in the edge'.format((source, target)))
+        if (self.source, self.target) == (source, target):
+            return True
+        else:
+            return False
+
 def QubitFactory(label, **kwargs):
     ''' Return a saved qubit channel or create a new one. '''
     if Compiler.channelLib and label in Compiler.channelLib and isinstance(Compiler.channelLib[label], Qubit):
@@ -204,10 +214,14 @@ def MeasFactory(label, measType='autodyne', **kwargs):
         return Measurement(label=label, measType=measType, **kwargs)
 
 def EdgeFactory(source, target):
-    if Compiler.channelLib and Compiler.channelLib.connectivityG.has_edge(source, target):
+    if not Compiler.channelLib:
+        raise ValueError('Connectivity graph not found')
+    if Compiler.channelLib.connectivityG.has_edge(source, target):
         return Compiler.channelLib.connectivityG[source][target]['channel']
+    elif Compiler.channelLib.connectivityG.has_edge(target, source):
+        return Compiler.channelLib.connectivityG[target][source]['channel']
     else:
-        raise NameError('Edge {0} not found in connectivity graph'.format((source, target)))
+        raise ValueError('Edge {0} not found in connectivity graph'.format((source, target)))
 
 class ChannelLibrary(Atom):
     # channelDict = Dict(Str, Channel)

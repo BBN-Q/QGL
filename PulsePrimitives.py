@@ -274,7 +274,6 @@ def AC(qubit, cliffNum):
 
 
 ## two-qubit primitivies
-# @_memoize
 def CNOT(source, target, **kwargs):
     # construct (source, target) channel and pull parameters from there
     channel = Channels.QubitFactory(source.label + target.label)
@@ -294,6 +293,8 @@ def echoCR(controlQ, targetQ, amp=1, phase=0, length=200e-9, riseFall=20e-9, las
     An echoed CR pulse.  Used for calibration of CR gate
     """
     CRchan = Channels.EdgeFactory(controlQ, targetQ)
+    if not CRchan.isforward(controlQ, targetQ):
+        raise ValueError('Could not find an edge with control qubit {0}'.format(controlQ))
     seq = [flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase),
            X(controlQ),
            flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi)]
@@ -314,24 +315,20 @@ def ZX90_CR(controlQ, targetQ, **kwargs):
     riseFall = CRchan.pulseParams['riseFall']
     return echoCR(controlQ, targetQ, amp=amp, phase=phase, length=length, riseFall=riseFall)
 
-def CNOT_CRa(controlQ, targetQ, **kwargs):
-    """
-    CNOT made of a CR pulse and single qubit gates. Control and target are the same for CR and CNOT
-    controlQ, targetQ: of the CR gate (= CNOT)
-    """
-    return ZX90_CR(controlQ, targetQ, **kwargs) + [Z90m(controlQ) * X90m(targetQ)]
+def CNOT_CR(controlQ, targetQ, **kwargs):
+    edge = Channels.EdgeFactory(controlQ, targetQ)
 
-def CNOT_CRb(controlQ, targetQ, **kwargs):
-    """
-    CNOT made of a CR pulse and single qubit gates. Control and target are inverted for the CNOT
-    controlQ, targetQ: of the CR gate
-    """
-    return [Y90(controlQ) * Y90(targetQ),
-            X(controlQ) * X(targetQ)] + \
-            ZX90_CR(controlQ, targetQ, **kwargs) + \
-           [Z90(controlQ),
-            Y90(controlQ) * X90(targetQ),
-            X(controlQ) * Y90m(targetQ)]
+    if edge.isforward(controlQ, targetQ):
+        # control and target for CNOT and CR match
+        return ZX90_CR(controlQ, targetQ, **kwargs) + [Z90m(controlQ) * X90m(targetQ)]
+    else:
+        # control and target for CNOT and CR are inverted
+        return [Y90(controlQ) * Y90(targetQ),
+                X(controlQ) * X(targetQ)] + \
+                ZX90_CR(targetQ, controlQ, **kwargs) + \
+               [Z90(targetQ),
+                X90(controlQ) * Y90(targetQ),
+                Y90m(controlQ) * X(targetQ)]
 
 ## Measurement operators
 # @_memoize
