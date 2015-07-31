@@ -24,6 +24,7 @@ import json
 import PulseShapes
 import Compiler
 import numpy as np
+import networkx as nx
 
 from math import tan,cos,pi
 
@@ -205,6 +206,7 @@ def MeasFactory(label, measType='autodyne', **kwargs):
 class ChannelLibrary(Atom):
     # channelDict = Dict(Str, Channel)
     channelDict = Typed(dict)
+    connectivityG = Typed(nx.DiGraph)
     logicalChannelManager = Typed(DictManager)
     physicalChannelManager = Typed(DictManager)
     libFile = Str()
@@ -213,6 +215,7 @@ class ChannelLibrary(Atom):
 
     def __init__(self, channelDict={}, **kwargs):
         super(ChannelLibrary, self).__init__(channelDict=channelDict, **kwargs)
+        self.connectivityG = nx.DiGraph()
         self.load_from_library()
         self.logicalChannelManager = DictManager(itemDict=self.channelDict,
                                                  displayFilter=lambda x : isinstance(x, LogicalChannel),
@@ -249,6 +252,16 @@ class ChannelLibrary(Atom):
 
     def values(self):
         return self.channelDict.values()
+
+    def build_connectivity_graph(self):
+        # build connectivity graph
+        self.connectivityG.clear()
+        for chan in self.channelDict.values():
+            if isinstance(chan, Qubit) and chan not in self.connectivityG:
+                self.connectivityG.add_node(chan)
+        for chan in self.channelDict.values():
+            if isinstance(chan, Edge):
+                self.connectivityG.add_edge(chan.source, chan.target)
 
     def write_to_file(self):
         import JSONHelpers
@@ -289,6 +302,7 @@ class ChannelLibrary(Atom):
                     self.channelDict.update(tmpLib.channelDict)
                     # grab library version
                     self.version = tmpLib.version
+                    self.build_connectivity_graph()
             except IOError:
                 print('No channel library found.')
             except ValueError:
@@ -328,6 +342,7 @@ class ChannelLibrary(Atom):
                     if chName not in allParams:
                         del self.channelDict[chName]
 
+                self.build_connectivity_graph()
 
     def update_from_json(self,chName, chParams):
         # ignored or specially handled parameters
