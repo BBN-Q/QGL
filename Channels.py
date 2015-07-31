@@ -180,7 +180,7 @@ class Edge(LogicalChannel):
     # allow unicode in source and target so that we can store a label or an object
     source = Instance((unicode, Qubit))
     target = Instance((unicode, Qubit))
-    pulseParams = Dict(default={'length':20e-9, 'amp':1.0, 'phase':0.0, 'shapeFun':PulseShapes.gaussian, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9})
+    pulseParams = Dict(default={'length':20e-9, 'amp':1.0, 'phase':0.0, 'shapeFun':PulseShapes.gaussian, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9, 'riseFall': 20e-9})
     gateChan = Instance((unicode, LogicalMarkerChannel))
     frequency = Float(0.0).tag(desc='modulation frequency of the channel (can be positive or negative)')
 
