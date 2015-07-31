@@ -49,10 +49,10 @@ class Channel(Atom):
     enabled = Bool(True)
 
     def __repr__(self):
-        return "{0}: {1}".format(self.__class__.__name__, self.label)
+        return str(self)
 
     def __str__(self):
-        return json.dumps(self, sort_keys=True, indent=2, default=json_serializer)
+        return "{0}: {1}".format(self.__class__.__name__, self.label)
 
     def json_encode(self):
         jsonDict = self.__getstate__()
