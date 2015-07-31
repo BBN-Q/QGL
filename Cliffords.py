@@ -151,16 +151,16 @@ def Cx2(c1,c2, q1, q2):
 	#Create the pulse block 
 	return reduce(operator.add, seq1) * reduce(operator.add, seq2)
 
-def entangling_seq(gate, q1, q2, CR):
+def entangling_seq(gate, q1, q2):
 	"""
 	Helper function to create the entangling gate sequence
 	"""
 	if gate == "CNOT":
-		return ZX90_CR(q2, CR)
+		return ZX90_CR(q2, q1)
 	elif gate == "iSWAP":
-		return ZX90_CR(q2, CR) + [Y90m(q1)*Y90m(q2)] +  ZX90_CR(q2, CR)
+		return ZX90_CR(q2, q1) + [Y90m(q1)*Y90m(q2)] +  ZX90_CR(q2, q1)
 	elif gate == "SWAP":
-		return ZX90_CR(q2, CR) + [Y90m(q1)*Y90m(q2)] + ZX90_CR(q2, CR) + [(X90(q1)+Y90m(q1))*X90(q2)] + ZX90_CR(q2, CR)
+		return ZX90_CR(q2, q1) + [Y90m(q1)*Y90m(q2)] + ZX90_CR(q2, q1) + [(X90(q1)+Y90m(q1))*X90(q2)] + ZX90_CR(q2, q1)
 
 def entangling_mat(gate):
 	"""
@@ -176,7 +176,7 @@ def entangling_mat(gate):
 	else:
 		raise ValueError("Entangling gate must be one of: CNOT, iSWAP, SWAP.")
 
-def clifford_seq(c, q1, q2=None, CR=None):
+def clifford_seq(c, q1, q2=None):
 	"""
 	Return a sequence of pulses that implements a clifford C
 	"""
@@ -189,7 +189,7 @@ def clifford_seq(c, q1, q2=None, CR=None):
 		c = C2Seqs[c]
 		seq = [Cx2(c[0][0], c[0][1], q1, q2)]
 		if c[1]:
-			seq += entangling_seq(c[1], q1, q2, CR)
+			seq += entangling_seq(c[1], q1, q2)
 		if c[2]:
 			seq += [Cx2(c[2][0], c[2][1], q1, q2)]
 		return seq

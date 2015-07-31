@@ -74,7 +74,7 @@ def SingleQubitRB(qubit, seqs, showPlot=False):
 	if showPlot:
 		plot_pulse_files(fileNames)
 
-def TwoQubitRB(q1, q2, CR, seqs, showPlot=False, suffix=""):
+def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix=""):
 	"""
 
 	Two qubit randomized benchmarking using 90 and 180 single qubit generators and ZX90 
@@ -92,7 +92,7 @@ def TwoQubitRB(q1, q2, CR, seqs, showPlot=False, suffix=""):
 
 	seqsBis = []
 	for seq in seqs:
-		seqsBis.append(reduce(operator.add, [clifford_seq(c, q1, q2, CR) for c in seq]))
+		seqsBis.append(reduce(operator.add, [clifford_seq(c, q1, q2) for c in seq]))
 
 	#Add the measurement to all sequences
 	for seq in seqsBis:
