@@ -31,12 +31,7 @@ import PulseSequencer
 import ControlFlow
 import BlockLabel
 import instruments
-from instruments.AWGs import get_empty_channel_set
 
-from APSPattern import write_APS_file
-from APS2Pattern import write_APS2_file
-from TekPattern import write_Tek_file
-from mm import multimethod
 
 # global parameter libraries
 channelLib = {}
@@ -182,7 +177,7 @@ def setup_awg_channels(physicalChannels):
     for chan in physicalChannels:
         awgs.add(chan.AWG)
 
-    data = {awg.label:get_empty_channel_set(awg) for awg in awgs}
+    data = {awg.label:awg.get_empty_channel_set() for awg in awgs}
     for awgdata in data.values():
         for chan in awgdata.keys():
             awgdata[chan] = {'linkList': [], 'wfLib': {}, 'correctionT': np.identity(2)}
@@ -257,7 +252,7 @@ def compile_to_hardware(seqs, fileName, suffix=''):
         if not os.path.exists(targetFolder):
             os.mkdir(targetFolder)
         fullFileName = os.path.normpath(os.path.join(config.AWGDir, fileName + '-' + awgName + suffix + instrumentLib[awgName].seqFileExt))
-        write_sequence_file(instrumentLib[awgName], data, fullFileName)
+        instrumentLib[awgName].write_sequence_file(data, fullFileName)
 
         fileList.append(fullFileName)
 
@@ -351,18 +346,6 @@ def normalize(seq, channels=None):
         for ch in emptyChannels:
             block.pulses[ch] = Id(ch, length=blocklen)
     return seq
-
-@multimethod(instruments.AWGs.APS, dict, unicode)
-def write_sequence_file(awg, data, filename):
-    write_APS_file(data, filename)
-
-@multimethod(instruments.AWGs.Tek5014, dict, unicode)
-def write_sequence_file(awg, data, filename):
-    write_Tek_file(data, filename, 1)
-
-@multimethod(instruments.AWGs.APS2, dict, unicode)
-def write_sequence_file(awg, data, filename):
-    write_APS2_file(data, filename)
 
 class Waveform(object):
     '''

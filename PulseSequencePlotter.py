@@ -33,34 +33,9 @@ from IPython.display import display
 
 import numpy as np
 
-from mm import multimethod
-from QGL.APSPattern import read_APS_file
-from QGL.APS2Pattern import read_APS2_file
-from QGL.TekPattern import read_Tek_awg_file
-from instruments.AWGs import APS, APS2, Tek5014, Tek7000
-
 import uuid, tempfile
 
-import Libraries
-
 import config
-
-# define sequence reader dispatch on awg type
-@multimethod(Tek5014, unicode)
-def read_sequence_file(awg, filename):
-    return read_Tek_awg_file(filename)
-
-@multimethod(Tek7000, unicode)
-def read_sequence_file(awg, filename):
-    return read_Tek_awg_file(filename)
-
-@multimethod(APS, unicode)
-def read_sequence_file(awg, filename):
-    return read_APS_file(filename)
-
-@multimethod(APS2, unicode)
-def read_sequence_file(awg, filename):
-    return read_APS2_file(filename)
 
 def all_zero_seqs(seqs):
     return all([np.all(seq == 0) for seq in seqs])
@@ -81,6 +56,8 @@ def plot_pulse_files(fileNames, firstSeqNum=0):
     lineNames = []
     title = ""
 
+    import Libraries # prevent circular import
+
     for fileName in sorted(fileNames):
 
         #Assume a naming convention path/to/file/SequenceName-AWGName.h5
@@ -91,7 +68,7 @@ def plot_pulse_files(fileNames, firstSeqNum=0):
 
         title += os.path.split(os.path.splitext(fileName)[0])[1] + "; "
 
-        wfs[AWGName] = read_sequence_file(Libraries.instrumentLib[AWGName], fileName)
+        wfs[AWGName] = Libraries.instrumentLib[AWGName].read_sequence_file(fileName)
 
         for (k,seqs) in sorted(wfs[AWGName].items()):
             if not all_zero_seqs(seqs):
