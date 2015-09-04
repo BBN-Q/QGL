@@ -194,6 +194,16 @@ def bundle_wires(physWires, wfs):
             awgData[chan.AWG.label][awgChan]['correctionT'] = chan.correctionT
     return awgData
 
+def collect_specializations(seqs):
+    '''
+    Collects function definitions for all targets of Call instructions
+    '''
+    targets = [x.target for x in flatten(seqs) if isinstance(x, ControlFlow.Call)]
+    funcDefs = []
+    for target in targets:
+        funcDefs += ControlFlow.qfunction_specialization(target)
+    return funcDefs
+
 def compile_to_hardware(seqs, fileName, suffix=''):
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'. Other inputs:
@@ -270,9 +280,17 @@ def compile_sequences(seqs, channels=None):
     # turn into a loop, by appending GOTO(0) at end of last sequence
     if not isinstance(seqs[-1][-1], ControlFlow.Goto):
         seqs[-1].append(ControlFlow.Goto(BlockLabel.label(seqs[0])))
+    # inject function definitions prior to sequences
+    funcDefs = collect_specializations(seqs)
+    if funcDefs:
+        # inject GOTO to jump over definitions
+        funcDefs.insert(0, ControlFlow.Goto(BlockLabel.label(seqs[0])))
+        seqs.insert(0, funcDefs)
 
     # use seqs[0] as prototype in case we were not given a set of channels
     wires = compile_sequence(seqs[0], channels)
+    if not channels:
+        channels = set(wires.keys())
     wireSeqs = {chan: [seq] for chan, seq in wires.items()}
     for seq in seqs[1:]:
         wires = compile_sequence(seq, channels)
