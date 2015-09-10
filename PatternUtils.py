@@ -154,11 +154,10 @@ def add_digitizer_trigger(seqs):
     # Attach a trigger to any pulse block containing a measurement. Each trigger is specific to each measurement
     for seq in seqs:
         for ct in range(len(seq)):
-            meas = contains_measurement(seq[ct])
-            if meas:
+            if contains_measurement(seq[ct]):
                 #find corresponding digitizer trigger 
-                chanlist = meas.channel
-                if not isinstance(meas, PulseBlock):
+                chanlist = seq[ct].channel
+                if not isinstance(seq[ct], PulseBlock):
                     chanlist = [chanlist]
                 for chan in chanlist:
                     trigChan = chan.trigChan
@@ -170,11 +169,11 @@ def contains_measurement(entry):
     Determines if a LL entry contains a measurement
     '''
     if entry.label == "MEAS":
-        return entry
+        return True
     elif isinstance(entry, PulseBlock):
         for p in entry.pulses.values():
             if p.label == "MEAS":
-                return entry
+                return True
     return False
 
 def add_slave_trigger(seqs, slaveChan):
