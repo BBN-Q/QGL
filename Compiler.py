@@ -211,7 +211,7 @@ def compile_to_hardware(seqs, fileName, suffix=''):
     '''
 
     # Add the digitizer trigger to measurements
-    PatternUtils.add_digitizer_trigger(seqs, channelLib['digitizerTrig'])
+    PatternUtils.add_digitizer_trigger(seqs)
 
     # Add gating/blanking pulses
     PatternUtils.add_gate_pulses(seqs)

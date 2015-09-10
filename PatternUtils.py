@@ -147,26 +147,30 @@ def apply_gating_constraints(chan, linkList):
 def isNonZeroWaveform(entry):
     return isinstance(entry, Pulse) and not entry.isZero
 
-def add_digitizer_trigger(seqs, trigChan):
+def add_digitizer_trigger(seqs):
     '''
-    Add the digitizer trigger to a logical LL (pulse blocks).
+    Add a digitizer trigger to a logical LL (pulse blocks).
     '''
-    # Attach a trigger to any pulse block containing a measurement
+    # Attach a trigger to any pulse block containing a measurement. Each trigger is specific to each measurement
     for seq in seqs:
         for ct in range(len(seq)):
-            if contains_measurement(seq[ct]) and not (hasattr(seq[ct], 'pulses') and trigChan in seq[ct].pulses.keys()):
-                seq[ct] *= TAPulse("TRIG", trigChan, trigChan.pulseParams['length'], 1.0, 0.0, 0.0)
+            meas = contains_measurement(seq[ct])
+            if meas:
+                #find corresponding digitizer trigger 
+                trigChan = meas.channel.trigChan
+                if not (hasattr(seq[ct], 'pulses') and trigChan in seq[ct].pulses.keys()):
+                    seq[ct] *= TAPulse("TRIG", trigChan, trigChan.pulseParams['length'], 1.0, 0.0, 0.0)
 
 def contains_measurement(entry):
     '''
     Determines if a LL entry contains a measurement
     '''
     if entry.label == "MEAS":
-        return True
+        return entry
     elif isinstance(entry, PulseBlock):
         for p in entry.pulses.values():
             if p.label == "MEAS":
-                return True
+                return p
     return False
 
 def add_slave_trigger(seqs, slaveChan):

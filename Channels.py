@@ -63,7 +63,7 @@ class Channel(Atom):
                 del jsonDict[k]
 
         #Turn instruments back into unicode labels
-        for member in ["AWG", "generator", "physChan", "gateChan", "source", "target"]:
+        for member in ["AWG", "generator", "physChan", "gateChan", "trigChan", "source", "target"]:
             if member in jsonDict:
                 obj = jsonDict.pop(member)
                 if obj:
@@ -155,7 +155,7 @@ class Qubit(LogicalChannel):
 class Measurement(LogicalChannel):
     '''
     A class for measurement channels.
-    Measurments are special because they can be different types:
+    Measurements are special because they can be different types:
     autodyne which needs an IQ pair or hetero/homodyne which needs just a marker channel.
     '''
     measType = Enum('autodyne','homodyne').tag(desc='Type of measurment (autodyne, homodyne)')
@@ -163,11 +163,14 @@ class Measurement(LogicalChannel):
     frequency = Float(0.0).tag(desc='use frequency to asssociate modulation with the channel')
     pulseParams = Dict(default={'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'cutoff':2, 'sigma':1e-9})
     gateChan = Instance((unicode, LogicalMarkerChannel))
+    trigChan = Instance((unicode, LogicalMarkerChannel))
     
     def __init__(self, **kwargs):
         super(Measurement, self).__init__(**kwargs)
         if self.gateChan is None:
             self.gateChan = LogicalMarkerChannel(label=kwargs['label']+'-gate')
+        if self.trigChan is None:
+            self.trigChan = LogicalMarkerChannel(label='digitizerTrig')
 
 class Edge(LogicalChannel):
     '''
@@ -207,7 +210,7 @@ def QubitFactory(label, **kwargs):
         return Qubit(label=label, **kwargs)
 
 def MeasFactory(label, measType='autodyne', **kwargs):
-    ''' Return a saved measurment channel or create a new one. '''
+    ''' Return a saved measurement channel or create a new one. '''
     if Compiler.channelLib and label in Compiler.channelLib and isinstance(Compiler.channelLib[label], Measurement):
         return Compiler.channelLib[label]
     else:
@@ -316,6 +319,8 @@ class ChannelLibrary(Atom):
                             chan.physChan = tmpLib[chan.physChan] if chan.physChan in tmpLib.channelDict else None
                         if hasattr(chan, 'gateChan'):
                             chan.gateChan = tmpLib[chan.gateChan] if chan.gateChan in tmpLib.channelDict else None
+                        if hasattr(chan, 'trigChan'):
+                            chan.trigChan = tmpLib[chan.trigChan] if chan.trigChan in tmpLib.channelDict else None
                         if hasattr(chan, 'source'):
                             chan.source = tmpLib[chan.source] if chan.source in tmpLib.channelDict else None
                         if hasattr(chan, 'target'):
@@ -367,7 +372,7 @@ class ChannelLibrary(Atom):
 
     def update_from_json(self,chName, chParams):
         # ignored or specially handled parameters
-        ignoreList = ['pulseParams', 'physChan', 'gateChan', 'source', 'target', 'AWG', 'generator', 'x__class__', 'x__module__']
+        ignoreList = ['pulseParams', 'physChan', 'gateChan', 'trigChan', 'source', 'target', 'AWG', 'generator', 'x__class__', 'x__module__']
         if 'pulseParams' in chParams.keys():
             paramDict = {k.encode('ascii'):v for k,v in chParams['pulseParams'].items()}
             shapeFunName = paramDict.pop('shapeFun', None)
@@ -378,6 +383,8 @@ class ChannelLibrary(Atom):
             self.channelDict[chName].physChan = self.channelDict[chParams['physChan']] if chParams['physChan'] in self.channelDict else None
         if 'gateChan' in chParams.keys():
             self.channelDict[chName].gateChan = self.channelDict[chParams['gateChan']] if chParams['gateChan'] in self.channelDict else None
+        if 'trigChan' in chParams.keys():
+            self.channelDict[chName].trigChan = self.channelDict[chParams['trigChan']] if chParams['trigChan'] in self.channelDict else None
         if 'source' in chParams.keys():
             self.channelDict[chName].source = self.channelDict[chParams['source']] if chParams['source'] in self.channelDict else None
         if 'target' in chParams.keys():

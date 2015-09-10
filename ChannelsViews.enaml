@@ -24,6 +24,13 @@ def setIfNotEmpty(lvalue, library, item):
         lvalue.label = ''
     return lvalue
 
+def setTriggerIfNotEmpty(lvalue, library, item):
+    if item != '':
+        lvalue = library[item]
+    else:
+        lvalue.label = 'digitizerTrig'
+    return lvalue
+
 enamldef LogicalMarkerChannelView(GroupBox): curView:
     attr chan
     attr channelLib
@@ -134,6 +141,31 @@ enamldef LogicalQuadratureView(GroupBox): curView:
                     value << chan.autodyneFreq/1e6
                     value :: chan.autodyneFreq = value*1e6
                     tool_tip = chan.get_member('autodyneFreq').metadata["desc"]
+            Label:
+                text = 'Trigger Chan.'
+            ComboBox:
+                items << channelLib.logicalChannelManager.displayList
+                index << channelLib.logicalChannelManager.displayList.index(chan.trigChan.label) if (chan.trigChan and chan.trigChan.label in channelLib.logicalChannelManager.displayList) else -1
+                index ::
+                    chan.trigChan = setTriggerIfNotEmpty(chan.trigChan, channelLib, selected_item)
+            Looper:
+                iterable << sorted(chan.pulseParams.keys())
+                Label:
+                    text = loop_item
+                Conditional:
+                    condition = isinstance(chan.pulseParams[loop_item], float) or isinstance(chan.pulseParams[loop_item], int)
+                    FloatField:
+                        value << float(chan.pulseParams[loop_item])
+                        value >> chan.pulseParams[loop_item]
+                Conditional:
+                    condition = isinstance(chan.pulseParams[loop_item], FunctionType)
+                    ComboBox:
+                        items << [f.__name__ for f in psList]
+                        index << psList.index(chan.pulseParams[loop_item])
+                        index ::
+                            chan.pulseParams[loop_item] = psList[index]
+
+
         Conditional:
             condition = isinstance(chan, QGL.Channels.Edge)
             Label:
@@ -186,6 +218,7 @@ enamldef LogicalQuadratureView(GroupBox): curView:
                     index << psList.index(chan.pulseParams[loop_item])
                     index ::
                         chan.pulseParams[loop_item] = psList[index]
+        
 
 enamldef EmptyChannelView(Container):
     attr chan
