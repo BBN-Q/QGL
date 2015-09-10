@@ -157,9 +157,13 @@ def add_digitizer_trigger(seqs):
             meas = contains_measurement(seq[ct])
             if meas:
                 #find corresponding digitizer trigger 
-                trigChan = meas.channel.trigChan
-                if not (hasattr(seq[ct], 'pulses') and trigChan in seq[ct].pulses.keys()):
-                    seq[ct] *= TAPulse("TRIG", trigChan, trigChan.pulseParams['length'], 1.0, 0.0, 0.0)
+                chanlist = meas.channel
+                if not isinstance(meas, PulseBlock):
+                    chanlist = [chanlist]
+                for chan in chanlist:
+                    trigChan = chan.trigChan
+                    if not (hasattr(seq[ct], 'pulses') and trigChan in seq[ct].pulses.keys()):
+                        seq[ct] *= TAPulse("TRIG", trigChan, trigChan.pulseParams['length'], 1.0, 0.0, 0.0)
 
 def contains_measurement(entry):
     '''
@@ -170,7 +174,7 @@ def contains_measurement(entry):
     elif isinstance(entry, PulseBlock):
         for p in entry.pulses.values():
             if p.label == "MEAS":
-                return p
+                return entry
     return False
 
 def add_slave_trigger(seqs, slaveChan):
