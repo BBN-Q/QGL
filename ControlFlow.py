@@ -128,6 +128,10 @@ class Wait(ControlInstruction):
 	def __init__(self):
 		super(Wait, self).__init__("WAIT")
 
+class Load(ControlInstruction):
+	def __init__(self):
+		super(Load, self).__init__("LOAD")
+
 class LoadCmp(ControlInstruction):
 	def __init__(self):
 		super(LoadCmp, self).__init__("LOADCMP")
