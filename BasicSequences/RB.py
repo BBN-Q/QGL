@@ -232,3 +232,40 @@ def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False):
 	if showPlot:
 		plot_pulse_files(fileNames)
 
+def SimultaneousRB_AC(qubits, seqs, showPlot=False):
+	"""
+
+	Simultaneous randomized benchmarking on multiple qubits using atomic Clifford pulses. 
+
+	Parameters
+	----------
+	qubits : iterable of logical channels to implement seqs on (list or tuple) 
+	seqs : a tuple of sequences created for each qubit in qubits
+	showPlot : whether to plot (boolean)
+
+	Example
+	-------
+	>>> q1 = QubitFactory('q1')
+	>>> q2 = QubitFactory('q2')
+	>>> seqs1 = create_RB_seqs(1, [2, 4, 8, 16])
+	>>> seqs2 = create_RB_seqs(1, [2, 4, 8, 16])
+	>>> SimultaneousRB_AC((q1, q2), (seqs1, seqs2), showPlot=False)
+	"""	
+	seqsBis = []
+	for seq in zip(*seqs):
+		seqsBis.append([reduce(operator.__mul__, [AC(q,c) for q,c in zip(qubits,
+				pulseNums)]) for pulseNums in zip(*seq)])
+
+	#Add the measurement to all sequences
+	for seq in seqsBis:
+		seq.append(reduce(operator.mul, [MEAS(q) for q in qubits]))
+
+	#Tack on the calibration sequences
+	seqsBis += create_cal_seqs((qubits), 2)
+
+	fileNames = compile_to_hardware(seqsBis, 'RB/RB')
+	print(fileNames)
+
+	if showPlot:
+		plot_pulse_files(fileNames)
+
