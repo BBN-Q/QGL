@@ -80,8 +80,16 @@ def merge_channels(wires, channels):
                 newentry = copy(entries[0])
                 #TODO properly deal with constant pulses
                 newentry.amp = 1.0
+                newentry.isTimeAmp = all([e.isTimeAmp for e in entries])
                 if all([e.amp == 0 for e in entries]):
                     newentry.amp = 0
+                else:
+                    assert np.count_nonzero([e.amp * e.channel.frequency for e in entries]) == 1, "Unable to handle merging more than one non-zero entry with non-zero frequency."
+
+                #If there is a non-zero SSB frequency copy it to the new entry
+                nonZeroSSBChan = np.nonzero([e.amp * e.channel.frequency for e in entries])[0]
+                if nonZeroSSBChan:
+                    newentry.channel = entries[nonZeroSSBChan[0]].channel
 
                 newentry.phase = 0
 
@@ -139,7 +147,7 @@ def concatenate_entries(entry1, entry2):
     newentry.frameChange += entry2.frameChange
     newentry.length = entry1.length + entry2.length
     newentry.amp = 1.0
-    
+
     return newentry
 
 def generate_waveforms(physicalWires):
