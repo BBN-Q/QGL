@@ -76,7 +76,7 @@ def merge_channels(wires, channels):
                     segment.append(entries[0])
                     continue
                 # at this point we have at least one waveform instruction
-                blocklength = pull_uniform_entries(entries, entryIterators, channels)
+                blocklength = pull_uniform_entries(entries, entryIterators)
                 newentry = copy(entries[0])
                 #TODO properly deal with constant pulses
                 newentry.amp = 1.0
@@ -108,7 +108,7 @@ def merge_channels(wires, channels):
                 break
     return mergedWire
 
-def pull_uniform_entries(entries, entryIterators, channels):
+def pull_uniform_entries(entries, entryIterators):
     '''
     Given entries from a set of logical channels (that share a physical
     channel), pull enough entries from each channel so that the total pulse
