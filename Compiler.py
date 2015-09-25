@@ -76,12 +76,20 @@ def merge_channels(wires, channels):
                     segment.append(entries[0])
                     continue
                 # at this point we have at least one waveform instruction
-                blocklength = pull_uniform_entries(entries, entryIterators, channels)
+                blocklength = pull_uniform_entries(entries, entryIterators)
                 newentry = copy(entries[0])
                 #TODO properly deal with constant pulses
                 newentry.amp = 1.0
+                newentry.isTimeAmp = all([e.isTimeAmp for e in entries])
                 if all([e.amp == 0 for e in entries]):
                     newentry.amp = 0
+                else:
+                    assert np.count_nonzero([e.amp * e.channel.frequency for e in entries]) <= 1, "Unable to handle merging more than one non-zero entry with non-zero frequency."
+
+                #If there is a non-zero SSB frequency copy it to the new entry
+                nonZeroSSBChan = np.nonzero([e.amp * e.channel.frequency for e in entries])[0]
+                if nonZeroSSBChan:
+                    newentry.channel = entries[nonZeroSSBChan[0]].channel
 
                 newentry.phase = 0
 
@@ -100,7 +108,7 @@ def merge_channels(wires, channels):
                 break
     return mergedWire
 
-def pull_uniform_entries(entries, entryIterators, channels):
+def pull_uniform_entries(entries, entryIterators):
     '''
     Given entries from a set of logical channels (that share a physical
     channel), pull enough entries from each channel so that the total pulse
@@ -113,14 +121,31 @@ def pull_uniform_entries(entries, entryIterators, channels):
     and update entries such that entries = [A1*, A2].
     The function returns the resulting block length.
     '''
-    for ct in range(len(entries)):
+    numChan = len(entries)
+    iterDone = [False]*numChan #keep track of how many entry iterators are used up
+    ct = 0
+    while True:
+        #If we've used up all the entries on all the channels we're done
+        if all(iterDone):
+            raise StopIteration("Unable to find a uniform set of entries")
+
+        #If all the entry lengths are the same we are finished
+        entryLengths = [e.length for e in entries]
+        if all(x==entryLengths[0] for x in entryLengths):
+            break
+
+        #Otherwise try to concatenate on entries to match lengths
         while entries[ct].length < max(e.length for e in entries):
             # concatenate with following entry to make up the length difference
             try:
                 nextentry = entryIterators[ct].next()
             except StopIteration:
-                raise NameError("Could not find a uniform section of entries")
+                iterDone[ct] = True
+
             entries[ct] = concatenate_entries(entries[ct], nextentry)
+
+        ct = (ct + 1) % numChan
+
     return max(e.length for e in entries)
 
 def concatenate_entries(entry1, entry2):
@@ -139,7 +164,7 @@ def concatenate_entries(entry1, entry2):
     newentry.frameChange += entry2.frameChange
     newentry.length = entry1.length + entry2.length
     newentry.amp = 1.0
-    
+
     return newentry
 
 def generate_waveforms(physicalWires):
