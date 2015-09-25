@@ -4,7 +4,7 @@ from ..PulseSequencePlotter import plot_pulse_files
 from scipy.constants import pi
 from helpers import create_cal_seqs
 
-def InversionRecovery(qubit, delays, showPlot=False, calRepeats=2):
+def InversionRecovery(qubit, delays, showPlot=False, calRepeats=2, suffix=False):
 	"""
 
 	Inversion recovery experiment to measure qubit T1
@@ -27,14 +27,14 @@ def InversionRecovery(qubit, delays, showPlot=False, calRepeats=2):
 	#Tack on the calibration scalings
 	seqs += create_cal_seqs((qubit,), calRepeats)
 
-	fileNames = compile_to_hardware(seqs, 'T1/T1')
+	fileNames = compile_to_hardware(seqs, 'T1'+('_'+qubit.label)*suffix+'/T1'+('_'+qubit.label)*suffix)
 	print(fileNames)
 
 	if showPlot:
 		plot_pulse_files(fileNames)
 
 
-def Ramsey(qubit, pulseSpacings, TPPIFreq=0, showPlot=False, calRepeats=2):
+def Ramsey(qubit, pulseSpacings, TPPIFreq=0, showPlot=False, calRepeats=2, suffix=False):
 	"""
 
 	Variable pulse spacing Ramsey (pi/2 - tau - pi/2) with optional TPPI.
@@ -62,7 +62,7 @@ def Ramsey(qubit, pulseSpacings, TPPIFreq=0, showPlot=False, calRepeats=2):
 	#Tack on the calibration scalings
 	seqs += create_cal_seqs((qubit,), calRepeats)
 
-	fileNames = compile_to_hardware(seqs, 'Ramsey/Ramsey')
+	fileNames = compile_to_hardware(seqs, 'Ramsey'+('_'+qubit.label)*suffix+'/Ramsey'+('_'+qubit.label)*suffix)
 	print(fileNames)
 
 	if showPlot:
