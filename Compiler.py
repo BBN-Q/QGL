@@ -84,7 +84,7 @@ def merge_channels(wires, channels):
                 if all([e.amp == 0 for e in entries]):
                     newentry.amp = 0
                 else:
-                    assert np.count_nonzero([e.amp * e.channel.frequency for e in entries]) == 1, "Unable to handle merging more than one non-zero entry with non-zero frequency."
+                    assert np.count_nonzero([e.amp * e.channel.frequency for e in entries]) <= 1, "Unable to handle merging more than one non-zero entry with non-zero frequency."
 
                 #If there is a non-zero SSB frequency copy it to the new entry
                 nonZeroSSBChan = np.nonzero([e.amp * e.channel.frequency for e in entries])[0]
