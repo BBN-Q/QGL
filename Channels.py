@@ -287,13 +287,14 @@ class ChannelLibrary(Atom):
                 self.connectivityG.add_edge(chan.source, chan.target)
                 self.connectivityG[chan.source][chan.target]['channel'] = chan
 
-    def write_to_file(self):
+    def write_to_file(self,fileName=None):
         import JSONHelpers
-        if self.libFile:
+        libFileName = fileName if fileName != None else self.libFile
+        if libFileName:
             #Pause the file watcher to stop cicular updating insanity
             if self.fileWatcher:
                 self.fileWatcher.pause()
-            with open(self.libFile, 'w') as FID:
+            with open(libFileName, 'w') as FID:
                 json.dump(self, FID, cls=JSONHelpers.LibraryEncoder, indent=2, sort_keys=True)
             if self.fileWatcher:
                 self.fileWatcher.resume()
