@@ -21,4 +21,4 @@ def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False):
 	calSeqs = [reduce(operator.mul, [p(q) for p,q in zip(pulseSet, qubits)]) for pulseSet in product(calSet, repeat=len(qubits)) for _ in range(numRepeats)]
 
 	#Add on the measurement operator. 
-	return [[seq, MEAS(*measChans), qwait('CMP')] for seq in calSeqs] if waitcmp else [[seq, MEAS(*measChans)] for seq in calSeqs]
+	return [[seq, MEAS(*measChans), qwait('CMP')] if waitcmp else [seq, MEAS(*measChans)] for seq in calSeqs] 
