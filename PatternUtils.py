@@ -160,9 +160,10 @@ def add_digitizer_trigger(seqs):
                 if not isinstance(seq[ct], PulseBlock):
                     chanlist = [chanlist]
                 for chan in chanlist:
-                    trigChan = chan.trigChan
-                    if not (hasattr(seq[ct], 'pulses') and trigChan in seq[ct].pulses.keys()):
-                        seq[ct] *= TAPulse("TRIG", trigChan, trigChan.pulseParams['length'], 1.0, 0.0, 0.0)
+                    if hasattr(chan, 'trigChan'):
+                        trigChan = chan.trigChan
+                        if not (hasattr(seq[ct], 'pulses') and trigChan in seq[ct].pulses.keys()):
+                            seq[ct] *= TAPulse("TRIG", trigChan, trigChan.pulseParams['length'], 1.0, 0.0, 0.0)
 
 def contains_measurement(entry):
     '''
