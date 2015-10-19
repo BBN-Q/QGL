@@ -55,52 +55,19 @@ def RabiWidth(qubit, widths, amp=1, phase=0, shapeFun=QGL.PulseShapes.tanh, show
 		plot_pulse_files(fileNames)
 
 
-def RabiAmp_TwoQubits(qubit1, qubit2, amps, amps2, phase=0, showPlot=False, meas=[1,1],docals=False):
+def RabiAmp_NQubits(qubits, amps, phase=0, showPlot=False, measChans=None, docals=False, calRepeats=2):
 	"""
 
-	Variable amplitude Rabi nutation experiment for up to two qubits, with measurement on both. Need to be extended
-	to arbitrary number of qubits
-
-	Parameters
-	----------
-	qubit : logical channel to implement sequence (LogicalChannel)
-	amps : pulse amplitudes to sweep over for qubit 1(iterable)
-	amps2: pulse amplitudes to sweep over for qubit 2(iterable, same index)
-	phase : phase of the pulses (radians)
-	showPlot : whether to plot (boolean)
-	meas: list of 1/0 for measurement on/off
-
-	Returns
-	-------
-	plotHandle : handle to plot window to prevent destruction
-	"""
-	meas1 = MEAS(qubit1) if meas[0]==1 else Id(qubit1)
-  	meas2 = MEAS(qubit2) if meas[1]==1 else Id(qubit2)
-	seqs = [[Utheta(qubit1, amp=amp, phase=phase)*Utheta(qubit2, amp=amp2,phase=phase), meas1*meas2] for (amp,amp2) in zip(amps,amps2)]
-
-	if docals:
-		seqs += create_cal_seqs((qubit1,qubit2), 2, measChans=(qubit1,qubit2))
-
-	fileNames = compile_to_hardware(seqs, 'Rabi/Rabi')
-	print(fileNames)
-
-	if showPlot:
-		plot_pulse_files(fileNames)
-
-
-def RabiAmp_NQubits(qubits, amps, phase=0, showPlot=False, measChans=None,docals=False):
-	"""
-
-	Variable amplitude Rabi nutation experiment for N qubits, with any number of measurements
+	Variable amplitude Rabi nutation experiment for an arbitrary number of qubits simultaneously
 
 	Parameters
 	----------
 	qubits : tuple of logical channels to implement sequence (LogicalChannel)
-	amps : pulse amplitudes to sweep over for qubit 1(iterable)
-	amps2: pulse amplitudes to sweep over for qubit 2(iterable, same index)
+	amps : pulse amplitudes to sweep over for all qubits (iterable)
 	phase : phase of the pulses (radians)
 	showPlot : whether to plot (boolean)
-	meas: list of 1/0 for measurement on/off
+    measChans : tuble of qubits to be measured (LogicalChannel)
+    docals, calRepeats: enable calibration sequences, repeated calRepeats times
 
 	Returns
 	-------
@@ -109,18 +76,16 @@ def RabiAmp_NQubits(qubits, amps, phase=0, showPlot=False, measChans=None,docals
 	if measChans is None:
 		measChans = qubits
 
-	seqs = [[reduce(operator.mul, [Utheta(q, amp=amp, phase=phase) for q in qubits]) for amp in amps, MEAS(*measChans)]]
+	seqs = [[reduce(operator.mul, [Utheta(q, amp=amp, phase=phase) for q in qubits]),MEAS(*measChans)] for amp in amps]
 
 	if docals:
-		seqs += create_cal_seqs((qubit1,qubit2), 2, measChans=(qubit1,qubit2))
+		seqs += create_cal_seqs(qubits, calRepeats, measChans=measChans)
 
 	fileNames = compile_to_hardware(seqs, 'Rabi/Rabi')
 	print(fileNames)
 
 	if showPlot:
 		plot_pulse_files(fileNames)
-
-	return seqs
 
 def RabiAmpPi(qubit, mqubit, amps, phase=0, showPlot=False):
 	"""
