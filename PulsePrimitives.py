@@ -307,13 +307,8 @@ def ZX90_CR(controlQ, targetQ, **kwargs):
     A calibrated CR ZX90 pulse.  Uses 'amp' for the pulse amplitude, 'phase' for its phase (in deg).
     """
     CRchan = Channels.EdgeFactory(controlQ, targetQ)
-
     params = overrideDefaults(CRchan, kwargs)
-    amp = CRchan.pulseParams['amp']
-    phase = CRchan.pulseParams['phase']/180*np.pi
-    length = CRchan.pulseParams['length']
-    riseFall = CRchan.pulseParams['riseFall']
-    return echoCR(controlQ, targetQ, amp=amp, phase=phase, length=length, riseFall=riseFall)
+    return echoCR(controlQ, targetQ, amp = params['amp'], phase = params['phase']/180*np.pi, length=params['length'], riseFall=params['riseFall'])
 
 def CNOT_CR(controlQ, targetQ, **kwargs):
     edge = Channels.EdgeFactory(controlQ, targetQ)
