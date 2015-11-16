@@ -164,7 +164,7 @@ class Measurement(LogicalChannel):
     pulseParams = Dict(default={'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'cutoff':2, 'sigma':1e-9})
     gateChan = Instance((unicode, LogicalMarkerChannel))
     trigChan = Instance((unicode, LogicalMarkerChannel))
-    
+
     def __init__(self, **kwargs):
         super(Measurement, self).__init__(**kwargs)
         if self.gateChan is None:
@@ -177,7 +177,7 @@ class Edge(LogicalChannel):
     Defines an arc/directed edge between qubit vertices. If a device supports bi-directional
     connectivity, that is represented with two independent Edges.
 
-    An Edge is also effectively an abstract channel, so it carries the same properties as a 
+    An Edge is also effectively an abstract channel, so it carries the same properties as a
     Qubit channel.
     '''
     # allow unicode in source and target so that we can store a label or an object
@@ -234,7 +234,7 @@ class ChannelLibrary(Atom):
     physicalChannelManager = Typed(DictManager)
     libFile = Str()
     fileWatcher = Typed(FileWatcher.LibraryFileWatcher)
-    version = Int(0)
+    version = Int(3)
 
     def __init__(self, channelDict={}, **kwargs):
         super(ChannelLibrary, self).__init__(channelDict=channelDict, **kwargs)
