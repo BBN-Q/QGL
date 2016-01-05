@@ -32,7 +32,10 @@ def create_tomo_blocks(qubits, numPulses, alignment='parallel'):
 		raise ValueError("Only able to handle numPulses=4 or 6")
 
 	#Create all combinations of pulses for the number of qubits
-	return [reduce(operator.mul, [p(q) for p,q in zip(pulseSet, qubits)]) for pulseSet in product(tomoSet, repeat=len(qubits))]
+	if alignment == 'parallel':
+		return [reduce(operator.mul, [p(q) for p,q in zip(pulseSet, qubits)]) for pulseSet in product(tomoSet, repeat=len(qubits))]
+	else:
+		return [[p(q) for p,q in zip(pulseSet, qubits)] for pulseSet in product(tomoSet, repeat=len(qubits))]
 
 def state_tomo(seq, qubits, numPulses=4, measChans=None):
 	'''
