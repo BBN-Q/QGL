@@ -34,8 +34,10 @@ def create_tomo_blocks(qubits, numPulses, alignment='parallel'):
 	#Create all combinations of pulses for the number of qubits
 	if alignment == 'parallel':
 		return [reduce(operator.mul, [p(q) for p,q in zip(pulseSet, qubits)]) for pulseSet in product(tomoSet, repeat=len(qubits))]
-	else:
+	elif alignment == 'serial':
 		return [[p(q) for p,q in zip(pulseSet, qubits)] for pulseSet in product(tomoSet, repeat=len(qubits))]
+	else:
+		raise ValueError("Alignment must be either serial or parallel")
 
 def state_tomo(seq, qubits, numPulses=4, measChans=None):
 	'''
