@@ -6,7 +6,7 @@ from itertools import product
 import operator
 from ..ControlFlow import *
 
-def MultiReset(qubits, measDelay = 1e-6, signVec = None, doubleRound = True, buf = 30e-9, showPlot=False, measChans=None, docals=True, calRepeats=2):
+def Reset(qubits, measDelay = 1e-6, signVec = None, doubleRound = True, buf = 30e-9, showPlot=False, measChans=None, docals=True, calRepeats=2):
 	"""
 
 	Variable amplitude Rabi nutation experiment for an arbitrary number of qubits simultaneously
