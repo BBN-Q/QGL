@@ -43,8 +43,11 @@ def output_file():
 def in_ipynb():
     return _in_ipynb
 
-#Default to output_file
-output_file()
+# Default to output_file
+# Commented out because recent versions of Bokeh remember the state of
+# output_notebook/output_file on a per module basis.
+
+# output_file()
 
 def build_waveforms(seq):
     import PulseSequencer, Compiler #import here to avoid circular imports
@@ -83,7 +86,7 @@ def plot_waveforms(waveforms, figTitle = ''):
         fig.line(xpts, np.real(waveformToPlot), color='red')
         fig.line(xpts, np.imag(waveformToPlot), color='blue')
         plots.append(fig)
-    bk.show(bk.VBox(*plots))
+    bk.show(bk.vplot(*plots))
 
 def show(seq):
     waveforms = build_waveforms(seq)
