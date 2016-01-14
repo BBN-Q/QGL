@@ -1,0 +1,32 @@
+# .travis.yml file based on:
+# https://gist.github.com/dan-blanchard/7045057
+
+language: python
+python:
+  - "2.7"
+
+# Setup anaconda
+before_install:
+  - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
+  - chmod +x miniconda.sh
+  - ./miniconda.sh -b
+  - export PATH=/home/travis/miniconda2/bin:$PATH
+  - conda update --yes conda
+  - travis_retry conda install --yes python=$TRAVIS_PYTHON_VERSION numpy bokeh enaml atom matplotlib h5py ipython scipy networkx
+  - pip install coveralls
+  - wget "https://drive.google.com/uc?export=download&id=0BxaPKTZqyVchaXc1V3hlejRaY2M" -O test_data.tar.gz
+  - tar xzvf test_data.tar.gz -C tests/
+
+# use conda to install packages
+install:
+ # Coverage packages are on my binstar channel
+  - pip install watchdog
+
+# execute scripts
+script:
+  - coverage run -m unittest discover
+after_script:
+  - coveralls
+
+# necessary to run on new container-based infrastructure
+sudo: false

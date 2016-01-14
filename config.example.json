@@ -1,0 +1,4 @@
+{
+	"AWGDir": "/my/path/to/awg/",
+	"ChannelLibraryFile": "/my/path/to/ChannelParams.json"
+}

@@ -17,6 +17,7 @@ limitations under the License.
 '''
 import numpy as np
 import os
+import sys
 import itertools
 import operator
 from warnings import warn
@@ -26,16 +27,16 @@ import config
 import PatternUtils
 from PatternUtils import flatten
 import Channels
+import ChannelLibrary
 from PulsePrimitives import Id
 import PulseSequencer
 import ControlFlow
 import BlockLabel
-import instruments
-
+import drivers
 
 # global parameter libraries
-channelLib = {}
-instrumentLib = {}
+# channelLib = {}
+channelLib = ChannelLibrary.ChannelLibrary(libFile=config.channelLibFile)
 
 def map_logical_to_physical(wires):
     # construct a mapping of physical channels to lists of logical channels
@@ -194,7 +195,7 @@ def pulses_to_waveforms(physicalWires):
     return wireOuts
 
 def channel_delay_map(physicalWires):
-    chanDelays = {chan : chan.delay + chan.AWG.delay for chan in physicalWires.keys()}
+    chanDelays = {chan : chan.delay for chan in physicalWires.keys()}
     return PatternUtils.normalize_delays(chanDelays)
 
 def setup_awg_channels(physicalChannels):
@@ -202,7 +203,7 @@ def setup_awg_channels(physicalChannels):
     for chan in physicalChannels:
         awgs.add(chan.AWG)
 
-    data = {awg.label:awg.get_empty_channel_set() for awg in awgs}
+    data = {awg : drivers[awg].get_empty_channel_set() for awg in awgs}
     for awgdata in data.values():
         for chan in awgdata.keys():
             awgdata[chan] = {'linkList': [], 'wfLib': {}, 'correctionT': np.identity(2)}
@@ -211,12 +212,13 @@ def setup_awg_channels(physicalChannels):
 def bundle_wires(physWires, wfs):
     awgData = setup_awg_channels(physWires.keys())
     for chan in physWires.keys():
+        awgData[chan.AWG]['translator'] = chan.translator
         _, awgChan = chan.label.split('-')
         awgChan = 'ch' + awgChan
-        awgData[chan.AWG.label][awgChan]['linkList'] = physWires[chan]
-        awgData[chan.AWG.label][awgChan]['wfLib'] = wfs[chan]
+        awgData[chan.AWG][awgChan]['linkList'] = physWires[chan]
+        awgData[chan.AWG][awgChan]['wfLib'] = wfs[chan]
         if hasattr(chan, 'correctionT'):
-            awgData[chan.AWG.label][awgChan]['correctionT'] = chan.correctionT
+            awgData[chan.AWG][awgChan]['correctionT'] = chan.correctionT
     return awgData
 
 def collect_specializations(seqs):
@@ -287,7 +289,9 @@ def compile_to_hardware(seqs, fileName, suffix=''):
         if not os.path.exists(targetFolder):
             os.mkdir(targetFolder)
         fullFileName = os.path.normpath(os.path.join(config.AWGDir, fileName + '-' + awgName + suffix + instrumentLib[awgName].seqFileExt))
-        instrumentLib[awgName].write_sequence_file(data, fullFileName)
+        # translator = sys.modules['drivers.' + data['translator']]
+        translator = getattr(drivers, data['translator'])
+        translator.write_sequence_file(data, fullFileName)
 
         fileList.append(fullFileName)
 

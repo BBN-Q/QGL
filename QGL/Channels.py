@@ -20,24 +20,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 '''
 
-import json
 import PulseShapes
-import Compiler
+# import Compiler
 import numpy as np
-import networkx as nx
 
 from math import tan,cos,pi
 
-from instruments.AWGs import AWG
-from instruments.MicrowaveSources import MicrowaveSource
-from DictManager import DictManager
-
 from atom.api import Atom, Str, Unicode, Float, Instance, Property, cached_property, \
                         Dict, Enum, Bool, Typed, observe, Int
-
-import FileWatcher
-
-import importlib
 
 from copy import deepcopy
 
@@ -62,8 +52,8 @@ class Channel(Atom):
             if isinstance(m, Property):
                 del jsonDict[k]
 
-        #Turn instruments back into unicode labels
-        for member in ["AWG", "generator", "physChan", "gateChan", "trigChan", "source", "target"]:
+        #Turn objects into unicode labels
+        for member in ["physChan", "gateChan", "trigChan", "source", "target"]:
             if member in jsonDict:
                 obj = jsonDict.pop(member)
                 if obj:
@@ -82,17 +72,11 @@ class PhysicalChannel(Channel):
     '''
     The main class for actual AWG channels.
     '''
-    AWG = Typed(AWG)
-    generator = Typed(MicrowaveSource)
-    samplingRate = Property()
+    AWG = Unicode()
+    translator = Unicode()
+    generator = Unicode()
+    samplingRate = Float()
     delay = Float()
-
-    def _get_samplingRate(self):
-        return self.AWG.samplingRate
-
-    def _default_AWG(self):
-        return AWG()
-
 
 class LogicalChannel(Channel):
     '''
@@ -226,206 +210,5 @@ def EdgeFactory(source, target):
     else:
         raise ValueError('Edge {0} not found in connectivity graph'.format((source, target)))
 
-class ChannelLibrary(Atom):
-    # channelDict = Dict(Str, Channel)
-    channelDict = Typed(dict)
-    connectivityG = Typed(nx.DiGraph)
-    logicalChannelManager = Typed(DictManager)
-    physicalChannelManager = Typed(DictManager)
-    libFile = Str()
-    fileWatcher = Typed(FileWatcher.LibraryFileWatcher)
-    version = Int(3)
-
-    def __init__(self, channelDict={}, **kwargs):
-        super(ChannelLibrary, self).__init__(channelDict=channelDict, **kwargs)
-        self.connectivityG = nx.DiGraph()
-        self.load_from_library()
-        self.logicalChannelManager = DictManager(itemDict=self.channelDict,
-                                                 displayFilter=lambda x : isinstance(x, LogicalChannel),
-                                                 possibleItems=NewLogicalChannelList)
-        self.physicalChannelManager = DictManager(itemDict=self.channelDict,
-                                                  displayFilter=lambda x : isinstance(x, PhysicalChannel),
-                                                  possibleItems=NewPhysicalChannelList)
-
-        if self.libFile:
-            self.fileWatcher = FileWatcher.LibraryFileWatcher(self.libFile, self.update_from_file)
-
-    #Dictionary methods
-    def __getitem__(self, key):
-        return self.channelDict[key]
-
-    def __setitem__(self, key, value):
-        self.channelDict[key] = value
-
-    def __delitem__(self, key):
-        del self.channelDict[key]
-
-    # def __len__(self):
-    #     return len(self.channelDict)
-
-    # def __iter__(self):
-    #     for x in self.channelDict:
-    #         yield x
-
-    def __contains__(self, key):
-        return key in self.channelDict
-
-    def keys(self):
-        return self.channelDict.keys()
-
-    def values(self):
-        return self.channelDict.values()
-
-    def build_connectivity_graph(self):
-        # build connectivity graph
-        self.connectivityG.clear()
-        for chan in self.channelDict.values():
-            if isinstance(chan, Qubit) and chan not in self.connectivityG:
-                self.connectivityG.add_node(chan)
-        for chan in self.channelDict.values():
-            if isinstance(chan, Edge):
-                self.connectivityG.add_edge(chan.source, chan.target)
-                self.connectivityG[chan.source][chan.target]['channel'] = chan
-
-    def write_to_file(self,fileName=None):
-        import JSONHelpers
-        libFileName = fileName if fileName != None else self.libFile
-        if libFileName:
-            #Pause the file watcher to stop cicular updating insanity
-            if self.fileWatcher:
-                self.fileWatcher.pause()
-            with open(libFileName, 'w') as FID:
-                json.dump(self, FID, cls=JSONHelpers.LibraryEncoder, indent=2, sort_keys=True)
-            if self.fileWatcher:
-                self.fileWatcher.resume()
-
-    def json_encode(self, matlabCompatible=False):
-        return {
-            "channelDict": self.channelDict,
-            "version": self.version
-        }
-
-    def load_from_library(self):
-        import JSONHelpers
-        if self.libFile:
-            try:
-                with open(self.libFile, 'r') as FID:
-                    tmpLib = json.load(FID, cls=JSONHelpers.ChannelDecoder)
-                    if not isinstance(tmpLib, ChannelLibrary):
-                        raise ValueError('Failed to load channel library')
-
-                    # connect objects labeled by strings
-                    for chan in tmpLib.channelDict.values():
-                        if hasattr(chan, 'physChan'):
-                            chan.physChan = tmpLib[chan.physChan] if chan.physChan in tmpLib.channelDict else None
-                        if hasattr(chan, 'gateChan'):
-                            chan.gateChan = tmpLib[chan.gateChan] if chan.gateChan in tmpLib.channelDict else None
-                        if hasattr(chan, 'trigChan'):
-                            chan.trigChan = tmpLib[chan.trigChan] if chan.trigChan in tmpLib.channelDict else None
-                        if hasattr(chan, 'source'):
-                            chan.source = tmpLib[chan.source] if chan.source in tmpLib.channelDict else None
-                        if hasattr(chan, 'target'):
-                            chan.target = tmpLib[chan.target] if chan.target in tmpLib.channelDict else None
-                    self.channelDict.update(tmpLib.channelDict)
-                    # grab library version
-                    self.version = tmpLib.version
-                    self.build_connectivity_graph()
-            except IOError:
-                print('No channel library found.')
-            except ValueError:
-                print('Failed to load channel library.')
-
-    def update_from_file(self):
-        """
-        Only update relevant parameters
-        Helps avoid both stale references from replacing whole channel objects (as in load_from_library)
-        and the overhead of recreating everything.
-        """
-
-        if self.libFile:
-            with open(self.libFile, 'r') as FID:
-                try:
-                    allParams = json.load(FID)['channelDict']
-                except ValueError:
-                    print('Failed to update channel library from file. Probably is just half-written.')
-                    return
-
-                # update & insert
-                for chName, chParams in allParams.items():
-                    if chName in self.channelDict:
-                        self.update_from_json(chName, chParams)
-                    else:
-                        # load class from name and update from json
-                        className = chParams['x__class__']
-                        moduleName = chParams['x__module__']
-
-                        mod = importlib.import_module(moduleName)
-                        cls = getattr(mod, className)
-                        self.channelDict[chName]  = cls()
-                        self.update_from_json(chName, chParams)
-
-                # remove
-                for chName in self.channelDict.keys():
-                    if chName not in allParams:
-                        del self.channelDict[chName]
-
-                self.build_connectivity_graph()
-
-    def update_from_json(self,chName, chParams):
-        # ignored or specially handled parameters
-        ignoreList = ['pulseParams', 'physChan', 'gateChan', 'trigChan', 'source', 'target', 'AWG', 'generator', 'x__class__', 'x__module__']
-        if 'pulseParams' in chParams.keys():
-            paramDict = {k.encode('ascii'):v for k,v in chParams['pulseParams'].items()}
-            shapeFunName = paramDict.pop('shapeFun', None)
-            if shapeFunName:
-                paramDict['shapeFun'] = getattr(PulseShapes, shapeFunName)
-            self.channelDict[chName].pulseParams = paramDict
-        if 'physChan' in chParams.keys():
-            self.channelDict[chName].physChan = self.channelDict[chParams['physChan']] if chParams['physChan'] in self.channelDict else None
-        if 'gateChan' in chParams.keys():
-            self.channelDict[chName].gateChan = self.channelDict[chParams['gateChan']] if chParams['gateChan'] in self.channelDict else None
-        if 'trigChan' in chParams.keys():
-            self.channelDict[chName].trigChan = self.channelDict[chParams['trigChan']] if chParams['trigChan'] in self.channelDict else None
-        if 'source' in chParams.keys():
-            self.channelDict[chName].source = self.channelDict[chParams['source']] if chParams['source'] in self.channelDict else None
-        if 'target' in chParams.keys():
-            self.channelDict[chName].target = self.channelDict[chParams['target']] if chParams['target'] in self.channelDict else None
-        # TODO: how do we follow changes to selected AWG or generator?
-
-        for paramName in chParams:
-            if paramName not in ignoreList:
-                setattr(self.channelDict[chName], paramName, chParams[paramName])
-
-    def on_awg_change(self, oldName, newName):
-        print "Change AWG", oldName, newName
-        for chName in self.channelDict:
-            if (isinstance(self.channelDict[chName], PhysicalMarkerChannel) or
-               isinstance(self.channelDict[chName], PhysicalQuadratureChannel)):
-                awgName, awgChannel = chName.rsplit('-',1)
-                if awgName == oldName:
-                    newLabel = "{0}-{1}".format(newName,awgChannel)
-                    print "Changing {0} to {1}".format(chName, newLabel)
-                    self.physicalChannelManager.name_changed(chName, newLabel)
-
-
 NewLogicalChannelList = [Qubit, Edge, LogicalMarkerChannel, Measurement]
 NewPhysicalChannelList = [PhysicalMarkerChannel, PhysicalQuadratureChannel]
-
-if __name__ == '__main__':
-    import os.path
-    import sys
-    #Load the libraries
-    execfile(os.path.join(os.path.dirname(sys.argv[0]), os.path.pardir, 'startup.py'))
-
-    # create a channel params file
-    import enaml
-    from enaml.qt.qt_application import QtApplication
-
-    with enaml.imports():
-        from ChannelsViews import ChannelLibraryWindow
-
-    app = QtApplication()
-    view = ChannelLibraryWindow(channelLib=Compiler.channelLib, instrumentLib=instrumentLib)
-    view.show()
-
-    app.start()
