@@ -15,6 +15,7 @@ limitations under the License.
 '''
 import PulseShapes
 import Channels
+import ChannelLibrary
 import operator
 
 from math import pi, sin, cos, acos, sqrt
@@ -276,7 +277,7 @@ def AC(qubit, cliffNum):
 ## two-qubit primitivies
 def CNOT(source, target, **kwargs):
     # construct (source, target) channel and pull parameters from there
-    channel = Channels.QubitFactory(source.label + target.label)
+    channel = ChannelLibrary.QubitFactory(source.label + target.label)
     params = overrideDefaults(channel, kwargs)
     return Pulse("CNOT", (source, target), params, channel.pulseParams['piAmp'], 0.0, 0.0)
 
@@ -292,7 +293,7 @@ def echoCR(controlQ, targetQ, amp=1, phase=0, length=200e-9, riseFall=20e-9, las
     """
     An echoed CR pulse.  Used for calibration of CR gate
     """
-    CRchan = Channels.EdgeFactory(controlQ, targetQ)
+    CRchan = ChannelLibrary.EdgeFactory(controlQ, targetQ)
     if not CRchan.isforward(controlQ, targetQ):
         raise ValueError('Could not find an edge with control qubit {0}'.format(controlQ))
     seq = [flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase),
@@ -306,12 +307,12 @@ def ZX90_CR(controlQ, targetQ, **kwargs):
     """
     A calibrated CR ZX90 pulse.  Uses 'amp' for the pulse amplitude, 'phase' for its phase (in deg).
     """
-    CRchan = Channels.EdgeFactory(controlQ, targetQ)
+    CRchan = ChannelLibrary.EdgeFactory(controlQ, targetQ)
     params = overrideDefaults(CRchan, kwargs)
     return echoCR(controlQ, targetQ, amp = params['amp'], phase = params['phase']/180*np.pi, length=params['length'], riseFall=params['riseFall'])
 
 def CNOT_CR(controlQ, targetQ, **kwargs):
-    edge = Channels.EdgeFactory(controlQ, targetQ)
+    edge = ChannelLibrary.EdgeFactory(controlQ, targetQ)
 
     if edge.isforward(controlQ, targetQ):
         # control and target for CNOT and CR match
@@ -345,7 +346,7 @@ def MEAS(*args, **kwargs):
             channelName = "M-"
             for q in qubit:
                 channelName += q.label
-        measChan = Channels.MeasFactory(channelName)
+        measChan = ChannelLibrary.MeasFactory(channelName)
         params = overrideDefaults(measChan, kwargs)
         params['frequency'] = measChan.autodyneFreq
         params['baseShape'] = params.pop('shapeFun')

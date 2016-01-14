@@ -1,6 +1,6 @@
 from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
-from ..Channels import EdgeFactory
+from ..ChannelLibrary import EdgeFactory
 from ..PulseSequencePlotter import plot_pulse_files
 from helpers import create_cal_seqs
 
@@ -70,7 +70,7 @@ def EchoCRPhase(controlQ, targetQ, phases, riseFall=40e-9, amp=1, length=100e-9,
 	Parameters
 	----------
 	controlQ : logical channel for the control qubit (LogicalChannel)
-	CRchan: logical channel for the cross-resonance pulse (LogicalChannel) 
+	CRchan: logical channel for the cross-resonance pulse (LogicalChannel)
 	phases : pulse phases of the CR pulse to sweep over (iterable)
 	showPlot : whether to plot (boolean)
 
@@ -87,7 +87,3 @@ def EchoCRPhase(controlQ, targetQ, phases, riseFall=40e-9, amp=1, length=100e-9,
 
 	if showPlot:
 		plot_pulse_files(fileNames)
-
-
-
-

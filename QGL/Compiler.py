@@ -17,8 +17,7 @@ limitations under the License.
 '''
 import numpy as np
 import os
-import sys
-import itertools
+# import sys
 import operator
 from warnings import warn
 from copy import copy
@@ -33,10 +32,6 @@ import PulseSequencer
 import ControlFlow
 import BlockLabel
 import drivers
-
-# global parameter libraries
-# channelLib = {}
-channelLib = ChannelLibrary.ChannelLibrary(libFile=config.channelLibFile)
 
 def map_logical_to_physical(wires):
     # construct a mapping of physical channels to lists of logical channels
@@ -244,7 +239,7 @@ def compile_to_hardware(seqs, fileName, suffix=''):
     PatternUtils.add_gate_pulses(seqs)
 
     # Add the slave trigger
-    PatternUtils.add_slave_trigger(seqs, channelLib['slaveTrig'])
+    PatternUtils.add_slave_trigger(seqs, ChannelLibrary.channelLib['slaveTrig'])
 
     # find channel set at top level to account for individual sequence channel variability
     channels = set([])
@@ -470,7 +465,7 @@ def schedule(channel, pulse, blockLength, alignment):
 
 def validate_linklist_channels(linklistChannels):
     errors = []
-    channels = channelLib.channelDict
+    channels = ChannelLibrary.channelLib.channelDict
     for channel in linklistChannels:
         if channel.label not in channels.keys() and channel.label not in errors:
             print "{0} not found in channel library".format(repr(channel))

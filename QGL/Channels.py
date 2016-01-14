@@ -21,7 +21,6 @@ limitations under the License.
 '''
 
 import PulseShapes
-# import Compiler
 import numpy as np
 
 from math import tan,cos,pi
@@ -185,30 +184,6 @@ class Edge(LogicalChannel):
             return True
         else:
             return False
-
-def QubitFactory(label, **kwargs):
-    ''' Return a saved qubit channel or create a new one. '''
-    if Compiler.channelLib and label in Compiler.channelLib and isinstance(Compiler.channelLib[label], Qubit):
-        return Compiler.channelLib[label]
-    else:
-        return Qubit(label=label, **kwargs)
-
-def MeasFactory(label, measType='autodyne', **kwargs):
-    ''' Return a saved measurement channel or create a new one. '''
-    if Compiler.channelLib and label in Compiler.channelLib and isinstance(Compiler.channelLib[label], Measurement):
-        return Compiler.channelLib[label]
-    else:
-        return Measurement(label=label, measType=measType, **kwargs)
-
-def EdgeFactory(source, target):
-    if not Compiler.channelLib:
-        raise ValueError('Connectivity graph not found')
-    if Compiler.channelLib.connectivityG.has_edge(source, target):
-        return Compiler.channelLib.connectivityG[source][target]['channel']
-    elif Compiler.channelLib.connectivityG.has_edge(target, source):
-        return Compiler.channelLib.connectivityG[target][source]['channel']
-    else:
-        raise ValueError('Edge {0} not found in connectivity graph'.format((source, target)))
 
 NewLogicalChannelList = [Qubit, Edge, LogicalMarkerChannel, Measurement]
 NewPhysicalChannelList = [PhysicalMarkerChannel, PhysicalQuadratureChannel]

@@ -227,3 +227,30 @@ class ChannelDecoder(json.JSONDecoder):
             if shapeFun:
                 jsonDict['shapeFun'] = getattr(QGL.PulseShapes, shapeFun)
             return jsonDict
+
+def QubitFactory(label, **kwargs):
+    ''' Return a saved qubit channel or create a new one. '''
+    if channelLib and label in channelLib and isinstance(channelLib[label], Channels.Qubit):
+        return channelLib[label]
+    else:
+        return Channels.Qubit(label=label, **kwargs)
+
+def MeasFactory(label, measType='autodyne', **kwargs):
+    ''' Return a saved measurement channel or create a new one. '''
+    if channelLib and label in channelLib and isinstance(channelLib[label], Channels.Measurement):
+        return channelLib[label]
+    else:
+        return Channels.Measurement(label=label, measType=measType, **kwargs)
+
+def EdgeFactory(source, target):
+    if not channelLib:
+        raise ValueError('Connectivity graph not found')
+    if channelLib.connectivityG.has_edge(source, target):
+        return channelLib.connectivityG[source][target]['channel']
+    elif channelLib.connectivityG.has_edge(target, source):
+        return channelLib.connectivityG[target][source]['channel']
+    else:
+        raise ValueError('Edge {0} not found in connectivity graph'.format((source, target)))
+
+# global channel library
+channelLib = ChannelLibrary(libFile=config.channelLibFile)
