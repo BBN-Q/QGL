@@ -4,7 +4,7 @@ import numpy as np
 from copy import copy
 
 from QGL import *
-from instruments.drivers import APS2Pattern
+from QGL.drivers import APS2Pattern
 
 class APSPatternUtils(unittest.TestCase):
     def setUp(self):
@@ -13,7 +13,7 @@ class APSPatternUtils(unittest.TestCase):
         self.q1 = Qubit(label='q1')
         self.q1.pulseParams['length'] = 30e-9
 
-        Compiler.channelLib = {'q1': self.q1, 'q1-gate': self.q1gate}
+        ChannelLibrary.channelLib = {'q1': self.q1, 'q1-gate': self.q1gate}
 
     def test_synchronize_control_flow(self):
         q1 = self.q1
@@ -29,7 +29,7 @@ class APSPatternUtils(unittest.TestCase):
         seq_1 = [qwait(), delay, copy(pulse), qwait(), copy(pulse)]
         seq_2 = [qwait(), copy(blank), qwait(), copy(blank)]
         offsets = { APS2Pattern.wf_sig(pulse) : 0 }
-        
+
         instructions = APS2Pattern.create_seq_instructions([seq_1, seq_2, [], [], []], offsets)
 
         instr_types = [
@@ -47,5 +47,5 @@ class APSPatternUtils(unittest.TestCase):
             instrOpCode = (actual.header >> 4) & 0xf
             assert(instrOpCode == expected)
 
-if __name__ == "__main__":    
+if __name__ == "__main__":
     unittest.main()

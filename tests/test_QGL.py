@@ -33,7 +33,7 @@ class SequenceTestCases(object):
         self.generate()
         self.compile()
         self.load()
-    
+
     def generate(self):
         # this function should be overridden in a subclass to define
         # the sequences
@@ -58,13 +58,13 @@ class SequenceTestCases(object):
 
     def write(self):
         # writes each sequence to a file in the test data directory a file header
-        # which may be overridden in the subclasses 
+        # which may be overridden in the subclasses
         for name, waveform in self.waveforms.iteritems():
             fileName = self.build_filename(name)
             #Open the HDF5 file
             if os.path.isfile(fileName):
                 os.remove(fileName)
-            with h5py.File(fileName, 'w') as FID:  
+            with h5py.File(fileName, 'w') as FID:
                 FID['/'].attrs['Type'] = 'test_case'
                 FID['/'].attrs['Version'] = 1.0
 
@@ -95,17 +95,17 @@ class SequenceTestCases(object):
 
     def validate_case(self, caseName):
         # validates each sequences by using numpy assert_allclose for each channel
-        
-        assert(caseName in self.validWaveforms)   
+
+        assert(caseName in self.validWaveforms)
         validWaveform = self.validWaveforms[caseName]
         for channelName, waveform in self.waveforms[caseName].iteritems():
             print 'Validating {0} Case {1} Channel {2}'.format(
-                self.__class__.__name__, 
+                self.__class__.__name__,
                 caseName,
                 repr(channelName))
             assert(repr(channelName) in validWaveform)
             np.testing.assert_allclose(waveform, validWaveform[repr(channelName)], rtol=1e-5, atol=0)
-   
+
 
 class SingleQubitTestCases(SequenceTestCases):
     # Single Qubit Sequence Test Cases
@@ -115,6 +115,7 @@ class SingleQubitTestCases(SequenceTestCases):
     def newQ1(self):
         q1 = Qubit(label='q1')
         q1.pulseParams['length'] = 30e-9
+        q1.physChan.samplingRate = 1.2e9
         return q1
 
     def generate(self):
@@ -132,14 +133,16 @@ class MultiQubitTestCases(SequenceTestCases):
     def newQubits(self):
         q1 = Qubit(label='q1')
         q1.pulseParams['length'] = 30e-9
+        q1.physChan.samplingRate = 1.2e9
         q2 = Qubit(label='q2')
         q2.pulseParams['length'] = 30e-9
+        q2.physChan.samplingRate = 1.2e9
         return (q1,q2)
 
     def generate(self):
         q1, q2 = self.newQubits()
         self.sequences['operators'] = [X90(q1), X(q1)*Y(q2), CNOT(q1,q2), Xm(q2), Y(q1)*X(q2)]
-        
+
         q1, q2 = self.newQubits()
         self.sequences['align'] = [align(X90(q1)*Xtheta(q2, amp=0.5, length=100e-9), 'right'), Y90(q1)*Y90(q2)]
 
@@ -180,5 +183,5 @@ def validate():
     SingleQubitTestCases().validate()
     MultiQubitTestCases().validate()
 
-if __name__ == "__main__":    
+if __name__ == "__main__":
     unittest.main()

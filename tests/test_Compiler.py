@@ -18,7 +18,7 @@ class CompileUtils(unittest.TestCase):
         self.measq1 = Channels.Measurement(label='M-q1')
         self.measq1.trigChan = self.trigger
 
-        Compiler.channelLib = {'q1': self.q1, 'q2': self.q2, 'M-q1': self.measq1}
+        ChannelLibrary.channelLib = {'q1': self.q1, 'q2': self.q2, 'M-q1': self.measq1}
 
     def test_add_digitizer_trigger(self):
         q1 = self.q1

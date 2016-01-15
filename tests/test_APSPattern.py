@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 from QGL import *
-from instruments.drivers import APSPattern
+from QGL.drivers import APSPattern
 
 class APSPatternUtils(unittest.TestCase):
     def setUp(self):
@@ -12,7 +12,7 @@ class APSPatternUtils(unittest.TestCase):
         self.q1 = Qubit(label='q1')
         self.q1.pulseParams['length'] = 30e-9
 
-        Compiler.channelLib = {'q1': self.q1}
+        ChannelLibrary.channelLib = {'q1': self.q1}
 
     def test_unroll_loops_simple(self):
         q1 = self.q1
@@ -57,5 +57,5 @@ class APSPatternUtils(unittest.TestCase):
         assert(a[0] == seqUnrolled)
         assert(b == 0)
 
-if __name__ == "__main__":    
+if __name__ == "__main__":
     unittest.main()

@@ -20,7 +20,7 @@ from copy import copy
 import json
 import numpy as np
 
-import Channels, PulseShapes, operator
+import ChannelLibrary, PulseShapes, operator
 
 class Pulse(object):
     '''
@@ -34,7 +34,7 @@ class Pulse(object):
         self.label = label
         if isinstance(channel, (list, tuple)):
             # with more than one qubit, need to look up the channel
-            self.channel = Channels.QubitFactory(reduce(operator.add, [c.label for c in channel]))
+            self.channel = ChannelLibrary.QubitFactory(reduce(operator.add, [c.label for c in channel]))
         else:
             self.channel = channel
         self.shapeParams = shapeParams
