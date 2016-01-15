@@ -2,27 +2,23 @@ import h5py
 import numpy as np
 import unittest, time, os, random
 
-import config
-import Libraries
 from QGL import *
 import QGL
 
-from QGL.Channels import Edge, Measurement, LogicalChannel, LogicalMarkerChannel, PhysicalMarkerChannel, PhysicalQuadratureChannel, ChannelLibrary
-from instruments.AWGs import APS2, APS, Tek5014, Tek7000
-from instruments.InstrumentManager import InstrumentLibrary
+from QGL.Channels import Edge, Measurement, LogicalChannel, LogicalMarkerChannel, PhysicalMarkerChannel, PhysicalQuadratureChannel
+from QGL.drivers import APSPattern, APS2Pattern, TekPattern
 
-BASE_AWG_DIR = config.AWGDir
+BASE_AWG_DIR = QGL.config.AWGDir
 
 class AWGTestHelper(object):
 	testFileDirectory = './tests/test_data/awg/'
 
-	def __init__(self, clsObj = None, tolerance = 1.5/2**13):
+	def __init__(self, translatorModule = None, tolerance = 1.5/2**13):
 		self.channels = {}
-		self.instruments = {}
 		self.assign_channels()
 		self.set_awg_dir()
-		if clsObj:
-			self.read_function = clsObj().read_sequence_file
+		if translatorModule:
+			self.read_function = translatorModule.read_sequence_file
 		else:
 			self.read_function = None
 		self.tolerance = tolerance
@@ -31,12 +27,9 @@ class AWGTestHelper(object):
 		for name,value in mapping.iteritems():
 			self.channels[name].physChan = self.channels[value]
 
-		Compiler.channelLib = ChannelLibrary()
-		Compiler.channelLib.channelDict = self.channels
-		Compiler.channelLib.build_connectivity_graph()
-
-		Compiler.instrumentLib = InstrumentLibrary()
-		Compiler.instrumentLib.instrDict = self.instruments
+		ChannelLibrary.channelLib = ChannelLibrary.ChannelLibrary()
+		ChannelLibrary.channelLib.channelDict = self.channels
+		ChannelLibrary.channelLib.build_connectivity_graph()
 
 		(self.q1, self.q2) = self.get_qubits()
 
@@ -85,7 +78,7 @@ class AWGTestHelper(object):
 		self.channels['M-q1q2']       = Measurement(label='M-q1q2', gateChan = mq1q2g, trigChan=self.channels['digitizerTrig'])
 
 	def get_qubits(self):
-		return [QGL.Compiler.channelLib[name] for name in self.qubit_names]
+		return [QGL.ChannelLibrary.channelLib[name] for name in self.qubit_names]
 
 	def set_awg_dir(self, footer = ""):
 		cn = self.__class__.__name__
@@ -99,7 +92,7 @@ class AWGTestHelper(object):
 
 		if not os.path.isdir(self.awg_dir):
 			os.makedirs(self.awg_dir)
-		config.AWGDir = self.awg_dir
+		QGL.config.AWGDir = self.awg_dir
 
 	def compare_sequences(self, seqDir):
 		if not self.read_function:
@@ -333,19 +326,21 @@ class TestSequences(object):
 
 class APS2Helper(AWGTestHelper):
 	def setUp(self):
-		AWGTestHelper.__init__(self, APS2)
+		AWGTestHelper.__init__(self, APS2Pattern)
 		for name in ['APS1', 'APS2', 'APS3', 'APS4', 'APS5', 'APS6']:
-			self.instruments[name] = APS2(label=name)
-
 			channelName = name + '-12'
 			channel = PhysicalQuadratureChannel(label=channelName)
-			channel.AWG = self.instruments[name]
+			channel.samplingRate = 1.2e9
+			channel.AWG = name
+			channel.translator = 'APS2Pattern'
 			self.channels[channelName] = channel
 
 			for m in range(1,5):
 				channelName = "{0}-12m{1}".format(name,m)
 				channel = PhysicalMarkerChannel(label=channelName)
-				channel.AWG = self.instruments[name]
+				channel.samplingRate = 1.2e9
+				channel.AWG = name
+				channel.translator = 'APS2Pattern'
 				self.channels[channelName] = channel
 
 		mapping = {	'digitizerTrig' : 'APS1-12m1',
@@ -374,20 +369,22 @@ class TestAPS2(unittest.TestCase, APS2Helper, TestSequences):
 class TestAPS1(unittest.TestCase, AWGTestHelper, TestSequences):
 
 	def setUp(self):
-		AWGTestHelper.__init__(self, APS)
+		AWGTestHelper.__init__(self, APSPattern)
 		for name in ['APS1', 'APS2', 'APS3']:
-			self.instruments[name] = APS(label=name)
-
 			for ch in ['12', '34']:
 				channelName = name + '-' + ch
 				channel = PhysicalQuadratureChannel(label=channelName)
-				channel.AWG = self.instruments[name]
+				channel.samplingRate = 1.2e9
+				channel.AWG = name
+				channel.translator = 'APSPattern'
 				self.channels[channelName] = channel
 
 			for m in range(1,5):
 				channelName = "{0}-{1}m1".format(name,m)
 				channel = PhysicalMarkerChannel(label=channelName)
-				channel.AWG = self.instruments[name]
+				channel.samplingRate = 1.2e9
+				channel.AWG = name
+				channel.translator = 'APSPattern'
 				self.channels[channelName] = channel
 
 		mapping = {	'digitizerTrig' : 'APS1-1m1',
@@ -457,20 +454,22 @@ class TestAPS1(unittest.TestCase, AWGTestHelper, TestSequences):
 class TestTek5014(unittest.TestCase, AWGTestHelper, TestSequences):
 
 	def setUp(self):
-		AWGTestHelper.__init__(self, Tek5014)
+		AWGTestHelper.__init__(self, TekPattern)
 		for name in ['TEK1', 'TEK2']:
-			self.instruments[name] = Tek5014(label=name)
-
 			for ch in ['12', '34']:
 				channelName = name + '-' + ch
 				channel = PhysicalQuadratureChannel(label=channelName)
-				channel.AWG = self.instruments[name]
+				channel.samplingRate = 1.2e9
+				channel.AWG = name
+				channel.translator = 'TekPattern'
 				self.channels[channelName] = channel
 
 			for m in ['1m1', '1m2', '2m1', '2m2', '3m1', '3m2', '4m1', '4m2']:
 				channelName = "{0}-{1}".format(name,m)
 				channel = PhysicalMarkerChannel(label=channelName)
-				channel.AWG = self.instruments[name]
+				channel.samplingRate = 1.2e9
+				channel.AWG = name
+				channel.translator = 'TekPattern'
 				self.channels[channelName] = channel
 
 		mapping = { 'digitizerTrig'	: 'TEK1-1m2',
