@@ -1,0 +1,3 @@
+[submodule "JSONLibraryUtils"]
+	path = JSONLibraryUtils
+	url = git@github.com:BBN-Q/JSONLibraryUtils.git

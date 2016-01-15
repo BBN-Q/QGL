@@ -28,8 +28,7 @@ from atom.api import Atom, Str, Int, Typed
 import networkx as nx
 
 import Channels
-import LibraryCoders
-import FileWatcher
+from JSONLibraryUtils import LibraryCoders, FileWatcher
 import config
 
 class ChannelLibrary(Atom):
