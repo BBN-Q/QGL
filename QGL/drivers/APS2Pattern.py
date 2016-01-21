@@ -62,6 +62,12 @@ NOTEQUAL    = 0x1
 GREATERTHAN = 0x2
 LESSTHAN    = 0x3
 
+def get_empty_channel_set():
+    return {'ch12':{}, 'ch12m1':{}, 'ch12m2':{}, 'ch12m3':{}, 'ch12m4':{}}
+
+def get_seq_file_extension():
+    return '.h5'
+
 def create_wf_vector(wfLib):
 	'''
 	Helper function to create the wf vector and offsets into it.
@@ -472,7 +478,7 @@ def compress_marker(markerLL):
 			else:
 				idx += 1
 
-def write_APS2_file(awgData, fileName):
+def write_sequence_file(awgData, fileName):
 	'''
 	Main function to pack channel sequences into an APS2 h5 file.
 	'''
@@ -516,7 +522,7 @@ def write_APS2_file(awgData, fileName):
 			if np.mod(chanct,2) == 0:
 				FID.create_dataset(chanStr+'/instructions', data=instructions)
 
-def read_APS2_file(fileName):
+def read_sequence_file(fileName):
 	chanStrs = ['ch1', 'ch2', 'ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']
 	seqs = {ch: [] for ch in chanStrs}
 	with h5py.File(fileName, 'r') as FID:

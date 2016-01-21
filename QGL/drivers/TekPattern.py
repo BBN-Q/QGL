@@ -26,6 +26,12 @@ import re
 
 MAX_WAVEFORM_VALUE = 2**13-1 #maximum waveform value i.e. 14bit DAC
 
+def get_empty_channel_set():
+    return {'ch12':{}, 'ch34':{}, 'ch1m1':{}, 'ch1m2':{}, 'ch2m1':{}, 'ch2m2':{}, 'ch3m1':{}, 'ch3m2':{} , 'ch4m1':{}, 'ch4m2':{}}
+
+def get_seq_file_extension():
+    return '.awg'
+
 def write_field(FID, fieldName, data, dataType):
     typeSizes = {'int16':2, 'int32':4, 'double':8, 'uint128':16}
     formatChars = {'int16':'<h', 'int32':'<i', 'double':'<d'}
@@ -35,7 +41,7 @@ def write_field(FID, fieldName, data, dataType):
         data = data+chr(0)
     else:
         dataSize = typeSizes[dataType]
-        
+
     FID.write(struct.pack('<II', len(fieldName)+1, dataSize))
     FID.write(fieldName+chr(0))
     if dataType == 'char':
@@ -53,7 +59,7 @@ def read_field(FID):
     data = FID.read(dataSize)
 
     return fieldName, data
-    
+
 
 def marker_waveform(LL, wfLib):
     '''
@@ -85,7 +91,7 @@ def merge_waveform(n, chAB, chAm1, chAm2, chBm1, chBm2):
     wfBm1 = marker_waveform(chBm1['linkList'][n % len(chBm1['linkList'])], chBm1['wfLib'])
     wfBm2 = marker_waveform(chBm2['linkList'][n % len(chBm2['linkList'])], chBm2['wfLib'])
 
-    wfA = pack_waveform(np.real(wfAB), wfAm1, wfAm2) 
+    wfA = pack_waveform(np.real(wfAB), wfAm1, wfAm2)
     wfB = pack_waveform(np.imag(wfAB), wfBm1, wfBm2)
 
     return wfA, wfB
@@ -99,7 +105,7 @@ def pack_waveform(analog, marker1, marker2):
     analog channel value
     '''
 
-    #Convert decimal shape on [-1,1] to binary on [0,2^14 (16383)] 
+    #Convert decimal shape on [-1,1] to binary on [0,2^14 (16383)]
     #AWG actually makes 111,111,111,111,10 the 100% output, and
     # 111,111,111,111,11 is one step larger than 100% output so we
     # ignore the one extra positive number and scale from [0,16382]
@@ -117,7 +123,7 @@ def pack_waveform(analog, marker1, marker2):
 
     binData = np.uint16( MAX_WAVEFORM_VALUE*analog + MAX_WAVEFORM_VALUE );
     binData += 2**14*np.uint16(marker1) + 2**15*np.uint16(marker2)
-    
+
     return binData
 
 def write_waveform(FID, WFname, WFnumber, data):
@@ -125,23 +131,23 @@ def write_waveform(FID, WFname, WFnumber, data):
     Helper function to write a waveform
     '''
     numString = str(WFnumber)
-    
+
     write_field(FID, 'WAVEFORM_NAME_'+numString, WFname, 'char')
-    
+
     #Set integer format
     write_field(FID, 'WAVEFORM_TYPE_'+numString, 1, 'int16')
 
     write_field(FID, 'WAVEFORM_LENGTH_'+numString, data.size, 'int32')
-    
+
     write_field(FID, 'WAVEFORM_TIMESTAMP_'+numString, 0, 'uint128')
     tmpString = 'WAVEFORM_DATA_'+numString+chr(0)
-    dataSize = 2*data.size     
+    dataSize = 2*data.size
     FID.write(struct.pack('<II', len(tmpString), dataSize))
     FID.write(tmpString)
     FID.write(data.tostring())
-        
 
-def write_Tek_file(awgData, fileName, seqName, options=None):
+
+def write_sequence_file(awgData, fileName, seqName, options=None):
     '''
     Main function for writing a AWG format file.
     awgData is a nested dict with the following structure:
@@ -151,10 +157,10 @@ def write_Tek_file(awgData, fileName, seqName, options=None):
          ch1m2: {linkList: [...]},
          ...
          ch4m2: {linkList: [...]}, }
-    '''     
+    '''
 
     #Set the default options
-    #Marker levels default to 1V. 
+    #Marker levels default to 1V.
     if options is None:
         options = {'markerLevels': {}}
     for chanct in range(1,5):
@@ -166,7 +172,7 @@ def write_Tek_file(awgData, fileName, seqName, options=None):
                 options['markerLevels'][tmpStr]['high'] = 1.0
 
     numSeqs = max(len(awgData['ch12']['linkList']), len(awgData['ch34']['linkList']))
-    
+
     #Open the file
     FID = io.open(fileName, 'wb')
 
@@ -174,10 +180,10 @@ def write_Tek_file(awgData, fileName, seqName, options=None):
     write_field(FID, 'MAGIC', 5000, 'int16')
     write_field(FID, 'VERSION', 1, 'int16')
 
-    
+
     #Default to the fastest sampling rate
     write_field(FID, 'SAMPLING_RATE', 1.2e9, 'double')
-    
+
     #Run mode (1 = continuous, 2 = triggered, 3 = gated, 4 = sequence)
     #If we only have one step then there is no sequence
     runMode = 2 if numSeqs == 1 else 4
@@ -185,13 +191,13 @@ def write_Tek_file(awgData, fileName, seqName, options=None):
 
     #Default to off state
     write_field(FID, 'RUN_STATE', 0, 'int16')
-    
+
     #Set the reference source (1: internal; 2: external)
     write_field(FID, 'REFERENCE_SOURCE', 2, 'int16')
 
     #Trigger threshold
-    write_field(FID, 'TRIGGER_INPUT_THRESHOLD', 1.0, 'double')    
-    
+    write_field(FID, 'TRIGGER_INPUT_THRESHOLD', 1.0, 'double')
+
     #Marker's to high/low (1 = amp/offset, 2 = high/low)
     for chanct in range(1,5):
         chanStr = str(chanct)
@@ -202,12 +208,12 @@ def write_Tek_file(awgData, fileName, seqName, options=None):
         write_field(FID, 'MARKER2_METHOD_'+chanStr, 2, 'int16')
         write_field(FID, 'MARKER2_LOW_'+chanStr, options['markerLevels']['ch'+chanStr+'m2']['low'], 'double')
         write_field(FID, 'MARKER2_HIGH_'+chanStr, options['markerLevels']['ch'+chanStr+'m2']['high'], 'double')
-        
+
     #If we have only one step then we specify the waveform names
     if numSeqs == 1:
         for chanct in range(1,5):
             write_field(FID, 'OUTPUT_WAVEFORM_NAME_'+str(chanct), str(seqName)+'Ch'+str(chanct)+'001', 'char')
-            
+
     #Now write the waveforms
     wfs = range(4)
     for ct in range(numSeqs):
@@ -228,18 +234,18 @@ def write_Tek_file(awgData, fileName, seqName, options=None):
         write_field(FID, 'SEQUENCE_WAIT_'+ctStr, 1, 'int16')
         write_field(FID, 'SEQUENCE_JUMP_'+ctStr, 0, 'int16')
         write_field(FID, 'SEQUENCE_LOOP_'+ctStr, 1, 'int32')
-        
+
         #If we are on the final one then set the goto back to the beginning
         goto = 1 if seqct == numSeqs else 0
         write_field(FID, 'SEQUENCE_GOTO_'+ctStr, goto, 'int16')
-        
+
         for chanct in range(1,5):
             WFname = '{0}Ch{1}{2:03d}'.format(seqName, chanct, seqct)
             write_field(FID, 'SEQUENCE_WAVEFORM_NAME_CH_'+str(chanct)+'_'+ctStr, WFname, 'char')
-            
+
     FID.close()
-    
-def read_Tek_file(fileName):
+
+def read_sequence_file(fileName):
     '''
     Helper function to read in TekAWG h5 dump for plotting.
     '''
@@ -247,7 +253,7 @@ def read_Tek_file(fileName):
     waveformMask = 2**14-1;
     marker1Mask = 2**14;
     marker2Mask = 2**15;
-    
+
     with h5py.File(fileName, 'r') as FID:
         for chanct in range(1,5):
             chanStr = 'ch{0}'.format(chanct)
@@ -257,7 +263,7 @@ def read_Tek_file(fileName):
                 AWGData[chanStr] = [(1.0/MAX_WAVEFORM_VALUE)*(np.int16(tmpSeq&waveformMask)-MAX_WAVEFORM_VALUE-1) for tmpSeq in FID[chanStr]]
                 AWGData[marker1Str] = [tmpSeq&marker1Mask == marker1Mask for tmpSeq in FID[chanStr]];
                 AWGData[marker2Str] = [tmpSeq&marker2Mask == marker2Mask for tmpSeq in FID[chanStr]];
-    
+
     return AWGData
 
 def read_Tek_awg_file(fileName):
@@ -324,9 +330,7 @@ def read_Tek_awg_file(fileName):
             AWGData[channel + 'm2'].append(wfData[wfName+'m2'])
 
     return AWGData
-    
+
 if __name__ == '__main__':
 
     pass
-        
-    

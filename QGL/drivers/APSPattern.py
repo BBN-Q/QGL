@@ -43,6 +43,12 @@ END_MINILL_BIT = 14;
 WAIT_TRIG_BIT = 13;
 TA_PAIR_BIT = 12;
 
+def get_empty_channel_set():
+    return {'ch12':{}, 'ch34':{}, 'ch1m1':{}, 'ch2m1':{}, 'ch3m1':{}, 'ch4m1':{}}
+
+def get_seq_file_extension():
+    return '.h5'
+
 def preprocess(seqs, shapeLib, T):
 	seqs, miniLLrepeat = unroll_loops(seqs)
 	for seq in seqs:
@@ -538,7 +544,7 @@ def unroll_loops(LLs):
 		instructions.append(seq)
 	return instructions, 0
 
-def write_APS_file(awgData, fileName, miniLLRepeat=1):
+def write_sequence_file(awgData, fileName, miniLLRepeat=1):
 	'''
 	Main function to pack channel LLs into an APS h5 file.
 	'''
@@ -599,7 +605,7 @@ def write_APS_file(awgData, fileName, miniLLRepeat=1):
 			else:
 				chanGroup.attrs['isLinkListData'] = np.uint8(0)
 
-def read_APS_file(fileName):
+def read_sequence_file(fileName):
 	'''
 	Helper function to read back in data from a H5 file and reconstruct the sequence
 	'''
