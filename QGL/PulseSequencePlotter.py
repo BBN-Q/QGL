@@ -28,7 +28,8 @@ import bokeh.plotting as bk
 from bokeh.embed import notebook_div
 from Plotting import in_ipynb
 
-from IPython.html import widgets
+# from IPython.html import widgets
+import ipywidgets
 from IPython.display import display
 
 import numpy as np
@@ -112,15 +113,15 @@ def plot_pulse_files(fileNames, firstSeqNum=0):
                 source.data[k] = wfs[AWGName][chName][seqNum-1] + 2*ct
             source.push_notebook()
 
-        #widgets.interact(update_plot, seqNum=(1, len(wfs[AWGName]["ch1"])), div=widgets.HTMLWidget(value=notebook_div(figH)))
+        #ipywidgets.interact(update_plot, seqNum=(1, len(wfs[AWGName]["ch1"])), div=ipywidgets.HTMLWidget(value=notebook_div(figH)))
         if 'ch1' in wfs[AWGName].keys():
             chkey = "ch1"
         else:
             chkey = "ch3"
-        slider = widgets.IntSlider(value=firstSeqNum+1, min=1, max=len(wfs[AWGName][chkey]), step=1, description="Sequence (of {}):".format(len(seqs)))
+        slider = ipywidgets.IntSlider(value=firstSeqNum+1, min=1, max=len(wfs[AWGName][chkey]), step=1, description="Sequence (of {}):".format(len(seqs)))
         slider.on_trait_change(update_plot, 'value')
-        plotBox = widgets.HTML(value=notebook_div(figH))
-        appBox = widgets.Box()
+        plotBox = ipywidgets.HTML(value=notebook_div(figH))
+        appBox = ipywidgets.Box()
         appBox.children = [slider, plotBox]
         display(appBox)
 
