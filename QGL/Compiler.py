@@ -194,20 +194,25 @@ def channel_delay_map(physicalWires):
     return PatternUtils.normalize_delays(chanDelays)
 
 def setup_awg_channels(physicalChannels):
-    awgs = set([])
+    translators = {}
     for chan in physicalChannels:
-        awgs.add(chan.AWG)
+        translators[chan.AWG] = getattr(drivers, chan.translator)
 
-    data = {awg : drivers[awg].get_empty_channel_set() for awg in awgs}
-    for awgdata in data.values():
-        for chan in awgdata.keys():
-            awgdata[chan] = {'linkList': [], 'wfLib': {}, 'correctionT': np.identity(2)}
+    data = {awg : translator.get_empty_channel_set() for awg, translator in translators.items()}
+    for name, awg in data.items():
+        for chan in awg.keys():
+            awg[chan] = {
+                'linkList': [],
+                'wfLib': {},
+                'correctionT': np.identity(2)
+            }
+        data[name]['translator'] = translators[name]
+        data[name]['seqFileExt'] = translators[name].get_seq_file_extension()
     return data
 
 def bundle_wires(physWires, wfs):
     awgData = setup_awg_channels(physWires.keys())
     for chan in physWires.keys():
-        awgData[chan.AWG]['translator'] = chan.translator
         _, awgChan = chan.label.split('-')
         awgChan = 'ch' + awgChan
         awgData[chan.AWG][awgChan]['linkList'] = physWires[chan]
@@ -283,10 +288,8 @@ def compile_to_hardware(seqs, fileName, suffix=''):
         targetFolder = os.path.split(os.path.normpath(os.path.join(config.AWGDir, fileName)))[0]
         if not os.path.exists(targetFolder):
             os.mkdir(targetFolder)
-        fullFileName = os.path.normpath(os.path.join(config.AWGDir, fileName + '-' + awgName + suffix + instrumentLib[awgName].seqFileExt))
-        # translator = sys.modules['drivers.' + data['translator']]
-        translator = getattr(drivers, data['translator'])
-        translator.write_sequence_file(data, fullFileName)
+        fullFileName = os.path.normpath(os.path.join(config.AWGDir, fileName + '-' + awgName + suffix + data['seqFileExt']))
+        data['translator'].write_sequence_file(data, fullFileName)
 
         fileList.append(fullFileName)
 
