@@ -11,24 +11,23 @@ See example usage in this [Jupyter notebook](https://github.com/BBN-Q/PyQLab/blo
 
 The most straightforward way to get up and running is to use the [Anaconda
 Python distribution](http://continuum.io/downloads). This includes nearly all
-the dependencies. The few remaining can be installed from the terminal or
-Anaconda Command Prompt on Windows
+the dependencies. The one remaining dependency can be installed from the
+terminal or Anaconda Command Prompt on Windows
 
 ```bash
-git clone https://github.com/BBN-Q/JSONLibraryMigrators
 pip install watchdog
 ```
 
 Use of the `QGL` module requires modification of your `PYTHONPATH`. On windows machines, you add/modify this environment variable by going to System -> Advanced Settings -> Environment variables. On Mac/Linux machines add the following line to your .bashrc or .bash_profile:
 ```
-export PYTHONPATH=/path/to/QGL:/path/to/JSONLibraryMigrators:$PYTHONPATH
+export PYTHONPATH=/path/to/QGL:$PYTHONPATH
 ```
 
 The QGL config file will be created the first time you run `import QGL` or `from QGL import *`.
 
 ## Dependencies
 * Python 2.7
-* JSONLibraryMigrators (https://github.com/BBN-Q/JSONLibraryMigrators)
+* JSONLibraryMigrators (https://github.com/BBN-Q/JSONLibraryMigrators, integrated as a Git submodule)
 * Numpy/Scipy
 * Nucleic atom
 * h5py
