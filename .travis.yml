@@ -7,9 +7,12 @@ python:
 
 # Setup anaconda
 before_install:
+  - mkdir -p download
+  - cd download
   - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
   - chmod +x miniconda.sh
   - ./miniconda.sh -b
+  - cd ..
   - export PATH=/home/travis/miniconda2/bin:$PATH
   - conda update --yes conda
   - travis_retry conda install --yes python=$TRAVIS_PYTHON_VERSION numpy bokeh enaml atom matplotlib h5py jupyter scipy networkx
@@ -30,3 +33,8 @@ after_script:
 
 # necessary to run on new container-based infrastructure
 sudo: false
+
+cache:
+  directories:
+    - $HOME/download
+    - $HOME/.cache/pip
