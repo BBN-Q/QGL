@@ -1,6 +1,6 @@
 # Quantum Gate Language
 
-[![Build Status](https://travis-ci.org/BBN-Q/QGL.svg?branch=develop)](https://travis-ci.org/BBN-Q/QGL) [![Coverage Status](https://coveralls.io/repos/BBN-Q/QGL/badge.svg?branch=develop)](https://coveralls.io/r/BBN-Q/QGL)
+[![Build Status](https://travis-ci.org/BBN-Q/QGL.svg?branch=master)](https://travis-ci.org/BBN-Q/QGL) [![Coverage Status](https://coveralls.io/repos/BBN-Q/QGL/badge.svg?branch=master)](https://coveralls.io/r/BBN-Q/QGL)
 
 Quantum Gate Language (QGL) is a domain specific language embedded in python for
 specifying pulse sequences.
