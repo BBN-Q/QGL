@@ -1,3 +1,4 @@
 *.pyc
 *.awg
 *.json
+tests/test_data
