@@ -74,7 +74,7 @@ class PhysicalChannel(Channel):
     AWG = Unicode()
     translator = Unicode()
     generator = Unicode()
-    samplingRate = Float(default=1e9)
+    samplingRate = Float(default=1.2e9)
     delay = Float()
 
 class LogicalChannel(Channel):
