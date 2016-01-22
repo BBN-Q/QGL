@@ -25,8 +25,8 @@ import numpy as np
 
 from math import tan,cos,pi
 
-from atom.api import Atom, Str, Unicode, Float, Instance, Property, cached_property, \
-                        Dict, Enum, Bool, Typed, observe, Int
+from atom.api import Atom, Str, Unicode, Float, Instance, \
+    Dict, Enum, Bool, Typed, Int
 
 from copy import deepcopy
 
@@ -46,12 +46,7 @@ class Channel(Atom):
     def json_encode(self):
         jsonDict = self.__getstate__()
 
-        #Strip out pass-through properties
-        for k,m in self.members().items():
-            if isinstance(m, Property):
-                del jsonDict[k]
-
-        #Turn objects into unicode labels
+        #Turn objects into labels
         for member in ["physChan", "gateChan", "trigChan", "source", "target"]:
             if member in jsonDict:
                 obj = jsonDict.pop(member)
@@ -71,9 +66,9 @@ class PhysicalChannel(Channel):
     '''
     The main class for actual AWG channels.
     '''
-    AWG = Unicode()
-    translator = Unicode()
-    generator = Unicode()
+    AWG = Str()
+    translator = Str()
+    generator = Str()
     samplingRate = Float(default=1.2e9)
     delay = Float()
 
@@ -83,7 +78,7 @@ class LogicalChannel(Channel):
     At some point it needs to be assigned to a physical channel.
     '''
     #During initilization we may just have a string reference to the channel
-    physChan = Instance((unicode,PhysicalChannel))
+    physChan = Instance((str,PhysicalChannel))
 
     def __init__(self, **kwargs):
         super(LogicalChannel, self).__init__(**kwargs)
@@ -107,14 +102,9 @@ class PhysicalQuadratureChannel(PhysicalChannel):
     ampFactor = Float(1.0)
     phaseSkew = Float(0.0)
 
-    @cached_property
+    @property
     def correctionT(self):
         return np.array([[self.ampFactor, self.ampFactor*tan(self.phaseSkew*pi/180)], [0, 1/cos(self.phaseSkew*pi/180)]])
-
-    @observe('ampFactor', 'phaseSkew')
-    def _reset_correctionT(self, change):
-        if change['type'] == 'update':
-            self.get_member('correctionT').reset(self)
 
 class LogicalMarkerChannel(LogicalChannel):
     '''
@@ -127,7 +117,7 @@ class Qubit(LogicalChannel):
     The main class for generating qubit pulses.  Effectively a logical "QuadratureChannel".
     '''
     pulseParams = Dict(default={'length':20e-9, 'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.gaussian, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9})
-    gateChan = Instance((unicode, LogicalMarkerChannel))
+    gateChan = Instance((str, LogicalMarkerChannel))
     frequency = Float(0.0).tag(desc='modulation frequency of the channel (can be positive or negative)')
 
     def __init__(self, **kwargs):
@@ -145,8 +135,8 @@ class Measurement(LogicalChannel):
     autodyneFreq = Float(0.0).tag(desc='use to bake the modulation into the pulse, so that it has constant phase')
     frequency = Float(0.0).tag(desc='use frequency to asssociate modulation with the channel')
     pulseParams = Dict(default={'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'cutoff':2, 'sigma':1e-9})
-    gateChan = Instance((unicode, LogicalMarkerChannel))
-    trigChan = Instance((unicode, LogicalMarkerChannel))
+    gateChan = Instance((str, LogicalMarkerChannel))
+    trigChan = Instance((str, LogicalMarkerChannel))
 
     def __init__(self, **kwargs):
         super(Measurement, self).__init__(**kwargs)
@@ -163,11 +153,11 @@ class Edge(LogicalChannel):
     An Edge is also effectively an abstract channel, so it carries the same properties as a
     Qubit channel.
     '''
-    # allow unicode in source and target so that we can store a label or an object
-    source = Instance((unicode, Qubit))
-    target = Instance((unicode, Qubit))
+    # allow string in source and target so that we can store a label or an object
+    source = Instance((str, Qubit))
+    target = Instance((str, Qubit))
     pulseParams = Dict(default={'length':20e-9, 'amp':1.0, 'phase':0.0, 'shapeFun':PulseShapes.gaussian, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9, 'riseFall': 20e-9})
-    gateChan = Instance((unicode, LogicalMarkerChannel))
+    gateChan = Instance((str, LogicalMarkerChannel))
     frequency = Float(0.0).tag(desc='modulation frequency of the channel (can be positive or negative)')
 
     def __init__(self, **kwargs):

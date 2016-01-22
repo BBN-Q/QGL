@@ -252,4 +252,5 @@ def EdgeFactory(source, target):
         raise ValueError('Edge {0} not found in connectivity graph'.format((source, target)))
 
 # global channel library
-channelLib = ChannelLibrary(libFile=config.channelLibFile)
+# channelLib = ChannelLibrary(libFile=config.channelLibFile)
+channelLib = ChannelLibrary()
