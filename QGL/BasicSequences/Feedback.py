@@ -18,29 +18,29 @@ def Reset(qubits, measDelay = 1e-6, signVec = None, doubleRound = True, buf = 30
 	signVec : conditions for feedback. List of 0 (flip if signal is above threshold) and 1 (flip if below) for each qubit. Default = 0 for all qubits
 	doubleRound : if true, double round of feedback
 	showPlot : whether to plot (boolean)
-    measChans : tuble of qubits to be measured (LogicalChannel)
-    docals, calRepeats: enable calibration sequences, repeated calRepeats times
+	measChans : tuble of qubits to be measured (LogicalChannel)
+	docals, calRepeats: enable calibration sequences, repeated calRepeats times
 
 	Returns
 	-------
 	plotHandle : handle to plot window to prevent destruction
 	"""
 	if measChans is None:
-		measChans = qubits 
+		measChans = qubits
 
 	if signVec == None:
- 		signVec = [0]*len(qubits)
-        
-	states = create_cal_seqs(qubits,1,measChans=measChans)
- 	FbSet = [Id, X]
- 	FbSet2 = [X, Id]
- 	FbGates = []
+		signVec = [0]*len(qubits)
 
- 	for count in range(len(qubits)):
- 		FbGates += [FbSet] if signVec[count]==0 else [FbSet2]    
- 	FbSeq = [reduce(operator.mul, [p(q) for p,q in zip(pulseSet, qubits)]) for pulseSet in product(*FbGates)]
-	seqs = [state + [MEAS(*measChans), Id(qubits[0],measDelay), qwait('CMP'), Id(qubits[0],buf)] + [branch for b in [qif(fbcount,[FbSeq[count]]) for fbcount in range(len(states))] for branch in b] + [MEAS(*measChans)] for count, state in enumerate(states)] 
-    
+	states = create_cal_seqs(qubits,1,measChans=measChans)
+	FbSet = [Id, X]
+	FbSet2 = [X, Id]
+	FbGates = []
+
+	for count in range(len(qubits)):
+		FbGates += [FbSet] if signVec[count]==0 else [FbSet2]
+	FbSeq = [reduce(operator.mul, [p(q) for p,q in zip(pulseSet, qubits)]) for pulseSet in product(*FbGates)]
+	seqs = [state + [MEAS(*measChans), Id(qubits[0],measDelay), qwait('CMP'), Id(qubits[0],buf)] + [branch for b in [qif(fbcount,[FbSeq[count]]) for fbcount in range(len(states))] for branch in b] + [MEAS(*measChans)] for count, state in enumerate(states)]
+
 	if doubleRound:
 		seqs = [seq + [Id(qubits[0],measDelay), qwait('CMP'), Id(qubits[0],buf)] + [branch for b in [qif(fbcount,[FbSeq[count]]) for fbcount in range(2**len(qubits))] for branch in b] + [MEAS(*measChans)] for seq in seqs]
 	print(seqs[0])
