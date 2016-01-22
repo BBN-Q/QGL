@@ -26,7 +26,7 @@ limitations under the License.
 import os.path
 import bokeh.plotting as bk
 from bokeh.embed import notebook_div
-from Plotting import in_ipynb
+from .Plotting import in_ipynb
 
 # from IPython.html import widgets
 import ipywidgets
@@ -36,7 +36,7 @@ import numpy as np
 
 import uuid, tempfile
 
-import config
+from . import config
 
 def all_zero_seqs(seqs):
     return all([np.all(seq == 0) for seq in seqs])

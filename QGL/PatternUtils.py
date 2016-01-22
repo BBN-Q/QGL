@@ -15,9 +15,11 @@ limitations under the License.
 '''
 import numpy as np
 from warnings import warn
-from PulseSequencer import Pulse, TAPulse, PulseBlock
-from PulsePrimitives import BLANK
-import ControlFlow, BlockLabel, Compiler
+from .PulseSequencer import Pulse, TAPulse, PulseBlock
+from .PulsePrimitives import BLANK
+from . import ControlFlow
+from . import BlockLabel
+import QGL.Compiler
 from math import pi
 import hashlib, collections
 
@@ -155,7 +157,7 @@ def add_digitizer_trigger(seqs):
     for seq in seqs:
         for ct in range(len(seq)):
             if contains_measurement(seq[ct]):
-                #find corresponding digitizer trigger 
+                #find corresponding digitizer trigger
                 chanlist = seq[ct].channel
                 if not isinstance(seq[ct], PulseBlock):
                     chanlist = [chanlist]
@@ -193,7 +195,7 @@ def propagate_frame_changes(seq):
     '''
     frame = 0
     for entry in seq:
-        if not isinstance(entry, Compiler.Waveform):
+        if not isinstance(entry, QGL.Compiler.Waveform):
             continue
         entry.phase = np.mod(frame + entry.phase, 2*pi)
         frame += entry.frameChange + (-2*np.pi * entry.frequency * entry.length) #minus from negative frequency qubits
@@ -204,7 +206,7 @@ def quantize_phase(seqs, precision):
     Quantizes waveform phases with given precision (in radians).
     '''
     for entry in flatten(seqs):
-        if not isinstance(entry, Compiler.Waveform):
+        if not isinstance(entry, QGL.Compiler.Waveform):
             continue
         phase = np.mod(entry.phase, 2*np.pi)
         entry.phase = precision * round(phase / precision)
@@ -212,7 +214,7 @@ def quantize_phase(seqs, precision):
 
 def convert_lengths_to_samples(instructions, samplingRate, quantization=1):
     for entry in flatten(instructions):
-        if isinstance(entry, Compiler.Waveform):
+        if isinstance(entry, QGL.Compiler.Waveform):
             entry.length = int(round(entry.length * samplingRate))
             # TODO: warn when truncating?
             entry.length -= entry.length % quantization

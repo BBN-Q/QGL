@@ -2,7 +2,7 @@ from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
 from ..Cliffords import clifford_seq, clifford_mat, inverse_clifford
-from helpers import create_cal_seqs
+from .helpers import create_cal_seqs
 
 import os
 from csv import reader

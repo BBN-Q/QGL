@@ -8,7 +8,7 @@ from itertools import product
 from random import choice
 import operator
 
-from PulsePrimitives import *
+from .PulsePrimitives import *
 
 #Single qubit paulis
 pX = np.array([[0, 1],[1, 0]], dtype=np.complex128)

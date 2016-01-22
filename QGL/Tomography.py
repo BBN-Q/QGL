@@ -17,7 +17,7 @@ limitations under the License.
 '''
 from itertools import product
 import operator
-from PulsePrimitives import *
+from .PulsePrimitives import *
 
 def create_tomo_blocks(qubits, numPulses, alignment='parallel'):
 	'''

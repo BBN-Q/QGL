@@ -27,9 +27,9 @@ import importlib
 from atom.api import Atom, Str, Int, Typed
 import networkx as nx
 
-import Channels
+from . import Channels
 from JSONLibraryUtils import LibraryCoders, FileWatcher
-import config
+from . import config
 
 class ChannelLibrary(Atom):
     # channelDict = Dict(Str, Channel)

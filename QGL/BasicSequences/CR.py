@@ -2,7 +2,7 @@ from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
 from ..ChannelLibrary import EdgeFactory
 from ..PulseSequencePlotter import plot_pulse_files
-from helpers import create_cal_seqs
+from .helpers import create_cal_seqs
 
 def PiRabi(controlQ, targetQ, lengths, riseFall=40e-9, amp=1, phase=0, calRepeats=2, showPlot=False):
 	"""

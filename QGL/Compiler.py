@@ -17,21 +17,20 @@ limitations under the License.
 '''
 import numpy as np
 import os
-# import sys
 import operator
 from warnings import warn
 from copy import copy
 
-import config
-import PatternUtils
-from PatternUtils import flatten
-import Channels
-import ChannelLibrary
-from PulsePrimitives import Id
-import PulseSequencer
-import ControlFlow
-import BlockLabel
-import drivers
+from . import config
+from . import PatternUtils
+from .PatternUtils import flatten
+from . import Channels
+from . import ChannelLibrary
+from .PulsePrimitives import Id
+from . import PulseSequencer
+from . import ControlFlow
+from . import BlockLabel
+from . import drivers
 
 def map_logical_to_physical(wires):
     # construct a mapping of physical channels to lists of logical channels

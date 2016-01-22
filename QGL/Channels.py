@@ -20,7 +20,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 '''
 
-import PulseShapes
+from . import PulseShapes
 import numpy as np
 
 from math import tan,cos,pi

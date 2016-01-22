@@ -13,14 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 '''
-import PulseShapes
-import Channels
-import ChannelLibrary
+from . import PulseShapes
+from . import Channels
+from . import ChannelLibrary
 import operator
 
 from math import pi, sin, cos, acos, sqrt
 import numpy as np
-from PulseSequencer import Pulse, TAPulse
+from .PulseSequencer import Pulse, TAPulse
 from functools import wraps
 
 def overrideDefaults(chan, updateParams):

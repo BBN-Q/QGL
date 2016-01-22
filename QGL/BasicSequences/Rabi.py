@@ -2,7 +2,7 @@ from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
 import QGL.PulseShapes
-from helpers import create_cal_seqs
+from .helpers import create_cal_seqs
 
 
 def RabiAmp(qubit, amps, phase=0, showPlot=False):

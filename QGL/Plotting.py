@@ -24,7 +24,7 @@ import os.path, uuid, tempfile
 import bokeh.plotting as bk
 import numpy as np
 
-import config
+from . import config
 
 #Effective global of whether we are interactive plottinn in a notebook or to a
 #static html file
@@ -50,7 +50,8 @@ def in_ipynb():
 # output_file()
 
 def build_waveforms(seq):
-    import PulseSequencer, Compiler #import here to avoid circular imports
+    # import here to avoid circular imports
+    from . import Compiler, PulseSequencer
     wires = Compiler.compile_sequence(seq)
 
     # build a concatenated waveform for each channel

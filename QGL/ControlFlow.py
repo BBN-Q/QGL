@@ -1,7 +1,7 @@
-from BlockLabel import newlabel, label, endlabel
-from PulseSequencer import Pulse
+from .BlockLabel import newlabel, label, endlabel
+from .PulseSequencer import Pulse
 from functools import wraps
-from mm import multimethod
+from .mm import multimethod
 
 ## QGL control-flow statements ##
 

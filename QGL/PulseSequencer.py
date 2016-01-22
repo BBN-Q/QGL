@@ -19,8 +19,9 @@ limitations under the License.
 from copy import copy
 import json
 import numpy as np
+import operator
 
-import ChannelLibrary, PulseShapes, operator
+from . import ChannelLibrary, PulseShapes
 
 class Pulse(object):
     '''
