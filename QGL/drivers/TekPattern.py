@@ -147,7 +147,7 @@ def write_waveform(FID, WFname, WFnumber, data):
     FID.write(data.tostring())
 
 
-def write_sequence_file(awgData, fileName, seqName, options=None):
+def write_sequence_file(awgData, fileName, seqName=1, options=None):
     '''
     Main function for writing a AWG format file.
     awgData is a nested dict with the following structure:
