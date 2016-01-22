@@ -41,13 +41,13 @@ class SequenceTestCases(object):
 
     def compile(self):
         # compiles all available sequences
-        for name,seq in self.sequences.iteritems():
+        for name,seq in self.sequences.items():
             self.waveforms[name] = build_waveforms(seq)
 
     def show(self):
         # display all sequences for human verification
         # of correctness
-        for name, waveform in self.waveforms.iteritems():
+        for name, waveform in self.waveforms.items():
             plot_waveforms(waveform, name + ': ')
             # give bokeh time to generate the plot
             time.sleep(1)
@@ -59,7 +59,7 @@ class SequenceTestCases(object):
     def write(self):
         # writes each sequence to a file in the test data directory a file header
         # which may be overridden in the subclasses
-        for name, waveform in self.waveforms.iteritems():
+        for name, waveform in self.waveforms.items():
             fileName = self.build_filename(name)
             #Open the HDF5 file
             if os.path.isfile(fileName):
@@ -82,10 +82,10 @@ class SequenceTestCases(object):
             validWaveform = {}
             fileName = self.build_filename(caseName)
             if not os.path.isfile(fileName):
-                print 'Warning: valid waveform file for {0} not found at: {1}'.format(caseName,fileName)
+                print('Warning: valid waveform file for {0} not found at: {1}'.format(caseName,fileName))
                 continue
             with h5py.File(fileName, 'r') as FID:
-                for name, waveform in FID['/channels'].iteritems():
+                for name, waveform in FID['/channels'].items():
                     validWaveform[name] = waveform[:]
             self.validWaveforms[caseName] = validWaveform
 
@@ -98,11 +98,11 @@ class SequenceTestCases(object):
 
         assert(caseName in self.validWaveforms)
         validWaveform = self.validWaveforms[caseName]
-        for channelName, waveform in self.waveforms[caseName].iteritems():
-            print 'Validating {0} Case {1} Channel {2}'.format(
+        for channelName, waveform in self.waveforms[caseName].items():
+            print('Validating {0} Case {1} Channel {2}'.format(
                 self.__class__.__name__,
                 caseName,
-                repr(channelName))
+                repr(channelName)))
             assert(repr(channelName) in validWaveform)
             np.testing.assert_allclose(waveform, validWaveform[repr(channelName)], rtol=1e-5, atol=0)
 

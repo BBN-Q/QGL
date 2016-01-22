@@ -20,6 +20,7 @@ import os
 import operator
 from warnings import warn
 from copy import copy
+from functools import reduce
 
 from . import config
 from . import PatternUtils
@@ -62,7 +63,7 @@ def merge_channels(wires, channels):
         entryIterators = [iter(wires[ch][ct]) for ch in channels]
         while True:
             try:
-                entries = [e.next() for e in entryIterators]
+                entries = [next(e) for e in entryIterators]
                 # control flow on any channel should pass thru
                 if any(isinstance(e, (ControlFlow.ControlInstruction, BlockLabel.BlockLabel)) for e in entries):
                     # for the moment require uniform control flow so that we
@@ -133,7 +134,7 @@ def pull_uniform_entries(entries, entryIterators):
         while entries[ct].length < max(e.length for e in entries):
             # concatenate with following entry to make up the length difference
             try:
-                nextentry = entryIterators[ct].next()
+                nextentry = next(entryIterators[ct])
             except StopIteration:
                 iterDone[ct] = True
 
@@ -177,7 +178,7 @@ def generate_waveforms(physicalWires):
 
 def pulses_to_waveforms(physicalWires):
     wireOuts = {ch : [] for ch in physicalWires.keys()}
-    for ch, seqs in physicalWires.iteritems():
+    for ch, seqs in physicalWires.items():
         for seq in seqs:
             wireOuts[ch].append([])
             for pulse in seq:
@@ -435,7 +436,7 @@ class Waveform(object):
         return not self == other
 
     def __hash__(self):
-        return hash(frozenset(self.__dict__.iteritems()))
+        return hash(frozenset(self.__dict__.items()))
 
     @property
     def isZero(self):

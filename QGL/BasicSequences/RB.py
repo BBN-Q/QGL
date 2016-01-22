@@ -7,6 +7,7 @@ from .helpers import create_cal_seqs
 import os
 from csv import reader
 import numpy as np
+from functools import reduce
 
 def create_RB_seqs(numQubits, lengths, repeats=32, interleaveGate=None):
 	"""

@@ -21,7 +21,7 @@ import operator
 from math import pi, sin, cos, acos, sqrt
 import numpy as np
 from .PulseSequencer import Pulse, TAPulse
-from functools import wraps
+from functools import wraps, reduce
 
 def overrideDefaults(chan, updateParams):
     '''Helper function to update any parameters passed in and fill in the defaults otherwise.'''

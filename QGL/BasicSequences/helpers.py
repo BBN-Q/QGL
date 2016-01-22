@@ -2,6 +2,7 @@ from itertools import product
 import operator
 from ..PulsePrimitives import Id, X, MEAS
 from ..ControlFlow import qwait
+from functools import reduce
 
 def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False):
 	"""

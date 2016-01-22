@@ -7,6 +7,7 @@ from numpy import pi
 from itertools import product
 from random import choice
 import operator
+from functools import reduce
 
 from .PulsePrimitives import *
 
@@ -79,7 +80,7 @@ generatorPulses = [0, 1, 3, 4, 6, 2, 5]
 
 def generator_pulse(G):
 	"""
-	A function that returns the pulse corresponding to a generator 
+	A function that returns the pulse corresponding to a generator
 	Randomly chooses between the -p and -m versions for the 180's
 	"""
 	generatorPulses = {0:(Id,), 1:(X90,), 3:(X90m,), 4:(Y90,), 6:(Y90m,), 2:(X,Xm), 5:(Y,Ym)}
@@ -112,7 +113,7 @@ C2Seqs = []
 The IBM paper has the Sgroup (rotation n*(pi/3) rotations about the X+Y+Z axis)
 Sgroup = [C[0], C[16], C[17]]
 
-The two qubit Cliffords can be written down as the product of 
+The two qubit Cliffords can be written down as the product of
 1. A choice of one of 24^2 C \otimes C single-qubit Cliffords
 2. Optionally an entangling gate from CNOT, iSWAP and SWAP
 3. Optional one of 9 S \otimes S gate
@@ -148,7 +149,7 @@ def Cx2(c1,c2, q1, q2):
 	seq1 = clifford_seq(c1, q1)
 	seq2 = clifford_seq(c2, q2)
 
-	#Create the pulse block 
+	#Create the pulse block
 	return reduce(operator.add, seq1) * reduce(operator.add, seq2)
 
 def entangling_seq(gate, q1, q2):
@@ -227,11 +228,3 @@ def inverse_clifford(cMat):
 
 	#If we got here something is wrong
 	raise Exception("Couldn't find inverse clifford")
-
-
-
-
-
-
-
-

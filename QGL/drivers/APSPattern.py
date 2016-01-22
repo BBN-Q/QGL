@@ -20,7 +20,8 @@ import h5py
 import os
 import numpy as np
 from warnings import warn
-from itertools import chain, izip_longest
+from itertools import chain
+from six.moves import zip_longest
 from QGL import Compiler, ControlFlow, BlockLabel, PatternUtils
 from QGL.PatternUtils import hash_pulse, flatten
 from copy import copy, deepcopy
@@ -385,7 +386,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 	markerAttr = 'markerDelay' + str(markerNum)
 
 	#Step through the all the miniLL's together
-	for miniLL_IQ, miniLL_m in izip_longest(IQLL, markerLL):
+	for miniLL_IQ, miniLL_m in zip_longest(IQLL, markerLL):
 		#Find the switching points of the marker channels
 		switchPts = []
 		prevAmplitude = 0

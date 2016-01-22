@@ -20,6 +20,7 @@ from copy import copy
 import json
 import numpy as np
 import operator
+from functools import reduce
 
 from . import ChannelLibrary, PulseShapes
 
@@ -79,7 +80,7 @@ class Pulse(object):
         return not self == other
 
     def hashshape(self):
-        return hash(frozenset(self.shapeParams.iteritems()))
+        return hash(frozenset(self.shapeParams.items()))
 
     def promote(self):
         # promote a Pulse to a PulseBlock

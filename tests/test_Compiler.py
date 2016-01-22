@@ -57,17 +57,17 @@ class CompileUtils(unittest.TestCase):
         seq = [(X90(q1)+Y90(q1)+X90(q1)) * X(q2)]
         ll = Compiler.compile_sequence(seq)
         entryIterators = [iter(ll[q1]), iter(ll[q2])]
-        entries = [e.next() for e in entryIterators]
+        entries = [next(e) for e in entryIterators]
         blocklen = Compiler.pull_uniform_entries(entries, entryIterators)
         self.assertAlmostEqual(blocklen, 60e-9)
         assert all(e.length == blocklen for e in entries)
-        self.assertRaises(StopIteration, entryIterators[0].next)
+        self.assertRaises(StopIteration, entryIterators[0].__next__)
 
         q2.pulseParams['length'] = 40e-9
         seq = [(X90(q1) + Z90(q1) + X90(q1)) * Y(q2)]
         ll = Compiler.compile_sequence(seq)
         entryIterators = [iter(ll[q1]), iter(ll[q2])]
-        entries = [e.next() for e in entryIterators]
+        entries = [next(e) for e in entryIterators]
         blocklen = Compiler.pull_uniform_entries(entries, entryIterators)
         self.assertAlmostEqual(blocklen, 40e-9)
         assert all(e.length == blocklen for e in entries)
@@ -80,7 +80,7 @@ class CompileUtils(unittest.TestCase):
         seq = [(X90(q1) + Y90(q1) + X(q1) + Y(q1)) * (Y(q2) + X(q2) + Y(q2))]
         ll = Compiler.compile_sequence(seq)
         entryIterators = [iter(ll[q1]), iter(ll[q2])]
-        entries = [e.next() for e in entryIterators]
+        entries = [next(e) for e in entryIterators]
         blocklen = Compiler.pull_uniform_entries(entries, entryIterators)
         self.assertAlmostEqual(blocklen, 120e-9)
         self.assertTrue( all(e.length == blocklen for e in entries) )

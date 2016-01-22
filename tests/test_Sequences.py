@@ -24,7 +24,7 @@ class AWGTestHelper(object):
 		self.tolerance = tolerance
 
 	def finalize_map(self, mapping):
-		for name,value in mapping.iteritems():
+		for name,value in mapping.items():
 			self.channels[name].physChan = self.channels[value]
 
 		ChannelLibrary.channelLib = ChannelLibrary.ChannelLibrary()
@@ -96,7 +96,7 @@ class AWGTestHelper(object):
 
 	def compare_sequences(self, seqDir):
 		if not self.read_function:
-			print "AWGTestHelper.read_function is not defined"
+			print("AWGTestHelper.read_function is not defined")
 			return
 
 		searchDirectory = self.awg_dir + os.path.sep + seqDir

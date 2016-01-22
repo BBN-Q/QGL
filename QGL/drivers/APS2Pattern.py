@@ -300,7 +300,7 @@ def synchronize_clocks(seqs):
 	# Control-flow instructions (CFIs) must occur at the same time on all channels.
 	# Therefore, we need to "reset the clock" by synchronizing the accumulated
 	# time at each CFI to the largest value on any channel
-	syncInstructions = [filter(lambda s: isinstance(s, ControlFlow.ControlInstruction), seq) for seq in seqs if seq]
+	syncInstructions = [list(filter(lambda s: isinstance(s, ControlFlow.ControlInstruction), seq)) for seq in seqs if seq]
 
 	# Add length to control-flow instructions to make accumulated time match at end of CFI.
 	# Keep running tally of how much each channel has been shifted so far.
@@ -347,11 +347,11 @@ def create_seq_instructions(seqs, offsets):
 	except StopIteration:
 		print("No non-empty sequences to create!")
 		raise
-	controlInstrs = filter(lambda s: isinstance(s, (ControlFlow.ControlInstruction, BlockLabel.BlockLabel)),
-		                   seqs[ct])
+	controlInstrs = list(filter(lambda s: isinstance(s, (ControlFlow.ControlInstruction, BlockLabel.BlockLabel)),
+		                        seqs[ct]))
 	for ct in range(len(seqs)):
 		if seqs[ct]:
-			seqs[ct] = filter(lambda s: isinstance(s, Compiler.Waveform), seqs[ct])
+			seqs[ct] = list(filter(lambda s: isinstance(s, Compiler.Waveform), seqs[ct]))
 
 	seqs.insert(0, controlInstrs)
 
