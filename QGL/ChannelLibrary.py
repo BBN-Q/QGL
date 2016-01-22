@@ -184,14 +184,14 @@ class ChannelLibrary(Atom):
                 setattr(self.channelDict[chName], paramName, chParams[paramName])
 
     def on_awg_change(self, oldName, newName):
-        print "Change AWG", oldName, newName
+        print("Change AWG", oldName, newName)
         for chName in self.channelDict:
             if (isinstance(self.channelDict[chName], PhysicalMarkerChannel) or
                isinstance(self.channelDict[chName], PhysicalQuadratureChannel)):
                 awgName, awgChannel = chName.rsplit('-',1)
                 if awgName == oldName:
                     newLabel = "{0}-{1}".format(newName,awgChannel)
-                    print "Changing {0} to {1}".format(chName, newLabel)
+                    print("Changing {0} to {1}".format(chName, newLabel))
                     self.physicalChannelManager.name_changed(chName, newLabel)
 
 class ChannelDecoder(json.JSONDecoder):

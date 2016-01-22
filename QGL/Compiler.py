@@ -255,7 +255,7 @@ def compile_to_hardware(seqs, fileName, suffix=''):
     wireSeqs = compile_sequences(seqs, channels)
 
     if not validate_linklist_channels(wireSeqs.keys()):
-        print "Compile to hardware failed"
+        print("Compile to hardware failed")
         return
 
     # apply gating constraints
@@ -471,7 +471,7 @@ def validate_linklist_channels(linklistChannels):
     channels = ChannelLibrary.channelLib.channelDict
     for channel in linklistChannels:
         if channel.label not in channels.keys() and channel.label not in errors:
-            print "{0} not found in channel library".format(repr(channel))
+            print("{0} not found in channel library".format(repr(channel)))
             errors.append(channel.label)
 
     if errors != []:

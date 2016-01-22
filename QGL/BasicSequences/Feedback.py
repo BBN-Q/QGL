@@ -43,7 +43,7 @@ def Reset(qubits, measDelay = 1e-6, signVec = None, doubleRound = True, buf = 30
     
 	if doubleRound:
 		seqs = [seq + [Id(qubits[0],measDelay), qwait('CMP'), Id(qubits[0],buf)] + [branch for b in [qif(fbcount,[FbSeq[count]]) for fbcount in range(2**len(qubits))] for branch in b] + [MEAS(*measChans)] for seq in seqs]
-	print seqs[0]
+	print(seqs[0])
 	if docals:
 		seqs += create_cal_seqs(qubits, calRepeats, measChans=measChans)
 
