@@ -61,7 +61,7 @@ class CompileUtils(unittest.TestCase):
         blocklen = Compiler.pull_uniform_entries(entries, entryIterators)
         self.assertAlmostEqual(blocklen, 60e-9)
         assert all(e.length == blocklen for e in entries)
-        self.assertRaises(StopIteration, entryIterators[0].__next__)
+        self.assertRaises(StopIteration, next, entryIterators[0])
 
         q2.pulseParams['length'] = 40e-9
         seq = [(X90(q1) + Z90(q1) + X90(q1)) * Y(q2)]
