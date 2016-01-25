@@ -158,11 +158,10 @@ class ChannelLibrary(Atom):
 
                 self.build_connectivity_graph()
 
-    def update_from_json(self,chName, chParams):
-        # ignored or specially handled parameters
-        ignoreList = ['pulseParams', 'physChan', 'gateChan', 'trigChan', 'source', 'target', 'AWG', 'generator', 'x__class__', 'x__module__']
+    def update_from_json(self, chName, chParams):
+        # connect objects labeled by strings
         if 'pulseParams' in chParams.keys():
-            paramDict = {k.encode('ascii'):v for k,v in chParams['pulseParams'].items()}
+            paramDict = {str(k):v for k,v in chParams['pulseParams'].items()}
             shapeFunName = paramDict.pop('shapeFun', None)
             if shapeFunName:
                 paramDict['shapeFun'] = getattr(PulseShapes, shapeFunName)
@@ -179,6 +178,8 @@ class ChannelLibrary(Atom):
             self.channelDict[chName].target = self.channelDict[chParams['target']] if chParams['target'] in self.channelDict else None
         # TODO: how do we follow changes to selected AWG or generator?
 
+        # ignored or specially handled parameters
+        ignoreList = ['pulseParams', 'physChan', 'gateChan', 'trigChan', 'source', 'target', 'AWG', 'generator', 'x__class__', 'x__module__']
         for paramName in chParams:
             if paramName not in ignoreList:
                 setattr(self.channelDict[chName], paramName, chParams[paramName])
@@ -186,8 +187,7 @@ class ChannelLibrary(Atom):
     def on_awg_change(self, oldName, newName):
         print("Change AWG", oldName, newName)
         for chName in self.channelDict:
-            if (isinstance(self.channelDict[chName], PhysicalMarkerChannel) or
-               isinstance(self.channelDict[chName], PhysicalQuadratureChannel)):
+            if isinstance(self.channelDict[chName], (PhysicalMarkerChannel, PhysicalQuadratureChannel)):
                 awgName, awgChannel = chName.rsplit('-',1)
                 if awgName == oldName:
                     newLabel = "{0}-{1}".format(newName,awgChannel)
@@ -213,7 +213,7 @@ class ChannelDecoder(json.JSONDecoder):
             __import__(moduleName)
 
             #Re-encode the strings as ascii (this should go away in Python 3)
-            jsonDict = {k.encode('ascii'):v for k,v in jsonDict.items()}
+            jsonDict = {str(k):v for k,v in jsonDict.items()}
 
 			# instantiate the object
             inst = getattr(sys.modules[moduleName], className)(**jsonDict)
@@ -221,7 +221,7 @@ class ChannelDecoder(json.JSONDecoder):
             return inst
         else:
             #Re-encode the strings as ascii (this should go away in Python 3)
-            jsonDict = {k.encode('ascii'):v for k,v in jsonDict.items()}
+            jsonDict = {str(k):v for k,v in jsonDict.items()}
             shapeFun = jsonDict.pop('shapeFun',None)
             if shapeFun:
                 jsonDict['shapeFun'] = getattr(QGL.PulseShapes, shapeFun)
@@ -252,5 +252,4 @@ def EdgeFactory(source, target):
         raise ValueError('Edge {0} not found in connectivity graph'.format((source, target)))
 
 # global channel library
-# channelLib = ChannelLibrary(libFile=config.channelLibFile)
-channelLib = ChannelLibrary()
+channelLib = ChannelLibrary(libFile=config.channelLibFile)

@@ -24,8 +24,10 @@ from . import PulseShapes
 import numpy as np
 
 from math import tan,cos,pi
+# Python 2/3 compatibility: use the py3 meaning of 'str'
+from builtins import str
 
-from atom.api import Atom, Str, Unicode, Float, Instance, \
+from atom.api import Atom, Str, Float, Instance, \
     Dict, Enum, Bool, Typed, Int
 
 from copy import deepcopy
