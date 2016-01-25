@@ -15,6 +15,7 @@ the dependencies. The one remaining dependency can be installed from the
 terminal or Anaconda Command Prompt on Windows
 
 ```bash
+conda install atom future
 pip install watchdog
 ```
 

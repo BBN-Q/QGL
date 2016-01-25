@@ -24,6 +24,9 @@ from copy import copy
 from QGL import Compiler, ControlFlow, BlockLabel, PatternUtils
 from QGL.PatternUtils import hash_pulse, flatten
 
+# Python 2/3 compatibility: use 'int' that subclasses 'long'
+from builtins import int
+
 #Some constants
 SAMPLING_RATE = 1.2e9
 ADDRESS_UNIT = 4 #everything is done in units of 4 timesteps
@@ -114,7 +117,7 @@ class Instruction(object):
 
 	@classmethod
 	def unflatten(cls, instr):
-		return cls(header = int(long(instr) >> 56) & 0xff, payload = long(instr) & 0xffffffffffffff)
+		return cls(header = (int(instr) >> 56) & 0xff, payload = int(instr) & 0xffffffffffffff)
 
 	def __repr__(self):
 		return self.__str__()
@@ -199,7 +202,7 @@ class Instruction(object):
 		return self.header >> 4
 
 	def flatten(self):
-		return long((self.header << 56) | self.payload)
+		return int((self.header << 56) | self.payload)
 
 def Waveform(addr, count, isTA, write=False, label=None):
 	header = (WFM << 4) | (write & 0x1)
@@ -225,7 +228,7 @@ def Marker(sel, state, count, write=False, label=None):
 
 def Command(cmd, payload, write=False, label=None):
 	header = (cmd << 4)
-	if isinstance(payload, (int, long)):
+	if isinstance(payload, int):
 		instr = Instruction(header, payload, label)
 	else:
 		instr = Instruction(header, 0, label, target=payload)
