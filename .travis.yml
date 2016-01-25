@@ -15,7 +15,7 @@ before_install:
   - cd ..
   - export PATH=/home/travis/miniconda2/bin:$PATH
   - conda update --yes conda
-  - travis_retry conda install --yes python=$TRAVIS_PYTHON_VERSION numpy bokeh enaml atom matplotlib h5py jupyter scipy networkx
+  - travis_retry conda install --yes python=$TRAVIS_PYTHON_VERSION numpy bokeh enaml atom matplotlib h5py jupyter scipy networkx future
   - pip install coveralls
   - wget "https://drive.google.com/uc?export=download&id=0BxaPKTZqyVchaXc1V3hlejRaY2M" -O test_data.tar.gz
   - tar xzvf test_data.tar.gz -C tests/
