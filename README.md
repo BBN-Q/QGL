@@ -27,11 +27,11 @@ export PYTHONPATH=/path/to/QGL:$PYTHONPATH
 The QGL config file will be created the first time you run `import QGL` or `from QGL import *`.
 
 ## Dependencies
-* Python 2.7
+* Python 2.7 or 3.4+
 * JSONLibraryMigrators (https://github.com/BBN-Q/JSONLibraryMigrators, integrated as a Git submodule)
 * Numpy/Scipy
-* Nucleic atom
+* Nucleic atom (1.0 branch for Python 3)
 * h5py
 * watchdog
-* Bokeh 0.7
-* iPython 3.0 (only for Jupyter notebooks)
+* Bokeh 0.11
+* iPython/Jupyter 4.0 (only for Jupyter notebooks)
