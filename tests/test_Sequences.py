@@ -222,33 +222,33 @@ class TestSequences(object):
 
 	def test_Decoupling_HannEcho(self):
 		self.set_awg_dir()
-	 	HahnEcho(self.q1, np.linspace(0, 5e-6, 11))
-	 	self.compare_sequences('Echo')
+		HahnEcho(self.q1, np.linspace(0, 5e-6, 11))
+		self.compare_sequences('Echo')
 
 	def test_Decoupling_CPMG(self):
 		self.set_awg_dir()
 		CPMG(self.q1, 2*np.arange(4), 500e-9)
-	 	self.compare_sequences('CPMG')
+		self.compare_sequences('CPMG')
 
 	def test_FlipFlop(self):
 		self.set_awg_dir()
-	  	FlipFlop(self.q1, np.linspace(0, 5e-6, 11))
-	  	self.compare_sequences('FlipFlop')
+		FlipFlop(self.q1, np.linspace(0, 5e-6, 11))
+		self.compare_sequences('FlipFlop')
 
 	def test_T1T2_InversionRecovery(self):
 		self.set_awg_dir()
-	  	InversionRecovery(self.q1,  np.linspace(0, 5e-6, 11))
-	  	self.compare_sequences('T1')
+		InversionRecovery(self.q1,  np.linspace(0, 5e-6, 11))
+		self.compare_sequences('T1')
 
 	def test_T1T2_Ramsey(self):
 		self.set_awg_dir()
-	 	Ramsey(self.q1, np.linspace(0, 5e-6, 11))
-	 	self.compare_sequences('Ramsey')
+		Ramsey(self.q1, np.linspace(0, 5e-6, 11))
+		self.compare_sequences('Ramsey')
 
 	def test_SPAM(self):
 		self.set_awg_dir()
-	  	SPAM(self.q1, np.linspace(0, pi/2, 11))
-	  	self.compare_sequences('SPAM')
+		SPAM(self.q1, np.linspace(0, pi/2, 11))
+		self.compare_sequences('SPAM')
 
 	def test_Rabi_RabiAmp(self):
 		self.set_awg_dir('RabiAmp')
@@ -318,11 +318,11 @@ class TestSequences(object):
 	@unittest.expectedFailure
 	def test_RB_SimultaneousRB_AC(self):
 		self.set_awg_dir('SimultaneousRB_AC')
-	 	np.random.seed(20151709) # set seed for create_RB_seqs
+		np.random.seed(20151709) # set seed for create_RB_seqs
 		seqs1 = create_RB_seqs(1, 2**np.arange(1,7))
 		seqs2 = create_RB_seqs(1, 2**np.arange(1,7))
-	 	SimultaneousRB_AC((self.q1, self.q2), (seqs1, seqs2))
-	 	self.compare_sequences('RB')
+		SimultaneousRB_AC((self.q1, self.q2), (seqs1, seqs2))
+		self.compare_sequences('RB')
 
 class APS2Helper(AWGTestHelper):
 	def setUp(self):
