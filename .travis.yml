@@ -11,7 +11,9 @@ env:
 matrix:
   exclude:
     - python: "3.5"
-    - env: ATOM=0.3
+      env: ATOM=0.3
+    - python: "2.7"
+      env: ATOM=1.0
 
 # Setup anaconda
 before_install:
