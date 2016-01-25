@@ -104,7 +104,7 @@ minSeqLengths = [len(generatorSeqs[seqs[0]]) for seqs in allC1Seqs]
 #Now pull out all those that are the same length as the first one
 C1Seqs = []
 for minLength,seqs in zip(minSeqLengths, allC1Seqs):
-	C1Seqs.append(filter(lambda seqNum: len(generatorSeqs[seqNum])==minLength, seqs))
+	C1Seqs.append([s for s in seqs if len(generatorSeqs[s]) == minLength])
 
 
 C2Seqs = []
