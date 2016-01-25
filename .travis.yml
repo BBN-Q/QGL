@@ -25,7 +25,7 @@ before_install:
   - conda update --yes conda
   - travis_retry conda install --yes python=$TRAVIS_PYTHON_VERSION numpy bokeh matplotlib h5py jupyter scipy networkx future
   - if [[ $ATOM == 0.3 ]]; then conda install --yes atom; fi
-  - if [[ $ATOM == 1.0 ]]; then pip install git+https://github.com/BBN-Q/atom.git@py35-compat; fi
+  - if [[ $ATOM == 1.0 ]]; then pip install cppy; pip install git+https://github.com/nucleic/atom.git@1.0.0-dev; fi
   - pip install coveralls
   - wget "https://drive.google.com/uc?export=download&id=0BxaPKTZqyVchaXc1V3hlejRaY2M" -O test_data.tar.gz
   - tar xzvf test_data.tar.gz -C tests/
