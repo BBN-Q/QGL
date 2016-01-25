@@ -4,6 +4,14 @@
 language: python
 python:
   - "2.7"
+  - "3.5"
+env:
+  - ATOM_INSTALL = "conda install --yes atom"
+  - ATOM_INSTALL = "pip install git+https://github.com/BBN-Q/atom.git@py35-compat"
+matrix:
+  exclude:
+    - python: "3.5"
+    - env: ATOM_INSTALL = "conda install --yes atom"
 
 # Setup anaconda
 before_install:
@@ -15,7 +23,8 @@ before_install:
   - cd ..
   - export PATH=/home/travis/miniconda2/bin:$PATH
   - conda update --yes conda
-  - travis_retry conda install --yes python=$TRAVIS_PYTHON_VERSION numpy bokeh enaml atom matplotlib h5py jupyter scipy networkx future
+  - travis_retry conda install --yes python=$TRAVIS_PYTHON_VERSION numpy bokeh matplotlib h5py jupyter scipy networkx future
+  - $ATOM_INSTALL
   - pip install coveralls
   - wget "https://drive.google.com/uc?export=download&id=0BxaPKTZqyVchaXc1V3hlejRaY2M" -O test_data.tar.gz
   - tar xzvf test_data.tar.gz -C tests/
