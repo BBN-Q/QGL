@@ -24,9 +24,11 @@ limitations under the License.
 '''
 
 import os.path
+from importlib import import_module
 import bokeh.plotting as bk
 from bokeh.embed import notebook_div
 from .Plotting import in_ipynb
+from . import ChannelLibrary
 
 # from IPython.html import widgets
 import ipywidgets
@@ -40,6 +42,16 @@ from . import config
 
 def all_zero_seqs(seqs):
     return all([np.all(seq == 0) for seq in seqs])
+
+def build_awg_translator_map():
+    translators = {}
+    for chan in ChannelLibrary.channelLib.values():
+        if (hasattr(chan, 'AWG') and chan.AWG and
+            hasattr(chan, 'translator') and chan.translator):
+            translators[chan.AWG] = import_module('QGL.drivers.'+chan.translator)
+    translators['BBNAPS1'] = import_module('QGL.drivers.APSPattern')
+    translators['APS1'] = import_module('QGL.drivers.APSPattern')
+    return translators
 
 def plot_pulse_files(fileNames, firstSeqNum=0):
     '''
@@ -56,8 +68,7 @@ def plot_pulse_files(fileNames, firstSeqNum=0):
     dataDict = {}
     lineNames = []
     title = ""
-
-    import Libraries # prevent circular import
+    translators = build_awg_translator_map()
 
     for fileName in sorted(fileNames):
 
@@ -69,7 +80,7 @@ def plot_pulse_files(fileNames, firstSeqNum=0):
 
         title += os.path.split(os.path.splitext(fileName)[0])[1] + "; "
 
-        wfs[AWGName] = Libraries.instrumentLib[AWGName].read_sequence_file(fileName)
+        wfs[AWGName] = translators[AWGName].read_sequence_file(fileName)
 
         for (k,seqs) in sorted(wfs[AWGName].items()):
             if not all_zero_seqs(seqs):

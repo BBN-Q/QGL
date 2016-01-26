@@ -21,6 +21,7 @@ import operator
 from warnings import warn
 from copy import copy
 from functools import reduce
+from importlib import import_module
 
 from . import config
 from . import PatternUtils
@@ -31,7 +32,6 @@ from .PulsePrimitives import Id
 from . import PulseSequencer
 from . import ControlFlow
 from . import BlockLabel
-from . import drivers
 
 def map_logical_to_physical(wires):
     # construct a mapping of physical channels to lists of logical channels
@@ -196,7 +196,7 @@ def channel_delay_map(physicalWires):
 def setup_awg_channels(physicalChannels):
     translators = {}
     for chan in physicalChannels:
-        translators[chan.AWG] = getattr(drivers, chan.translator)
+        translators[chan.AWG] = import_module('QGL.drivers.'+chan.translator)
 
     data = {awg : translator.get_empty_channel_set() for awg, translator in translators.items()}
     for name, awg in data.items():
