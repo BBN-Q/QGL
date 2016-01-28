@@ -28,6 +28,7 @@ from atom.api import Atom, Str, Int, Typed
 import networkx as nx
 
 from . import Channels
+from . import PulseShapes
 from JSONLibraryUtils import LibraryCoders, FileWatcher
 from . import config
 
