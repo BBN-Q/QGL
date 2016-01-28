@@ -1,3 +1,4 @@
+# coding: utf-8
 '''
 Quantum Gate Language Module
 
@@ -21,6 +22,7 @@ import json
 import numpy as np
 import operator
 from functools import reduce
+from builtins import str
 
 from . import ChannelLibrary, PulseShapes
 
@@ -191,11 +193,11 @@ class PulseBlock(object):
         self.label = None
 
     def __repr__(self):
-        labelPart = "{0}: ".format(self.label) if self.label else ""
-        return labelPart + u"\u2297 ".join([str(pulse) for pulse in self.pulses.values()]).encode('utf-8')
+        labelPart = u"{0}: ".format(self.label) if self.label else u""
+        return labelPart + u"⊗ ".join([str(pulse) for pulse in self.pulses.values()])
 
     def __str__(self):
-        return "Pulses " + ";".join([str(pulse) for pulse in self.pulses.values()]) + " alignment: {0}".format(self.alignment).encode('utf-8')
+        return u"Pulses " + u";".join([str(pulse) for pulse in self.pulses.values()]) + u" alignment: {0}".format(self.alignment)
 
     #Overload the multiplication operator to combine pulse blocks
     def __mul__(self, rhs):
