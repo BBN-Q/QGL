@@ -29,7 +29,9 @@ before_install:
   - if [[ $ATOM == 0.3 ]]; then conda install --yes atom; fi
   - if [[ $ATOM == 1.0 ]]; then pip install cppy; pip install git+https://github.com/nucleic/atom.git@1.0.0-dev; fi
   - pip install coveralls
-  - wget "https://drive.google.com/uc?export=download&id=0BxaPKTZqyVchaXc1V3hlejRaY2M" -O test_data.tar.gz
+  - if [[ $TRAVIS_PYTHON_VERSION = 2.7 ]]; then export TEST_DATA="https://drive.google.com/uc?export=download&id=0BxaPKTZqyVchaXc1V3hlejRaY2M"; fi
+  - if [[ $TRAVIS_PYTHON_VERSION = 3.5 ]]; then export TEST_DATA="https://drive.google.com/uc?export=download&id=0B2sNiahoh0BZSzNPakRSMWgzQW8"; fi
+  - wget $TEST_DATA -O test_data.tar.gz
   - tar xzvf test_data.tar.gz -C tests/
 
 # use conda to install packages
