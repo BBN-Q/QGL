@@ -25,8 +25,6 @@ import operator
 from functools import reduce
 from builtins import str
 
-import six
-
 from . import ChannelLibrary, PulseShapes
 
 
@@ -194,7 +192,6 @@ class CompositePulse(object):
     def isZero(self):
         return all(p.isZero for p in self.pulses)
 
-@six.python_2_unicode_compatible
 class PulseBlock(object):
     '''
     The basic building block for pulse sequences. This is what we can concatenate together to make sequences.
@@ -208,15 +205,16 @@ class PulseBlock(object):
         self.pulses = {}
         self.label = None
 
-    def __str__(self):
-        labelPart = "{0}: ".format(self.label) if self.label else ""
-        return labelPart + "⊗ ".join([str(pulse) for pulse in self.pulses.values()])
-
     def __repr__(self):
         return "Pulses " + ";".join([str(pulse) for pulse in self.pulses.values()]) + " alignment: {0}".format(self.alignment)
 
+    def __str__(self):
+        labelPart = "{0}: ".format(self.label) if self.label else ""
+        return labelPart + "*".join([str(pulse) for pulse in self.pulses.values()])
+
     def _repr_pretty_(self, p, cycle):
-        p.text(str(self))
+        labelPart = "{0}: ".format(self.label) if self.label else ""
+        p.text(labelPart + "⊗ ".join([str(pulse) for pulse in self.pulses.values()]))
 
     #Overload the multiplication operator to combine pulse blocks
     def __mul__(self, rhs):
