@@ -17,6 +17,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 '''
 
+from __future__ import unicode_literals
 from copy import copy
 import json
 import numpy as np
@@ -54,14 +55,23 @@ class Pulse(object):
             if param not in shapeParams.keys():
                 raise NameError("ShapeParams must incluce {0}".format(param))
 
-    def _repr_pretty_(self, p, cycle):
-        p.text(str(self))
+    def __repr__(self):
+        return "Pulse({0}, {1}, {2}, {3}, {4}, {5})".format(
+            self.label,
+            self.channel,
+            self.shapeParams,
+            self.amp,
+            self.phase,
+            self.frameChange)
 
     def __str__(self):
         if isinstance(self.channel, tuple):
             return '{0}({1})'.format(self.label, ','.join([channel.label for channel in self.channel]))
         else:
             return '{0}({1})'.format(self.label, self.channel.label)
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
 
     # adding pulses concatenates the pulse shapes
     def __add__(self, other):
@@ -130,14 +140,17 @@ class CompositePulse(object):
         self.pulses = pulses
         self.label = label
 
-    def _repr_pretty_(self, p, cycle):
-        p.text(str(self))
+    def __repr__(self):
+        return "CompositePulse({0}, {1})".format(self.pulses, self.label)
 
     def __str__(self):
         if self.label != "":
             return self.label
         else:
             return "+".join([str(p) for p in self.pulses])
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
 
     def __add__(self, other):
         if self.channel != other.channel:
@@ -195,19 +208,15 @@ class PulseBlock(object):
         self.pulses = {}
         self.label = None
 
-    def _repr_pretty_(self, p, cycle):
-        p.text(str(self))
-
     def __str__(self):
-        labelPart = u"{0}: ".format(self.label) if self.label else u""
-        return labelPart + u"⊗ ".join([str(pulse) for pulse in self.pulses.values()])
-
-    def __unicode__(self):
-        labelPart = u"{0}: ".format(self.label) if self.label else u""
-        return labelPart + u"⊗ ".join([str(pulse) for pulse in self.pulses.values()])
+        labelPart = "{0}: ".format(self.label) if self.label else ""
+        return labelPart + "⊗ ".join([str(pulse) for pulse in self.pulses.values()])
 
     def __repr__(self):
         return "Pulses " + ";".join([str(pulse) for pulse in self.pulses.values()]) + " alignment: {0}".format(self.alignment)
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
 
     #Overload the multiplication operator to combine pulse blocks
     def __mul__(self, rhs):
