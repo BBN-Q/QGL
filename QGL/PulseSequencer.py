@@ -22,6 +22,7 @@ from copy import copy
 import json
 import numpy as np
 import operator
+from collections import OrderedDict
 from functools import reduce
 from builtins import str
 
@@ -98,7 +99,7 @@ class Pulse(object):
     def promote(self):
         # promote a Pulse to a PulseBlock
         pb =  PulseBlock()
-        pb.pulses = {self.channel: self}
+        pb.pulses[self.channel] = self
         return pb
 
     @property
@@ -172,7 +173,7 @@ class CompositePulse(object):
     def promote(self):
         # promote a CompositePulse to a PulseBlock
         pb =  PulseBlock()
-        pb.pulses = {self.channel: self}
+        pb.pulses[self.channel] = self
         return pb
 
     @property
@@ -202,7 +203,7 @@ class PulseBlock(object):
         #Set some default values
         #How multiple channels are aligned.
         self.alignment = 'left'
-        self.pulses = {}
+        self.pulses = OrderedDict()
         self.label = None
 
     def __repr__(self):
