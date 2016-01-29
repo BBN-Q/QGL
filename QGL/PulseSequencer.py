@@ -1,3 +1,4 @@
+# coding: utf-8
 '''
 Quantum Gate Language Module
 
@@ -16,13 +17,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 '''
 
+from __future__ import unicode_literals
 from copy import copy
 import json
 import numpy as np
 import operator
 from functools import reduce
+from builtins import str
 
 from . import ChannelLibrary, PulseShapes
+
 
 class Pulse(object):
     '''
@@ -50,13 +54,22 @@ class Pulse(object):
                 raise NameError("ShapeParams must incluce {0}".format(param))
 
     def __repr__(self):
-        return str(self)
+        return "Pulse({0}, {1}, {2}, {3}, {4}, {5})".format(
+            self.label,
+            self.channel,
+            self.shapeParams,
+            self.amp,
+            self.phase,
+            self.frameChange)
 
     def __str__(self):
         if isinstance(self.channel, tuple):
             return '{0}({1})'.format(self.label, ','.join([channel.label for channel in self.channel]))
         else:
             return '{0}({1})'.format(self.label, self.channel.label)
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
 
     # adding pulses concatenates the pulse shapes
     def __add__(self, other):
@@ -126,13 +139,16 @@ class CompositePulse(object):
         self.label = label
 
     def __repr__(self):
-        return str(self)
+        return "CompositePulse({0}, {1})".format(self.pulses, self.label)
 
     def __str__(self):
         if self.label != "":
             return self.label
         else:
             return "+".join([str(p) for p in self.pulses])
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
 
     def __add__(self, other):
         if self.channel != other.channel:
@@ -176,7 +192,6 @@ class CompositePulse(object):
     def isZero(self):
         return all(p.isZero for p in self.pulses)
 
-
 class PulseBlock(object):
     '''
     The basic building block for pulse sequences. This is what we can concatenate together to make sequences.
@@ -191,11 +206,15 @@ class PulseBlock(object):
         self.label = None
 
     def __repr__(self):
-        labelPart = "{0}: ".format(self.label) if self.label else ""
-        return labelPart + u"\u2297 ".join([str(pulse) for pulse in self.pulses.values()]).encode('utf-8')
+        return "Pulses " + ";".join([str(pulse) for pulse in self.pulses.values()]) + " alignment: {0}".format(self.alignment)
 
     def __str__(self):
-        return "Pulses " + ";".join([str(pulse) for pulse in self.pulses.values()]) + " alignment: {0}".format(self.alignment).encode('utf-8')
+        labelPart = "{0}: ".format(self.label) if self.label else ""
+        return labelPart + "*".join([str(pulse) for pulse in self.pulses.values()])
+
+    def _repr_pretty_(self, p, cycle):
+        labelPart = "{0}: ".format(self.label) if self.label else ""
+        p.text(labelPart + "⊗ ".join([str(pulse) for pulse in self.pulses.values()]))
 
     #Overload the multiplication operator to combine pulse blocks
     def __mul__(self, rhs):
