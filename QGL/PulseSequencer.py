@@ -24,7 +24,10 @@ import operator
 from functools import reduce
 from builtins import str
 
+import six
+
 from . import ChannelLibrary, PulseShapes
+
 
 class Pulse(object):
     '''
@@ -51,8 +54,8 @@ class Pulse(object):
             if param not in shapeParams.keys():
                 raise NameError("ShapeParams must incluce {0}".format(param))
 
-    def __repr__(self):
-        return str(self)
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
 
     def __str__(self):
         if isinstance(self.channel, tuple):
@@ -127,8 +130,8 @@ class CompositePulse(object):
         self.pulses = pulses
         self.label = label
 
-    def __repr__(self):
-        return str(self)
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
 
     def __str__(self):
         if self.label != "":
@@ -178,7 +181,7 @@ class CompositePulse(object):
     def isZero(self):
         return all(p.isZero for p in self.pulses)
 
-
+@six.python_2_unicode_compatible
 class PulseBlock(object):
     '''
     The basic building block for pulse sequences. This is what we can concatenate together to make sequences.
@@ -192,12 +195,19 @@ class PulseBlock(object):
         self.pulses = {}
         self.label = None
 
-    def __repr__(self):
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
+    def __str__(self):
         labelPart = u"{0}: ".format(self.label) if self.label else u""
         return labelPart + u"⊗ ".join([str(pulse) for pulse in self.pulses.values()])
 
-    def __str__(self):
-        return u"Pulses " + u";".join([str(pulse) for pulse in self.pulses.values()]) + u" alignment: {0}".format(self.alignment)
+    def __unicode__(self):
+        labelPart = u"{0}: ".format(self.label) if self.label else u""
+        return labelPart + u"⊗ ".join([str(pulse) for pulse in self.pulses.values()])
+
+    def __repr__(self):
+        return "Pulses " + ";".join([str(pulse) for pulse in self.pulses.values()]) + " alignment: {0}".format(self.alignment)
 
     #Overload the multiplication operator to combine pulse blocks
     def __mul__(self, rhs):
