@@ -66,10 +66,10 @@ GREATERTHAN = 0x2
 LESSTHAN    = 0x3
 
 def get_empty_channel_set():
-    return {'ch12':{}, 'ch12m1':{}, 'ch12m2':{}, 'ch12m3':{}, 'ch12m4':{}}
+	return {'ch12':{}, 'ch12m1':{}, 'ch12m2':{}, 'ch12m3':{}, 'ch12m4':{}}
 
 def get_seq_file_extension():
-    return '.h5'
+	return '.h5'
 
 def create_wf_vector(wfLib):
 	'''
@@ -260,7 +260,7 @@ def Load(count, label=None):
 	return Command(LOAD, count, label=label)
 
 def Repeat(addr, label=None):
-	return Command(REPEAT, 0, label=label)
+	return Command(REPEAT, addr, label=label)
 
 def preprocess(seqs, shapeLib, T):
 	for seq in seqs:
@@ -428,7 +428,7 @@ def create_seq_instructions(seqs, offsets):
 			elif isinstance(entry, ControlFlow.Repeat):
 				instructions.append(Repeat(entry.target, label=label))
 			# value argument commands
-			elif isinstance(entry, ControlFlow.Load):
+			elif isinstance(entry, ControlFlow.LoadRepeat):
 				instructions.append(Load(entry.value-1, label=label))
 			elif isinstance(entry, ControlFlow.ComparisonInstruction):
 				instructions.append(Cmp(cmpTable[entry.operator], entry.mask, label=label))
