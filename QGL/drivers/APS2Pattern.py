@@ -136,7 +136,7 @@ class Instruction(object):
 		else:
 			out += "WRITEFLAG=0"
 
-		if instrOpCode == 0x1:
+		if instrOpCode == MARKER:
 			out += ", ENGINESELECT={}".format((self.header >> 2) & 0x3)
 
 		out += "; "
@@ -144,7 +144,7 @@ class Instruction(object):
 		if self.target:
 			out += str(self.target) + "/"
 
-		if instrOpCode == 0x0:
+		if instrOpCode == WFM:
 			wfOpCode = (self.payload >> 46) & 0x3
 			wfOpCodes = ["PLAY", "TRIG", "SYNC"]
 			out += wfOpCodes[wfOpCode]
@@ -152,21 +152,24 @@ class Instruction(object):
 			out += ", count = {}".format((self.payload >> 24) & 2**21-1)
 			out += ", addr = {}".format(self.payload & 2**24-1)
 
-		elif instrOpCode == 0x1:
+		elif instrOpCode == MARKER:
 			mrkOpCode = (self.payload >> 46) & 0x3
 			mrkOpCodes = ["PLAY", "TRIG", "SYNC"]
 			out += mrkOpCodes[mrkOpCode]
 			out += ", state={}".format((self.payload >> 32) & 0x1)
 			out += ", count = {}".format(self.payload & 2**32-1)
 
-		elif instrOpCode == 0x5:
+		elif instrOpCode == CMP:
 			cmpCodes = ["EQUAL", "NOTEQUAL", "GREATERTHAN", "LESSTHAN"]
 			cmpCode = (self.payload >> 8) & 0x3
 			out += ", " + cmpCodes[cmpCode]
 			out += ", mask = {}".format(self.payload & 0xff)
 
-		elif instrOpCode == 0x6 or instrOpCode == 0x7 or instrOpCode == 0x8:
+		elif instrOpCode == GOTO or instrOpCode == CALL or instrOpCode == RET:
 			out += ", target addr = {}".format(self.payload & 2**26-1)
+
+		elif isntrOpCode == LOAD:
+			out += "count = {}".format(self.payload)
 
 		out += ')'
 
