@@ -29,7 +29,7 @@ import networkx as nx
 
 from . import Channels
 from . import PulseShapes
-from JSONLibraryUtils import LibraryCoders, FileWatcher
+from JSONLibraryUtils import LibraryCoders, FileWatcher, JSONMigrators
 from . import config
 
 class ChannelLibrary(Atom):
@@ -38,7 +38,7 @@ class ChannelLibrary(Atom):
     connectivityG = Typed(nx.DiGraph)
     libFile = Str()
     fileWatcher = Typed(FileWatcher.LibraryFileWatcher)
-    version = Int(3)
+    version = Int(4)
 
     def __init__(self, channelDict={}, **kwargs):
         super(ChannelLibrary, self).__init__(channelDict=channelDict, **kwargs)
@@ -253,4 +253,9 @@ def EdgeFactory(source, target):
         raise ValueError('Edge {0} not found in connectivity graph'.format((source, target)))
 
 # global channel library
+migrator = JSONMigrators.ChannelMigrator(config.channelLibFile);
+migrationMsg = migrator.migrate()
+for msg in migrationMsg:
+    print(msg)
+
 channelLib = ChannelLibrary(libFile=config.channelLibFile)
