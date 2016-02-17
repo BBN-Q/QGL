@@ -93,7 +93,7 @@ def plot_pulse_files(fileNames, firstSeqNum=0):
 
     source = bk.ColumnDataSource(data=dataDict)
     figH = bk.figure(title=title, plot_width=1000, y_range=(-1,len(dataDict)+1))
-    figH.background_fill = config.plotBackground
+    figH.background_fill_color = config.plotBackground
     if config.gridColor:
         figH.xgrid.grid_line_color = config.gridColor
         figH.ygrid.grid_line_color = config.gridColor

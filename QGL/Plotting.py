@@ -78,7 +78,7 @@ def plot_waveforms(waveforms, figTitle = ''):
     plots = []
     for (ct,chan) in enumerate(channels):
         fig = bk.figure(title=figTitle + repr(chan), plot_width=800, plot_height=350, y_range=[-1.05, 1.05])
-        fig.background_fill = config.plotBackground
+        fig.background_fill_color = config.plotBackground
         if config.gridColor:
             fig.xgrid.grid_line_color = config.gridColor
             fig.ygrid.grid_line_color = config.gridColor
