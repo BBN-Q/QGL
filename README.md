@@ -45,4 +45,5 @@ The QGL config file will be created the first time you run `import QGL` or `from
 * h5py
 * watchdog
 * Bokeh 0.11
+* networkx
 * iPython/Jupyter 4.0 (only for Jupyter notebooks)
