@@ -49,8 +49,6 @@ def build_awg_translator_map():
         if (hasattr(chan, 'AWG') and chan.AWG and
             hasattr(chan, 'translator') and chan.translator):
             translators[chan.AWG] = import_module('QGL.drivers.'+chan.translator)
-    translators['BBNAPS1'] = import_module('QGL.drivers.APSPattern')
-    translators['APS1'] = import_module('QGL.drivers.APSPattern')
     return translators
 
 def plot_pulse_files(fileNames, firstSeqNum=0):
