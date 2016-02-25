@@ -71,7 +71,13 @@ def Ytheta(qubit, amp=0, label='Ytheta', **kwargs):
 
 def Ztheta(qubit, angle=0, label='Ztheta', **kwargs):
     # special cased because it can be done with a frame update
-    return TAPulse(label, qubit, length=0, amp=0, phase=0, frameChange=-angle)
+    Zprod = TAPulse(label, qubit, length=0, amp=0, phase=0, frameChange=-angle)
+    for node in ChannelLibrary.channelLib.connectivityG.nodes():
+        #shift the reference for all CR gates with qubit as the target
+        if ChannelLibrary.channelLib.connectivityG.has_predecessor(qubit,node):
+            CRchan = ChannelLibrary.channelLib.connectivityG.edge[node][qubit]['channel']
+            Zprod = Zprod*TAPulse(label, CRchan, length=0, amp=0, phase=0, frameChange=-angle)
+    return Zprod
 
 #Setup the default 90/180 rotations
 # @_memoize
