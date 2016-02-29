@@ -227,7 +227,7 @@ def collect_specializations(seqs):
     '''
     targets = [x.target for x in flatten(seqs) if isinstance(x, ControlFlow.Call)]
     funcDefs = []
-    for target in targets:
+    for target in set(targets):
         funcDefs += ControlFlow.qfunction_specialization(target)
     return funcDefs
 
