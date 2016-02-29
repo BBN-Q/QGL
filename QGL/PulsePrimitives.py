@@ -20,7 +20,7 @@ import operator
 
 from math import pi, sin, cos, acos, sqrt
 import numpy as np
-from .PulseSequencer import Pulse, TAPulse
+from .PulseSequencer import Pulse, TAPulse, align
 from functools import wraps, reduce
 
 def overrideDefaults(chan, updateParams):
@@ -355,6 +355,28 @@ def MEAS(*args, **kwargs):
         return Pulse("MEAS", measChan, params, amp, 0.0, 0.0)
 
     return reduce(operator.mul, [create_meas_pulse(qubit) for qubit in args])
+
+#MEAS and ring-down time on one qubit, echo on every other
+def MeasEcho(qM, qD, delay, piShift = None, phase = 0):
+    '''
+    qM : qubit to be measured (single qubit)
+    qD : qubits to be echoed (single qubit or tuple)
+    delay : idle time after M-qM
+    PiShift: relative shift of the echo pulse from the center of the pulse block (in s, to the right if >0)
+    phase : rotation axis of the echo pulse
+    '''
+    if not isinstance(qD, tuple):
+        qD = (qD,)
+    measChan = ChannelLibrary.MeasFactory('M-%s' %qM.label)
+    if piShift:
+        if piShift > 0:
+            measEcho = align((MEAS(qM) + TAPulse('Id', measChan, delay, 0))*reduce(operator.mul, [Id(q,piShift)+U(q,phase=phase) for q in qD]))
+        elif piShift < 0:
+            measEcho = align((MEAS(qM) + TAPulse('Id', measChan, delay, 0))*reduce(operator.mul, [U(q,phase=phase)+Id(q,-piShift) for q in qD]))
+    else:
+        measEcho = align((MEAS(qM) + TAPulse('Id', measChan, delay, 0))*reduce(operator.mul, [U(q,phase=phase) for q in qD]))
+    measEcho.label = 'MEAS' #to generate the digitizer trigger
+    return measEcho
 
 # Gating/blanking pulse primitives
 def BLANK(chan, length):
