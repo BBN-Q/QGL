@@ -18,7 +18,8 @@ class CompileUtils(unittest.TestCase):
         self.measq1 = Channels.Measurement(label='M-q1')
         self.measq1.trigChan = self.trigger
 
-        ChannelLibrary.channelLib = {'q1': self.q1, 'q2': self.q2, 'M-q1': self.measq1}
+        ChannelLibrary.channelLib.channelDict = {'q1': self.q1, 'q2': self.q2, 'M-q1': self.measq1}
+        ChannelLibrary.channelLib.build_connectivity_graph()
 
     def test_add_digitizer_trigger(self):
         q1 = self.q1
@@ -41,7 +42,7 @@ class CompileUtils(unittest.TestCase):
         assert([self.q2gate in entry.pulses.keys() for entry in seq] == [False, True, True])
 
     def test_concatenate_entries(self):
-        q1 = Qubit(label='q1')
+        q1 = self.q1
         seq = [X90(q1, length=20e-9), Y90(q1, length=40e-9)]
         ll = Compiler.compile_sequence(seq)
         entry = Compiler.concatenate_entries(ll[q1][0], ll[q1][1])
@@ -50,9 +51,9 @@ class CompileUtils(unittest.TestCase):
         assert all(abs(entry.shape - wf) < 1e-16)
 
     def test_pull_uniform_entries(self):
-        q1 = Qubit(label='q1')
+        q1 = self.q1
         q1.pulseParams['length'] = 20e-9
-        q2 = Qubit(label='q2')
+        q2 = self.q2
         q2.pulseParams['length'] = 60e-9
         seq = [(X90(q1)+Y90(q1)+X90(q1)) * X(q2)]
         ll = Compiler.compile_sequence(seq)
@@ -73,9 +74,9 @@ class CompileUtils(unittest.TestCase):
         assert all(e.length == blocklen for e in entries)
 
     def test_pull_uniform_entries2(self):
-        q1 = Qubit(label='q1')
+        q1 = self.q1
         q1.pulseParams['length'] = 30e-9
-        q2 = Qubit(label='q2')
+        q2 = self.q2
         q2.pulseParams['length'] = 40e-9
         seq = [(X90(q1) + Y90(q1) + X(q1) + Y(q1)) * (Y(q2) + X(q2) + Y(q2))]
         ll = Compiler.compile_sequence(seq)
@@ -86,9 +87,9 @@ class CompileUtils(unittest.TestCase):
         self.assertTrue( all(e.length == blocklen for e in entries) )
 
     def test_merge_channels(self):
-        q1 = Qubit(label='q1')
+        q1 = self.q1
         q1.pulseParams['length'] = 20e-9
-        q2 = Qubit(label='q2')
+        q2 = self.q2
         q2.pulseParams['length'] = 60e-9
         seqs = [[(X90(q1)+Y90(q1)+X90(q1)) * X(q2)]]
         ll = Compiler.compile_sequences(seqs)
