@@ -5,7 +5,7 @@ import os.path
 import sys
 
 #Load the configuration from the json file and populate the global configuration dictionary
-rootFolder = os.path.dirname(os.path.dirname( os.path.abspath(__file__) ))
+rootFolder = os.path.dirname( os.path.abspath(__file__) )
 rootFolder = rootFolder.replace('\\', '/') # use unix-like convention
 QGLCfgFile = os.path.join(rootFolder, 'config.json')
 if not os.path.isfile(QGLCfgFile):
