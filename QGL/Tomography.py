@@ -72,12 +72,16 @@ def process_tomo(seq, qubits, numPulses=4, measChans=None):
 		measChans = qubits
 
 	if len(qubits)==1:
-		return [[prepBlock] + seq + [readoutBlock,  MEAS(*measChans)]
+		seqs = [[prepBlock] + seq + [readoutBlock,  MEAS(*measChans)]
 				for prepBlock, readoutBlock in product(create_tomo_blocks(qubits, numPulses), repeat=2)]
 
 	else:
 	
-		return [[prepBlock] + seq + [readoutBlock,  MEAS(*measChans)]
-				for prepBlock, readoutBlock in  zip([create_tomo_blocks(qubits,numPulses)[int(k)] for k in (np.floor(np.arange(numPulses**4)/numPulses**2))],
-         		[x for tomo_blocks in [create_tomo_blocks(qubits,numPulses) for _ in range(numPulses**2)] for x in tomo_blocks])]
+		seqs=[]
+		for k in range(numPulses**2):
+			for readoutBlock in create_tomo_blocks(qubits, numPulses):
+				prepBlock = create_tomo_blocks(qubits,numPulses)[k]
+				tomoseq = [prepBlock] + seq + [readoutBlock, MEAS(*measChans)]
+				seqs.append(tomoseq)
+	return seqs
 
