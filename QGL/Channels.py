@@ -50,7 +50,7 @@ class Channel(Atom):
 
         #Turn objects into labels
         for member in ["physChan", "gateChan", "trigChan", "source", "target"]:
-            if member in jsonDict:
+            if member in jsonDict and not isinstance(jsonDict[member], str):
                 obj = jsonDict.pop(member)
                 if obj:
                     jsonDict[member] = obj.label
