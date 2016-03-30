@@ -25,20 +25,15 @@ limitations under the License.
 
 import os.path
 from importlib import import_module
-import bokeh.plotting as bk
-from bokeh.embed import notebook_div
-from .Plotting import in_ipynb
-from . import ChannelLibrary
+from bokeh.io import vform
+from bokeh.models import CustomJS, ColumnDataSource, Slider
+from bokeh.plotting import Figure, show
 
-# from IPython.html import widgets
-import ipywidgets
-from IPython.display import display
-
+from jinja2 import Template
 import numpy as np
 
-import uuid, tempfile
-
 from . import config
+from . import ChannelLibrary
 
 def all_zero_seqs(seqs):
     return all([np.all(seq == 0) for seq in seqs])
@@ -51,12 +46,11 @@ def build_awg_translator_map():
             translators[chan.AWG] = import_module('QGL.drivers.'+chan.translator)
     return translators
 
-def plot_pulse_files(fileNames, firstSeqNum=0):
+def plot_pulse_files(fileNames):
     '''
-    plot_pulse_files(fileNames, firstSeqNum=0)
+    plot_pulse_files(fileNames)
 
-    Helper function to plot a list of AWG files.  In an iPython notebook the plots will be in line with
-    dynamic updating.  For iPython consoles a static html file will be generated with the firstSeqNum.
+    Helper function to plot a list of AWG files. A JS slider allows choice of sequence number.
     '''
     #If we only go one filename turn it into a list
     if isinstance(fileNames, str):
@@ -67,7 +61,7 @@ def plot_pulse_files(fileNames, firstSeqNum=0):
     lineNames = []
     title = ""
     translators = build_awg_translator_map()
-
+    num_seqs = 0
     for fileName in sorted(fileNames):
 
         #Assume a naming convention path/to/file/SequenceName-AWGName.h5
@@ -82,19 +76,22 @@ def plot_pulse_files(fileNames, firstSeqNum=0):
 
         for (k,seqs) in sorted(wfs[AWGName].items()):
             if not all_zero_seqs(seqs):
+                num_seqs = max(num_seqs, len(seqs))
                 lineNames.append(AWGName + '-' + k)
-                dataDict[lineNames[-1] + "_x"] = np.arange(len(seqs[firstSeqNum]))
-                dataDict[lineNames[-1]] = seqs[firstSeqNum] + 2*(len(lineNames)-1)
+                k_ = lineNames[-1].replace("-", "_")
+                for ct,seq in enumerate(seqs):
+                    dataDict[k_+"_x_{:d}".format(ct+1)] = np.arange(len(seqs[ct]))
+                    dataDict[k_+"_y_{:d}".format(ct+1)] = seqs[ct] + 2*(len(lineNames)-1)
 
     #Remove trailing semicolon from title
     title = title[:-2]
 
-    source = bk.ColumnDataSource(data=dataDict)
-    figH = bk.figure(title=title, plot_width=1000, y_range=(-1,len(dataDict)+1))
-    figH.background_fill_color = config.plotBackground
+    all_data = ColumnDataSource(data=dataDict)
+    plot = Figure(title=title, plot_width=1000)
+    plot.background_fill_color = config.plotBackground
     if config.gridColor:
-        figH.xgrid.grid_line_color = config.gridColor
-        figH.ygrid.grid_line_color = config.gridColor
+        plot.xgrid.grid_line_color = config.gridColor
+        plot.ygrid.grid_line_color = config.gridColor
 
     # Colobrewer2 qualitative Set1 (http://colorbrewer2.org)
     colours = [
@@ -109,31 +106,27 @@ def plot_pulse_files(fileNames, firstSeqNum=0):
         "#999999"
     ]
 
+    js_sources = {}
+    js_sources["all_data"] = all_data
     for ct,k in enumerate(lineNames):
-        figH.line(k+"_x", k, source=source, color=colours[ct%len(colours)], line_width=2, legend=k)
+        k_ = k.replace("-", "_")
+        line = plot.line(dataDict[k_+"_x_1"], dataDict[k_+"_y_1"], color=colours[ct%len(colours)], line_width=2, legend=k)
+        js_sources[k_] = line.data_source
 
-    if in_ipynb():
-        #Setup inline plotting with slider updating of data
+    code_template = Template("""
+        var seq_num = cb_obj.get('value');
+        console.log(seq_num)
+        var all_data = all_data.get('data');
+        {% for line in lineNames %}
+        {{line}}.set('data', {'x':all_data['{{line}}_x_'.concat(seq_num.toString())], 'y':all_data['{{line}}_y_'.concat(seq_num.toString())]} );
+        {% endfor %}
+        console.log("Got here!")
+    """)
 
-        def update_plot(_, seqNum):
-            for ct,k in enumerate(lineNames):
-                AWGName, chName = k.split('-')
-                source.data[k+"_x"] = np.arange(len(wfs[AWGName][chName][seqNum-1]))
-                source.data[k] = wfs[AWGName][chName][seqNum-1] + 2*ct
-            source.push_notebook()
+    callback = CustomJS(args=js_sources, code=code_template.render(lineNames=[l.replace("-","_") for l in lineNames]))
 
-        #ipywidgets.interact(update_plot, seqNum=(1, len(wfs[AWGName]["ch1"])), div=ipywidgets.HTMLWidget(value=notebook_div(figH)))
-        if 'ch1' in wfs[AWGName].keys():
-            chkey = "ch1"
-        else:
-            chkey = "ch3"
-        slider = ipywidgets.IntSlider(value=firstSeqNum+1, min=1, max=len(wfs[AWGName][chkey]), step=1, description="Sequence (of {}):".format(len(seqs)))
-        slider.on_trait_change(update_plot, 'value')
-        plotBox = ipywidgets.HTML(value=notebook_div(figH))
-        appBox = ipywidgets.Box()
-        appBox.children = [slider, plotBox]
-        display(appBox)
+    slider = Slider(start=1, end=num_seqs, value=1, step=1, title="Sequence", callback=callback)
 
-    else:
-        #Otherwise dump to a static file
-        bk.show(figH)
+    layout = vform(slider, plot)
+
+    show(layout)
