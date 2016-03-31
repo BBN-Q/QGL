@@ -36,7 +36,7 @@ def qfunction(func):
 def qfunction_specialization(target):
         # QGL2 uses Call with a label, pointing elsewhere in the same
         # sequenece, wanting control passed there.
-        # It is not pointing to a function creating a sequence
+        # It is not pointing to a function creating a sequence.
         if target in qfunction_seq:
                 return qfunction_seq[target]
         else:
