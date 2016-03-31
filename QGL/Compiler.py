@@ -352,6 +352,8 @@ def compile_sequence(seq, channels=None):
                 if len(wires[chan]) > 0:
                     wires[chan][-1] = copy(wires[chan][-1])
                     wires[chan][-1].frameChange += block.pulses[chan].frameChange
+                    if chan in ChannelLibrary.channelLib.connectivityG.nodes():
+                        wires = propagate_node_frame_to_edges(wires, chan, block.pulses[chan].frameChange)
                 else:
                     warn("Dropping initial frame change")
             continue
@@ -360,6 +362,16 @@ def compile_sequence(seq, channels=None):
             # add aligned Pulses (if the block contains a composite pulse, may get back multiple pulses)
             wires[chan] += schedule(chan, block.pulses[chan], block.length, block.alignment)
 
+    return wires
+
+def propagate_node_frame_to_edges(wires, chan, frameChange):
+    '''
+    Propagate frame change in node to relevant edges (for CR gates)
+    '''
+    for predecessor in ChannelLibrary.channelLib.connectivityG.predecessors(chan):
+        edge = ChannelLibrary.channelLib.connectivityG.edge[predecessor][chan]['channel']
+        wires[edge][-1] = copy(wires[edge][-1])
+        wires[edge][-1].frameChange += frameChange
     return wires
 
 def find_unique_channels(seq):

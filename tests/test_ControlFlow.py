@@ -10,6 +10,9 @@ class ControlFlowTest(unittest.TestCase):
         self.q1 = Qubit(label='q1')
         self.q2 = Qubit(label='q2')
 
+        ChannelLibrary.channelLib.channelDict = {'q1': self.q1, 'q2': self.q2}
+        ChannelLibrary.channelLib.build_connectivity_graph()
+
     def test_qif(self):
         q1 = self.q1
         seq1 = [X90(q1), Y90(q1)]
