@@ -26,22 +26,11 @@ import numpy as np
 
 from . import config
 
-#Effective global of whether we are interactive plottinn in a notebook or to a
-#static html file
-_in_ipynb = False
-
 def output_notebook():
-    global _in_ipynb
     bk.output_notebook()
-    _in_ipynb = True
 
 def output_file():
-    global _in_ipynb
     bk.output_file(os.path.join(tempfile.gettempdir(), str(uuid.uuid4()) + ".html"))
-    _in_ipynb = False
-
-def in_ipynb():
-    return _in_ipynb
 
 # Default to output_file
 # Commented out because recent versions of Bokeh remember the state of
