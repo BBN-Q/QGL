@@ -39,11 +39,12 @@ The QGL config file will be created the first time you run `import QGL` or `from
 
 ## Dependencies
 * Python 2.7 or 3.4+
-* JSONLibraryMigrators (https://github.com/BBN-Q/JSONLibraryMigrators, integrated as a Git submodule)
+* JSONLibraryUtils (https://github.com/BBN-Q/JSONLibraryUtils, integrated as a Git submodule)
 * Numpy/Scipy
 * Nucleic atom (1.0 branch for Python 3)
 * h5py
 * watchdog
 * Bokeh 0.11
 * networkx
+* future
 * iPython/Jupyter 4.0 (only for Jupyter notebooks)
