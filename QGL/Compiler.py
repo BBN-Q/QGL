@@ -352,7 +352,7 @@ def compile_sequence(seq, channels=None):
                 if len(wires[chan]) > 0:
                     wires[chan][-1] = copy(wires[chan][-1])
                     wires[chan][-1].frameChange += block.pulses[chan].frameChange
-                    if isinstance(chan, Channels.Qubit):
+                    if chan in ChannelLibrary.channelLib.connectivityG.nodes():
                         wires = propagate_node_frame_to_edges(wires, chan, block.pulses[chan].frameChange)
                 else:
                     warn("Dropping initial frame change")
