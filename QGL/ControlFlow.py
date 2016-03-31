@@ -36,7 +36,9 @@ def qfunction(func):
 def qfunction_specialization(target):
         # QGL2 uses Call with a label, pointing elsewhere in the same
         # sequenece, wanting control passed there.
-        # It is not pointing to a function creating a sequence.
+        # In those cases, there was no qfunction registering
+        # a sequence that needs to be inserted; the pulses
+        # are already in a sequence, so are not in this hash.
         if target in qfunction_seq:
                 return qfunction_seq[target]
         else:
