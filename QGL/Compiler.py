@@ -370,8 +370,9 @@ def propagate_node_frame_to_edges(wires, chan, frameChange):
     '''
     for predecessor in ChannelLibrary.channelLib.connectivityG.predecessors(chan):
         edge = ChannelLibrary.channelLib.connectivityG.edge[predecessor][chan]['channel']
-        wires[edge][-1] = copy(wires[edge][-1])
-        wires[edge][-1].frameChange += frameChange
+        if edge in wires:
+            wires[edge][-1] = copy(wires[edge][-1])
+            wires[edge][-1].frameChange += frameChange
     return wires
 
 def find_unique_channels(seq):
