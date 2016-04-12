@@ -34,7 +34,16 @@ def qfunction(func):
 	return crfunc
 
 def qfunction_specialization(target):
-	return qfunction_seq[target]
+        # QGL2 uses Call with a label, pointing elsewhere in the same
+        # sequenece, wanting control passed there.
+        # In those cases, there was no qfunction registering
+        # a sequence that needs to be inserted; the pulses
+        # are already in a sequence, so are not in this hash.
+        if target in qfunction_seq:
+                return qfunction_seq[target]
+        else:
+                # QGL2 case
+                return list()
 
 @multimethod(int, Pulse)
 def repeat(n, p):
