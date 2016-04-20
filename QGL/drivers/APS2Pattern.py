@@ -333,7 +333,7 @@ class ModulationCommand(object):
 		op_code_map = {"MODULATE":0x0, "RESET_PHASE":0x2, "SET_FREQ":0x6, "SET_PHASE":0xa, "UPDATE_FRAME":0xe}
 		payload = (op_code_map[self.instruction] << MODULATOR_OP_OFFSET) | (self.nco_select << NCO_SELECT_OP_OFFSET);
 		if self.instruction == "MODULATE":
-			payload |= (int(self.length/4 -1) & 0xffffffff) #zero-indexed quad count
+			payload |= (int(self.length/ADDRESS_UNIT -1) & 0xffffffff) #zero-indexed quad count
 		elif self.instruction == "SET_FREQ":
 			payload |= (int(self.frequency * (1/MODULATION_CLOCK) * 2**28) & 0xffffffff)
 		elif (self.instruction == "SET_PHASE") | (self.instruction == "UPDATE_FRAME"):
@@ -354,6 +354,8 @@ def extract_modulation_seqs(seqs):
 		#check whether frequency is constant
 		freqs = np.unique([entry.frequency for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)])
 		no_freq_cmds = np.allclose(freqs, 0)
+		phases = [entry.phase for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
+		no_phase_cmds = np.allclose(phases, 0)
 		cur_freq = None
 		cur_phase = 0
 		for entry in seq:
@@ -364,7 +366,7 @@ def extract_modulation_seqs(seqs):
 			elif isinstance(entry, ControlFlow.ControlInstruction):
 				#heuristic to insert phase reset before trigger
 				if isinstance(entry, ControlFlow.Wait):
-					if not no_freq_cmds:
+					if not (no_freq_cmds and no_phase_cmds):
 						modulator_seq.append(ModulationCommand("RESET_PHASE", 0x1))
 				modulator_seq.append(entry)
 			elif isinstance(entry, Compiler.Waveform):
@@ -576,7 +578,7 @@ def create_seq_instructions(seqs, offsets):
 			else: # a marker engine
 				if entry.length < MIN_ENTRY_LENGTH:
 					continue
-				markerSel = seq_idx - 2
+				markerSel = seq_idx - 3
 				state = not entry.isZero
 				instructions.append(Marker(markerSel,
 					                       state,
@@ -679,15 +681,38 @@ def write_sequence_file(awgData, fileName):
 				FID.create_dataset(chanStr+'/instructions', data=instructions)
 
 def read_sequence_file(fileName):
-	chanStrs = ['ch1', 'ch2', 'ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']
+	chanStrs = ['ch1', 'ch2', 'ch12m1', 'ch12m2', 'ch12m3', 'ch12m4', 'mod_phase']
 	seqs = {ch: [] for ch in chanStrs}
 	with h5py.File(fileName, 'r') as FID:
 		ch1wf = (1.0/MAX_WAVEFORM_VALUE)*FID['/chan_1/waveforms'].value.flatten()
 		ch2wf = (1.0/MAX_WAVEFORM_VALUE)*FID['/chan_2/waveforms'].value.flatten()
 		instructions = FID['/chan_1/instructions'].value.flatten()
+		NUM_NCO = 2
+		freq = np.zeros(NUM_NCO) #radians per timestep
+		phase = np.zeros(NUM_NCO)
+		frame = np.zeros(NUM_NCO)
+		next_freq = np.zeros(NUM_NCO)
+		next_phase = np.zeros(NUM_NCO)
+		next_frame = np.zeros(NUM_NCO)
+		accumulated_phase = np.zeros(NUM_NCO)
+		reset_flag = [False, False]
 
 		for data in instructions:
 			instr = Instruction.unflatten(data)
+
+			modulator_opcode = instr.payload >> 44
+
+			#update phases at these boundaries
+			if (instr.opcode == WAIT) | (instr.opcode == SYNC) | ((instr.opcode) == MODULATION and (modulator_opcode == 0x0) ):
+				for ct in range(NUM_NCO):
+					if reset_flag[ct]:
+						accumulated_phase[ct] = 0
+						reset_flag[ct] = False
+				freq = next_freq
+				phase = next_phase
+				frame = next_frame
+
+			#Assume new sequence at every WAIT
 			if instr.opcode == WAIT:
 				for ch in chanStrs:
 					seqs[ch].append(np.array([], dtype=np.float64))
@@ -708,5 +733,39 @@ def read_sequence_file(fileName):
 				count = (count + 1) * ADDRESS_UNIT
 				state = (instr.payload >> 32) & 0x1
 				seqs[chan][-1] = np.append( seqs[chan][-1], np.array([state] * count) )
+			elif instr.opcode == MODULATION:
+				# modulator_op_code_map = {"MODULATE":0x0, "RESET_PHASE":0x2, "SET_FREQ":0x6, "SET_PHASE":0xa, "UPDATE_FRAME":0xe}
+				nco_select_bits = (instr.payload >> 40) & 0xf
+				if modulator_opcode == 0x0:
+					#modulate
+					count = ((instr.payload & 0xffffffff) + 1) * ADDRESS_UNIT
+					nco_select = {0b0001:0, 0b0010:1, 0b0100:2, 0b0100:3}[nco_select_bits]
+					seqs['mod_phase'][-1] = np.append(seqs['mod_phase'][-1], freq[nco_select]*np.arange(count) + accumulated_phase[nco_select] + phase[nco_select] + frame[nco_select])
+					accumulated_phase += count*freq
+				else:
+					phase_rad = 2*np.pi * (instr.payload & 0xffffffff) / 2**28
+					for ct in range(NUM_NCO):
+						if (nco_select_bits >> ct) & 0x1:
+							if modulator_opcode == 0x2:
+								#reset
+								next_phase[ct] = 0
+								next_frame[ct] = 0
+								reset_flag[ct] = True
+							elif modulator_opcode == 0x6:
+								#set frequency
+								next_freq[ct] = phase_rad
+							elif modulator_opcode == 0xa:
+								#set phase
+								next_phase[ct] = phase_rad
+							elif modulator_opcode == 0xe:
+								#update frame
+								next_frame[ct] += phase_rad
+
+		#Apply modulation
+		for ct, (ch1,ch2,mod_phase) in enumerate(zip(seqs['ch1'], seqs['ch2'], seqs['mod_phase'])):
+			modulated = np.exp(1j*mod_phase) * (ch1 + 1j*ch2)
+			seqs['ch1'][ct] = np.real(modulated)
+			seqs['ch2'][ct] = np.imag(modulated)
+		del seqs['mod_phase']
 
 	return seqs
