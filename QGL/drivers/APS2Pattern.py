@@ -753,7 +753,7 @@ def read_sequence_file(fileName):
 								reset_flag[ct] = True
 							elif modulator_opcode == 0x6:
 								#set frequency
-								next_freq[ct] = phase_rad
+								next_freq[ct] = phase_rad / ADDRESS_UNIT
 							elif modulator_opcode == 0xa:
 								#set phase
 								next_phase[ct] = phase_rad
