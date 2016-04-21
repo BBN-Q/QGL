@@ -345,49 +345,53 @@ class ModulationCommand(object):
 
 def extract_modulation_seqs(seqs):
 	"""
-	Extract modulation commands from an IQ waveform sequence.
-	Assume single NCO for now.
+	Extract modulation commands from phase, frequency and frameChange of waveforms
+	in an IQ waveform sequence. Assume single NCO for now.
 	"""
 	modulator_seqs = []
+	cur_freq = 0
+	cur_phase = 0
 	for seq in seqs:
 		modulator_seq = []
-		#check whether frequency is constant
+		#check whether we have modulation commands
 		freqs = np.unique([entry.frequency for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)])
 		no_freq_cmds = np.allclose(freqs, 0)
 		phases = [entry.phase for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
 		no_phase_cmds = np.allclose(phases, 0)
-		cur_freq = None
-		cur_phase = 0
+		frame_changes = [entry.frameChange for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
+		no_frame_cmds = np.allclose(frame_changes, 0)
+		no_modulation_cmds = no_freq_cmds and no_phase_cmds and no_frame_cmds
 		for entry in seq:
 			#copy through BlockLabel
 			if isinstance(entry, BlockLabel.BlockLabel):
 				modulator_seq.append(entry)
 			#mostly copy through control-flow
 			elif isinstance(entry, ControlFlow.ControlInstruction):
-				#heuristic to insert phase reset before trigger
+				#heuristic to insert phase reset before trigger if we have modulation commands
 				if isinstance(entry, ControlFlow.Wait):
-					if not (no_freq_cmds and no_phase_cmds):
+					if not ( no_modulation_cmds and (cur_freq == 0) and (cur_phase == 0)):
 						modulator_seq.append(ModulationCommand("RESET_PHASE", 0x1))
 				modulator_seq.append(entry)
 			elif isinstance(entry, Compiler.Waveform):
-				#insert phase and frequency commands before modulation command except if the previous thing is a TRIG in which case we move it before that
-				phase_freq_cmds = []
-				if cur_freq != entry.frequency:
-					phase_freq_cmds.append( ModulationCommand("SET_FREQ", 0x1, frequency=entry.frequency) )
-					cur_freq = entry.frequency
-				if cur_phase != entry.phase:
-					phase_freq_cmds.append( ModulationCommand("SET_PHASE", 0x1, phase=entry.phase) )
-					cur_phase = entry.phase
-				for cmd in phase_freq_cmds:
-					if isinstance(modulator_seq[-1], ControlFlow.Wait):
-						modulator_seq.insert(-1, cmd)
-					else:
-						modulator_seq.append(cmd)
-				#now apply modulation for count command
-				modulator_seq.append( ModulationCommand("MODULATE", 0x1, length=entry.length))
-				#now apply non-zero frame changes
-				if entry.frameChange != 0:
-					modulator_seq.append( ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
+				if not no_modulation_cmds:
+					#insert phase and frequency commands before modulation command so they have the same start time
+					phase_freq_cmds = []
+					if cur_freq != entry.frequency:
+						phase_freq_cmds.append( ModulationCommand("SET_FREQ", 0x1, frequency=entry.frequency) )
+						cur_freq = entry.frequency
+					if cur_phase != entry.phase:
+						phase_freq_cmds.append( ModulationCommand("SET_PHASE", 0x1, phase=entry.phase) )
+						cur_phase = entry.phase
+					for cmd in phase_freq_cmds:
+						if isinstance(modulator_seq[-1], ControlFlow.Wait):
+							modulator_seq.insert(-1, cmd)
+						else:
+							modulator_seq.append(cmd)
+					#now apply modulation for count command
+					modulator_seq.append( ModulationCommand("MODULATE", 0x1, length=entry.length))
+					#now apply non-zero frame changes after so it is applied at end
+					if entry.frameChange != 0:
+						modulator_seq.append( ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
 		modulator_seqs.append(modulator_seq)
 	return modulator_seqs
 
@@ -761,11 +765,12 @@ def read_sequence_file(fileName):
 								#update frame
 								next_frame[ct] += phase_rad
 
-		#Apply modulation
+		#Apply modulation if we have any
 		for ct, (ch1,ch2,mod_phase) in enumerate(zip(seqs['ch1'], seqs['ch2'], seqs['mod_phase'])):
-			modulated = np.exp(1j*mod_phase) * (ch1 + 1j*ch2)
-			seqs['ch1'][ct] = np.real(modulated)
-			seqs['ch2'][ct] = np.imag(modulated)
+			if mod_phase.size:
+				modulated = np.exp(1j*mod_phase) * (ch1 + 1j*ch2)
+				seqs['ch1'][ct] = np.real(modulated)
+				seqs['ch2'][ct] = np.imag(modulated)
 		del seqs['mod_phase']
 
 	return seqs
