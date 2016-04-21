@@ -189,10 +189,17 @@ def add_slave_trigger(seqs, slaveChan):
     Add the slave trigger to each sequence.
     '''
     for seq in seqs:
-        # skip if the sequence already starts with a slave trig
-        if hasattr(seq[0], 'channel') and seq[0].channel == slaveChan:
-            continue
-        seq.insert(0, TAPulse("TRIG", slaveChan, slaveChan.pulseParams['length'], 1.0, 0.0, 0.0))
+        # Attach a TRIG immediately after a WAIT.
+        ct = 0
+        while ct < len(seq)-1:
+            if isinstance(seq[ct], ControlFlow.Wait):
+                if not isinstance(seq[ct+1], ControlFlow.ControlInstruction):
+                    seq[ct+1] *= TAPulse("TRIG", slaveChan, slaveChan.pulseParams['length'], 1.0, 0.0, 0.0)
+                else:
+                    seq.insert(ct+1, TAPulse("TRIG", slaveChan, slaveChan.pulseParams['length'], 1.0, 0.0, 0.0))
+                ct += 2 # can skip over what we just modified
+            else:
+                ct += 1
 
 def propagate_frame_changes(seq):
     '''
