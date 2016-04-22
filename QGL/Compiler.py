@@ -409,10 +409,10 @@ class Waveform(object):
     '''
     IQ LL elements for quadrature mod channels.
     '''
-    def __init__(self, pulse=None, label=None):
-        self.label = label
+    def __init__(self, pulse=None):
         self.frequency = 0
         if pulse is None:
+            self.label = ""
             self.key = None
             self.amp = 0
             self.length = 0
@@ -420,6 +420,7 @@ class Waveform(object):
             self.frameChange = 0
             self.isTimeAmp = False
         else:
+            self.label = pulse.label
             self.key = pulse.hashshape()
             self.amp = pulse.amp
             self.length = pulse.shapeParams['length']
@@ -433,12 +434,11 @@ class Waveform(object):
         return self.__str__()
 
     def __str__(self):
-        labelPart = "{0}: ".format(self.label) if self.label else ""
         if self.isTimeAmp:
             TA = 'HIGH' if self.amp != 0 else 'LOW'
-            return labelPart + "Waveform-TA(" + TA + ", " + str(self.length) + ")"
+            return "Waveform-TA(" + TA + ", " + str(self.length) + ")"
         else:
-            return labelPart + "Waveform(" + str(self.key)[:6] + ", " + str(self.length) + ")"
+            return "Waveform(" + self.label + ", " + str(self.key)[:6] + ", " + str(self.length) + ")"
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
