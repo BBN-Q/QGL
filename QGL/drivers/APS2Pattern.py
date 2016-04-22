@@ -503,29 +503,26 @@ def create_seq_instructions(seqs, offsets):
 		# potentially reorder
 		# heuristics:
 		# 1. modulation phase updates should happen before SYNC/TRIG but in between SYNC and TRIG if we have both
-		# 2. modulation phase updates should happen before modulation count commands
+		# 2. modulation phase updates should happen before NCO select commands
 		# 3. SET_PHASE should happen after RESET_PHASE
 		# 4. instructions to different engines should have single write flag
-		def find_and_pop_entry(predicate):
+		def find_and_pop_entries(predicate):
+			matched = []
 			for ct, entry in enumerate(entries):
 				if predicate(entry):
-					return entries.pop(ct)
-			return None
+					matched.append(entries.pop(ct))
+			return matched
 
 		if len(entries) > 1:
-			sync_entry = find_and_pop_entry(lambda e: isinstance(e[0], ControlFlow.Sync))
-			trig_entry = find_and_pop_entry(lambda e: isinstance(e[0], ControlFlow.Wait))
-			reset_entry = find_and_pop_entry(lambda e: isinstance(e[0], ModulationCommand) and e[0].instruction == "RESET_PHASE")
-			frame_entry = find_and_pop_entry(lambda e: isinstance(e[0], ModulationCommand) and e[0].instruction == "UPDATE_FRAME")
-			phase_entry = find_and_pop_entry(lambda e: isinstance(e[0], ModulationCommand) and e[0].instruction == "SET_PHASE")
-			freq_entry = find_and_pop_entry(lambda e: isinstance(e[0], ModulationCommand) and e[0].instruction == "SET_FREQ")
+			sync_entry = find_and_pop_entries(lambda e: isinstance(e[0], ControlFlow.Sync))
+			trig_entry = find_and_pop_entries(lambda e: isinstance(e[0], ControlFlow.Wait))
+			control_flow_entries = find_and_pop_entries(lambda e: isinstance(e[0], ControlFlow.ControlInstruction))
+			reset_entry = find_and_pop_entries(lambda e: isinstance(e[0], ModulationCommand) and e[0].instruction == "RESET_PHASE")
+			frame_entry = find_and_pop_entries(lambda e: isinstance(e[0], ModulationCommand) and e[0].instruction == "UPDATE_FRAME")
+			phase_entry = find_and_pop_entries(lambda e: isinstance(e[0], ModulationCommand) and e[0].instruction == "SET_PHASE")
+			freq_entry = find_and_pop_entries(lambda e: isinstance(e[0], ModulationCommand) and e[0].instruction == "SET_FREQ")
 			#SYNC and TRIG:
-			order = [reset_entry, phase_entry, freq_entry, frame_entry, trig_entry]
-			if trig_entry:
-				order.insert(0, sync_entry)
-			else:
-				order.insert(-1, sync_entry)
-			reordered_entries = [e for e in order if e != None]
+			reordered_entries = sync_entry + control_flow_entries + reset_entry + phase_entry + freq_entry + frame_entry + trig_entry
 			write_flags = [True]*len(reordered_entries)
 			for entry in entries:
 				reordered_entries.append(entry)
