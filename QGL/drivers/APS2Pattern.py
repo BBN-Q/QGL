@@ -126,19 +126,18 @@ class Instruction(object):
 
 		opCodes = ["WFM", "MARKER", "WAIT", "LOAD", "REPEAT", "CMP", "GOTO", "CALL", "RET", "SYNC", "MODULATION", "LOADCMP"]
 
-		labelPart = "{0} ".format(self.label) if self.label else ""
+		out = "{0}: ".format(self.label) if self.label else ""
 
 		instrOpCode = (self.header >> 4) & 0xf
-		out = labelPart + "Instruction(" + opCodes[instrOpCode] + '|'
-		if self.header & 0x1:
-			out += "WRITEFLAG=1"
-		else:
-			out += "WRITEFLAG=0"
+		out += opCodes[instrOpCode]
 
-		if instrOpCode == MARKER | instrOpCode == WFM:
-			out += ", ENGINESELECT={}".format((self.header >> 2) & 0x3)
-
-		out += "; "
+		if (instrOpCode == MARKER) or (instrOpCode == WFM) or (instrOpCode == MODULATION):
+			if (instrOpCode == MARKER) or (instrOpCode == WFM):
+				out += "; engine={}, ".format((self.header >> 2) & 0x3)
+			if self.header & 0x1:
+				out += "write=1 | "
+			else:
+				out += "write=0 | "
 
 		if self.target:
 			out += str(self.target) + "/"
@@ -147,7 +146,7 @@ class Instruction(object):
 			wfOpCode = (self.payload >> 46) & 0x3
 			wfOpCodes = ["PLAY", "TRIG", "SYNC"]
 			out += wfOpCodes[wfOpCode]
-			out += ", TA bit={}".format((self.payload >> 45) & 0x1)
+			out += "; TA bit={}".format((self.payload >> 45) & 0x1)
 			out += ", count = {}".format((self.payload >> 24) & 2**21-1)
 			out += ", addr = {}".format(self.payload & 2**24-1)
 
@@ -155,14 +154,14 @@ class Instruction(object):
 			mrkOpCode = (self.payload >> 46) & 0x3
 			mrkOpCodes = ["PLAY", "TRIG", "SYNC"]
 			out += mrkOpCodes[mrkOpCode]
-			out += ", state={}".format((self.payload >> 32) & 0x1)
+			out += "; state={}".format((self.payload >> 32) & 0x1)
 			out += ", count = {}".format(self.payload & 2**32-1)
 
 		elif instrOpCode == MODULATION:
 			modulatorOpCode = (self.payload >> 45) & 0x7
 			modulatorOpCodes = ["MODULATE", "RESET_PHASE", "TRIG", "SET_FREQ", "SYNC", "SET_PHASE", "", "UPDATE_FRAME"]
 			out += modulatorOpCodes[modulatorOpCode]
-			out += ", nco_select=0x{:x}".format((self.payload >> 40) & 0xf)
+			out += "; nco_select=0x{:x}".format((self.payload >> 40) & 0xf)
 			if modulatorOpCode == 0x0:
 				out += ", count={:d}".format(self.payload & 0xffffffff)
 			elif modulatorOpCode == 0x3:
@@ -175,16 +174,14 @@ class Instruction(object):
 		elif instrOpCode == CMP:
 			cmpCodes = ["EQUAL", "NOTEQUAL", "GREATERTHAN", "LESSTHAN"]
 			cmpCode = (self.payload >> 8) & 0x3
-			out += ", " + cmpCodes[cmpCode]
+			out += " | " + cmpCodes[cmpCode]
 			out += ", mask = {}".format(self.payload & 0xff)
 
-		elif instrOpCode == GOTO or instrOpCode == CALL or instrOpCode == RET:
-			out += ", target addr = {}".format(self.payload & 2**26-1)
+		elif (instrOpCode == GOTO) or (instrOpCode == CALL) or (instrOpCode == RET) or (instrOpCode == REPEAT):
+			out += " | target addr = {}".format(self.payload & 2**26-1)
 
 		elif instrOpCode == LOAD:
-			out += "count = {}".format(self.payload)
-
-		out += ')'
+			out += " | count = {}".format(self.payload)
 
 		return out
 
