@@ -359,16 +359,17 @@ def extract_modulation_seqs(seqs):
 		no_frame_cmds = np.allclose(frame_changes, 0)
 		no_modulation_cmds = no_freq_cmds and no_phase_cmds and no_frame_cmds
 		for entry in seq:
+			#copies to avoid same object having different timestamps later
 			#copy through BlockLabel
 			if isinstance(entry, BlockLabel.BlockLabel):
-				modulator_seq.append(entry)
+				modulator_seq.append(copy(entry))
 			#mostly copy through control-flow
 			elif isinstance(entry, ControlFlow.ControlInstruction):
 				#heuristic to insert phase reset before trigger if we have modulation commands
 				if isinstance(entry, ControlFlow.Wait):
 					if not ( no_modulation_cmds and (cur_freq == 0) and (cur_phase == 0)):
 						modulator_seq.append(ModulationCommand("RESET_PHASE", 0x1))
-				modulator_seq.append(entry)
+				modulator_seq.append(copy(entry))
 			elif isinstance(entry, Compiler.Waveform):
 				if not no_modulation_cmds:
 					#insert phase and frequency commands before modulation command so they have the same start time
