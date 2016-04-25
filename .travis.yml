@@ -15,31 +15,37 @@ matrix:
     - python: "2.7"
       env: ATOM=1.0
 
-# Setup anaconda
-before_install:
-  - mkdir -p download
-  - cd download
-  - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
-  - chmod +x miniconda.sh
-  - ./miniconda.sh -b
-  - cd ..
-  - export PATH=/home/travis/miniconda2/bin:$PATH
-  - conda update --yes conda
-  - travis_retry conda install --yes python=$TRAVIS_PYTHON_VERSION numpy bokeh h5py jupyter scipy networkx future
+install:
+  # Setup anaconda. See http://conda.pydata.org/docs/travis.html
+
+  # We do this conditionally because it saves us some downloading if the
+  # version is the same.
+  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
+      wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
+    else
+      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+    fi
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - hash -r
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  # Useful for debugging any issues with conda
+  - conda info -a
+
+  # Create conda environment with dependencies
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy bokeh h5py jupyter scipy networkx future
+  - source activate test-environment
   - if [[ $ATOM == 0.3 ]]; then conda install --yes atom; fi
   - if [[ $ATOM == 1.0 ]]; then pip install cppy; pip install git+https://github.com/nucleic/atom.git@1.0.0-dev; fi
-  - pip install coveralls
+  - pip install watchdog coveralls
+
+  # download and extract test data
   - if [[ $TRAVIS_PYTHON_VERSION = 2.7 ]]; then export TEST_DATA="https://drive.google.com/uc?export=download&id=0BxaPKTZqyVchaXc1V3hlejRaY2M"; fi
   - if [[ $TRAVIS_PYTHON_VERSION = 3.5 ]]; then export TEST_DATA="https://drive.google.com/uc?export=download&id=0B2sNiahoh0BZSzNPakRSMWgzQW8"; fi
   - wget $TEST_DATA -O test_data.tar.gz
   - tar xzvf test_data.tar.gz -C tests/
 
-# use conda to install packages
-install:
- # Coverage packages are on my binstar channel
-  - pip install watchdog
-
-# execute scripts
 script:
   - coverage run -m unittest discover
 after_script:
