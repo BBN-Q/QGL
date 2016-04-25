@@ -570,3 +570,40 @@ def validate_linklist_channels(linklistChannels):
     if errors != []:
         return False
     return True
+
+def set_log_level(loggerName='QGL.Compiler', levelDesired=logging.DEBUG,
+                  formatStr = '%(message)s'):
+    '''Set the python logging level for a logger.
+    Format messages with just the log message by default.
+    Sets QGL.Compiler messages to DEBUG by default.
+    '''
+    import logging
+    import sys
+    # Do basicConfig to be safe, but ask for console to be STDOUT
+    # so it doesn't look like an error in a jupyter notebook
+    logging.basicConfig(level=levelDesired, format=formatStr,
+                        stream=sys.stdout)
+
+    # Enable our logger at specified level
+    logger = logging.getLogger(loggerName)
+    logger.setLevel(levelDesired)
+
+    # Find the first stream handler to STDOUT and set its log level & format
+    handlers = logger.handlers
+    if not handlers:
+        handlers = logging.getLogger().handlers
+    updatedH = False
+    for handler in handlers:
+        if isinstance(handler, logging.StreamHandler) and \
+           handler.stream == sys.stdout:
+            handler.setLevel(levelDesired)
+            handler.setFormatter(logging.Formatter(formatStr))
+            return
+
+    # No existing handler, so add a local one
+    handler = logging.StreamHandler(stream=sys.stdout) # Note we request STDOUT
+    handler.setLevel(levelDesired)
+    handler.setFormatter(logging.Formatter(formatStr))
+    logger.addHandler(handler)
+    # Without this when running in notebook, console gets log stmts at default format
+    logger.propagate = 0
