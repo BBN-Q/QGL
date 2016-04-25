@@ -50,7 +50,7 @@ CALL       = 0x7
 RET        = 0x8
 SYNC       = 0x9
 MODULATION = 0xA
-LOADCMP    = 0XB
+LOADCMP    = 0xB
 
 # WFM/MARKER op codes
 PLAY          = 0x0
@@ -720,12 +720,19 @@ def read_sequence_file(fileName):
 				count = (instr.payload >> 24) & 0xfffff
 				count = (count + 1) * ADDRESS_UNIT
 				isTA = (instr.payload >> 45) & 0x1
+				chan = 'ch12m' + str(((instr.header >> 2) & 0x3) + 1)
+				ch1_select_bit = (instr.header >> 2) & 0x1
+				ch2_select_bit = (instr.header >> 3) & 0x1
 				if not isTA:
-					seqs['ch1'][-1] = np.append( seqs['ch1'][-1], ch1wf[addr:addr + count] )
-					seqs['ch2'][-1] = np.append( seqs['ch2'][-1], ch2wf[addr:addr + count] )
+					if ch1_select_bit:
+						seqs['ch1'][-1] = np.append( seqs['ch1'][-1], ch1wf[addr:addr + count] )
+					if ch2_select_bit:
+						seqs['ch2'][-1] = np.append( seqs['ch2'][-1], ch2wf[addr:addr + count] )
 				else:
-					seqs['ch1'][-1] = np.append( seqs['ch1'][-1], np.array([ch1wf[addr]] * count) )
-					seqs['ch2'][-1] = np.append( seqs['ch2'][-1], np.array([ch2wf[addr]] * count) )
+					if ch1_select_bit:
+						seqs['ch1'][-1] = np.append( seqs['ch1'][-1], np.array([ch1wf[addr]] * count) )
+					if ch2_select_bit:
+						seqs['ch2'][-1] = np.append( seqs['ch2'][-1], np.array([ch2wf[addr]] * count) )
 			elif instr.opcode == MARKER:
 				chan = 'ch12m' + str(((instr.header >> 2) & 0x3) + 1)
 				count = instr.payload & 0xffffffff
@@ -738,7 +745,7 @@ def read_sequence_file(fileName):
 				if modulator_opcode == 0x0:
 					#modulate
 					count = ((instr.payload & 0xffffffff) + 1) * ADDRESS_UNIT
-					nco_select = {0b0001:0, 0b0010:1, 0b0100:2, 0b0100:3}[nco_select_bits]
+					nco_select = {0b0001:0, 0b0010:1, 0b0100:2, 0b1000:3}[nco_select_bits]
 					seqs['mod_phase'][-1] = np.append(seqs['mod_phase'][-1], freq[nco_select]*np.arange(count) + accumulated_phase[nco_select] + phase[nco_select] + frame[nco_select])
 					accumulated_phase += count*freq
 				else:
