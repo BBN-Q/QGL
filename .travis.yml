@@ -15,6 +15,14 @@ matrix:
     - python: "2.7"
       env: ATOM=1.0
 
+before_install:
+  #install git lfs and fetch test data
+  - wget https://github.com/github/git-lfs/releases/download/v1.2.0/git-lfs-linux-amd64-1.2.0.tar.gz
+  - tar xzf git-lfs-linux-amd64-1.2.0.tar.gz
+  - (cd git-lfs-1.2.0 && PREFIX=$HOME/.local ./install.sh)
+  - export PATH=$HOME/.local/bin:$PATH
+  - git lfs fetch
+
 install:
   # Setup anaconda. See http://conda.pydata.org/docs/travis.html
 
@@ -39,12 +47,6 @@ install:
   - if [[ $ATOM == 0.3 ]]; then conda install --yes atom; fi
   - if [[ $ATOM == 1.0 ]]; then pip install cppy; pip install git+https://github.com/nucleic/atom.git@1.0.0-dev; fi
   - pip install watchdog coveralls
-
-  # download and extract test data
-  - if [[ $TRAVIS_PYTHON_VERSION = 2.7 ]]; then export TEST_DATA="https://drive.google.com/uc?export=download&id=0BxaPKTZqyVchaXc1V3hlejRaY2M"; fi
-  - if [[ $TRAVIS_PYTHON_VERSION = 3.5 ]]; then export TEST_DATA="https://drive.google.com/uc?export=download&id=0B2sNiahoh0BZSzNPakRSMWgzQW8"; fi
-  - wget $TEST_DATA -O test_data.tar.gz
-  - tar xzvf test_data.tar.gz -C tests/
 
 script:
   - coverage run -m unittest discover
