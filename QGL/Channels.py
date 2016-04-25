@@ -124,8 +124,6 @@ class Qubit(LogicalChannel):
 
     def __init__(self, **kwargs):
         super(Qubit, self).__init__(**kwargs)
-        if self.gateChan is None:
-            self.gateChan = LogicalMarkerChannel(label=kwargs['label']+'-gate')
 
 class Measurement(LogicalChannel):
     '''
@@ -142,8 +140,6 @@ class Measurement(LogicalChannel):
 
     def __init__(self, **kwargs):
         super(Measurement, self).__init__(**kwargs)
-        if self.gateChan is None:
-            self.gateChan = LogicalMarkerChannel(label=kwargs['label']+'-gate')
         if self.trigChan is None:
             self.trigChan = LogicalMarkerChannel(label='digitizerTrig')
 

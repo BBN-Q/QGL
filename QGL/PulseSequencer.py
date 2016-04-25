@@ -49,6 +49,10 @@ class Pulse(object):
         self.amp = amp
         self.frameChange = frameChange
         self.isTimeAmp = False
+        if hasattr(self.channel, 'frequency'):
+            self.frequency = self.channel.frequency
+        else:
+            self.frequency = 0
         requiredParams = ['length', 'shapeFun']
         for param in requiredParams:
             if param not in shapeParams.keys():
