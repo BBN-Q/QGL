@@ -134,6 +134,8 @@ class Instruction(object):
 		if (instrOpCode == MARKER) or (instrOpCode == WFM) or (instrOpCode == MODULATION):
 			if (instrOpCode == MARKER) or (instrOpCode == WFM):
 				out += "; engine={}, ".format((self.header >> 2) & 0x3)
+			else:
+				out += "; "
 			if self.header & 0x1:
 				out += "write=1 | "
 			else:
