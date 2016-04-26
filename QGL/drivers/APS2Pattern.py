@@ -381,12 +381,12 @@ def extract_modulation_seqs(seqs):
 						phase_freq_cmds.append( ModulationCommand("SET_PHASE", 0x1, phase=entry.phase) )
 						cur_phase = entry.phase
 					for cmd in phase_freq_cmds:
-						if isinstance(modulator_seq[-1], ControlFlow.Wait):
-							modulator_seq.insert(-1, cmd)
-						else:
-							modulator_seq.append(cmd)
+						modulator_seq.append(cmd)
 					#now apply modulation for count command
-					modulator_seq.append( ModulationCommand("MODULATE", 0x1, length=entry.length))
+					if (len(modulator_seq) > 0) and (isinstance(modulator_seq[-1], ModulationCommand)) and (modulator_seq[-1].instruction == "MODULATE"):
+						modulator_seq[-1].length += entry.length
+					else:
+						modulator_seq.append( ModulationCommand("MODULATE", 0x1, length=entry.length))
 					#now apply non-zero frame changes after so it is applied at end
 					if entry.frameChange != 0:
 						modulator_seq.append( ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
