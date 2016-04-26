@@ -1,6 +1,6 @@
 import h5py
 import numpy as np
-import unittest, time, os, random
+import unittest, time, os, random, sys
 
 from QGL import *
 import QGL
@@ -99,13 +99,24 @@ class AWGTestHelper(object):
 			print("AWGTestHelper.read_function is not defined")
 			return
 
-		searchDirectory = self.awg_dir + os.path.sep + seqDir
-		truthDirectory = self.truth_dir + os.path.sep + seqDir
+		searchDirectory = os.path.join(self.awg_dir, seqDir)
+		truthDirectory = os.path.join(self.truth_dir, seqDir)
 
-		filenames = os.listdir(searchDirectory)
+		filenames = os.listdir(truthDirectory)
+
+		#look for py27 versions
+		py27_files = [f for f in filenames if f[-8:] == "_py27.h5"]
+		if py27_files:
+			if sys.version_info[0] > 2:
+				#strip them out for python3 (and above?)
+				filenames = [f for f in filenames if f[-8:] != "_py27.h5"]
+			else:
+				#otherwise strip the non "_py27" version
+				filenames = [f for f in filenames if f.replace(".h5", "_py27.h5") not in py27_files]
+
 		for filename in filenames:
-			truthFile = truthDirectory + os.path.sep + filename
-			testFile = searchDirectory + os.path.sep + filename
+			truthFile = os.path.join(truthDirectory, filename)
+			testFile = os.path.join(searchDirectory, filename.replace("_py27", ""))
 
 			self.assertTrue(os.path.isfile(truthFile), "Truth Data File: {0} not found.".format(truthFile) )
 			self.compare_file_data(testFile, truthFile)
