@@ -530,6 +530,8 @@ def create_seq_instructions(seqs, offsets):
 				write_flags.append(False)
 			write_flags[-1] = True
 			entries = reordered_entries
+		else:
+			write_flags = [True]
 
 		for ct,(entry,seq_idx) in enumerate(entries):
 			if seq_idx == 0:
