@@ -90,7 +90,7 @@ def merge_channels(wires, channels):
 
                 newentry.phase = 0
 
-                pulsesHash = tuple([e.hashshape() for e in entries])
+                pulsesHash = tuple([tuple([e.hashshape()] + [e.amp] + [e.phase]) for e in entries])
                 if pulsesHash not in shapeFunLib:
                     # create closure to sum waveforms
                     def sum_shapes(entries=entries, **kwargs):
