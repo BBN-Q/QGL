@@ -15,6 +15,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 '''
+import logging
 import numpy as np
 import os
 import operator
@@ -177,16 +178,22 @@ def generate_waveforms(physicalWires):
     return wfs
 
 def pulses_to_waveforms(physicalWires):
+    logger = logging.getLogger(__name__)
+    logger.debug("Converting pulses_to_waveforms:")
     wireOuts = {ch : [] for ch in physicalWires.keys()}
     for ch, seqs in physicalWires.items():
+        logger.debug('')
+        logger.debug("Channel '%s':", ch)
         for seq in seqs:
             wireOuts[ch].append([])
             for pulse in seq:
                 if not isinstance(pulse, PulseSequencer.Pulse):
                     wireOuts[ch][-1].append(pulse)
+                    logger.debug(" %s", str(pulse))
                 else:
                     wf = Waveform(pulse)
                     wireOuts[ch][-1].append(wf)
+                    logger.debug(" %s", str(wf))
     return wireOuts
 
 def channel_delay_map(physicalWires):
@@ -231,11 +238,13 @@ def collect_specializations(seqs):
         funcDefs += ControlFlow.qfunction_specialization(target)
     return funcDefs
 
-def compile_to_hardware(seqs, fileName, suffix=''):
+def compile_to_hardware(seqs, fileName, suffix='', qgl2=False):
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'. Other inputs:
         suffix : string to append to end of fileName (e.g. with fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5)
     '''
+    logger = logging.getLogger(__name__)
+    logger.debug("Add digitizer, blanking pulses, and slave trigger...")
 
     # Add the digitizer trigger to measurements
     PatternUtils.add_digitizer_trigger(seqs)
@@ -252,16 +261,29 @@ def compile_to_hardware(seqs, fileName, suffix=''):
         channels |= find_unique_channels(seq)
 
     # Compile all the pulses/pulseblocks to sequences of pulses and control flow
-    wireSeqs = compile_sequences(seqs, channels)
+    wireSeqs = compile_sequences(seqs, channels, qgl2=qgl2)
 
     if not validate_linklist_channels(wireSeqs.keys()):
         print("Compile to hardware failed")
         return
 
+    logger.debug('')
+    logger.debug("Now after gating constraints:")
     # apply gating constraints
     for chan, seq in wireSeqs.items():
         if isinstance(chan, Channels.LogicalMarkerChannel):
             wireSeqs[chan] = PatternUtils.apply_gating_constraints(chan.physChan, seq)
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug('')
+            logger.debug("Channel '%s':", chan)
+            for elem in seq:
+                if isinstance(elem, list):
+                    for e2 in elem:
+                        logger.debug(" %s", str(e2))
+                    logger.debug('')
+                else:
+                    logger.debug(" %s", str(elem))
+
     # map logical to physical channels
     physWires = map_logical_to_physical(wireSeqs)
 
@@ -271,6 +293,16 @@ def compile_to_hardware(seqs, fileName, suffix=''):
     # apply delays
     for chan, wire in physWires.items():
         PatternUtils.delay(wire, delays[chan])
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug('')
+            logger.debug("Delayed wire for chan '%s':", chan)
+            for elem in wire:
+                if isinstance(elem, list):
+                    for e2 in elem:
+                        logger.debug(" %s", str(e2))
+                    logger.debug('')
+                else:
+                    logger.debug(" %s", str(elem))
 
     # generate wf library (base shapes)
     wfs = generate_waveforms(physWires)
@@ -296,17 +328,21 @@ def compile_to_hardware(seqs, fileName, suffix=''):
     # Return the filenames we wrote
     return fileList
 
-def compile_sequences(seqs, channels=None):
+def compile_sequences(seqs, channels=None, qgl2=False):
     '''
     Main function to convert sequences to miniLL's and waveform libraries.
     '''
+    logger = logging.getLogger(__name__)
     # all sequences should start with a WAIT
     for seq in seqs:
         if not isinstance(seq[0], ControlFlow.Wait):
+            logger.debug("Adding a Wait - first seq elem was %s", str(seq[0]))
             seq.insert(0, ControlFlow.Wait())
     # turn into a loop, by appending GOTO(0) at end of last sequence
     if not isinstance(seqs[-1][-1], ControlFlow.Goto):
         seqs[-1].append(ControlFlow.Goto(BlockLabel.label(seqs[0])))
+        logger.debug("Appending a Goto at end to loop")
+
     # inject function definitions prior to sequences
     funcDefs = collect_specializations(seqs)
     if funcDefs:
@@ -326,6 +362,22 @@ def compile_sequences(seqs, channels=None):
 
     #Print a message so for the experiment we know how many sequences there are
     print('Compiled {} sequences.'.format(len(seqs)))
+
+    # Debugging:
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug('')
+        logger.debug("Returning from compile_sequences:")
+        for chan in wireSeqs:
+            logger.debug('')
+            logger.debug("Channel '%s':", chan)
+            seq = wireSeqs[chan]
+            for elem in seq:
+                if isinstance(elem, list):
+                    for e2 in elem:
+                        logger.debug(" %s", str(e2))
+                else:
+                    logger.debug(" %s", str(elem))
+
     return wireSeqs
 
 def compile_sequence(seq, channels=None):
@@ -333,14 +385,29 @@ def compile_sequence(seq, channels=None):
     Takes a list of control flow and pulses, and returns aligned blocks
     separated into individual abstract channels (wires).
     '''
-
+    logger = logging.getLogger(__name__)
+    logger.debug('')
+    logger.debug("In compile_sequence:")
     #Find the set of logical channels used here and initialize them
     if not channels:
+        logger.debug("<Had no channels>")
         channels = find_unique_channels(seq)
 
     wires = {chan: [] for chan in channels}
 
+    # Debugging: what does the sequence look like?
+    if logger.isEnabledFor(logging.DEBUG):
+        for elem in seq:
+            logger.debug(" %s", str(elem))
+        logger.debug('')
+        logger.debug("Channels:")
+        for chan in channels:
+            logger.debug(" %s", str(chan))
+
+    logger.debug('')
+    logger.debug("Sequence before normalizing:")
     for block in normalize(flatten(seq), channels):
+        logger.debug(" %s", str(block))
         # labels and control flow instructions broadcast to all channels
         if isinstance(block, (BlockLabel.BlockLabel, ControlFlow.ControlInstruction)):
             for chan in channels:
@@ -350,9 +417,11 @@ def compile_sequence(seq, channels=None):
         if block.length == 0:
             for chan in channels:
                 if len(wires[chan]) > 0:
+                    logger.debug("Modifying pulse on %s: %s", chan, wires[chan][-1])
                     wires[chan][-1] = copy(wires[chan][-1])
                     wires[chan][-1].frameChange += block.pulses[chan].frameChange
                     if chan in ChannelLibrary.channelLib.connectivityG.nodes():
+                        logger.debug("Doing propagate_node_frame_to_edges")
                         wires = propagate_node_frame_to_edges(wires, chan, block.pulses[chan].frameChange)
                 else:
                     warn("Dropping initial frame change")
@@ -361,7 +430,12 @@ def compile_sequence(seq, channels=None):
         for chan in channels:
             # add aligned Pulses (if the block contains a composite pulse, may get back multiple pulses)
             wires[chan] += schedule(chan, block.pulses[chan], block.length, block.alignment)
-
+    if logger.isEnabledFor(logging.DEBUG):
+        for chan in wires:
+            logger.debug('')
+            logger.debug("compile_sequence Return for channel '%s':", chan)
+            for elem in wires[chan]:
+                logger.debug(" %s", str(elem))
     return wires
 
 def propagate_node_frame_to_edges(wires, chan, frameChange):
@@ -461,6 +535,7 @@ def schedule(channel, pulse, blockLength, alignment):
     duration is `blockLength`.
         alignment = "left", "right", or "center"
     '''
+    logger = logging.getLogger(__name__)
     # make everything look like a sequence
     if isinstance(pulse, PulseSequencer.CompositePulse):
         pulses = pulse.pulses
@@ -468,6 +543,12 @@ def schedule(channel, pulse, blockLength, alignment):
         pulses = [pulse]
 
     padLength = blockLength - pulse.length
+    if padLength == 0:
+        # logger.debug("   schedule on chan '%s' made no change", channel)
+        pass
+    else:
+        logger.debug("   schedule on chan '%s' adding Id len %d align %s",
+                     channel, padLength, alignment)
     if padLength == 0:
         # no padding element required
         return pulses
@@ -489,3 +570,40 @@ def validate_linklist_channels(linklistChannels):
     if errors != []:
         return False
     return True
+
+def set_log_level(loggerName='QGL.Compiler', levelDesired=logging.DEBUG,
+                  formatStr = '%(message)s'):
+    '''Set the python logging level for a logger.
+    Format messages with just the log message by default.
+    Sets QGL.Compiler messages to DEBUG by default.
+    '''
+    import logging
+    import sys
+    # Do basicConfig to be safe, but ask for console to be STDOUT
+    # so it doesn't look like an error in a jupyter notebook
+    logging.basicConfig(level=levelDesired, format=formatStr,
+                        stream=sys.stdout)
+
+    # Enable our logger at specified level
+    logger = logging.getLogger(loggerName)
+    logger.setLevel(levelDesired)
+
+    # Find the first stream handler to STDOUT and set its log level & format
+    handlers = logger.handlers
+    if not handlers:
+        handlers = logging.getLogger().handlers
+    updatedH = False
+    for handler in handlers:
+        if isinstance(handler, logging.StreamHandler) and \
+           handler.stream == sys.stdout:
+            handler.setLevel(levelDesired)
+            handler.setFormatter(logging.Formatter(formatStr))
+            return
+
+    # No existing handler, so add a local one
+    handler = logging.StreamHandler(stream=sys.stdout) # Note we request STDOUT
+    handler.setLevel(levelDesired)
+    handler.setFormatter(logging.Formatter(formatStr))
+    logger.addHandler(handler)
+    # Without this when running in notebook, console gets log stmts at default format
+    logger.propagate = 0
