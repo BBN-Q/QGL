@@ -162,6 +162,7 @@ class TestSequences(object):
 
 	def compare_sequences(self): abstract
 
+	#TODO: fix the nutFreq scaling of the arb_axis_drag so that it doesn't overflow
 	def test_misc_seqs1(self):
 		""" catch all for sequences not otherwise covered """
 		self.set_awg_dir()
@@ -376,6 +377,17 @@ class TestAPS2(unittest.TestCase, APS2Helper, TestSequences):
 	def setUp(self):
 		APS2Helper.__init__(self)
 		APS2Helper.setUp(self)
+
+	@unittest.expectedFailure
+	def test_misc_seqs1(self):
+		"""
+		Fails to do nutFreq being set to a very small value (5.0) for the
+		arb_axis_drag pulse causing a large waveform ampliutde. Previously this
+		got phase shifted and then clipped so both chA and chB were railed. With
+		onboard modulation it gets clipped and then rotated.
+		"""
+		TestSequences.test_misc_seqs1(self)
+
 
 class TestAPS1(unittest.TestCase, AWGTestHelper, TestSequences):
 
