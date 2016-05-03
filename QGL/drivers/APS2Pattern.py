@@ -770,7 +770,7 @@ def read_sequence_file(fileName):
 					seqs['mod_phase'][-1] = np.append(seqs['mod_phase'][-1], freq[nco_select]*np.arange(count) + accumulated_phase[nco_select] + phase[nco_select] + frame[nco_select])
 					accumulated_phase += count*freq
 				else:
-					phase_rad = 2*np.pi * (instr.payload & 0xffffffff) / 2**28
+					phase_rad = 2*np.pi * np.int32(instr.payload & 0xffffffff) / 2**28
 					for ct in range(NUM_NCO):
 						if (nco_select_bits >> ct) & 0x1:
 							if modulator_opcode == 0x2:
@@ -815,7 +815,6 @@ def read_sequence_file(fileName):
 						mod_ch2.append( (time_ch2, amp_ch2 ) )
 
 					cum_time += time_ch1
-
 				seqs['ch1'][ct] = mod_ch1
 				seqs['ch2'][ct] = mod_ch2
 
