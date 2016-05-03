@@ -1,7 +1,7 @@
 from .Channels import Qubit, Measurement, Edge
 from .ChannelLibrary import QubitFactory, MeasFactory, EdgeFactory
 from .PulsePrimitives import *
-from .Compiler import compile_to_hardware
+from .Compiler import compile_to_hardware, set_log_level
 from .PulseSequencer import align
 from .ControlFlow import repeat, repeatall, qif, qwhile, qdowhile, qfunction, qwait, qsync
 from .BasicSequences import *
