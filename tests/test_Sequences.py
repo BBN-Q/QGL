@@ -137,18 +137,22 @@ class AWGTestHelper(object):
 			for x in range(len(truthData[name])):
 				seqA = np.array(truthData[name][x])
 				seqB = np.array(awgData[name][x])
-				self.compare_sequence(seqA,seqB,  "\nFile {0} =>\nChannel {1} Sequence {2}".format(testFile, name, x))
+				self.compare_sequence(seqA, seqB, "\nFile {0} =>\nChannel {1} Sequence {2}".format(testFile, name, x))
 
 	def compare_sequence(self, seqA, seqB, errorHeader):
-		self.assertTrue( seqA.size == seqB.size, "{0} size {1} != size {2}".format(errorHeader, str(seqA.size), str(seqB.size)))
-		# np.testing.assert_allclose(seqA, seqB, rtol=0, atol=self.tolerance, err_msg=errorHeader)
-		npdiff = np.allclose(seqA, seqB, rtol=0, atol=self.tolerance)
-		diff = np.abs(seqA - seqB) < self.tolerance
-		test = npdiff or all(diff)
-		if not test:
-			bad_idx = np.where(diff == False)[0]
-			percent_bad = float(len(bad_idx))/len(seqA)
-			bad_level = np.mean(np.abs(seqA - seqB)[bad_idx]) / self.tolerance
+		#unroll the time amplitude pairs for comparison
+		wfA = np.concatenate([ta[1]*np.ones(ta[0]) for ta in seqA]) if len(seqA) else np.empty(0)
+		wfB = np.concatenate([ta[1]*np.ones(ta[0]) for ta in seqB]) if len(seqB) else np.empty(0)
+
+		self.assertTrue( len(wfA) == len(wfB), "{0} size {1} != size {2}".format(errorHeader, str(seqA.size), str(seqB.size)))
+
+		#Check values
+		wf_check = np.allclose(wfA, wfB, rtol=0, atol=self.tolerance)
+
+		if not wf_check:
+			bad_idx = np.where(wfA != wfB)[0]
+			percent_bad = float(len(bad_idx))/len(wfA)
+			bad_level = np.mean(np.abs(wfA - wfB)[bad_idx]) / self.tolerance
 			if percent_bad < 0.6:
 				msg = "{0}.\nFailed indices: ({1:.1f}% mismatch)\n{2}".format(errorHeader, 100*percent_bad, bad_idx)
 				msg += "\nAvg failure level: {0}".format(bad_level)
@@ -156,7 +160,8 @@ class AWGTestHelper(object):
 				msg = "{0} ({1:.1f}% mismatch)".format(errorHeader, 100*percent_bad)
 		else:
 			msg = ""
-		self.assertTrue(npdiff or all(diff), msg)
+
+		self.assertTrue(wf_check, msg=msg)
 
 class TestSequences(object):
 
