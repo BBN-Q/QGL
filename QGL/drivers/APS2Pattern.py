@@ -689,32 +689,19 @@ def read_sequence_file(fileName):
 	"""
 	Reads a HDF5 sequence file and returns a dictionary of lists.
 	Dictionary keys are channel strings such as ch1, ch12m1
-	Lists are (timesteps, output)
+	Lists are or tuples of time-amplitude pairs (time, output)
 	"""
 	chanStrs = ['ch1', 'ch2', 'ch12m1', 'ch12m2', 'ch12m3', 'ch12m4', 'mod_phase']
 	seqs = {ch:[] for ch in chanStrs}
-	timestep = {ch:0 for ch in chanStrs}
 
 	def start_new_seq():
 		for ct, ch in enumerate(chanStrs):
 			if (ct < 2) or (ct == 6):
 				#analog or modulation channel
-				seqs[ch].append([np.array([], dtype=np.uint), np.array([], dtype=np.float64)])
+				seqs[ch].append([])
 			else:
 				#marker channel
-				seqs[ch].append([np.array([], dtype=np.uint), np.array([], dtype=np.uint8)])
-
-	def end_seq():
-		for ch in chanStrs:
-			if ch != "mod_phase" and seqs[ch] and len(seqs[ch][-1]):
-				seqs[ch][-1][0] = np.append(seqs[ch][-1][0], timestep[ch])
-				seqs[ch][-1][1] = np.append(seqs[ch][-1][1], 0)
-
-	def reset_timestep():
-		for ch in chanStrs:
-			timestep[ch] = 0
-
-
+				seqs[ch].append([])
 
 	with h5py.File(fileName, 'r') as FID:
 		file_version = FID["/"].attrs["Version"]
@@ -748,9 +735,7 @@ def read_sequence_file(fileName):
 
 			#Assume new sequence at every WAIT
 			if instr.opcode == WAIT:
-				end_seq()
 				start_new_seq()
-				reset_timestep()
 
 			elif instr.opcode == WFM:
 				addr = (instr.payload & 0x00ffffff) * ADDRESS_UNIT
@@ -759,24 +744,20 @@ def read_sequence_file(fileName):
 				isTA = (instr.payload >> 45) & 0x1
 				chan_select_bits = ( (instr.header >> 2) & 0x1, (instr.header >> 3) & 0x1 )
 				#On older firmware we broadcast by default whereas on newer we respect the engine select
-				for ct, chan in enumerate(('ch1', 'ch2')):
-					if (file_version < 4) or chan_select_bits[ct]:
+				for chan, select_bit in zip(('ch1', 'ch2'), chan_select_bits):
+					if (file_version < 4) or select_bit:
 						if isTA:
-							seqs[chan][-1][0] = np.append(seqs[chan][-1][0], timestep[chan])
-							seqs[chan][-1][1] = np.append(seqs[chan][-1][1], ch1wf[addr])
+							seqs[chan][-1].append( (count, ch1wf[addr]) )
 						else:
-							seqs[chan][-1][0] = np.append(seqs[chan][-1][0], timestep[chan] + np.arange(count))
-							seqs[chan][-1][1] = np.append(seqs[chan][-1][1], ch1wf[addr:addr + count])
-						timestep[chan] += count
+							for ct in range(count):
+								seqs[chan][-1].append( (1, ch1wf[addr+ct]) )
 
 			elif instr.opcode == MARKER:
 				chan = 'ch12m' + str(((instr.header >> 2) & 0x3) + 1)
 				count = instr.payload & 0xffffffff
 				count = (count + 1) * ADDRESS_UNIT
 				state = (instr.payload >> 32) & 0x1
-				seqs[chan][-1][0] = np.append(seqs[chan][-1][0], timestep[chan])
-				seqs[chan][-1][1] = np.append(seqs[chan][-1][1], state)
-				timestep[chan] += count
+				seqs[chan][-1].append( (count, state) )
 
 			elif instr.opcode == MODULATION:
 				# modulator_op_code_map = {"MODULATE":0x0, "RESET_PHASE":0x2, "SET_FREQ":0x6, "SET_PHASE":0xa, "UPDATE_FRAME":0xe}
@@ -806,7 +787,6 @@ def read_sequence_file(fileName):
 								#update frame
 								next_frame[ct] += phase_rad
 
-		end_seq()
 
 		#Apply modulation if we have any
 		# for ct, (ch1,ch2,mod_phase) in enumerate(zip(seqs['ch1'], seqs['ch2'], seqs['mod_phase'])):
