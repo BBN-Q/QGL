@@ -750,8 +750,8 @@ def read_sequence_file(fileName):
 						if isTA:
 							seqs[chan][-1].append( (count, wf_lib[chan][addr]) )
 						else:
-							for ct in range(count):
-								seqs[chan][-1].append( (1, wf_lib[chan][addr+ct]) )
+							for sample in wf_lib[chan][addr:addr+count]:
+								seqs[chan][-1].append( (1, sample) )
 
 			elif instr.opcode == MARKER:
 				chan = 'ch12m' + str(((instr.header >> 2) & 0x3) + 1)
