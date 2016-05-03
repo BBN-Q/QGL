@@ -371,6 +371,8 @@ def extract_modulation_seqs(seqs):
 				if isinstance(entry, ControlFlow.Wait):
 					if not ( no_modulation_cmds and (cur_freq == 0) and (cur_phase == 0)):
 						modulator_seq.append(ModulationCommand("RESET_PHASE", 0x1))
+				elif isinstance(entry, ControlFlow.Return):
+					cur_freq = 0 #makes sure that the frequency is set in the first sequence after the definition of subroutines
 				modulator_seq.append(copy(entry))
 			elif isinstance(entry, Compiler.Waveform):
 				if not no_modulation_cmds:
