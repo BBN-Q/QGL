@@ -789,17 +789,34 @@ def read_sequence_file(fileName):
 
 
 		#Apply modulation if we have any
-		# for ct, (ch1,ch2,mod_phase) in enumerate(zip(seqs['ch1'], seqs['ch2'], seqs['mod_phase'])):
-		# 	if mod_phase.size:
-		# 		ch1_mod_vals = np.array([], dtype=np.float64)
-		# 		ch1_mod_times = np.array([], dtype=np.uint)
-		# 		ch2_mod_vals = np.array([], dtype=np.float64)
-		# 		ch2_mod_times = np.array([], dtype=np.uint)
-		# 		#only really works if ch1, ch2 are broadcast together
-		# 		for
-		# 		modulated = np.exp(1j*mod_phase) * (ch1 + 1j*ch2)
-		# 		seqs['ch1'][ct] = np.real(modulated)
-		# 		seqs['ch2'][ct] = np.imag(modulated)
+		for ct, (ch1,ch2,mod_phase) in enumerate(zip(seqs['ch1'], seqs['ch2'], seqs['mod_phase'])):
+			if len(mod_phase):
+				#only really works if ch1, ch2 are broadcast together
+				mod_ch1 = []
+				mod_ch2 = []
+				cum_time = 0
+				for ((time_ch1, amp_ch1), (time_ch2, amp_ch2)) in zip(ch1, ch2):
+					if (amp_ch1 != 0) or (amp_ch2 != 0):
+						assert time_ch1 == time_ch2
+						if time_ch1 == 1:
+							#single timestep
+							modulated = np.exp(1j*mod_phase[cum_time]) * (amp_ch1 + 1j*amp_ch2)
+							mod_ch1.append( (1, modulated.real))
+							mod_ch2.append( (1, modulated.imag))
+						else:
+							#expand TA
+							modulated = np.exp(1j*mod_phase[cum_time:cum_time+time_ch1]) * (amp_ch1 + 1j*amp_ch2)
+							for val in modulated:
+								mod_ch1.append( (1, val.real) )
+								mod_ch2.append( (1, val.imag) )
+					else:
+						mod_ch1.append( (time_ch1, amp_ch1 ) )
+						mod_ch2.append( (time_ch2, amp_ch2 ) )
+
+					cum_time += time_ch1
+
+				seqs['ch1'][ct] = mod_ch1
+				seqs['ch2'][ct] = mod_ch2
 
 		del seqs['mod_phase']
 
