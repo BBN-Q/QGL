@@ -669,7 +669,7 @@ def write_sequence_file(awgData, fileName):
 	if os.path.isfile(fileName):
 		os.remove(fileName)
 	with h5py.File(fileName, 'w') as FID:
-		FID['/'].attrs['Version'] = 3.0
+		FID['/'].attrs['Version'] = 4.0
 		FID['/'].attrs['channelDataFor'] = np.uint16([1,2])
 
 		#Create the groups and datasets
@@ -687,6 +687,7 @@ def read_sequence_file(fileName):
 	chanStrs = ['ch1', 'ch2', 'ch12m1', 'ch12m2', 'ch12m3', 'ch12m4', 'mod_phase']
 	seqs = {ch: [] for ch in chanStrs}
 	with h5py.File(fileName, 'r') as FID:
+		file_version = FID["/"].attrs["Version"]
 		ch1wf = (1.0/MAX_WAVEFORM_VALUE)*FID['/chan_1/waveforms'].value.flatten()
 		ch2wf = (1.0/MAX_WAVEFORM_VALUE)*FID['/chan_2/waveforms'].value.flatten()
 		instructions = FID['/chan_1/instructions'].value.flatten()
@@ -727,15 +728,16 @@ def read_sequence_file(fileName):
 				chan = 'ch12m' + str(((instr.header >> 2) & 0x3) + 1)
 				ch1_select_bit = (instr.header >> 2) & 0x1
 				ch2_select_bit = (instr.header >> 3) & 0x1
+				#On older firmware we broadcast by default whereas on newer we respect the engine select
 				if not isTA:
-					if ch1_select_bit:
+					if (file_version < 4) or ch1_select_bit:
 						seqs['ch1'][-1] = np.append( seqs['ch1'][-1], ch1wf[addr:addr + count] )
-					if ch2_select_bit:
+					if (file_version < 4) or ch2_select_bit:
 						seqs['ch2'][-1] = np.append( seqs['ch2'][-1], ch2wf[addr:addr + count] )
 				else:
-					if ch1_select_bit:
+					if (file_version < 4) or ch1_select_bit:
 						seqs['ch1'][-1] = np.append( seqs['ch1'][-1], np.array([ch1wf[addr]] * count) )
-					if ch2_select_bit:
+					if (file_version < 4) or ch2_select_bit:
 						seqs['ch2'][-1] = np.append( seqs['ch2'][-1], np.array([ch2wf[addr]] * count) )
 			elif instr.opcode == MARKER:
 				chan = 'ch12m' + str(((instr.header >> 2) & 0x3) + 1)
