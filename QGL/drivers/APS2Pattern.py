@@ -712,7 +712,7 @@ def read_sequence_file(fileName):
 			if (instr.opcode == WAIT) | (instr.opcode == SYNC) | ((instr.opcode) == MODULATION and (modulator_opcode == 0x0) ):
 				for ct in range(NUM_NCO):
 					if reset_flag[ct]:
-						accumulated_phase[ct] = 0
+						accumulated_phase[ct] = freq[ct]  * ADDRESS_UNIT #would expect this to be zero but this is first non-zero point
 						reset_flag[ct] = False
 				freq = next_freq
 				phase = next_phase
