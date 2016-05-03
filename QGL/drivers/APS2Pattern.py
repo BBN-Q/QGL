@@ -705,8 +705,9 @@ def read_sequence_file(fileName):
 
 	with h5py.File(fileName, 'r') as FID:
 		file_version = FID["/"].attrs["Version"]
-		ch1wf = (1.0/MAX_WAVEFORM_VALUE)*FID['/chan_1/waveforms'].value.flatten()
-		ch2wf = (1.0/MAX_WAVEFORM_VALUE)*FID['/chan_2/waveforms'].value.flatten()
+		wf_lib = {}
+		wf_lib['ch1'] = (1.0/MAX_WAVEFORM_VALUE)*FID['/chan_1/waveforms'].value.flatten()
+		wf_lib['ch2'] = (1.0/MAX_WAVEFORM_VALUE)*FID['/chan_2/waveforms'].value.flatten()
 		instructions = FID['/chan_1/instructions'].value.flatten()
 		NUM_NCO = 2
 		freq = np.zeros(NUM_NCO) #radians per timestep
@@ -747,10 +748,10 @@ def read_sequence_file(fileName):
 				for chan, select_bit in zip(('ch1', 'ch2'), chan_select_bits):
 					if (file_version < 4) or select_bit:
 						if isTA:
-							seqs[chan][-1].append( (count, ch1wf[addr]) )
+							seqs[chan][-1].append( (count, wf_lib[chan][addr]) )
 						else:
 							for ct in range(count):
-								seqs[chan][-1].append( (1, ch1wf[addr+ct]) )
+								seqs[chan][-1].append( (1, wf_lib[chan][addr+ct]) )
 
 			elif instr.opcode == MARKER:
 				chan = 'ch12m' + str(((instr.header >> 2) & 0x3) + 1)
