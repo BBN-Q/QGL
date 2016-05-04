@@ -65,6 +65,10 @@ NOTEQUAL    = 0x1
 GREATERTHAN = 0x2
 LESSTHAN    = 0x3
 
+# Whether we use PHASE_OFFSET modulation commands or bake it into waveform
+# Default to false as we usually don't have many variants
+USE_PHASE_OFFSET_INSTRUCTION = False
+
 def get_empty_channel_set():
 	return {'ch12':{}, 'ch12m1':{}, 'ch12m2':{}, 'ch12m3':{}, 'ch12m4':{}}
 
@@ -289,11 +293,17 @@ def wf_sig(wf):
 	two Waveforms to be considered "equal" in the waveform library. For example, we ignore
 	length of TA waveforms.
 	'''
-	if wf.isZero or (wf.isTimeAmp and wf.frequency == 0): # 2nd condition necessary until we support RT SSB
-		return (wf.amp)
+	if wf.isZero or wf.isTimeAmp: # 2nd condition necessary until we support RT SSB
+		if USE_PHASE_OFFSET_INSTRUCTION:
+			return (wf.amp)
+		else:
+			return (wf.amp, wf.phase)
 	else:
 		#TODO: why do we need the length?
-		return (wf.key, wf.amp, wf.length)
+		if USE_PHASE_OFFSET_INSTRUCTION:
+			return (wf.key, wf.amp, wf.length)
+		else:
+			return (wf.key, round(wf.phase * 2**13), wf.amp, wf.length)
 
 class ModulationCommand(object):
 	"""docstring for ModulationCommand"""
@@ -383,7 +393,7 @@ def extract_modulation_seqs(seqs):
 					if cur_freq != entry.frequency:
 						phase_freq_cmds.append( ModulationCommand("SET_FREQ", 0x1, frequency=-entry.frequency) )
 						cur_freq = entry.frequency
-					if cur_phase != entry.phase:
+					if USE_PHASE_OFFSET_INSTRUCTION and (cur_phase != entry.phase):
 						phase_freq_cmds.append( ModulationCommand("SET_PHASE", 0x1, phase=entry.phase) )
 						cur_phase = entry.phase
 					for cmd in phase_freq_cmds:
@@ -405,6 +415,8 @@ def build_waveforms(seqs, shapeLib):
 	for wf in flatten(seqs):
 		if isinstance(wf, Compiler.Waveform) and wf_sig(wf) not in wfLib:
 			shape = wf.amp * shapeLib[wf.key]
+			if not USE_PHASE_OFFSET_INSTRUCTION:
+				shape *= np.exp(1j*wf.phase)
 			wfLib[wf_sig(wf)] = shape
 	return wfLib
 
