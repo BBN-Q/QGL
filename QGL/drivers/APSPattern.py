@@ -607,9 +607,9 @@ def write_sequence_file(awgData, fileName, miniLLRepeat=1):
 				chanGroup.attrs['isLinkListData'] = np.uint8(0)
 
 def read_sequence_file(fileName):
-	'''
-	Helper function to read back in data from a H5 file and reconstruct the sequence
-	'''
+	""" Helper function to read back in data from a H5 file and reconstruct the
+	sequence as a list of (time, amplitude) pairs.
+	"""
 	AWGData = {}
 	#APS bit masks
 	START_MINILL_MASK = 2**START_MINILL_BIT
@@ -631,50 +631,57 @@ def read_sequence_file(fileName):
 				curLLData = FID[chanStr]['linkListData'] if "linkListData" in FID[chanStrs2[tmpChan]] else []
 
 			if curLLData:
-				#Pull out the LL data
-				#Matlab puts our column vectors so need to flatten too
-				tmpAddr = curLLData['addr'].value.flatten()
-				tmpCount = curLLData['count'].value.flatten()
-				tmpRepeat = curLLData['repeat'].value.flatten()
-				tmpTrigger1 = curLLData['trigger1'].value.flatten()
-				tmpTrigger2 = curLLData['trigger2'].value.flatten()
-				numEntries = curLLData.attrs['length']
+				#Pull out the LL data in sample units
+				#Cast type to avoid uint16 overflow
+				addr = (curLLData['addr'].value.astype(np.uint)) * ADDRESS_UNIT
+				count = ((curLLData['count'].value + 1).astype(np.uint)) * ADDRESS_UNIT
+				repeat = curLLData['repeat'].value
+				trigger1 = (curLLData['trigger1'].value.astype(np.uint)) * ADDRESS_UNIT
+				trigger2 = (curLLData['trigger2'].value.astype(np.uint)) * ADDRESS_UNIT
 
 				#Pull out and scale the waveform data
-				wfLib =(1.0/MAX_WAVEFORM_VALUE)*FID[chanStr]['waveformLib'].value.flatten()
+				wf_lib =(1.0/MAX_WAVEFORM_VALUE)*FID[chanStr]['waveformLib'].value
 
-				#Initialize the lists of sequences
+				#Initialize the lists of time-amplitude pairs
 				AWGData[chanStrs[chanct]] = []
 				AWGData[mrkStrs[chanct]] = []
 
+				cum_time = 0
+
 				#Loop over LL entries
-				for entryct in range(numEntries):
-					#If we are starting a new entry push back an empty array
-					if START_MINILL_MASK & tmpRepeat[entryct]:
-						AWGData[chanStrs[chanct]].append(np.array([], dtype=np.float64))
-						triggerDelays = []
+				for ct in range(curLLData.attrs['length']):
+					#If we are starting a new sequence push back an empty array
+					if START_MINILL_MASK & repeat[ct]:
+						AWGData[chanStrs[chanct]].append([])
+						trigger_delays = [0]
+						cum_time = 0
 
 					#Record the trigger delays
 					if np.mod(chanct,2) == 0:
-						if tmpTrigger1[entryct] > 0:
-							triggerDelays.append(AWGData[chanStrs[chanct]][-1].size + ADDRESS_UNIT*tmpTrigger1[entryct])
+						if trigger1[ct] > 0:
+							trigger_delays.append(cum_time + trigger1[ct])
 					else:
-						if tmpTrigger2[entryct] > 0:
-							triggerDelays.append(AWGData[chanStrs[chanct]][-1].size + ADDRESS_UNIT*tmpTrigger2[entryct])
+						if trigger2[ct] > 0:
+							trigger_delays.append(cum_time + trigger2[ct])
 
-					#If it is a TA pair or regular pulse
-					curRepeat = (tmpRepeat[entryct] & REPEAT_MASK)+1
-					if TA_PAIR_MASK & tmpRepeat[entryct]:
-						AWGData[chanStrs[chanct]][-1] = np.hstack((AWGData[chanStrs[chanct]][-1],
-														np.tile(wfLib[tmpAddr[entryct]*ADDRESS_UNIT:tmpAddr[entryct]*ADDRESS_UNIT+4], curRepeat*(tmpCount[entryct]+1))))
+					#waveforms
+					wf_repeat = (repeat[ct] & REPEAT_MASK)+1
+					if TA_PAIR_MASK & repeat[ct]:
+						AWGData[chanStrs[chanct]][-1].append( (wf_repeat*count[ct], wf_lib[addr[ct]]) )
 					else:
-						AWGData[chanStrs[chanct]][-1] = np.hstack((AWGData[chanStrs[chanct]][-1],
-														np.tile(wfLib[tmpAddr[entryct]*ADDRESS_UNIT:tmpAddr[entryct]*ADDRESS_UNIT+ADDRESS_UNIT*(tmpCount[entryct]+1)], curRepeat)))
-					#Add the trigger pulse
-					if END_MINILL_MASK & tmpRepeat[entryct]:
-						triggerSeq = np.zeros(AWGData[chanStrs[chanct]][-1].size, dtype=np.bool)
-						triggerSeq[triggerDelays] = True
-						AWGData[mrkStrs[chanct]].append(triggerSeq)
+						for repct in range(wf_repeat):
+							for sample in wf_lib[addr[ct]:addr[ct]+count[ct]]:
+								AWGData[chanStrs[chanct]][-1].append( (1, sample) )
+
+					cum_time += count[ct]
+
+					#Create the trigger sequence
+					if END_MINILL_MASK & repeat[ct]:
+						AWGData[mrkStrs[chanct]].append([])
+						for delay in np.diff(trigger_delays):
+							AWGData[mrkStrs[chanct]][-1].append( (delay-1, 0) )
+							AWGData[mrkStrs[chanct]][-1].append( (1, 1) )
+
 	return AWGData
 
 

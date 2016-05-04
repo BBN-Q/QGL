@@ -332,11 +332,13 @@ class ModulationCommand(object):
 		op_code_map = {"MODULATE":0x0, "RESET_PHASE":0x2, "SET_FREQ":0x6, "SET_PHASE":0xa, "UPDATE_FRAME":0xe}
 		payload = (op_code_map[self.instruction] << MODULATOR_OP_OFFSET) | (self.nco_select << NCO_SELECT_OP_OFFSET);
 		if self.instruction == "MODULATE":
-			payload |= (int(self.length/ADDRESS_UNIT -1) & 0xffffffff) #zero-indexed quad count
+			payload |= np.uint32(self.length/ADDRESS_UNIT - 1) #zero-indexed quad count
 		elif self.instruction == "SET_FREQ":
-			payload |= (int(self.frequency * (1/MODULATION_CLOCK) * 2**28) & 0xffffffff)
+            # frequencies can span -2 to 2 or 0 to 4 in unsigned
+			payload |= np.uint32((self.frequency/MODULATION_CLOCK if self.frequency > 0 else self.frequency/MODULATION_CLOCK + 4) * 2**28)
 		elif (self.instruction == "SET_PHASE") | (self.instruction == "UPDATE_FRAME"):
-			payload |= (int((np.mod(1/(2*np.pi) * self.phase + 0.5, 1) - 0.5) * 2**28) & 0xffffffff)
+            #phases can span -0.5 to 0.5 or 0 to 1 in unsigned
+			payload |= np.uint32(np.mod(self.phase/(2*np.pi), 1) * 2**28)
 
 		instr = Instruction(MODULATION << 4, payload, label)
 		instr.writeFlag = write_flag
@@ -686,12 +688,28 @@ def write_sequence_file(awgData, fileName):
 				FID.create_dataset(chanStr+'/instructions', data=instructions)
 
 def read_sequence_file(fileName):
+	"""
+	Reads a HDF5 sequence file and returns a dictionary of lists.
+	Dictionary keys are channel strings such as ch1, ch12m1
+	Lists are or tuples of time-amplitude pairs (time, output)
+	"""
 	chanStrs = ['ch1', 'ch2', 'ch12m1', 'ch12m2', 'ch12m3', 'ch12m4', 'mod_phase']
-	seqs = {ch: [] for ch in chanStrs}
+	seqs = {ch:[] for ch in chanStrs}
+
+	def start_new_seq():
+		for ct, ch in enumerate(chanStrs):
+			if (ct < 2) or (ct == 6):
+				#analog or modulation channel
+				seqs[ch].append([])
+			else:
+				#marker channel
+				seqs[ch].append([])
+
 	with h5py.File(fileName, 'r') as FID:
 		file_version = FID["/"].attrs["Version"]
-		ch1wf = (1.0/MAX_WAVEFORM_VALUE)*FID['/chan_1/waveforms'].value.flatten()
-		ch2wf = (1.0/MAX_WAVEFORM_VALUE)*FID['/chan_2/waveforms'].value.flatten()
+		wf_lib = {}
+		wf_lib['ch1'] = (1.0/MAX_WAVEFORM_VALUE)*FID['/chan_1/waveforms'].value.flatten()
+		wf_lib['ch2'] = (1.0/MAX_WAVEFORM_VALUE)*FID['/chan_2/waveforms'].value.flatten()
 		instructions = FID['/chan_1/instructions'].value.flatten()
 		NUM_NCO = 2
 		freq = np.zeros(NUM_NCO) #radians per timestep
@@ -720,33 +738,30 @@ def read_sequence_file(fileName):
 
 			#Assume new sequence at every WAIT
 			if instr.opcode == WAIT:
-				for ch in chanStrs:
-					seqs[ch].append(np.array([], dtype=np.float64))
+				start_new_seq()
+
 			elif instr.opcode == WFM:
 				addr = (instr.payload & 0x00ffffff) * ADDRESS_UNIT
 				count = (instr.payload >> 24) & 0xfffff
 				count = (count + 1) * ADDRESS_UNIT
 				isTA = (instr.payload >> 45) & 0x1
-				chan = 'ch12m' + str(((instr.header >> 2) & 0x3) + 1)
-				ch1_select_bit = (instr.header >> 2) & 0x1
-				ch2_select_bit = (instr.header >> 3) & 0x1
+				chan_select_bits = ( (instr.header >> 2) & 0x1, (instr.header >> 3) & 0x1 )
 				#On older firmware we broadcast by default whereas on newer we respect the engine select
-				if not isTA:
-					if (file_version < 4) or ch1_select_bit:
-						seqs['ch1'][-1] = np.append( seqs['ch1'][-1], ch1wf[addr:addr + count] )
-					if (file_version < 4) or ch2_select_bit:
-						seqs['ch2'][-1] = np.append( seqs['ch2'][-1], ch2wf[addr:addr + count] )
-				else:
-					if (file_version < 4) or ch1_select_bit:
-						seqs['ch1'][-1] = np.append( seqs['ch1'][-1], np.array([ch1wf[addr]] * count) )
-					if (file_version < 4) or ch2_select_bit:
-						seqs['ch2'][-1] = np.append( seqs['ch2'][-1], np.array([ch2wf[addr]] * count) )
+				for chan, select_bit in zip(('ch1', 'ch2'), chan_select_bits):
+					if (file_version < 4) or select_bit:
+						if isTA:
+							seqs[chan][-1].append( (count, wf_lib[chan][addr]) )
+						else:
+							for sample in wf_lib[chan][addr:addr+count]:
+								seqs[chan][-1].append( (1, sample) )
+
 			elif instr.opcode == MARKER:
 				chan = 'ch12m' + str(((instr.header >> 2) & 0x3) + 1)
 				count = instr.payload & 0xffffffff
 				count = (count + 1) * ADDRESS_UNIT
 				state = (instr.payload >> 32) & 0x1
-				seqs[chan][-1] = np.append( seqs[chan][-1], np.array([state] * count) )
+				seqs[chan][-1].append( (count, state) )
+
 			elif instr.opcode == MODULATION:
 				# modulator_op_code_map = {"MODULATE":0x0, "RESET_PHASE":0x2, "SET_FREQ":0x6, "SET_PHASE":0xa, "UPDATE_FRAME":0xe}
 				nco_select_bits = (instr.payload >> 40) & 0xf
@@ -775,12 +790,36 @@ def read_sequence_file(fileName):
 								#update frame
 								next_frame[ct] += phase_rad
 
+
 		#Apply modulation if we have any
 		for ct, (ch1,ch2,mod_phase) in enumerate(zip(seqs['ch1'], seqs['ch2'], seqs['mod_phase'])):
-			if mod_phase.size:
-				modulated = np.exp(1j*mod_phase) * (ch1 + 1j*ch2)
-				seqs['ch1'][ct] = np.real(modulated)
-				seqs['ch2'][ct] = np.imag(modulated)
+			if len(mod_phase):
+				#only really works if ch1, ch2 are broadcast together
+				mod_ch1 = []
+				mod_ch2 = []
+				cum_time = 0
+				for ((time_ch1, amp_ch1), (time_ch2, amp_ch2)) in zip(ch1, ch2):
+					if (amp_ch1 != 0) or (amp_ch2 != 0):
+						assert time_ch1 == time_ch2
+						if time_ch1 == 1:
+							#single timestep
+							modulated = np.exp(1j*mod_phase[cum_time]) * (amp_ch1 + 1j*amp_ch2)
+							mod_ch1.append( (1, modulated.real))
+							mod_ch2.append( (1, modulated.imag))
+						else:
+							#expand TA
+							modulated = np.exp(1j*mod_phase[cum_time:cum_time+time_ch1]) * (amp_ch1 + 1j*amp_ch2)
+							for val in modulated:
+								mod_ch1.append( (1, val.real) )
+								mod_ch2.append( (1, val.imag) )
+					else:
+						mod_ch1.append( (time_ch1, amp_ch1 ) )
+						mod_ch2.append( (time_ch2, amp_ch2 ) )
+
+					cum_time += time_ch1
+				seqs['ch1'][ct] = mod_ch1
+				seqs['ch2'][ct] = mod_ch2
+
 		del seqs['mod_phase']
 
 	return seqs
