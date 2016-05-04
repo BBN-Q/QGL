@@ -381,7 +381,7 @@ def extract_modulation_seqs(seqs):
 					#insert phase and frequency commands before modulation command so they have the same start time
 					phase_freq_cmds = []
 					if cur_freq != entry.frequency:
-						phase_freq_cmds.append( ModulationCommand("SET_FREQ", 0x1, frequency=entry.frequency) )
+						phase_freq_cmds.append( ModulationCommand("SET_FREQ", 0x1, frequency=-entry.frequency) )
 						cur_freq = entry.frequency
 					if cur_phase != entry.phase:
 						phase_freq_cmds.append( ModulationCommand("SET_PHASE", 0x1, phase=entry.phase) )
