@@ -238,22 +238,29 @@ def collect_specializations(seqs):
         funcDefs += ControlFlow.qfunction_specialization(target)
     return funcDefs
 
-def compile_to_hardware(seqs, fileName, suffix='', qgl2=False):
+def compile_to_hardware(seqs, fileName, suffix='', qgl2=False, addQGL2SlaveTrigger=False):
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'. Other inputs:
         suffix : string to append to end of fileName (e.g. with fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5)
     '''
     logger = logging.getLogger(__name__)
-    logger.debug("Add digitizer, blanking pulses, and slave trigger...")
+    logger.debug("Compiling %d sequence(s)", len(seqs))
 
-    # Add the digitizer trigger to measurements
-    PatternUtils.add_digitizer_trigger(seqs)
+    if not qgl2:
+        # Add the digitizer trigger to measurements
+        logger.debug("Adding digitizer")
+        PatternUtils.add_digitizer_trigger(seqs)
 
     # Add gating/blanking pulses
+    logger.debug("Adding blanking pulses")
     PatternUtils.add_gate_pulses(seqs)
 
-    # Add the slave trigger
-    PatternUtils.add_slave_trigger(seqs, ChannelLibrary.channelLib['slaveTrig'])
+    if not qgl2 or addQGL2SlaveTrigger:
+        # Add the slave trigger
+        logger.debug("Adding slave trigger")
+        PatternUtils.add_slave_trigger(seqs, ChannelLibrary.channelLib['slaveTrig'])
+    else:
+        logger.debug("Not adding slave trigger")
 
     # find channel set at top level to account for individual sequence channel variability
     channels = set([])
