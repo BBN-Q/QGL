@@ -34,6 +34,7 @@ from . import PulseSequencer
 from . import ControlFlow
 from . import BlockLabel
 
+
 def map_logical_to_physical(wires):
     # construct a mapping of physical channels to lists of logical channels
     # (there will be more than one logical channel if multiple logical
@@ -233,10 +234,14 @@ def collect_specializations(seqs):
     Collects function definitions for all targets of Call instructions
     '''
     targets = [x.target for x in flatten(seqs) if isinstance(x, ControlFlow.Call)]
-    funcDefs = []
-    for target in set(targets):
-        funcDefs += ControlFlow.qfunction_specialization(target)
-    return funcDefs
+    funcs = []
+    done = []
+    #Manually keep track of done (instead of `set`) to keep calling order
+    for target in targets:
+        if target not in done:
+            funcs.append( ControlFlow.qfunction_specialization(target) )
+            done.append(target)
+    return funcs
 
 def compile_to_hardware(seqs, fileName, suffix='', qgl2=False):
     '''
@@ -256,7 +261,7 @@ def compile_to_hardware(seqs, fileName, suffix='', qgl2=False):
     PatternUtils.add_slave_trigger(seqs, ChannelLibrary.channelLib['slaveTrig'])
 
     # find channel set at top level to account for individual sequence channel variability
-    channels = set([])
+    channels = set()
     for seq in seqs:
         channels |= find_unique_channels(seq)
 
@@ -328,7 +333,7 @@ def compile_to_hardware(seqs, fileName, suffix='', qgl2=False):
     # Return the filenames we wrote
     return fileList
 
-def compile_sequences(seqs, channels=None, qgl2=False):
+def compile_sequences(seqs, channels=set(), qgl2=False):
     '''
     Main function to convert sequences to miniLL's and waveform libraries.
     '''
@@ -343,12 +348,13 @@ def compile_sequences(seqs, channels=None, qgl2=False):
         seqs[-1].append(ControlFlow.Goto(BlockLabel.label(seqs[0])))
         logger.debug("Appending a Goto at end to loop")
 
-    # inject function definitions prior to sequences
-    funcDefs = collect_specializations(seqs)
-    if funcDefs:
-        # inject GOTO to jump over definitions
-        funcDefs.insert(0, ControlFlow.Goto(BlockLabel.label(seqs[0])))
-        seqs.insert(0, funcDefs)
+    # append function specialization to sequences
+    subroutines = collect_specializations(seqs)
+    seqs += subroutines
+
+    #expand the channel definitions for anything defined in subroutines
+    for func in subroutines:
+        channels |= find_unique_channels(subroutines)
 
     # use seqs[0] as prototype in case we were not given a set of channels
     wires = compile_sequence(seqs[0], channels)
@@ -359,9 +365,8 @@ def compile_sequences(seqs, channels=None, qgl2=False):
         wires = compile_sequence(seq, channels)
         for chan in wireSeqs.keys():
             wireSeqs[chan].append(wires[chan])
-
     #Print a message so for the experiment we know how many sequences there are
-    print('Compiled {} sequences.'.format(len(seqs)))
+    print('Compiled {} sequences.'.format(len(seqs) - len(subroutines)))
 
     # Debugging:
     if logger.isEnabledFor(logging.DEBUG):
@@ -450,12 +455,12 @@ def propagate_node_frame_to_edges(wires, chan, frameChange):
     return wires
 
 def find_unique_channels(seq):
-    channels = set([])
+    channels = set()
     for step in flatten(seq):
         if not hasattr(step, 'channel'):
             continue
         if isinstance(step.channel, Channels.Channel):
-            channels |= set([step.channel])
+            channels.add(step.channel)
         else:
             channels |= set(step.channel)
     return channels

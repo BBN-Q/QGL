@@ -16,11 +16,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 '''
 
-import h5py
 import os
-import numpy as np
+import logging
 from warnings import warn
 from copy import copy
+from itertools import zip_longest
+
+import h5py
+import numpy as np
+
 from QGL import Compiler, ControlFlow, BlockLabel, PatternUtils
 from QGL.PatternUtils import hash_pulse, flatten
 
@@ -51,6 +55,8 @@ RET        = 0x8
 SYNC       = 0x9
 MODULATION = 0xA
 LOADCMP    = 0xB
+PREFETCH   = 0xC
+NOP        = 0XF
 
 # WFM/MARKER op codes
 PLAY          = 0x0
@@ -128,9 +134,10 @@ class Instruction(object):
 
 	def __str__(self):
 
-		opCodes = ["WFM", "MARKER", "WAIT", "LOAD", "REPEAT", "CMP", "GOTO", "CALL", "RET", "SYNC", "MODULATION", "LOADCMP"]
+		opCodes = ["WFM", "MARKER", "WAIT", "LOAD", "REPEAT", "CMP", "GOTO", "CALL",
+		           "RET", "SYNC", "MODULATION", "LOADCMP", "PREFETCH", "NOP", "NOP", "NOP"]
 
-		out = "{0}: ".format(self.label) if self.label else ""
+		out = "{0} ".format(self.label) if self.label else ""
 
 		instrOpCode = (self.header >> 4) & 0xf
 		out += opCodes[instrOpCode]
@@ -146,7 +153,7 @@ class Instruction(object):
 				out += "write=0 | "
 
 		if self.target:
-			out += str(self.target) + "/"
+			out += " {}".format(self.target)
 
 		if instrOpCode == WFM:
 			wfOpCode = (self.payload >> 46) & 0x3
@@ -183,7 +190,7 @@ class Instruction(object):
 			out += " | " + cmpCodes[cmpCode]
 			out += ", mask = {}".format(self.payload & 0xff)
 
-		elif (instrOpCode == GOTO) or (instrOpCode == CALL) or (instrOpCode == RET) or (instrOpCode == REPEAT):
+		elif any([instrOpCode == op for op in [GOTO, CALL, RET, REPEAT, PREFETCH]]):
 			out += " | target addr = {}".format(self.payload & 2**26-1)
 
 		elif instrOpCode == LOAD:
@@ -280,6 +287,12 @@ def Load(count, label=None):
 
 def Repeat(addr, label=None):
 	return Command(REPEAT, addr, label=label)
+
+def Prefetch(addr, label=None):
+	return Command(PREFETCH, addr)
+
+def NoOp():
+	return Instruction.unflatten(0xffffffffffffffff)
 
 def preprocess(seqs, shapeLib):
 	seqs = PatternUtils.convert_lengths_to_samples(seqs, SAMPLING_RATE, ADDRESS_UNIT)
@@ -498,14 +511,16 @@ def create_seq_instructions(seqs, offsets):
 	cmpTable = {'==': EQUAL, '!=': NOTEQUAL, '>': GREATERTHAN, '<': LESSTHAN}
 
 	# always start with SYNC (stealing label from beginning of sequence)
-	if isinstance(seqs[0][0], BlockLabel.BlockLabel):
-		label = seqs[0][0]
-		timeTuples.pop(0)
-		indexes[0] += 1
-	else:
-		label = None
-	instructions = [Sync(label=label)]
+	# unless it is a subroutine (using last entry as return as tell)
 	label = None
+	instructions = []
+	if not isinstance(seqs[0][-1], ControlFlow.Return):
+		if isinstance(seqs[0][0], BlockLabel.BlockLabel):
+			label = seqs[0][0]
+			timeTuples.pop(0)
+			indexes[0] += 1
+		instructions.append( Sync(label=label) )
+		label = None
 
 	while len(timeTuples) > 0:
 		#pop off all entries that have the same time
@@ -613,16 +628,69 @@ def create_seq_instructions(seqs, offsets):
 def create_instr_data(seqs, offsets):
 	'''
 	Constructs the complete instruction data vector, and does basic checks for validity.
+
+	Subroutines will be placed at least 8 cache lines away from sequences and aligned to cache line
 	'''
-	maxlen = max([len(s) for s in seqs])
+	logger = logging.getLogger(__name__)
+	logger.debug('')
+
+	seq_instrs = []
+	for seq in zip_longest(*seqs, fillvalue=[]):
+		seq_instrs.append( create_seq_instructions(list(seq), offsets) )
+
+
+	#concatenate instructions
 	instructions = []
-	for ct in range(maxlen):
-		instructions += create_seq_instructions([s[ct] if ct < len(s) else [] for s in seqs], offsets)
+	for ct,seq in enumerate(seq_instrs):
+		#Use last instruction as return to mark start of subroutines
+		if (seq[-1].header >> 4) == RET:
+			break
+		instructions += seq
+
+	#if we have any subroutines then group in cache lines
+	subroutine_instrs = []
+	subroutine_cache_line = {}
+	CACHE_LINE_LENGTH = 128
+	if ct != len(seq_instrs)-1:
+		offset = 0
+		for sub in seq_instrs[ct:]:
+			#Don't unecessarily split across a cache line
+			if (len(sub) + offset > CACHE_LINE_LENGTH) and (len(sub) < CACHE_LINE_LENGTH):
+				pad_instrs = 128 - ((offset + 128) % 128)
+				subroutine_instrs += [NoOp()]*pad_instrs
+				offset = 0
+			if offset == 0:
+				line_label = sub[0].label
+			subroutine_cache_line[sub[0].label] = line_label
+			subroutine_instrs += sub
+			offset += len(sub) % CACHE_LINE_LENGTH
+		logger.debug("Placed {} subroutines into {} cache lines".format(len(seq_instrs[ct:]), len(subroutine_instrs) // CACHE_LINE_LENGTH))
+
+	#inject prefetch commands before waits
+	wait_idx = [idx for idx,instr in enumerate(instructions) if (instr.header >> 4) == WAIT] + [len(instructions)]
+	instructions_with_prefetch = instructions[:wait_idx[0]]
+	last_prefetch = None
+	for start, stop in zip(wait_idx[:-1], wait_idx[1:]):
+		call_targets = [instr.target for instr in instructions[start:stop] if (instr.header >> 4) == CALL]
+		needed_lines = set()
+		for target in call_targets:
+			needed_lines.add(subroutine_cache_line[target])
+		if len(needed_lines) > 8:
+			raise RuntimeError("Unable to prefetch more than 8 cache lines")
+		for needed_line in needed_lines:
+			if needed_line != last_prefetch:
+				instructions_with_prefetch.append(Prefetch(needed_line))
+				last_prefetch = needed_line
+		instructions_with_prefetch += instructions[start:stop]
+
+	instructions = instructions_with_prefetch
+	#pad out instruction vector to ensure circular cache never loads a subroutine
+	pad_instrs = 7*128 + (128 - ((len(instructions) + 128) % 128))
+	instructions += [NoOp()]*pad_instrs
+
+	instructions += subroutine_instrs
 
 	resolve_symbols(instructions)
-
-	if instructions[-1] != Goto(0):
-		instructions.append(Goto(0))
 
 	assert len(instructions) < MAX_NUM_INSTRUCTIONS, 'Oops! too many instructions: {0}'.format(len(instructions))
 	data = np.array([instr.flatten() for instr in instructions], dtype=np.uint64)
