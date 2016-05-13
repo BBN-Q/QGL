@@ -131,7 +131,7 @@ class Measurement(LogicalChannel):
     Measurements are special because they can be different types:
     autodyne which needs an IQ pair or hetero/homodyne which needs just a marker channel.
     '''
-    measType = Enum('autodyne','homodyne').tag(desc='Type of measurment (autodyne, homodyne)')
+    measType = Enum('autodyne','homodyne').tag(desc='Type of measurement (autodyne, homodyne)')
     autodyneFreq = Float(0.0).tag(desc='use to bake the modulation into the pulse, so that it has constant phase')
     frequency = Float(0.0).tag(desc='use frequency to asssociate modulation with the channel')
     pulseParams = Dict(default={'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'cutoff':2, 'sigma':1e-9})
