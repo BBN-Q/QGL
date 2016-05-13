@@ -20,7 +20,7 @@ import os
 import logging
 from warnings import warn
 from copy import copy
-from itertools import zip_longest
+from future.moves.itertools import zip_longest
 
 import h5py
 import numpy as np
