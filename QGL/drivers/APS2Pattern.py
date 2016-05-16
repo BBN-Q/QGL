@@ -645,7 +645,7 @@ def create_instr_data(seqs, offsets):
 	instructions = []
 	for ct,seq in enumerate(seq_instrs):
 		#Use last instruction as return to mark start of subroutines
-		if (seq[-1].header >> 4) == RET:
+		if (ct != len(seq_instrs)-1) or (seq_instrs[-1][-1].header >> 4 == RET):
 			break
 		instructions += seq
 
