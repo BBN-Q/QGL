@@ -638,7 +638,6 @@ def create_instr_data(seqs, offsets):
 	for seq in zip_longest(*seqs, fillvalue=[]):
 		seq_instrs.append( create_seq_instructions(list(seq), offsets) )
 
-
 	#concatenate instructions
 	instructions = []
 	for ct,seq in enumerate(seq_instrs):
@@ -648,10 +647,10 @@ def create_instr_data(seqs, offsets):
 		instructions += seq
 
 	#if we have any subroutines then group in cache lines
-	subroutine_instrs = []
-	subroutine_cache_line = {}
-	CACHE_LINE_LENGTH = 128
 	if ct != len(seq_instrs)-1:
+		subroutine_instrs = []
+		subroutine_cache_line = {}
+		CACHE_LINE_LENGTH = 128
 		offset = 0
 		for sub in seq_instrs[ct:]:
 			#Don't unecessarily split across a cache line
@@ -666,30 +665,31 @@ def create_instr_data(seqs, offsets):
 			offset += len(sub) % CACHE_LINE_LENGTH
 		logger.debug("Placed {} subroutines into {} cache lines".format(len(seq_instrs[ct:]), len(subroutine_instrs) // CACHE_LINE_LENGTH))
 
-	#inject prefetch commands before waits
-	wait_idx = [idx for idx,instr in enumerate(instructions) if (instr.header >> 4) == WAIT] + [len(instructions)]
-	instructions_with_prefetch = instructions[:wait_idx[0]]
-	last_prefetch = None
-	for start, stop in zip(wait_idx[:-1], wait_idx[1:]):
-		call_targets = [instr.target for instr in instructions[start:stop] if (instr.header >> 4) == CALL]
-		needed_lines = set()
-		for target in call_targets:
-			needed_lines.add(subroutine_cache_line[target])
-		if len(needed_lines) > 8:
-			raise RuntimeError("Unable to prefetch more than 8 cache lines")
-		for needed_line in needed_lines:
-			if needed_line != last_prefetch:
-				instructions_with_prefetch.append(Prefetch(needed_line))
-				last_prefetch = needed_line
-		instructions_with_prefetch += instructions[start:stop]
+		#inject prefetch commands before waits
+		wait_idx = [idx for idx,instr in enumerate(instructions) if (instr.header >> 4) == WAIT] + [len(instructions)]
+		instructions_with_prefetch = instructions[:wait_idx[0]]
+		last_prefetch = None
+		for start, stop in zip(wait_idx[:-1], wait_idx[1:]):
+			call_targets = [instr.target for instr in instructions[start:stop] if (instr.header >> 4) == CALL]
+			needed_lines = set()
+			for target in call_targets:
+				needed_lines.add(subroutine_cache_line[target])
+			if len(needed_lines) > 8:
+				raise RuntimeError("Unable to prefetch more than 8 cache lines")
+			for needed_line in needed_lines:
+				if needed_line != last_prefetch:
+					instructions_with_prefetch.append(Prefetch(needed_line))
+					last_prefetch = needed_line
+			instructions_with_prefetch += instructions[start:stop]
 
-	instructions = instructions_with_prefetch
-	#pad out instruction vector to ensure circular cache never loads a subroutine
-	pad_instrs = 7*128 + (128 - ((len(instructions) + 128) % 128))
-	instructions += [NoOp()]*pad_instrs
+		instructions = instructions_with_prefetch
+		#pad out instruction vector to ensure circular cache never loads a subroutine
+		pad_instrs = 7*128 + (128 - ((len(instructions) + 128) % 128))
+		instructions += [NoOp()]*pad_instrs
 
-	instructions += subroutine_instrs
+		instructions += subroutine_instrs
 
+	#turn symbols into integers addresses
 	resolve_symbols(instructions)
 
 	assert len(instructions) < MAX_NUM_INSTRUCTIONS, 'Oops! too many instructions: {0}'.format(len(instructions))
