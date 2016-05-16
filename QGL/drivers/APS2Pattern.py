@@ -540,6 +540,7 @@ def create_seq_instructions(seqs, offsets):
 		# 2. modulation phase updates should happen before NCO select commands
 		# 3. SET_PHASE should happen after RESET_PHASE
 		# 4. instructions to different engines should have single write flag
+		# 5. labels should be moved to the first instruction
 		def find_and_pop_entries(predicate):
 			matched = []
 			for ct, entry in enumerate(entries):
@@ -548,6 +549,8 @@ def create_seq_instructions(seqs, offsets):
 			return matched
 
 		if len(entries) > 1:
+			#reorder
+			label_entry = find_and_pop_entries(lambda e: isinstance(e[0], BlockLabel.BlockLabel))
 			sync_entry = find_and_pop_entries(lambda e: isinstance(e[0], ControlFlow.Sync))
 			trig_entry = find_and_pop_entries(lambda e: isinstance(e[0], ControlFlow.Wait))
 			control_flow_entries = find_and_pop_entries(lambda e: isinstance(e[0], ControlFlow.ControlInstruction))
@@ -555,14 +558,14 @@ def create_seq_instructions(seqs, offsets):
 			frame_entry = find_and_pop_entries(lambda e: isinstance(e[0], ModulationCommand) and e[0].instruction == "UPDATE_FRAME")
 			phase_entry = find_and_pop_entries(lambda e: isinstance(e[0], ModulationCommand) and e[0].instruction == "SET_PHASE")
 			freq_entry = find_and_pop_entries(lambda e: isinstance(e[0], ModulationCommand) and e[0].instruction == "SET_FREQ")
-			#SYNC and TRIG:
-			reordered_entries = sync_entry + control_flow_entries + reset_entry + phase_entry + freq_entry + frame_entry + trig_entry
+			reordered_entries = label_entry + sync_entry + control_flow_entries + reset_entry + phase_entry + freq_entry + frame_entry + trig_entry
 			write_flags = [True]*len(reordered_entries)
 			for entry in entries:
 				reordered_entries.append(entry)
 				write_flags.append(False)
 			write_flags[-1] = True
 			entries = reordered_entries
+
 		else:
 			write_flags = [True]
 
