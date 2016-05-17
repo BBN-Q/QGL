@@ -65,44 +65,46 @@ def merge_channels(wires, channels):
         while True:
             try:
                 entries = [next(e) for e in entryIterators]
-                # control flow on any channel should pass thru
-                if any(isinstance(e, (ControlFlow.ControlInstruction, BlockLabel.BlockLabel)) for e in entries):
-                    # for the moment require uniform control flow so that we
-                    # can pull from the first channel
-                    assert all(e == entries[0] for e in entries), "Non-uniform control flow"
-                    segment.append(entries[0])
-                    continue
-                # at this point we have at least one waveform instruction
-                blocklength = pull_uniform_entries(entries, entryIterators)
-                newentry = copy(entries[0])
-                #TODO properly deal with constant pulses
-                newentry.amp = 1.0
-                newentry.isTimeAmp = all([e.isTimeAmp for e in entries])
-                if all([e.amp == 0 for e in entries]):
-                    newentry.amp = 0
-                else:
-                    assert np.count_nonzero([e.amp * e.channel.frequency for e in entries]) <= 1, "Unable to handle merging more than one non-zero entry with non-zero frequency."
-
-                #If there is a non-zero SSB frequency copy it to the new entry
-                nonZeroSSBChan = np.nonzero([e.amp * e.channel.frequency for e in entries])[0]
-                if nonZeroSSBChan:
-                    newentry.channel = entries[nonZeroSSBChan[0]].channel
-
-                newentry.phase = 0
-
-                pulsesHash = tuple([tuple([e.hashshape()] + [e.amp] + [e.phase]) for e in entries])
-                if pulsesHash not in shapeFunLib:
-                    # create closure to sum waveforms
-                    def sum_shapes(entries=entries, **kwargs):
-                        return reduce(operator.add, [e.amp * np.exp(1j*e.phase) * e.shape for e in entries])
-                    shapeFunLib[pulsesHash] = sum_shapes
-                newentry.shapeParams = {'shapeFun':shapeFunLib[pulsesHash], 'length':blocklength}
-                newentry.label = "*".join([e.label for e in entries])
-                segment.append(newentry)
-
-
             except StopIteration:
                 break
+            # control flow on any channel should pass thru
+            if any(isinstance(e, (ControlFlow.ControlInstruction, BlockLabel.BlockLabel)) for e in entries):
+                # for the moment require uniform control flow so that we
+                # can pull from the first channel
+                assert all(e == entries[0] for e in entries), "Non-uniform control flow"
+                segment.append(entries[0])
+                continue
+            # at this point we have at least one waveform instruction
+            blocklength = pull_uniform_entries(entries, entryIterators)
+
+            # look for the simplest case of a single non-identity
+            nonZeroEntries = [e for e in entries if not e.isZero]
+            if len(nonZeroEntries) <= 1:
+                segment.append(nonZeroEntries[0])
+                continue
+            newentry = copy(entries[0])
+            # TODO properly deal with constant pulses
+            newentry.amp = 1.0
+            newentry.isTimeAmp = all([e.isTimeAmp for e in entries])
+
+            # If there is a non-zero SSB frequency copy it to the new entry
+            nonZeroSSBChan = np.nonzero([e.amp * e.frequency for e in entries])[0]
+            assert len(nonZeroSSBChan) <= 1, "Unable to handle merging more than one non-zero entry with non-zero frequency."
+            if nonZeroSSBChan:
+                newentry.frequency = entries[nonZeroSSBChan[0]].frequency
+
+            newentry.phase = 0
+
+            pulsesHash = tuple([(e.hashshape(), e.amp, e.phase) for e in entries])
+            if pulsesHash not in shapeFunLib:
+                # create closure to sum waveforms
+                def sum_shapes(entries=entries, **kwargs):
+                    return reduce(operator.add, [e.amp * np.exp(1j*e.phase) * e.shape for e in entries])
+                shapeFunLib[pulsesHash] = sum_shapes
+            newentry.shapeParams = {'shapeFun':shapeFunLib[pulsesHash], 'length':blocklength}
+            newentry.label = "*".join([e.label for e in entries])
+            segment.append(newentry)
+
     return mergedWire
 
 def pull_uniform_entries(entries, entryIterators):
