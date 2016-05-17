@@ -643,19 +643,21 @@ def create_instr_data(seqs, offsets):
 
 	#concatenate instructions
 	instructions = []
+	subroutines_start = -1
 	for ct,seq in enumerate(seq_instrs):
-		#Use last instruction as return to mark start of subroutines
+		#Use last instruction being return as mark of start of subroutines
 		if (seq[-1].header >> 4) == RET:
+			subroutines_start = ct
 			break
 		instructions += seq
 
 	#if we have any subroutines then group in cache lines
-	if ct != len(seq_instrs)-1:
+	if subroutines_start >= 0:
 		subroutine_instrs = []
 		subroutine_cache_line = {}
 		CACHE_LINE_LENGTH = 128
 		offset = 0
-		for sub in seq_instrs[ct:]:
+		for sub in seq_instrs[subroutines_start:]:
 			#Don't unecessarily split across a cache line
 			if (len(sub) + offset > CACHE_LINE_LENGTH) and (len(sub) < CACHE_LINE_LENGTH):
 				pad_instrs = 128 - ((offset + 128) % 128)
@@ -666,7 +668,7 @@ def create_instr_data(seqs, offsets):
 			subroutine_cache_line[sub[0].label] = line_label
 			subroutine_instrs += sub
 			offset += len(sub) % CACHE_LINE_LENGTH
-		logger.debug("Placed {} subroutines into {} cache lines".format(len(seq_instrs[ct:]), len(subroutine_instrs) // CACHE_LINE_LENGTH))
+		logger.debug("Placed {} subroutines into {} cache lines".format(len(seq_instrs[subroutines_start:]), len(subroutine_instrs) // CACHE_LINE_LENGTH))
 
 		#inject prefetch commands before waits
 		wait_idx = [idx for idx,instr in enumerate(instructions) if (instr.header >> 4) == WAIT] + [len(instructions)]
