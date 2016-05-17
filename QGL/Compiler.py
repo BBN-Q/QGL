@@ -77,9 +77,12 @@ def merge_channels(wires, channels):
             # at this point we have at least one waveform instruction
             blocklength = pull_uniform_entries(entries, entryIterators)
 
-            # look for the simplest case of a single non-identity
+            # look for the simplest case of at most one non-identity
             nonZeroEntries = [e for e in entries if not e.isZero]
-            if len(nonZeroEntries) <= 1:
+            if len(nonZeroEntries) == 0:
+                segment.append(entries[0])
+                continue
+            elif len(nonZeroEntries) == 1:
                 segment.append(nonZeroEntries[0])
                 continue
             newentry = copy(entries[0])
