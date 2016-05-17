@@ -658,6 +658,9 @@ def create_instr_data(seqs, offsets):
 		CACHE_LINE_LENGTH = 128
 		offset = 0
 		for sub in seq_instrs[subroutines_start:]:
+			#TODO for now we don't properly handle prefetching mulitple cache lines
+			if len(sub) > CACHE_LINE_LENGTH:
+				warnings.warn("Subroutines longer than {} instructions may not be prefetched correctly")
 			#Don't unecessarily split across a cache line
 			if (len(sub) + offset > CACHE_LINE_LENGTH) and (len(sub) < CACHE_LINE_LENGTH):
 				pad_instrs = 128 - ((offset + 128) % 128)
