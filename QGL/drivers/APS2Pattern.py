@@ -62,6 +62,7 @@ NOP        = 0XF
 PLAY          = 0x0
 WAIT_TRIG     = 0x1
 WAIT_SYNC     = 0x2
+WFM_PREFETCH  = 0x3
 WFM_OP_OFFSET = 46
 TA_PAIR_BIT   = 45
 
@@ -81,7 +82,7 @@ def get_empty_channel_set():
 def get_seq_file_extension():
 	return '.h5'
 
-def create_wf_vector(wfLib):
+def create_wf_vector(wfLib, seqs):
 	'''
 	Helper function to create the wf vector and offsets into it.
 	'''
@@ -92,31 +93,76 @@ def create_wf_vector(wfLib):
 		else:
 			max_pts_needed += len(wf)
 
-	wfVec = np.zeros(max_pts_needed, dtype=np.int16)
-	offsets = {}
+	#If we have more than fits in cache we'll need to align and prefetch
+	need_prefetch = max_pts_needed > WAVEFORM_CACHE_SIZE
+
 	idx = 0
-	for key, wf in wfLib.items():
-		#Clip the wf
-		wf[wf>1] = 1.0
-		wf[wf<-1] = -1.0
-		#TA pairs need to be repeated ADDRESS_UNIT times
-		if wf.size == 1:
-			wf = wf.repeat(ADDRESS_UNIT)
-		#Ensure the wf is an integer number of ADDRESS_UNIT's
-		trim = wf.size%ADDRESS_UNIT
-		if trim:
-			wf = wf[:-trim]
-		#For now assert we fit in a single waveform cache until we get PREFETCH working.
-		#assert idx + wf.size < MAX_WAVEFORM_PTS, 'Oops! You have exceeded the waveform memory of the APS'
-		assert idx + wf.size < WAVEFORM_CACHE_SIZE, 'Oops! You have exceeded the waveform cache of the APS'
-		wfVec[idx:idx+wf.size] = np.uint16(np.round(MAX_WAVEFORM_VALUE*wf))
-		offsets[key] = idx
-		idx += wf.size
 
-	#Trim the waveform
-	wfVec.resize(idx)
+	if not need_prefetch:
+		offsets = [ {} ]
+		cache_lines = [0]*len(seqs)
+		#if we can fit them all in just pack
+		wfVec = np.zeros(max_pts_needed, dtype=np.int16)
+		for key, wf in wfLib.items():
+			#Clip the wf
+			wf[wf>1] = 1.0
+			wf[wf<-1] = -1.0
+			#TA pairs need to be repeated ADDRESS_UNIT times
+			if wf.size == 1:
+				wf = wf.repeat(ADDRESS_UNIT)
+			#Ensure the wf is an integer number of ADDRESS_UNIT's
+			trim = wf.size%ADDRESS_UNIT
+			if trim:
+				wf = wf[:-trim]
+			wfVec[idx:idx+wf.size] = np.int16(MAX_WAVEFORM_VALUE*wf)
+			offsets[-1][key] = idx
+			idx += wf.size
 
-	return wfVec, offsets
+		#Trim the waveform
+		wfVec.resize(idx)
+
+	else:
+		#otherwise fill in one cache line at a time
+		CACHE_LINE_LENGTH = WAVEFORM_CACHE_SIZE/2
+		wfVec = np.zeros(CACHE_LINE_LENGTH, dtype=np.int16)
+		offsets = [ {} ]
+		cache_lines = []
+		for seq in seqs:
+			#go through sequence and see what we need to add
+			pts_to_add = 0
+			for entry in seq:
+				if isinstance(entry, Compiler.Waveform):
+					sig = wf_sig(entry)
+					if sig not in offsets[-1]:
+						pts_to_add += entry.length
+
+			#If what we need to add spills over then add a line and start again
+			if (idx % CACHE_LINE_LENGTH) + pts_to_add > CACHE_LINE_LENGTH:
+				idx = int( CACHE_LINE_LENGTH * ( (idx + CACHE_LINE_LENGTH) // CACHE_LINE_LENGTH ) )
+				wfVec = np.append(wfVec, np.zeros(CACHE_LINE_LENGTH, dtype=np.int16))
+				offsets.append( {} )
+
+			for entry in seq:
+				if isinstance(entry, Compiler.Waveform):
+					sig = wf_sig(entry)
+					if sig not in offsets[-1]:
+						wf = wfLib[sig]
+						wf[wf>1] = 1.0
+						wf[wf<-1] = -1.0
+						#TA pairs need to be repeated ADDRESS_UNIT times
+						if wf.size == 1:
+							wf = wf.repeat(ADDRESS_UNIT)
+						#Ensure the wf is an integer number of ADDRESS_UNIT's
+						trim = wf.size%ADDRESS_UNIT
+						if trim:
+							wf = wf[:-trim]
+						wfVec[idx:idx+wf.size] = np.int16(MAX_WAVEFORM_VALUE*wf)
+						offsets[-1][sig] = idx
+						idx += wf.size
+
+			cache_lines.append( int(idx // CACHE_LINE_LENGTH) )
+
+	return wfVec, offsets, cache_lines
 
 class Instruction(object):
 	def __init__(self, header, payload, label=None, target=None):
@@ -157,7 +203,7 @@ class Instruction(object):
 
 		if instrOpCode == WFM:
 			wfOpCode = (self.payload >> 46) & 0x3
-			wfOpCodes = ["PLAY", "TRIG", "SYNC"]
+			wfOpCodes = ["PLAY", "TRIG", "SYNC", "PREFETCH"]
 			out += wfOpCodes[wfOpCode]
 			out += "; TA bit={}".format((self.payload >> 45) & 0x1)
 			out += ", count = {}".format((self.payload >> 24) & 2**21-1)
@@ -237,6 +283,11 @@ def Waveform(addr, count, isTA, write=False, label=None):
 	addr = (addr // ADDRESS_UNIT) & 0x00ffffff # 24 bit addr
 	payload = (PLAY << WFM_OP_OFFSET) | ((int(isTA) & 0x1) << TA_PAIR_BIT) | (count << 24) | addr
 	return Instruction(header, payload, label)
+
+def WaveformPrefetch(addr):
+	header = (WFM << 4) | (0x3 << 2) | (0x1)
+	payload = (WFM_PREFETCH << WFM_OP_OFFSET) | addr
+	return Instruction(header, payload, None)
 
 def Marker(sel, state, count, write=False, label=None):
 	header = (MARKER << 4) | ((sel & 0x3) << 2) | (write & 0x1)
@@ -423,7 +474,7 @@ def extract_modulation_seqs(seqs):
 	return modulator_seqs
 
 def build_waveforms(seqs, shapeLib):
-	# apply amplitude, and add the resulting waveforms to the library
+	# apply amplitude (and optionally phase) and add the resulting waveforms to the library
 	wfLib = {}
 	for wf in flatten(seqs):
 		if isinstance(wf, Compiler.Waveform) and wf_sig(wf) not in wfLib:
@@ -630,7 +681,7 @@ def create_seq_instructions(seqs, offsets):
 
 	return instructions
 
-def create_instr_data(seqs, offsets):
+def create_instr_data(seqs, offsets, cache_lines):
 	'''
 	Constructs the complete instruction data vector, and does basic checks for validity.
 
@@ -640,8 +691,12 @@ def create_instr_data(seqs, offsets):
 	logger.debug('')
 
 	seq_instrs = []
-	for seq in zip_longest(*seqs, fillvalue=[]):
-		seq_instrs.append( create_seq_instructions(list(seq), offsets) )
+	need_prefetch = len(set(cache_lines)) > 0
+	for ct, seq in enumerate(zip_longest(*seqs, fillvalue=[])):
+		seq_instrs.append( create_seq_instructions(list(seq), offsets[cache_lines[ct]]) )
+		#if we need wf prefetching and have moved waveform cache line then inject prefetch
+		if need_prefetch and ( (ct == 0) or ((ct > 0) and (cache_lines[ct] != cache_lines[ct-1])) ):
+			seq_instrs[-1].insert(0, WaveformPrefetch(int(cache_lines[ct] * WAVEFORM_CACHE_SIZE/2)) )
 
 	#concatenate instructions
 	instructions = []
@@ -751,13 +806,13 @@ def write_sequence_file(awgData, fileName):
 
 	#Create the waveform vectors
 	wfInfo = []
-	wfInfo.append(create_wf_vector({key:wf.real for key,wf in wfLib.items()}))
-	wfInfo.append(create_wf_vector({key:wf.imag for key,wf in wfLib.items()}))
+	wfInfo.append(create_wf_vector({key:wf.real for key,wf in wfLib.items()}, awgData['ch12']['linkList']))
+	wfInfo.append(create_wf_vector({key:wf.imag for key,wf in wfLib.items()}, awgData['ch12']['linkList']))
 
 	# build instruction vector
 	seq_data = [awgData[s]['linkList'] for s in ['ch12', 'ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']]
 	seq_data.insert(1, modulation_seqs)
-	instructions = create_instr_data(seq_data, wfInfo[0][1])
+	instructions = create_instr_data(seq_data, wfInfo[0][1], wfInfo[0][2])
 
 	#Open the HDF5 file
 	if os.path.isfile(fileName):
@@ -830,7 +885,7 @@ def read_sequence_file(fileName):
 			if instr.opcode == WAIT:
 				start_new_seq()
 
-			elif instr.opcode == WFM:
+			elif instr.opcode == WFM and ( ((instr.payload >> WFM_OP_OFFSET) & 0x3) == PLAY ):
 				addr = (instr.payload & 0x00ffffff) * ADDRESS_UNIT
 				count = (instr.payload >> 24) & 0xfffff
 				count = (count + 1) * ADDRESS_UNIT
