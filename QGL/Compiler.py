@@ -426,9 +426,11 @@ def compile_sequence(seq, channels=None):
             for chan in channels:
                 wires[chan] += [copy(block)]
             continue
-        # drop length 0 blocks but push frame change onto previous entry
+        # drop length 0 blocks but push nonzero frame changes onto previous entries
         if block.length == 0:
             for chan in channels:
+                if block.pulses[chan].frameChange == 0:
+                    continue
                 if len(wires[chan]) > 0:
                     logger.debug("Modifying pulse on %s: %s", chan, wires[chan][-1])
                     wires[chan][-1] = copy(wires[chan][-1])
