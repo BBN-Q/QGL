@@ -71,6 +71,12 @@ def get_empty_channel_set():
 def get_seq_file_extension():
 	return '.h5'
 
+def is_compatible_file(filename):
+    with h5py.File(filename, 'r') as FID:
+        if FID['/'].attrs['target hardware'] == 'APS2':
+            return True
+    return False
+
 def create_wf_vector(wfLib):
 	'''
 	Helper function to create the wf vector and offsets into it.

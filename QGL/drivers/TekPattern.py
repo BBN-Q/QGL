@@ -32,6 +32,13 @@ def get_empty_channel_set():
 def get_seq_file_extension():
     return '.awg'
 
+def is_compatible_file(filename):
+    import os
+    if os.path.splitext(filename)[1] == get_seq_file_extension():
+        return True
+    else:
+        return False
+
 def write_field(FID, fieldName, data, dataType):
     typeSizes = {'int16':2, 'int32':4, 'double':8, 'uint128':16}
     formatChars = {'int16':'<h', 'int32':'<i', 'double':'<d'}

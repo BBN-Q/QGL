@@ -50,6 +50,12 @@ def get_empty_channel_set():
 def get_seq_file_extension():
     return '.h5'
 
+def is_compatible_file(filename):
+    with h5py.File(filename, 'r') as FID:
+        if FID['/'].attrs['target hardware'] == 'APS1':
+            return True
+    return False
+
 def preprocess(seqs, shapeLib, T):
 	seqs, miniLLrepeat = unroll_loops(seqs)
 	for seq in seqs:
