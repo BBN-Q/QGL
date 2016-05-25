@@ -514,7 +514,9 @@ def write_sequence_file(awgData, fileName):
 	if os.path.isfile(fileName):
 		os.remove(fileName)
 	with h5py.File(fileName, 'w') as FID:
-		FID['/'].attrs['Version'] = 3.0
+		FID['/'].attrs['Version'] = 3.1
+		FID['/'].attrs['target hardware'] = 'APS2'
+		FID['/'].attrs['minimum firmware version'] = 1.0
 		FID['/'].attrs['channelDataFor'] = np.uint16([1,2])
 
 		#Create the groups and datasets
