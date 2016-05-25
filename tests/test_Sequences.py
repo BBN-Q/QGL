@@ -413,6 +413,9 @@ class TestAPS1(unittest.TestCase, AWGTestHelper, TestSequences):
 					'M-q1q2'        : 'APS3-34',
 					'M-q1q2-gate'   : 'APS3-2m1'}
 
+		# override trigger lengths on APS1 to get single blips
+		self.channels['slaveTrig'].pulseParams['length'] = 0.833e-9
+		self.channels['digitizerTrig'].pulseParams['length'] = 0.833e-9
 		self.finalize_map(mapping)
 
 	def compare_file_data(self, testFile, truthFile):
