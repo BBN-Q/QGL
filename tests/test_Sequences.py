@@ -326,7 +326,6 @@ class TestSequences(object):
 	# 	SingleQubitRBT(self.q1,'')
 	# 	self.compare_sequences('RBT')
 
-	@unittest.expectedFailure
 	def test_RB_SimultaneousRB_AC(self):
 		self.set_awg_dir('SimultaneousRB_AC')
 		np.random.seed(20151709) # set seed for create_RB_seqs
@@ -464,6 +463,13 @@ class TestAPS1(unittest.TestCase, AWGTestHelper, TestSequences):
 			AssertionError: Oops! You have exceeded the waveform memory of the APS
 		"""
 		TestSequences.test_Rabi_RabiWidth(self)
+
+	@unittest.expectedFailure
+	def test_RB_SimultaneousRB_AC(self):
+		""" test_RB_SimultaneousRB_AC is expected to fail on APS1 with the following error:
+			AssertionError: Oops! You have exceeded the waveform memory of the APS
+		"""
+		TestSequences.test_RB_SimultaneousRB_AC(self)
 
 class TestTek5014(unittest.TestCase, AWGTestHelper, TestSequences):
 
@@ -604,6 +610,10 @@ class TestTek5014(unittest.TestCase, AWGTestHelper, TestSequences):
 	@unittest.expectedFailure
 	def test_RB_SingleQubitRB(self):
 		TestSequences.test_RB_SingleQubitRB(self)
+
+	@unittest.expectedFailure
+	def test_RB_SimultaneousRB_AC(self):
+		TestSequences.test_RB_SimultaneousRB_AC(self)
 
 # class TestTek7000(unittest.TestCase, AWGTestHelper, TestSequences):
 
