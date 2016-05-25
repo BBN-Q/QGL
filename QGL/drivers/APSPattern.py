@@ -457,7 +457,10 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 				curIQIdx += 1
 				# add padding pulses if needed
 				if curIQIdx >= len(miniLL_IQ):
-					pad = max(MIN_ENTRY_LENGTH, min(trigQueue, 0))
+					if len(trigQueue) > 0:
+						pad = max(MIN_ENTRY_LENGTH, min(trigQueue, 0))
+					else:
+						pad = MIN_ENTRY_LENGTH
 					miniLL_IQ.append(padding_entry(pad))
 			#Push on the trigger count
 
@@ -492,7 +495,10 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 
 			# add padding pulses if needed
 			if ct+1 < len(switchPts) and curIQIdx >= len(miniLL_IQ):
-				pad = max(MIN_ENTRY_LENGTH, min(trigQueue, 0))
+				if len(trigQueue) > 0:
+					pad = max(MIN_ENTRY_LENGTH, min(trigQueue, 0))
+				else:
+					pad = MIN_ENTRY_LENGTH
 				miniLL_IQ.append(padding_entry(pad))
 
 	#Replace any remaining empty entries with None
