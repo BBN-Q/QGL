@@ -47,7 +47,7 @@ def qfunction_specialization(target):
 
 @multimethod(int, Pulse)
 def repeat(n, p):
-	return repeat(n, [Pulse])
+	return repeat(n, [p])
 
 @multimethod(int, list)
 def repeat(n, seq):
