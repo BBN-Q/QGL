@@ -39,12 +39,32 @@ def all_zero_seqs(seqs):
     return all([np.allclose([_[1] for _ in seq], 0) for seq in seqs])
 
 def build_awg_translator_map():
-    translators = {}
+    # TODO have this walk the drivers directory rather than pulling from the ChannelLibrary
+    translators_map = {}
+    translators = []
     for chan in ChannelLibrary.channelLib.values():
-        if (hasattr(chan, 'AWG') and chan.AWG and
-            hasattr(chan, 'translator') and chan.translator):
-            translators[chan.AWG] = import_module('QGL.drivers.'+chan.translator)
-    return translators
+        if hasattr(chan, 'translator') and chan.translator:
+            if chan.translator not in translators:
+                translators.append(chan.translator)
+    for translator in translators:
+        module = import_module('QGL.drivers.' + translator)
+        ext = module.get_seq_file_extension()
+        if ext in translators_map:
+            translators_map[ext].append(module)
+        else:
+            translators_map[ext] = [module]
+    return translators_map
+
+def resolve_translator(filename, translators):
+    ext = os.path.splitext(filename)[1]
+    if ext not in translators:
+        raise NameError("No translator found to open the given file %s", filename)
+    if len(translators[ext]) == 1:
+        return translators[ext][0]
+    for t in translators[ext]:
+        if t.is_compatible_file(filename):
+            return t
+    raise NameError("No translator found to open the given file %s", filename)
 
 def plot_pulse_files(fileNames):
     '''
@@ -72,7 +92,8 @@ def plot_pulse_files(fileNames):
 
         title += os.path.split(os.path.splitext(fileName)[0])[1] + "; "
 
-        wfs[AWGName] = translators[AWGName].read_sequence_file(fileName)
+        translator = resolve_translator(fileName, translators)
+        wfs[AWGName] = translator.read_sequence_file(fileName)
 
         for (k,seqs) in sorted(wfs[AWGName].items()):
             if not all_zero_seqs(seqs):

@@ -66,44 +66,49 @@ def merge_channels(wires, channels):
         while True:
             try:
                 entries = [next(e) for e in entryIterators]
-                # control flow on any channel should pass thru
-                if any(isinstance(e, (ControlFlow.ControlInstruction, BlockLabel.BlockLabel)) for e in entries):
-                    # for the moment require uniform control flow so that we
-                    # can pull from the first channel
-                    assert all(e == entries[0] for e in entries), "Non-uniform control flow"
-                    segment.append(entries[0])
-                    continue
-                # at this point we have at least one waveform instruction
-                blocklength = pull_uniform_entries(entries, entryIterators)
-                newentry = copy(entries[0])
-                #TODO properly deal with constant pulses
-                newentry.amp = 1.0
-                newentry.isTimeAmp = all([e.isTimeAmp for e in entries])
-                if all([e.amp == 0 for e in entries]):
-                    newentry.amp = 0
-                else:
-                    assert np.count_nonzero([e.amp * e.channel.frequency for e in entries]) <= 1, "Unable to handle merging more than one non-zero entry with non-zero frequency."
-
-                #If there is a non-zero SSB frequency copy it to the new entry
-                nonZeroSSBChan = np.nonzero([e.amp * e.channel.frequency for e in entries])[0]
-                if nonZeroSSBChan:
-                    newentry.channel = entries[nonZeroSSBChan[0]].channel
-
-                newentry.phase = 0
-
-                pulsesHash = tuple([tuple([e.hashshape()] + [e.amp] + [e.phase]) for e in entries])
-                if pulsesHash not in shapeFunLib:
-                    # create closure to sum waveforms
-                    def sum_shapes(entries=entries, **kwargs):
-                        return reduce(operator.add, [e.amp * np.exp(1j*e.phase) * e.shape for e in entries])
-                    shapeFunLib[pulsesHash] = sum_shapes
-                newentry.shapeParams = {'shapeFun':shapeFunLib[pulsesHash], 'length':blocklength}
-                newentry.label = "*".join([e.label for e in entries])
-                segment.append(newentry)
-
-
             except StopIteration:
                 break
+            # control flow on any channel should pass thru
+            if any(isinstance(e, (ControlFlow.ControlInstruction, BlockLabel.BlockLabel)) for e in entries):
+                # for the moment require uniform control flow so that we
+                # can pull from the first channel
+                assert all(e == entries[0] for e in entries), "Non-uniform control flow"
+                segment.append(entries[0])
+                continue
+            # at this point we have at least one waveform instruction
+            blocklength = pull_uniform_entries(entries, entryIterators)
+
+            # look for the simplest case of at most one non-identity
+            nonZeroEntries = [e for e in entries if not e.isZero]
+            if len(nonZeroEntries) == 0:
+                segment.append(entries[0])
+                continue
+            elif len(nonZeroEntries) == 1:
+                segment.append(nonZeroEntries[0])
+                continue
+            newentry = copy(entries[0])
+            # TODO properly deal with constant pulses
+            newentry.amp = 1.0
+            newentry.isTimeAmp = all([e.isTimeAmp for e in entries])
+
+            # If there is a non-zero SSB frequency copy it to the new entry
+            nonZeroSSBChan = np.nonzero([e.amp * e.frequency for e in entries])[0]
+            assert len(nonZeroSSBChan) <= 1, "Unable to handle merging more than one non-zero entry with non-zero frequency."
+            if nonZeroSSBChan:
+                newentry.frequency = entries[nonZeroSSBChan[0]].frequency
+
+            newentry.phase = 0
+
+            pulsesHash = tuple([(e.hashshape(), e.amp, e.phase) for e in entries])
+            if pulsesHash not in shapeFunLib:
+                # create closure to sum waveforms
+                def sum_shapes(entries=entries, **kwargs):
+                    return reduce(operator.add, [e.amp * np.exp(1j*e.phase) * e.shape for e in entries])
+                shapeFunLib[pulsesHash] = sum_shapes
+            newentry.shapeParams = {'shapeFun':shapeFunLib[pulsesHash], 'length':blocklength}
+            newentry.label = "*".join([e.label for e in entries])
+            segment.append(newentry)
+
     return mergedWire
 
 def pull_uniform_entries(entries, entryIterators):
@@ -243,22 +248,28 @@ def collect_specializations(seqs):
             done.append(target)
     return funcs
 
-def compile_to_hardware(seqs, fileName, suffix='', qgl2=False):
+def compile_to_hardware(seqs, fileName, suffix='', qgl2=False, addQGL2SlaveTrigger=False):
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'. Other inputs:
         suffix : string to append to end of fileName (e.g. with fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5)
     '''
     logger = logging.getLogger(__name__)
-    logger.debug("Add digitizer, blanking pulses, and slave trigger...")
+    logger.debug("Compiling %d sequence(s)", len(seqs))
 
     # Add the digitizer trigger to measurements
+    logger.debug("Adding digitizer")
     PatternUtils.add_digitizer_trigger(seqs)
 
     # Add gating/blanking pulses
+    logger.debug("Adding blanking pulses")
     PatternUtils.add_gate_pulses(seqs)
 
-    # Add the slave trigger
-    PatternUtils.add_slave_trigger(seqs, ChannelLibrary.channelLib['slaveTrig'])
+    if not qgl2 or addQGL2SlaveTrigger:
+        # Add the slave trigger
+        logger.debug("Adding slave trigger")
+        PatternUtils.add_slave_trigger(seqs, ChannelLibrary.channelLib['slaveTrig'])
+    else:
+        logger.debug("Not adding slave trigger")
 
     # find channel set at top level to account for individual sequence channel variability
     channels = set()
@@ -341,12 +352,12 @@ def compile_sequences(seqs, channels=set(), qgl2=False):
     # all sequences should start with a WAIT
     for seq in seqs:
         if not isinstance(seq[0], ControlFlow.Wait):
-            logger.debug("Adding a Wait - first seq elem was %s", str(seq[0]))
+            logger.debug("Adding a WAIT - first sequence element was %s", str(seq[0]))
             seq.insert(0, ControlFlow.Wait())
     # turn into a loop, by appending GOTO(0) at end of last sequence
     if not isinstance(seqs[-1][-1], ControlFlow.Goto):
         seqs[-1].append(ControlFlow.Goto(BlockLabel.label(seqs[0])))
-        logger.debug("Appending a Goto at end to loop")
+        logger.debug("Appending a GOTO at end to loop")
 
     # append function specialization to sequences
     subroutines = collect_specializations(seqs)
@@ -371,7 +382,7 @@ def compile_sequences(seqs, channels=set(), qgl2=False):
     # Debugging:
     if logger.isEnabledFor(logging.DEBUG):
         logger.debug('')
-        logger.debug("Returning from compile_sequences:")
+        logger.debug("Returning from compile_sequences():")
         for chan in wireSeqs:
             logger.debug('')
             logger.debug("Channel '%s':", chan)
@@ -426,7 +437,7 @@ def compile_sequence(seq, channels=None):
                     wires[chan][-1] = copy(wires[chan][-1])
                     wires[chan][-1].frameChange += block.pulses[chan].frameChange
                     if chan in ChannelLibrary.channelLib.connectivityG.nodes():
-                        logger.debug("Doing propagate_node_frame_to_edges")
+                        logger.debug("Doing propagate_node_frame_to_edges()")
                         wires = propagate_node_frame_to_edges(wires, chan, block.pulses[chan].frameChange)
                 else:
                     warn("Dropping initial frame change")
@@ -438,7 +449,7 @@ def compile_sequence(seq, channels=None):
     if logger.isEnabledFor(logging.DEBUG):
         for chan in wires:
             logger.debug('')
-            logger.debug("compile_sequence Return for channel '%s':", chan)
+            logger.debug("compile_sequence() return for channel '%s':", chan)
             for elem in wires[chan]:
                 logger.debug(" %s", str(elem))
     return wires

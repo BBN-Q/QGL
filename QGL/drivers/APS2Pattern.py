@@ -82,6 +82,12 @@ def get_empty_channel_set():
 def get_seq_file_extension():
 	return '.h5'
 
+def is_compatible_file(filename):
+	with h5py.File(filename, 'r') as FID:
+		if FID['/'].attrs['target hardware'] == b'APS2':
+			return True
+	return False
+
 def create_wf_vector(wfLib, seqs):
 	'''
 	Helper function to create the wf vector and offsets into it.
@@ -825,6 +831,8 @@ def write_sequence_file(awgData, fileName):
 		os.remove(fileName)
 	with h5py.File(fileName, 'w') as FID:
 		FID['/'].attrs['Version'] = 4.0
+		FID['/'].attrs['target hardware'] = 'APS2'
+		FID['/'].attrs['minimum firmware version'] = 4.0
 		FID['/'].attrs['channelDataFor'] = np.uint16([1,2])
 
 		#Create the groups and datasets

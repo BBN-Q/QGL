@@ -50,6 +50,12 @@ def get_empty_channel_set():
 def get_seq_file_extension():
     return '.h5'
 
+def is_compatible_file(filename):
+    with h5py.File(filename, 'r') as FID:
+        if FID['/'].attrs['target hardware'] == b'APS1':
+            return True
+    return False
+
 def preprocess(seqs, shapeLib, T):
 	seqs, miniLLrepeat = unroll_loops(seqs)
 	for seq in seqs:
@@ -575,7 +581,8 @@ def write_sequence_file(awgData, fileName, miniLLRepeat=1):
 		#TODO: actually handle incomplete channel data
 		channelDataFor = [1,2] if LLs12 else []
 		channelDataFor += [3,4] if LLs34 else []
-		FID['/'].attrs['Version'] = 2.1
+		FID['/'].attrs['Version'] = 2.2
+		FID['/'].attrs['target hardware'] = 'APS1'
 		FID['/'].attrs['channelDataFor'] = np.uint16(channelDataFor)
 		FID['/'].attrs['miniLLRepeat'] = np.uint16(miniLLRepeat - 1)
 

@@ -45,12 +45,17 @@ def delay(sequences, delay):
 
 def normalize_delays(delays):
     '''
-    Normalizes a dictionary of channel delays. Postives delays shift right, negative delays shift left.
+    Normalizes a dictionary of channel delays. Postive delays shift right, negative delays shift left.
     Since we cannot delay by a negative amount in hardware, shift all delays until they are positive.
     Takes in a dict of channel:delay pairs and returns a normalized copy of the same.
     '''
-    min_delay = min(delays.values())
     out = dict(delays) # copy before modifying
+    if not out or len(out) == 0:
+        # Typically an error (empty sequence)
+        import logging
+        logging.error("normalize_delays() had no delays?")
+        return out
+    min_delay = min(delays.values())
     if min_delay < 0:
         for chan in delays.keys():
             out[chan] += -min_delay
