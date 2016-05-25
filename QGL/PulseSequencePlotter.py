@@ -40,16 +40,20 @@ def all_zero_seqs(seqs):
 
 def build_awg_translator_map():
     # TODO have this walk the drivers directory rather than pulling from the ChannelLibrary
-    translators = {}
+    translators_map = {}
+    translators = []
     for chan in ChannelLibrary.channelLib.values():
         if hasattr(chan, 'translator') and chan.translator:
-            module = import_module('QGL.drivers.'+chan.translator)
-            ext = module.get_seq_file_extension()
-            if ext in translators:
-                translators[ext].append(module)
-            else:
-                translators[ext] = [module]
-    return translators
+            if chan.translator not in translators:
+                translators.append(chan.translator)
+    for translator in translators:
+        module = import_module('QGL.drivers.' + translator)
+        ext = module.get_seq_file_extension()
+        if ext in translators_map:
+            translators_map[ext].append(module)
+        else:
+            translators_map[ext] = [module]
+    return translators_map
 
 def resolve_translator(filename, translators):
     ext = os.path.splitext(filename)[1]
