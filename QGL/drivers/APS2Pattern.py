@@ -692,11 +692,17 @@ def create_instr_data(seqs, offsets, cache_lines):
 
 	seq_instrs = []
 	need_prefetch = len(cache_lines) > 0
+	num_cache_lines = len(set(cache_lines))
+	cache_line_changes = np.concatenate(([0], np.where(np.diff(cache_lines))[0] + 1))
 	for ct, seq in enumerate(zip_longest(*seqs, fillvalue=[])):
 		seq_instrs.append( create_seq_instructions(list(seq), offsets[cache_lines[ct]] if need_prefetch else offsets[0] )  )
-		#if we need wf prefetching and have moved waveform cache line then inject prefetch for the next set
-		if need_prefetch and ( (ct == 0) or ((ct > 0) and (cache_lines[ct] != cache_lines[ct-1])) ):
-			seq_instrs[-1].insert(0, WaveformPrefetch(int(cache_lines[ct] * WAVEFORM_CACHE_SIZE/2)) )
+		#if we need wf prefetching and have moved waveform cache lines then inject prefetch for the next line
+		if need_prefetch and (ct in cache_line_changes):
+			next_cache_line = cache_lines[ cache_line_changes[(np.where(ct == cache_line_changes)[0][0] + 1) % len(cache_line_changes)] ]
+			seq_instrs[-1].insert(0, WaveformPrefetch(int(next_cache_line * WAVEFORM_CACHE_SIZE/2)) )
+			#steal label
+			seq_instrs[-1][0].label = seq_instrs[-1][1].label
+			seq_instrs[-1][1].label = None
 
 	#concatenate instructions
 	instructions = []
