@@ -100,7 +100,7 @@ def create_wf_vector(wfLib, seqs):
 
 	if not need_prefetch:
 		offsets = [ {} ]
-		cache_lines = [0]*len(seqs)
+		cache_lines = []
 		#if we can fit them all in just pack
 		wfVec = np.zeros(max_pts_needed, dtype=np.int16)
 		for key, wf in wfLib.items():
@@ -691,10 +691,10 @@ def create_instr_data(seqs, offsets, cache_lines):
 	logger.debug('')
 
 	seq_instrs = []
-	need_prefetch = len(set(cache_lines)) > 0
+	need_prefetch = len(cache_lines) > 0
 	for ct, seq in enumerate(zip_longest(*seqs, fillvalue=[])):
-		seq_instrs.append( create_seq_instructions(list(seq), offsets[cache_lines[ct]]) )
-		#if we need wf prefetching and have moved waveform cache line then inject prefetch
+		seq_instrs.append( create_seq_instructions(list(seq), offsets[cache_lines[ct]] if need_prefetch else offsets[0] )  )
+		#if we need wf prefetching and have moved waveform cache line then inject prefetch for the next set
 		if need_prefetch and ( (ct == 0) or ((ct > 0) and (cache_lines[ct] != cache_lines[ct-1])) ):
 			seq_instrs[-1].insert(0, WaveformPrefetch(int(cache_lines[ct] * WAVEFORM_CACHE_SIZE/2)) )
 
