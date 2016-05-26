@@ -36,7 +36,7 @@ from . import config
 from . import ChannelLibrary
 
 def all_zero_seqs(seqs):
-    return all([np.all(seq == 0) for seq in seqs])
+    return all([np.allclose([_[1] for _ in seq], 0) for seq in seqs])
 
 def build_awg_translator_map():
     # TODO have this walk the drivers directory rather than pulling from the ChannelLibrary
@@ -101,8 +101,9 @@ def plot_pulse_files(fileNames):
                 lineNames.append(AWGName + '-' + k)
                 k_ = lineNames[-1].replace("-", "_")
                 for ct,seq in enumerate(seqs):
-                    dataDict[k_+"_x_{:d}".format(ct+1)] = np.arange(len(seqs[ct]))
-                    dataDict[k_+"_y_{:d}".format(ct+1)] = seqs[ct] + 2*(len(lineNames)-1)
+                    #Convert from time amplitude pairs to x,y lines with points at start and beginnning to prevent interpolation
+                    dataDict[k_+"_x_{:d}".format(ct+1)] = np.tile( np.cumsum([0] + [_[0] for _ in seq]), (2,1)).flatten(order="F")[1:-1]
+                    dataDict[k_+"_y_{:d}".format(ct+1)] = np.tile( [_[1] for _ in seq], (2,1)).flatten(order="F") + 2*(len(lineNames)-1)
 
     #Remove trailing semicolon from title
     title = title[:-2]

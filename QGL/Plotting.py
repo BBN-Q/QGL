@@ -40,20 +40,27 @@ def output_file():
 
 def build_waveforms(seq):
     # import here to avoid circular imports
-    from . import Compiler, PulseSequencer
+    from . import Compiler, PulseSequencer, BlockLabel, ControlFlow
     wires = Compiler.compile_sequence(seq)
 
     # build a concatenated waveform for each channel
     channels = wires.keys()
     concatShapes = {q: np.array([0], dtype=np.complex128) for q in channels}
     for q in channels:
-        # TODO: deal with repeated sections
         frame = 0
-        for pulse in wires[q]:
-            if isinstance(pulse, PulseSequencer.Pulse):
-                shape = np.exp(1j*(frame+pulse.phase)) * pulse.amp * pulse.shape
-                frame += pulse.frameChange
+        repeat = 0
+        label_idx = {}
+        for entry in wires[q]:
+            if isinstance(entry, PulseSequencer.Pulse):
+                shape = np.exp(1j*(frame+entry.phase)) * entry.amp * entry.shape
+                frame += entry.frameChange
                 concatShapes[q] = np.append(concatShapes[q], shape)
+            elif isinstance(entry, BlockLabel.BlockLabel):
+                label_idx[entry] = len(concatShapes[q]) + 1
+            elif isinstance(entry, ControlFlow.LoadRepeat):
+                repeat = entry.value - 1
+            elif isinstance(entry, ControlFlow.Repeat):
+                concatShapes[q] = np.append(concatShapes[q], np.tile(concatShapes[q][label_idx[entry.target]:],repeat) )
 
     # add an extra zero to make things look more normal
     for q in channels:

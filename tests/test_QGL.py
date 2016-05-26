@@ -123,7 +123,7 @@ class SingleQubitTestCases(SequenceTestCases):
         self.sequences['ramsey'] = [[X90(q1), Id(q1, delay), X90(q1)] for delay in np.linspace(0.0, 1e-6, 11)]
 
         q1 = self.newQ1()
-        self.sequences['repeat'] = [X90(q1), repeat(5, Y(q1)), X90(q1)]
+        self.sequences['repeat'] = [X90(q1)] + repeat(5, Y(q1)) + [X90(q1)]
 
 class MultiQubitTestCases(SequenceTestCases):
     # Multi Qubit Sequence Test Cases
