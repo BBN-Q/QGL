@@ -193,9 +193,9 @@ def add_slave_trigger(seqs, slaveChan):
         ct = 0
         while ct < len(seq)-1:
             if isinstance(seq[ct], ControlFlow.Wait):
-                if not isinstance(seq[ct+1], ControlFlow.ControlInstruction):
+                try:
                     seq[ct+1] *= TAPulse("TRIG", slaveChan, slaveChan.pulseParams['length'], 1.0, 0.0, 0.0)
-                else:
+                except TypeError:
                     seq.insert(ct+1, TAPulse("TRIG", slaveChan, slaveChan.pulseParams['length'], 1.0, 0.0, 0.0))
                 ct += 2 # can skip over what we just modified
             else:
