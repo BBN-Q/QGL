@@ -2,6 +2,7 @@ import os
 import sys
 import glob
 import h5py
+from builtins import input
 
 from QGL import *
 import QGL
@@ -26,7 +27,7 @@ def compare_sequences():
             print("{0} comparing to {1}".format(test, newpath))
             newfiles = glob.glob(os.path.join(newpath, '*'))
             PulseSequencePlotter.plot_pulse_files_compare(testfiles, newfiles)
-            c = input('Enter to continue (q to quit)')
+            c = input('Enter to continue (q to quit): ')
             if c == 'q':
                 break
 

@@ -84,7 +84,10 @@ def get_seq_file_extension():
 
 def is_compatible_file(filename):
 	with h5py.File(filename, 'r') as FID:
-		if FID['/'].attrs['target hardware'] == b'APS2':
+		target = FID['/'].attrs['target hardware']
+		if isinstance(target, str):
+			target = target.encode('utf-8')
+		if target == b'APS2':
 			return True
 	return False
 
