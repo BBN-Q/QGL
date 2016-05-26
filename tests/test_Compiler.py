@@ -41,6 +41,20 @@ class CompileUtils(unittest.TestCase):
         assert([self.q1gate in entry.pulses.keys() for entry in seq] == [True, False, True])
         assert([self.q2gate in entry.pulses.keys() for entry in seq] == [False, True, True])
 
+    def test_add_slave_trigger(self):
+        q1 = self.q1
+        trigger = self.trigger
+        label = BlockLabel.newlabel()
+        seq1 = [qwait(), label, X90(q1)]
+        seq2 = [qwait(), X90(q1)]
+
+        PatternUtils.add_slave_trigger([seq1], trigger)
+        t = TAPulse("TRIG", trigger, trigger.pulseParams['length'], 1.0, 0.0, 0.0)
+        assert(seq1 == [qwait(), t, label, X90(q1)])
+
+        PatternUtils.add_slave_trigger([seq2], trigger)
+        assert(seq2 == [qwait(), X90(q1)*t])
+
     def test_concatenate_entries(self):
         q1 = self.q1
         seq = [X90(q1, length=20e-9), Y90(q1, length=40e-9)]

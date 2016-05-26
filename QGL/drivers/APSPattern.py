@@ -52,7 +52,7 @@ def get_seq_file_extension():
 
 def is_compatible_file(filename):
     with h5py.File(filename, 'r') as FID:
-        if FID['/'].attrs['target hardware'] == b'APS1':
+        if FID['/'].attrs['target hardware'].encode('utf-8') == b'APS1':
             return True
     return False
 
@@ -443,7 +443,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 		#Now map onto linklist elements
 		curIQIdx = 0
 		trigQueue = []
-		for switchPt in switchPts:
+		for ct, switchPt in enumerate(switchPts):
 			# skip if:
 			#   1) control-flow instruction or label (i.e. not a waveform)
 			#   2) the trigger count is too long
@@ -457,7 +457,10 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 				curIQIdx += 1
 				# add padding pulses if needed
 				if curIQIdx >= len(miniLL_IQ):
-					pad = max(MIN_ENTRY_LENGTH, min(trigQueue, 0))
+					if len(trigQueue) > 0:
+						pad = max(MIN_ENTRY_LENGTH, min(trigQueue, 0))
+					else:
+						pad = MIN_ENTRY_LENGTH
 					miniLL_IQ.append(padding_entry(pad))
 			#Push on the trigger count
 
@@ -489,6 +492,14 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 			trigQueue = [t - miniLL_IQ[curIQIdx].length for t in trigQueue]
 			trigQueue = [t for t in trigQueue if t >= 0]
 			curIQIdx += 1
+
+			# add padding pulses if needed
+			if ct+1 < len(switchPts) and curIQIdx >= len(miniLL_IQ):
+				if len(trigQueue) > 0:
+					pad = max(MIN_ENTRY_LENGTH, min(trigQueue, 0))
+				else:
+					pad = MIN_ENTRY_LENGTH
+				miniLL_IQ.append(padding_entry(pad))
 
 	#Replace any remaining empty entries with None
 	for miniLL_IQ in IQLL:

@@ -256,8 +256,14 @@ def compile_to_hardware(seqs, fileName, suffix='', qgl2=False, addQGL2SlaveTrigg
     logger = logging.getLogger(__name__)
     logger.debug("Compiling %d sequence(s)", len(seqs))
 
+    # all sequences should start with a WAIT for synchronization
+    for seq in seqs:
+        if not isinstance(seq[0], ControlFlow.Wait):
+            logger.debug("Adding a WAIT - first sequence element was %s", str(seq[0]))
+            seq.insert(0, ControlFlow.Wait())
+
     # Add the digitizer trigger to measurements
-    logger.debug("Adding digitizer")
+    logger.debug("Adding digitizer trigger")
     PatternUtils.add_digitizer_trigger(seqs)
 
     # Add gating/blanking pulses
@@ -349,11 +355,7 @@ def compile_sequences(seqs, channels=set(), qgl2=False):
     Main function to convert sequences to miniLL's and waveform libraries.
     '''
     logger = logging.getLogger(__name__)
-    # all sequences should start with a WAIT
-    for seq in seqs:
-        if not isinstance(seq[0], ControlFlow.Wait):
-            logger.debug("Adding a WAIT - first sequence element was %s", str(seq[0]))
-            seq.insert(0, ControlFlow.Wait())
+
     # turn into a loop, by appending GOTO(0) at end of last sequence
     if not isinstance(seqs[-1][-1], ControlFlow.Goto):
         seqs[-1].append(ControlFlow.Goto(BlockLabel.label(seqs[0])))
@@ -429,9 +431,11 @@ def compile_sequence(seq, channels=None):
             for chan in channels:
                 wires[chan] += [copy(block)]
             continue
-        # drop length 0 blocks but push frame change onto previous entry
+        # drop length 0 blocks but push nonzero frame changes onto previous entries
         if block.length == 0:
             for chan in channels:
+                if block.pulses[chan].frameChange == 0:
+                    continue
                 if len(wires[chan]) > 0:
                     logger.debug("Modifying pulse on %s: %s", chan, wires[chan][-1])
                     wires[chan][-1] = copy(wires[chan][-1])
