@@ -49,13 +49,11 @@ class CompileUtils(unittest.TestCase):
         seq2 = [qwait(), X90(q1)]
 
         PatternUtils.add_slave_trigger([seq1], trigger)
-        assert(isinstance(seq1[1], PulseSequencer.Pulse))
-        assert(seq1[1].label == 'TRIG')
+        t = TAPulse("TRIG", trigger, trigger.pulseParams['length'], 1.0, 0.0, 0.0)
+        assert(seq1 == [qwait(), t, label, X90(q1)])
 
         PatternUtils.add_slave_trigger([seq2], trigger)
-        assert(isinstance(seq2[1], PulseSequencer.PulseBlock))
-        assert(trigger in seq2[1].pulses)
-        assert(seq1[1] == seq2[1].pulses[trigger])
+        assert(seq2 == [qwait(), X90(q1)*t])
 
     def test_concatenate_entries(self):
         q1 = self.q1
