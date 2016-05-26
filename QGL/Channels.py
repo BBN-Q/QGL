@@ -112,7 +112,7 @@ class LogicalMarkerChannel(LogicalChannel):
     '''
     A class for digital channels for gating sources or triggering other things.
     '''
-    pulseParams = Dict(default={'shapeFun': PulseShapes.square, 'length':100e-9})
+    pulseParams = Dict(default={'shapeFun': PulseShapes.square, 'length':10e-9})
 
 class Qubit(LogicalChannel):
     '''
