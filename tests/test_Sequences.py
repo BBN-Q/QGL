@@ -13,7 +13,7 @@ BASE_AWG_DIR = QGL.config.AWGDir
 class AWGTestHelper(object):
 	testFileDirectory = './tests/test_data/awg/'
 
-	def __init__(self, translatorModule = None, tolerance = 1.5/2**13):
+	def __init__(self, translatorModule=None, tolerance=2.0/2**13):
 		self.channels = {}
 		self.assign_channels()
 		self.set_awg_dir()
