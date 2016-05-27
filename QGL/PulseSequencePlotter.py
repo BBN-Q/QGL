@@ -35,17 +35,16 @@ import numpy as np
 from . import config
 from . import ChannelLibrary
 
+from . import drivers
+import pkgutil
+
 def all_zero_seqs(seqs):
     return all([np.allclose([_[1] for _ in seq], 0) for seq in seqs])
 
 def build_awg_translator_map():
     # TODO have this walk the drivers directory rather than pulling from the ChannelLibrary
     translators_map = {}
-    translators = []
-    for chan in ChannelLibrary.channelLib.values():
-        if hasattr(chan, 'translator') and chan.translator:
-            if chan.translator not in translators:
-                translators.append(chan.translator)
+    translators = [_[1] for _ in pkgutil.walk_packages(drivers.__path__)]
     for translator in translators:
         module = import_module('QGL.drivers.' + translator)
         ext = module.get_seq_file_extension()
