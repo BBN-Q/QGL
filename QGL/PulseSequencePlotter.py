@@ -42,7 +42,6 @@ def all_zero_seqs(seqs):
     return all([np.allclose([_[1] for _ in seq], 0) for seq in seqs])
 
 def build_awg_translator_map():
-    # TODO have this walk the drivers directory rather than pulling from the ChannelLibrary
     translators_map = {}
     translators = [_[1] for _ in pkgutil.walk_packages(drivers.__path__)]
     for translator in translators:
