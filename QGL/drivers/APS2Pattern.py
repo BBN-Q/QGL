@@ -354,8 +354,8 @@ def NoOp():
 def preprocess(seqs, shapeLib):
 	seqs = PatternUtils.convert_lengths_to_samples(seqs, SAMPLING_RATE, ADDRESS_UNIT)
 	wfLib = build_waveforms(seqs, shapeLib)
-	modulator_seqs = extract_modulation_seqs(seqs)
-	return seqs, modulator_seqs, wfLib
+	inject_modulation_cmds(seqs)
+	return seqs, wfLib
 
 def wf_sig(wf):
 	'''
@@ -424,16 +424,14 @@ class ModulationCommand(object):
 		instr.writeFlag = write_flag
 		return instr
 
-def extract_modulation_seqs(seqs):
+def inject_modulation_cmds(seqs):
 	"""
 	Extract modulation commands from phase, frequency and frameChange of waveforms
 	in an IQ waveform sequence. Assume single NCO for now.
 	"""
-	modulator_seqs = []
 	cur_freq = 0
 	cur_phase = 0
-	for seq in seqs:
-		modulator_seq = []
+	for ct,seq in enumerate(seqs):
 		#check whether we have modulation commands
 		freqs = np.unique([entry.frequency for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)])
 		no_freq_cmds = np.allclose(freqs, 0)
@@ -442,20 +440,27 @@ def extract_modulation_seqs(seqs):
 		frame_changes = [entry.frameChange for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
 		no_frame_cmds = np.allclose(frame_changes, 0)
 		no_modulation_cmds = no_freq_cmds and no_phase_cmds and no_frame_cmds
+		
+		if no_modulation_cmds:
+			continue
+
+		mod_seq = []
+
 		for entry in seq:
+
 			#copies to avoid same object having different timestamps later
 			#copy through BlockLabel
 			if isinstance(entry, BlockLabel.BlockLabel):
-				modulator_seq.append(copy(entry))
+				mod_seq.append(copy(entry))
 			#mostly copy through control-flow
 			elif isinstance(entry, ControlFlow.ControlInstruction):
 				#heuristic to insert phase reset before trigger if we have modulation commands
 				if isinstance(entry, ControlFlow.Wait):
 					if not ( no_modulation_cmds and (cur_freq == 0) and (cur_phase == 0)):
-						modulator_seq.append(ModulationCommand("RESET_PHASE", 0x1))
+						mod_seq.append(ModulationCommand("RESET_PHASE", 0x1))
 				elif isinstance(entry, ControlFlow.Return):
 					cur_freq = 0 #makes sure that the frequency is set in the first sequence after the definition of subroutines
-				modulator_seq.append(copy(entry))
+				mod_seq.append(copy(entry))
 			elif isinstance(entry, Compiler.Waveform):
 				if not no_modulation_cmds:
 					#insert phase and frequency commands before modulation command so they have the same start time
@@ -467,17 +472,17 @@ def extract_modulation_seqs(seqs):
 						phase_freq_cmds.append( ModulationCommand("SET_PHASE", 0x1, phase=entry.phase) )
 						cur_phase = entry.phase
 					for cmd in phase_freq_cmds:
-						modulator_seq.append(cmd)
-					#now apply modulation for count command
-					if (len(modulator_seq) > 0) and (isinstance(modulator_seq[-1], ModulationCommand)) and (modulator_seq[-1].instruction == "MODULATE"):
-						modulator_seq[-1].length += entry.length
+						mod_seq.append(cmd)
+					#now apply modulation for count command and waveform command
+					mod_seq.append(entry)
+					if (len(mod_seq) > 1) and (isinstance(mod_seq[-2], ModulationCommand)) and (mod_seq[-2].instruction == "MODULATE"):
+						mod_seq[-2].length += entry.length
 					else:
-						modulator_seq.append( ModulationCommand("MODULATE", 0x1, length=entry.length))
+						mod_seq.append( ModulationCommand("MODULATE", 0x1, length=entry.length))
 					#now apply non-zero frame changes after so it is applied at end
 					if entry.frameChange != 0:
-						modulator_seq.append( ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
-		modulator_seqs.append(modulator_seq)
-	return modulator_seqs
+						mod_seq.append( ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
+		seqs[ct] = mod_seq
 
 def build_waveforms(seqs, shapeLib):
 	# apply amplitude (and optionally phase) and add the resulting waveforms to the library
@@ -540,22 +545,6 @@ def create_seq_instructions(seqs, offsets):
 
 	synchronize_clocks(seqs)
 
-	# filter out sequencing instructions from the waveform and marker lists, so that seqs becomes:
-	# [control-flow, wfs, m1, m2, m3, m4]
-	# control instructions get broadcast so pull them from the first non-empty sequence
-	try:
-		ct = next(i for i,j in enumerate(seqs) if j)
-	except StopIteration:
-		print("No non-empty sequences to create!")
-		raise
-	controlInstrs = list(filter(lambda s: isinstance(s, (ControlFlow.ControlInstruction, BlockLabel.BlockLabel)),
-		                        seqs[ct]))
-	for ct in range(len(seqs)):
-		if seqs[ct]:
-			seqs[ct] = list(filter(lambda s: isinstance(s, (Compiler.Waveform, ModulationCommand)), seqs[ct]))
-
-	seqs.insert(0, controlInstrs)
-
 	# create (seq, startTime) pairs over all sequences
 	timeTuples = []
 	for ct, seq in enumerate(seqs):
@@ -571,11 +560,15 @@ def create_seq_instructions(seqs, offsets):
 	# unless it is a subroutine (using last entry as return as tell)
 	label = None
 	instructions = []
-	if not isinstance(seqs[0][-1], ControlFlow.Return):
-		if isinstance(seqs[0][0], BlockLabel.BlockLabel):
-			label = seqs[0][0]
+	for ct, seq in enumerate(seqs):
+		if len(seq):
+			first_non_empty = ct
+			break
+	if not isinstance(seqs[first_non_empty][-1], ControlFlow.Return):
+		if isinstance(seqs[first_non_empty][0], BlockLabel.BlockLabel):
+			label = seqs[first_non_empty][0]
 			timeTuples.pop(0)
-			indexes[0] += 1
+			indexes[first_non_empty] += 1
 		instructions.append( Sync(label=label) )
 		label = None
 
@@ -591,51 +584,16 @@ def create_seq_instructions(seqs, offsets):
 			if start_time != next_start_time:
 				break
 
-		# potentially reorder
-		# heuristics:
-		# 1. modulation phase updates should happen before SYNC/TRIG but in between SYNC and TRIG if we have both
-		# 2. modulation phase updates should happen before NCO select commands
-		# 3. SET_PHASE should happen after RESET_PHASE
-		# 4. instructions to different engines should have single write flag
-		# 5. labels should be moved to the first instruction
-		# 6. LoadRepeat should be moved before the label for the repeated instructions
-		def find_and_pop_entries(predicate):
-			matched = []
-			for ct, entry in enumerate(entries):
-				if predicate(entry):
-					matched.append(entries.pop(ct))
-			return matched
-
-		if len(entries) > 1:
-			#reorder
-			load_entry = find_and_pop_entries(lambda e: isinstance(e[0], ControlFlow.LoadRepeat))
-			label_entry = find_and_pop_entries(lambda e: isinstance(e[0], BlockLabel.BlockLabel))
-			sync_entry = find_and_pop_entries(lambda e: isinstance(e[0], ControlFlow.Sync))
-			trig_entry = find_and_pop_entries(lambda e: isinstance(e[0], ControlFlow.Wait))
-			control_flow_entries = find_and_pop_entries(lambda e: isinstance(e[0], ControlFlow.ControlInstruction))
-			reset_entry = find_and_pop_entries(lambda e: isinstance(e[0], ModulationCommand) and e[0].instruction == "RESET_PHASE")
-			frame_entry = find_and_pop_entries(lambda e: isinstance(e[0], ModulationCommand) and e[0].instruction == "UPDATE_FRAME")
-			phase_entry = find_and_pop_entries(lambda e: isinstance(e[0], ModulationCommand) and e[0].instruction == "SET_PHASE")
-			freq_entry = find_and_pop_entries(lambda e: isinstance(e[0], ModulationCommand) and e[0].instruction == "SET_FREQ")
-			reordered_entries = load_entry + label_entry + sync_entry + control_flow_entries + reset_entry + phase_entry + freq_entry + frame_entry + trig_entry
-			write_flags = [True]*len(reordered_entries)
-			for entry in entries:
-				reordered_entries.append(entry)
-				write_flags.append(False)
-			write_flags[-1] = True
-			entries = reordered_entries
-
-		else:
-			write_flags = [True]
+		write_flags = [True]*len(entries)
 
 		for ct,(entry,seq_idx) in enumerate(entries):
-			if seq_idx == 0:
-				#labels and control-flow
+			#use first non empty sequence for control flow
+			if seq_idx == first_non_empty and ( isinstance(entry, ControlFlow.ControlInstruction) or isinstance(entry, BlockLabel.BlockLabel) ):
 				if isinstance(entry, BlockLabel.BlockLabel):
 					# carry label forward to next entry
 					label = entry
 					continue
-				# zero argument commands
+				# control flow instructions
 				elif isinstance(entry, ControlFlow.Wait):
 					instructions.append(Wait(label=label))
 				elif isinstance(entry, ControlFlow.LoadCmp):
@@ -657,30 +615,34 @@ def create_seq_instructions(seqs, offsets):
 				elif isinstance(entry, ControlFlow.ComparisonInstruction):
 					instructions.append(Cmp(cmpTable[entry.operator], entry.mask, label=label))
 
-			elif seq_idx == 1: # waveform engine
-				if entry.length < MIN_ENTRY_LENGTH:
-					continue
-				instructions.append(Waveform(offsets[wf_sig(entry)],
+				continue
+
+			if seq_idx == 0:
+				#analog - waveforms or modulation
+				if isinstance(entry, Compiler.Waveform ):
+					if entry.length < MIN_ENTRY_LENGTH:
+						warn("Dropping entry!")
+						continue
+					instructions.append(Waveform(offsets[wf_sig(entry)],
 					                         entry.length,
 					                         entry.isTimeAmp or entry.isZero,
 					                         write=write_flags[ct],
 					                         label=label))
-
-			elif seq_idx == 2: # modulation engine
-				if entry.instruction == "MODULATE" and entry.length < MIN_ENTRY_LENGTH:
-					continue
-				instructions.append(entry.to_instruction(write_flag=write_flags[ct], label=label))
+				elif isinstance(entry, ModulationCommand):
+					instructions.append(entry.to_instruction(write_flag=write_flags[ct], label=label))
 
 			else: # a marker engine
-				if entry.length < MIN_ENTRY_LENGTH:
-					continue
-				markerSel = seq_idx - 3
-				state = not entry.isZero
-				instructions.append(Marker(markerSel,
-					                       state,
-					                       entry.length,
-					                       write=write_flags[ct],
-					                       label=label))
+				if isinstance(entry, Compiler.Waveform ):
+					if entry.length < MIN_ENTRY_LENGTH:
+						warn("Dropping entry!")
+						continue
+					markerSel = seq_idx - 1
+					state = not entry.isZero
+					instructions.append(Marker(markerSel,
+						                       state,
+						                       entry.length,
+						                       write=write_flags[ct],
+						                       label=label))
 
 			#clear label
 			label = None
@@ -741,7 +703,6 @@ def create_instr_data(seqs, offsets, cache_lines):
 			subroutine_instrs += sub
 			offset += len(sub) % CACHE_LINE_LENGTH
 		logger.debug("Placed {} subroutines into {} cache lines".format(len(seq_instrs[subroutines_start:]), len(subroutine_instrs) // CACHE_LINE_LENGTH))
-
 		#inject prefetch commands before waits
 		wait_idx = [idx for idx,instr in enumerate(instructions) if (instr.header >> 4) == WAIT] + [len(instructions)]
 		instructions_with_prefetch = instructions[:wait_idx[0]]
@@ -805,7 +766,7 @@ def write_sequence_file(awgData, fileName):
 	Main function to pack channel sequences into an APS2 h5 file.
 	'''
 	# Convert QGL IR into a representation that is closer to the hardware.
-	awgData['ch12']['linkList'], modulation_seqs, wfLib = preprocess(awgData['ch12']['linkList'],
+	awgData['ch12']['linkList'], wfLib = preprocess(awgData['ch12']['linkList'],
 	                                                awgData['ch12']['wfLib'])
 
 	# compress marker data
@@ -823,7 +784,6 @@ def write_sequence_file(awgData, fileName):
 
 	# build instruction vector
 	seq_data = [awgData[s]['linkList'] for s in ['ch12', 'ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']]
-	seq_data.insert(1, modulation_seqs)
 	instructions = create_instr_data(seq_data, wfInfo[0][1], wfInfo[0][2])
 
 	#Open the HDF5 file
