@@ -440,7 +440,7 @@ def inject_modulation_cmds(seqs):
 		frame_changes = [entry.frameChange for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
 		no_frame_cmds = np.allclose(frame_changes, 0)
 		no_modulation_cmds = no_freq_cmds and no_phase_cmds and no_frame_cmds
-		
+
 		if no_modulation_cmds:
 			continue
 
@@ -468,7 +468,7 @@ def inject_modulation_cmds(seqs):
 					if cur_freq != entry.frequency:
 						phase_freq_cmds.append( ModulationCommand("SET_FREQ", 0x1, frequency=-entry.frequency) )
 						cur_freq = entry.frequency
-					if USE_PHASE_OFFSET_INSTRUCTION and (cur_phase != entry.phase):
+					if USE_PHASE_OFFSET_INSTRUCTION and (entry.length > 0) and (cur_phase != entry.phase):
 						phase_freq_cmds.append( ModulationCommand("SET_PHASE", 0x1, phase=entry.phase) )
 						cur_phase = entry.phase
 					for cmd in phase_freq_cmds:
