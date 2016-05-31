@@ -15,7 +15,7 @@ class CompileUtils(unittest.TestCase):
         self.q2.pulseParams['length'] = 30e-9
 
         self.trigger = Channels.LogicalMarkerChannel(label='trigger')
-        self.measq1 = Channels.Measurement(label='M-q1')
+        self.measq1 = Channels.Measurement(label='M-q1', measType='autodyne')
         self.measq1.trigChan = self.trigger
 
         ChannelLibrary.channelLib.channelDict = {'q1': self.q1, 'q2': self.q2, 'M-q1': self.measq1}

@@ -13,7 +13,7 @@ BASE_AWG_DIR = QGL.config.AWGDir
 class AWGTestHelper(object):
 	testFileDirectory = './tests/test_data/awg/'
 
-	def __init__(self, translatorModule = None, tolerance = 1.5/2**13):
+	def __init__(self, translatorModule=None, tolerance=2.0/2**13):
 		self.channels = {}
 		self.assign_channels()
 		self.set_awg_dir()
@@ -53,7 +53,7 @@ class AWGTestHelper(object):
 			mg = LogicalMarkerChannel(label=mgName)
 			qg = LogicalMarkerChannel(label=qgName)
 
-			m = Measurement(label=mName, gateChan = mg, trigChan=self.channels['digitizerTrig'])
+			m = Measurement(label=mName, gateChan = mg, trigChan=self.channels['digitizerTrig'], measType='autodyne')
 
 			q = Qubit(label=name, gateChan=qg)
 			q.pulseParams['length'] = 30e-9
@@ -75,7 +75,7 @@ class AWGTestHelper(object):
 
 		mq1q2g = LogicalMarkerChannel(label='M-q1q2-gate')
 		self.channels['M-q1q2-gate']  = mq1q2g
-		self.channels['M-q1q2']       = Measurement(label='M-q1q2', gateChan = mq1q2g, trigChan=self.channels['digitizerTrig'])
+		self.channels['M-q1q2']       = Measurement(label='M-q1q2', gateChan = mq1q2g, trigChan=self.channels['digitizerTrig'], measType='autodyne')
 
 	def get_qubits(self):
 		return [QGL.ChannelLibrary.channelLib[name] for name in self.qubit_names]

@@ -21,7 +21,7 @@ import os
 import numpy as np
 from warnings import warn
 from itertools import chain
-from six.moves import zip_longest
+from future.moves.itertools import zip_longest
 from QGL import Compiler, ControlFlow, BlockLabel, PatternUtils
 from QGL.PatternUtils import hash_pulse, flatten
 from copy import copy, deepcopy
@@ -52,7 +52,10 @@ def get_seq_file_extension():
 
 def is_compatible_file(filename):
     with h5py.File(filename, 'r') as FID:
-        if FID['/'].attrs['target hardware'].encode('utf-8') == b'APS1':
+        target = FID['/'].attrs['target hardware']
+        if isinstance(target, str):
+            target = target.encode('utf-8')
+        if target == b'APS1':
             return True
     return False
 
