@@ -426,7 +426,7 @@ class ModulationCommand(object):
 
 def inject_modulation_cmds(seqs):
 	"""
-	Extract modulation commands from phase, frequency and frameChange of waveforms
+	Inject modulation commands from phase, frequency and frameChange of waveforms
 	in an IQ waveform sequence. Assume single NCO for now.
 	"""
 	cur_freq = 0
@@ -473,12 +473,13 @@ def inject_modulation_cmds(seqs):
 						cur_phase = entry.phase
 					for cmd in phase_freq_cmds:
 						mod_seq.append(cmd)
-					#now apply modulation for count command and waveform command
-					mod_seq.append(entry)
-					if (len(mod_seq) > 1) and (isinstance(mod_seq[-2], ModulationCommand)) and (mod_seq[-2].instruction == "MODULATE"):
-						mod_seq[-2].length += entry.length
-					else:
-						mod_seq.append( ModulationCommand("MODULATE", 0x1, length=entry.length))
+					#now apply modulation for count command and waveform command, if non-zero length
+					if entry.length > 0:
+						mod_seq.append(entry)
+						if (len(mod_seq) > 1) and (isinstance(mod_seq[-2], ModulationCommand)) and (mod_seq[-2].instruction == "MODULATE"):
+							mod_seq[-2].length += entry.length
+						else:
+							mod_seq.append( ModulationCommand("MODULATE", 0x1, length=entry.length))
 					#now apply non-zero frame changes after so it is applied at end
 					if entry.frameChange != 0:
 						mod_seq.append( ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
@@ -533,7 +534,7 @@ def create_seq_instructions(seqs, offsets):
 	keyed on the wf keys.
 
 	Seqs is a list of lists containing waveform and marker data, e.g.
-	[wfSeq, modulationSeq, m1Seq, m2Seq, m3Seq, m4Seq]
+	[wfSeq & modulationSeq, m1Seq, m2Seq, m3Seq, m4Seq]
 
 	We take the strategy of greedily grabbing the next instruction that occurs in time, accross
 	all	waveform and marker channels.
@@ -585,7 +586,6 @@ def create_seq_instructions(seqs, offsets):
 				break
 
 		write_flags = [True]*len(entries)
-
 		for ct,(entry,seq_idx) in enumerate(entries):
 			#use first non empty sequence for control flow
 			if seq_idx == first_non_empty and ( isinstance(entry, ControlFlow.ControlInstruction) or isinstance(entry, BlockLabel.BlockLabel) ):
