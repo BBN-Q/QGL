@@ -15,13 +15,14 @@ limitations under the License.
 '''
 import numpy as np
 from warnings import warn
-from .PulseSequencer import Pulse, TAPulse, PulseBlock
+from .PulseSequencer import Pulse, TAPulse, PulseBlock, CompositePulse
 from .PulsePrimitives import BLANK
 from . import ControlFlow
 from . import BlockLabel
 import QGL.Compiler
 from math import pi
 import hashlib, collections
+import pickle
 
 def hash_pulse(shape):
     return hashlib.sha1(shape.tostring()).hexdigest()
@@ -240,3 +241,44 @@ def flatten(l):
                 yield sub
         else:
             yield el
+
+def update_wf_library(pulses, path):
+    """
+    Update the waveform library in-place.
+
+    Parameters
+    ------------
+    pulses : iterable of pulse object to update
+        e.g. [X90(q1), X(q1), Y90(q1), Y(q1), X90(q2), X(q2), Y90(q2), Y(q2), ZX90_CR(q1, q2)]
+    path : path to base name of files to update e.g. /path/to/GST/GST will update files such as
+        /path/to/GST/GST-APSII1.h5 and /path/to/GST/GST-APSII2.h5
+    """
+    #Look through the pulses and figure out what pulses are associated with which APS
+    awg_pulses = collections.defaultdict(dict)
+    translators = {}
+    def flatten_pulses():
+        for p in flatten(pulses):
+            if isinstance(p, CompositePulse):
+                for sub_p in p.pulses:
+                    yield sub_p
+            else:
+                yield p
+
+    pulse_list = list(flatten_pulses())
+    for ct, pulse in enumerate(pulse_list):
+        awg = pulse.channel.physChan.AWG
+        if awg not in translators:
+            translators[awg] = getattr(QGL.drivers, pulse.channel.physChan.translator)
+        if pulse.label not in awg_pulses[awg]:
+            awg_pulses[awg][pulse.label] = pulse_list[ct]
+
+    for awg, ps in awg_pulses.items():
+        #load the offset dictionary for this AWG
+        try:
+            with open(path + "-" + awg + ".offsets", "rb") as FID:
+                offsets = pickle.load(FID)
+        except FileNotFoundError:
+            print("Offset file not found for {}, skipping pulses {}".format(awg, [str(p) for p in ps.values()]))
+            continue
+        print("Updating pulses for {}".format(awg))
+        translators[awg].update_wf_library(path + "-" + awg + ".h5", ps, offsets)
