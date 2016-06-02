@@ -33,45 +33,45 @@ from QGL.PatternUtils import hash_pulse, flatten
 from builtins import int
 
 #Some constants
-SAMPLING_RATE = 1.2e9
-ADDRESS_UNIT = 4 #everything is done in units of 4 timesteps
-MIN_ENTRY_LENGTH = 8
-MAX_WAVEFORM_PTS = 2**28 #maximum size of waveform memory
-WAVEFORM_CACHE_SIZE = 2**17
-MAX_WAVEFORM_VALUE = 2**13-1 #maximum waveform value i.e. 14bit DAC
+SAMPLING_RATE        = 1.2e9
+ADDRESS_UNIT         = 4 #everything is done in units of 4 timesteps
+MIN_ENTRY_LENGTH     = 8
+MAX_WAVEFORM_PTS     = 2**28 #maximum size of waveform memory
+WAVEFORM_CACHE_SIZE  = 2**17
+MAX_WAVEFORM_VALUE   = 2**13-1 #maximum waveform value i.e. 14bit DAC
 MAX_NUM_INSTRUCTIONS = 2**26
-MAX_REPEAT_COUNT = 2**16-1;
-MAX_TRIGGER_COUNT = 2**32-1
+MAX_REPEAT_COUNT     = 2**16-1;
+MAX_TRIGGER_COUNT    = 2**32-1
 
 # instruction encodings
-WFM		= 0x0
-MARKER	 = 0x1
-WAIT	   = 0x2
-LOAD	   = 0x3
-REPEAT	 = 0x4
-CMP		= 0x5
-GOTO	   = 0x6
-CALL	   = 0x7
-RET		= 0x8
-SYNC	   = 0x9
+WFM        = 0x0
+MARKER     = 0x1
+WAIT       = 0x2
+LOAD       = 0x3
+REPEAT     = 0x4
+CMP        = 0x5
+GOTO       = 0x6
+CALL       = 0x7
+RET        = 0x8
+SYNC       = 0x9
 MODULATION = 0xA
-LOADCMP	= 0xB
+LOADCMP    = 0xB
 PREFETCH   = 0xC
-NOP		= 0XF
+NOP        = 0XF
 
 # WFM/MARKER op codes
-PLAY		  = 0x0
-WAIT_TRIG	 = 0x1
-WAIT_SYNC	 = 0x2
+PLAY          = 0x0
+WAIT_TRIG     = 0x1
+WAIT_SYNC     = 0x2
 WFM_PREFETCH  = 0x3
 WFM_OP_OFFSET = 46
 TA_PAIR_BIT   = 45
 
 # CMP op encodings
-EQUAL	   = 0x0
-NOTEQUAL	= 0x1
+EQUAL       = 0x0
+NOTEQUAL    = 0x1
 GREATERTHAN = 0x2
-LESSTHAN	= 0x3
+LESSTHAN    = 0x3
 
 # Whether we use PHASE_OFFSET modulation commands or bake it into waveform
 # Default to false as we usually don't have many variants
@@ -194,7 +194,7 @@ class Instruction(object):
 	def __str__(self):
 
 		opCodes = ["WFM", "MARKER", "WAIT", "LOAD", "REPEAT", "CMP", "GOTO", "CALL",
-				   "RET", "SYNC", "MODULATION", "LOADCMP", "PREFETCH", "NOP", "NOP", "NOP"]
+		           "RET", "SYNC", "MODULATION", "LOADCMP", "PREFETCH", "NOP", "NOP", "NOP"]
 
 		out = "{0} ".format(self.label) if self.label else ""
 
@@ -631,10 +631,10 @@ def create_seq_instructions(seqs, offsets):
 						warn("Dropping entry!")
 						continue
 					instructions.append(Waveform(offsets[wf_sig(entry)],
-											 entry.length,
-											 entry.isTimeAmp or entry.isZero,
-											 write=write_flags[ct],
-											 label=label))
+					                             entry.length,
+					                             entry.isTimeAmp or entry.isZero,
+					                             write = write_flags[ct],
+					                             label = label))
 				elif isinstance(entry, ModulationCommand):
 					instructions.append(entry.to_instruction(write_flag=write_flags[ct], label=label))
 
@@ -646,10 +646,10 @@ def create_seq_instructions(seqs, offsets):
 					markerSel = seq_idx - 1
 					state = not entry.isZero
 					instructions.append(Marker(markerSel,
-											   state,
-											   entry.length,
-											   write=write_flags[ct],
-											   label=label))
+					                    state,
+					                    entry.length,
+					                    write=write_flags[ct],
+					                    label=label))
 
 			#clear label
 			label = None
@@ -773,8 +773,7 @@ def write_sequence_file(awgData, fileName):
 	Main function to pack channel sequences into an APS2 h5 file.
 	'''
 	# Convert QGL IR into a representation that is closer to the hardware.
-	awgData['ch12']['linkList'], wfLib = preprocess(awgData['ch12']['linkList'],
-													awgData['ch12']['wfLib'])
+	awgData['ch12']['linkList'], wfLib = preprocess(awgData['ch12']['linkList'], awgData['ch12']['wfLib'])
 
 	# compress marker data
 	for field in ['ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']:
