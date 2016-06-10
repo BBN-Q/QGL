@@ -57,6 +57,9 @@ class Pulse(object):
         for param in requiredParams:
             if param not in shapeParams.keys():
                 raise NameError("shapeParams must include {0}".format(param))
+        if (self.shapeParams['shapeFun'] == PulseShapes.constant or
+            self.shapeParams['shapeFun'] == PulseShapes.square):
+            self.isTimeAmp = True
 
     def __repr__(self):
         return "Pulse({0}, {1}, {2}, {3}, {4}, {5})".format(
@@ -132,7 +135,6 @@ def TAPulse(label, channel, length, amp, phase=0, frameChange=0):
     '''
     params = {'length': length, 'shapeFun': PulseShapes.constant}
     p = Pulse(label, channel, params, amp, phase, frameChange)
-    p.isTimeAmp = True
     return p
 
 class CompositePulse(object):

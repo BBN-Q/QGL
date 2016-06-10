@@ -551,7 +551,7 @@ class Waveform(object):
 def schedule(channel, pulse, blockLength, alignment):
     '''
     Converts a Pulse or a CompositePulses into an aligned sequence of Pulses
-    by injecting TAPulses before and/or after such that the resulting sequence
+    by injecting Ids before and/or after such that the resulting sequence
     duration is `blockLength`.
         alignment = "left", "right", or "center"
     '''
