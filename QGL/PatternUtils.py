@@ -277,7 +277,7 @@ def update_wf_library(pulses, path):
         try:
             with open(path + "-" + awg + ".offsets", "rb") as FID:
                 offsets = pickle.load(FID)
-        except FileNotFoundError:
+        except IOError:
             print("Offset file not found for {}, skipping pulses {}".format(awg, [str(p) for p in ps.values()]))
             continue
         print("Updating pulses for {}".format(awg))
