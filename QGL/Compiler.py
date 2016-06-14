@@ -379,7 +379,7 @@ def compile_sequences(seqs, channels=set(), qgl2=False):
         for chan in wireSeqs.keys():
             wireSeqs[chan].append(wires[chan])
     #Print a message so for the experiment we know how many sequences there are
-    print('Compiled {} sequences.'.format(len(seqs) - len(subroutines)))
+    print('Compiled {} sequence(s).'.format(len(seqs) - len(subroutines)))
 
     # Debugging:
     if logger.isEnabledFor(logging.DEBUG):

@@ -136,6 +136,13 @@ class Wait(ControlInstruction):
 	def __init__(self):
 		super(Wait, self).__init__("WAIT")
 
+# This is not supported by the hardware yet
+class WaitSome(ControlInstruction):
+	def __init__(self, chanlist):
+		super(Wait, self).__init__("WAIT")
+		# The channels to wait on
+		self.chanlist = chanlist
+
 class LoadCmp(ControlInstruction):
 	def __init__(self):
 		super(LoadCmp, self).__init__("LOADCMP")
@@ -143,6 +150,20 @@ class LoadCmp(ControlInstruction):
 class Sync(ControlInstruction):
 	def __init__(self):
 		super(Sync, self).__init__("SYNC")
+
+# For use within QGL2 only
+# Marks a barrier at start or end of blocks
+# that can be run concurrently (with concur blocks)
+# Should be replaced by QGL2 with the proper length Id pulse,
+# or a Sync then a Wait if the block is of indeterminate length.
+class Barrier(ControlInstruction):
+        def __init__(self, ctr, chanlist):
+                super(Barrier, self).__init__("BARRIER", value=ctr)
+                # Consider adding a counter and start/end marker,
+                # to help line up barriers across sequences.
+                # FIXME: self.counter
+                # FIXME: self.start
+                self.chanlist = chanlist
 
 class ComparisonInstruction(ControlInstruction):
 	def __init__(self, mask, operator):
