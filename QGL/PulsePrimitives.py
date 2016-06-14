@@ -281,13 +281,13 @@ def CNOT(source, target, **kwargs):
     params = overrideDefaults(channel, kwargs)
     return Pulse("CNOT", (source, target), params, channel.pulseParams['piAmp'], 0.0, 0.0)
 
-def flat_top_gaussian(chan, riseFall, length, amp, phase=0):
+def flat_top_gaussian(chan, riseFall, length, amp, phase=0, label="flat_top_gaussian"):
     """
     A square pulse with rising and falling gaussian shape
     """
-    return Utheta(chan, length=riseFall, amp=amp, phase=phase, shapeFun=PulseShapes.gaussOn) + \
-           Utheta(chan, length=length, amp=amp, phase=phase, shapeFun=PulseShapes.square) + \
-           Utheta(chan, length=riseFall, amp=amp, phase=phase, shapeFun=PulseShapes.gaussOff)
+    return Utheta(chan, length=riseFall, amp=amp, phase=phase, shapeFun=PulseShapes.gaussOn, label=label+"_rise") + \
+           Utheta(chan, length=length, amp=amp, phase=phase, shapeFun=PulseShapes.square, label=label+"_top") + \
+           Utheta(chan, length=riseFall, amp=amp, phase=phase, shapeFun=PulseShapes.gaussOff, label=label+"_fall")
 
 def echoCR(controlQ, targetQ, amp=1, phase=0, length=200e-9, riseFall=20e-9, lastPi=True):
     """
@@ -296,9 +296,9 @@ def echoCR(controlQ, targetQ, amp=1, phase=0, length=200e-9, riseFall=20e-9, las
     CRchan = ChannelLibrary.EdgeFactory(controlQ, targetQ)
     if not CRchan.isforward(controlQ, targetQ):
         raise ValueError('Could not find an edge with control qubit {0}'.format(controlQ))
-    seq = [flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase),
+    seq = [flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase, label="echoCR_first_half"),
            X(controlQ),
-           flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi)]
+           flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=length, phase=phase+np.pi, label="echoCR_second_half")]
     if lastPi:
         seq += [X(controlQ)]
     return seq

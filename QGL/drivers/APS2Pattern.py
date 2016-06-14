@@ -21,6 +21,7 @@ import logging
 from warnings import warn
 from copy import copy
 from future.moves.itertools import zip_longest
+import pickle
 
 import h5py
 import numpy as np
@@ -32,15 +33,15 @@ from QGL.PatternUtils import hash_pulse, flatten
 from builtins import int
 
 #Some constants
-SAMPLING_RATE = 1.2e9
-ADDRESS_UNIT = 4 #everything is done in units of 4 timesteps
-MIN_ENTRY_LENGTH = 8
-MAX_WAVEFORM_PTS = 2**28 #maximum size of waveform memory
-WAVEFORM_CACHE_SIZE = 2**17
-MAX_WAVEFORM_VALUE = 2**13-1 #maximum waveform value i.e. 14bit DAC
+SAMPLING_RATE        = 1.2e9
+ADDRESS_UNIT         = 4 #everything is done in units of 4 timesteps
+MIN_ENTRY_LENGTH     = 8
+MAX_WAVEFORM_PTS     = 2**28 #maximum size of waveform memory
+WAVEFORM_CACHE_SIZE  = 2**17
+MAX_WAVEFORM_VALUE   = 2**13-1 #maximum waveform value i.e. 14bit DAC
 MAX_NUM_INSTRUCTIONS = 2**26
-MAX_REPEAT_COUNT = 2**16-1;
-MAX_TRIGGER_COUNT = 2**32-1
+MAX_REPEAT_COUNT     = 2**16-1;
+MAX_TRIGGER_COUNT    = 2**32-1
 
 # instruction encodings
 WFM        = 0x0
@@ -75,6 +76,9 @@ LESSTHAN    = 0x3
 # Whether we use PHASE_OFFSET modulation commands or bake it into waveform
 # Default to false as we usually don't have many variants
 USE_PHASE_OFFSET_INSTRUCTION = False
+
+#Whether to save the waveform offsets for partial compilation
+SAVE_WF_OFFSETS = False
 
 def get_empty_channel_set():
 	return {'ch12':{}, 'ch12m1':{}, 'ch12m2':{}, 'ch12m3':{}, 'ch12m4':{}}
@@ -417,10 +421,10 @@ class ModulationCommand(object):
 		if self.instruction == "MODULATE":
 			payload |= np.uint32(self.length/ADDRESS_UNIT - 1) #zero-indexed quad count
 		elif self.instruction == "SET_FREQ":
-            # frequencies can span -2 to 2 or 0 to 4 in unsigned
+			# frequencies can span -2 to 2 or 0 to 4 in unsigned
 			payload |= np.uint32((self.frequency/MODULATION_CLOCK if self.frequency > 0 else self.frequency/MODULATION_CLOCK + 4) * 2**28)
 		elif (self.instruction == "SET_PHASE") | (self.instruction == "UPDATE_FRAME"):
-            #phases can span -0.5 to 0.5 or 0 to 1 in unsigned
+			#phases can span -0.5 to 0.5 or 0 to 1 in unsigned
 			payload |= np.uint32(np.mod(self.phase/(2*np.pi), 1) * 2**28)
 
 		instr = Instruction(MODULATION << 4, payload, label)
@@ -627,10 +631,10 @@ def create_seq_instructions(seqs, offsets):
 						warn("Dropping entry!")
 						continue
 					instructions.append(Waveform(offsets[wf_sig(entry)],
-					                         entry.length,
-					                         entry.isTimeAmp or entry.isZero,
-					                         write=write_flags[ct],
-					                         label=label))
+					                             entry.length,
+					                             entry.isTimeAmp or entry.isZero,
+					                             write = write_flags[ct],
+					                             label = label))
 				elif isinstance(entry, ModulationCommand):
 					instructions.append(entry.to_instruction(write_flag=write_flags[ct], label=label))
 
@@ -642,10 +646,10 @@ def create_seq_instructions(seqs, offsets):
 					markerSel = seq_idx - 1
 					state = not entry.isZero
 					instructions.append(Marker(markerSel,
-						                       state,
-						                       entry.length,
-						                       write=write_flags[ct],
-						                       label=label))
+					                    state,
+					                    entry.length,
+					                    write=write_flags[ct],
+					                    label=label))
 
 			#clear label
 			label = None
@@ -769,8 +773,7 @@ def write_sequence_file(awgData, fileName):
 	Main function to pack channel sequences into an APS2 h5 file.
 	'''
 	# Convert QGL IR into a representation that is closer to the hardware.
-	awgData['ch12']['linkList'], wfLib = preprocess(awgData['ch12']['linkList'],
-	                                                awgData['ch12']['wfLib'])
+	awgData['ch12']['linkList'], wfLib = preprocess(awgData['ch12']['linkList'], awgData['ch12']['wfLib'])
 
 	# compress marker data
 	for field in ['ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']:
@@ -784,6 +787,27 @@ def write_sequence_file(awgData, fileName):
 	wfInfo = []
 	wfInfo.append(create_wf_vector({key:wf.real for key,wf in wfLib.items()}, awgData['ch12']['linkList']))
 	wfInfo.append(create_wf_vector({key:wf.imag for key,wf in wfLib.items()}, awgData['ch12']['linkList']))
+
+	if SAVE_WF_OFFSETS:
+		offsets= {}
+		wf_sigs = set()
+		for offset_dict in wfInfo[0][1]:
+			wf_sigs |= set(offset_dict.keys())
+		for seq in awgData['ch12']['linkList']:
+			for entry in seq:
+				if isinstance(entry, Compiler.Waveform):
+					sig = wf_sig(entry)
+					if sig in wf_sigs:
+						offsets[entry.label] = ([_[sig] for _ in wfInfo[0][1]], entry.length)
+						wf_sigs.discard(sig)
+					if len(wf_sigs) == 0:
+						break
+
+			if len(wf_sigs) == 0:
+				break
+
+		with open(os.path.splitext(fileName)[0] + ".offsets", "wb") as FID:
+			pickle.dump(offsets, FID)
 
 	# build instruction vector
 	seq_data = [awgData[s]['linkList'] for s in ['ch12', 'ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']]
@@ -945,3 +969,19 @@ def read_sequence_file(fileName):
 		del seqs['mod_phase']
 
 	return seqs
+
+def update_wf_library(filename, pulses, offsets):
+	assert USE_PHASE_OFFSET_INSTRUCTION == False
+	#load the h5 file
+	with h5py.File(filename) as FID:
+		for label, pulse in pulses.items():
+			shape = pulse.amp*np.exp(1j*pulse.phase)*pulse.shape
+			try:
+				length = offsets[label][1]
+			except KeyError:
+				print("\t{} not found in offsets so skipping".format(pulse))
+				continue
+			for offset in offsets[label][0]:
+				print("\tUpdating {} at offset {}".format(pulse, offset))
+				FID['/chan_1/waveforms'][offset:offset+length] = np.int16(MAX_WAVEFORM_VALUE*shape.real)
+				FID['/chan_2/waveforms'][offset:offset+length] = np.int16(MAX_WAVEFORM_VALUE*shape.imag)
