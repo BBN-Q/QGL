@@ -70,7 +70,12 @@ def process_tomo(seq, qubits, numPulses=4, measChans=None):
 	'''
 	if measChans is None:
 		measChans = qubits
-	
-	return [[prepBlock] + seq + [readoutBlock,  MEAS(*measChans)]
-				 for prepBlock, readoutBlock in product(create_tomo_blocks(qubits, numPulses), repeat=2)]
+
+	seqs=[]
+	for k in range(numPulses**len(qubits)):
+		for readoutBlock in create_tomo_blocks(qubits, numPulses):
+			prepBlock = create_tomo_blocks(qubits,numPulses)[k]
+			tomoseq = [prepBlock] + seq + [readoutBlock, MEAS(*measChans)]
+			seqs.append(tomoseq)
+	return seqs
 
