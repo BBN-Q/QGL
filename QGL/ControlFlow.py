@@ -92,7 +92,7 @@ class ControlInstruction(object):
 		result = labelPart + self.instruction
 		if self.target:
 			result += "(" + str(self.target) + ")"
-		elif self.value:
+		elif self.value or self.value == 0:
 			result += "(" + str(self.value) + ")"
 		return result
 
@@ -113,10 +113,12 @@ class ControlInstruction(object):
 		return self
 
 class Goto(ControlInstruction):
+        # target is a BlockLabel
 	def __init__(self, target):
 		super(Goto, self).__init__("GOTO", target=target)
 
 class Call(ControlInstruction):
+        # target is a BlockLabel
 	def __init__(self, target):
 		super(Call, self).__init__("CALL", target=target)
 
@@ -125,10 +127,12 @@ class Return(ControlInstruction):
 		super(Return, self).__init__("RETURN")
 
 class LoadRepeat(ControlInstruction):
+        # n is an integer
 	def __init__(self, n):
 		super(LoadRepeat, self).__init__("LOAD", value=n)
 
 class Repeat(ControlInstruction):
+        # target is a BlockLabel
 	def __init__(self, target):
 		super(Repeat, self).__init__("REPEAT", target=target)
 
@@ -136,12 +140,22 @@ class Wait(ControlInstruction):
 	def __init__(self):
 		super(Wait, self).__init__("WAIT")
 
-# This is not supported by the hardware yet
+# FIXME: This is not supported by the hardware yet
+# This is a Wait that should only wait for the channels
+# listed in chanlist (not all channels, as in Wait)
 class WaitSome(ControlInstruction):
+        # chanlist is a list of Channel instances
 	def __init__(self, chanlist):
-		super(Wait, self).__init__("WAIT")
+                # Until HW really supports waitsome, use wait so things compile better
+		super(WaitSome, self).__init__("WAIT")
+#		super(WaitSome, self).__init__("WAITSOME")
 		# The channels to wait on
 		self.chanlist = chanlist
+
+	def __str__(self):
+		base = super(WaitSome, self).__str__()
+		base += " on Channels: %s" % str(self.chanlist)
+		return base
 
 class LoadCmp(ControlInstruction):
 	def __init__(self):
@@ -157,13 +171,20 @@ class Sync(ControlInstruction):
 # Should be replaced by QGL2 with the proper length Id pulse,
 # or a Sync then a Wait if the block is of indeterminate length.
 class Barrier(ControlInstruction):
+        # chanlist is a list of Channel instances
+        # ctr is an opaque string, unique per channel
+        # (but appearing once for the program for each channel
+        # in chanlist)
         def __init__(self, ctr, chanlist):
                 super(Barrier, self).__init__("BARRIER", value=ctr)
-                # Consider adding a counter and start/end marker,
+                # Consider adding a start/end marker,
                 # to help line up barriers across sequences.
-                # FIXME: self.counter
                 # FIXME: self.start
                 self.chanlist = chanlist
+        def __str__(self):
+                base = super(Barrier, self).__str__()
+                base += " on Channels: %s" % str(self.chanlist)
+                return base
 
 class ComparisonInstruction(ControlInstruction):
 	def __init__(self, mask, operator):
