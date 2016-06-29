@@ -556,7 +556,7 @@ def inject_modulation_cmds(seqs):
 							if isinstance(mod_seq[-1], ModulationCommand) and mod_seq[-1].instruction == "UPDATE_FRAME":
 								mod_seq[-1].phase += entry.frameChange
 							#if last entry was pulse without frame change we add frame change
-							elif (isinstance(mod_seq[-2], ModulationCommand)) and (mod_seq[-2].instruction == "MODULATE"):
+							elif (isinstance(mod_seq[-1], Compiler.Waveform)) or (mod_seq[-1].instruction == "MODULATE"):
 								mod_seq.append( ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
 							#otherwise drop and error if frame has been defined
 							else:
