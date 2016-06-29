@@ -452,6 +452,8 @@ def inject_modulation_cmds(seqs):
 			continue
 
 		mod_seq = []
+		frame_defined = False
+		pending_frame_update = False
 
 		for entry in seq:
 
@@ -483,13 +485,31 @@ def inject_modulation_cmds(seqs):
 					#now apply modulation for count command and waveform command, if non-zero length
 					if entry.length > 0:
 						mod_seq.append(entry)
-						if (len(mod_seq) > 1) and (isinstance(mod_seq[-2], ModulationCommand)) and (mod_seq[-2].instruction == "MODULATE"):
+						frame_defined = True # could also check for TAZ pulses
+						# if we have a modulate waveform modulate pattern and there is no pending frame update we can append length to previous modulation command
+						if (len(mod_seq) > 1) and (isinstance(mod_seq[-1], Compiler.Waveform)) and (isinstance(mod_seq[-2], ModulationCommand)) and (mod_seq[-2].instruction == "MODULATE") and not pending_frame_update:
 							mod_seq[-2].length += entry.length
 						else:
 							mod_seq.append( ModulationCommand("MODULATE", 0x1, length=entry.length))
+							pending_frame_update = False
 					#now apply non-zero frame changes after so it is applied at end
 					if entry.frameChange != 0:
-						mod_seq.append( ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
+						pending_frame_update = True
+						#zero length frame changes (Z pulses) need to be combined with the previous frame change 
+						if entry.length == 0:
+							#if the last entry was a pulse with a frame change then we can update in place
+							if isinstance(mod_seq[-1], ModulationCommand) and mod_seq[-1].instruction == "UPDATE_FRAME":
+								mod_seq[-1].phase += entry.frameChange
+							#if last entry was pulse without frame change we add frame change
+							elif (isinstance(mod_seq[-2], ModulationCommand)) and (mod_seq[-2].instruction == "MODULATE"):
+								mod_seq.append( ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
+							#otherwise drop and error if frame has been defined
+							else:
+								if frame_defined:
+									raise Exception("Unable to implement zero time Z pulse")
+						else:
+							mod_seq.append( ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
+
 		seqs[ct] = mod_seq
 
 def build_waveforms(seqs, shapeLib):
