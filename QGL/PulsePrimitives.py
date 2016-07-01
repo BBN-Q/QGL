@@ -344,7 +344,10 @@ def MEAS(qubit, **kwargs):
         params['baseShape'] = params.pop('shapeFun')
         params['shapeFun'] = PulseShapes.autodyne
     amp = params.pop('amp')
-    return Pulse("MEAS", measChan, params, amp, 0.0, 0.0)
+    ignoredStrParams = ['phase', 'frameChange']
+    if 'amp' not in kwargs:
+        ignoredStrParams.append('amp')
+    return Pulse("MEAS", measChan, params, amp, 0.0, 0.0, ignoredStrParams)
 
 #MEAS and ring-down time on one qubit, echo on every other
 def MeasEcho(qM, qD, delay, piShift = None, phase = 0):
