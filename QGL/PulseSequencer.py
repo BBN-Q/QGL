@@ -70,13 +70,14 @@ class Pulse(object):
             self.isTimeAmp = True
 
     def __repr__(self):
-        return "Pulse({0}, {1}, {2}, {3}, {4}, {5})".format(
+        return "Pulse({0}, {1}, {2}, {3}, {4}, {5}, {6})".format(
             self.label,
             self.channel,
             self.shapeParams,
             self.amp,
             self.phase,
-            self.frameChange)
+            self.frameChange,
+            self.ignoredStrParams)
 
     def __str__(self):
         kwvals = []
