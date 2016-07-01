@@ -37,7 +37,14 @@ class Pulse(object):
         shape - numpy array pulse shape
         frameChange - accumulated phase from the pulse
     '''
-    def __init__(self, label, channel, shapeParams, amp=1.0, phase=0, frameChange=0):
+    def __init__(self,
+                 label,
+                 channel,
+                 shapeParams,
+                 amp=1.0,
+                 phase=0,
+                 frameChange=0,
+                 ignoredStrParams=[]):
         self.label = label
         if isinstance(channel, (list, tuple)):
             # with more than one qubit, need to look up the channel
@@ -53,6 +60,7 @@ class Pulse(object):
             self.frequency = self.channel.frequency
         else:
             self.frequency = 0
+        self.ignoredStrParams = ignoredStrParams
         requiredParams = ['length', 'shapeFun']
         for param in requiredParams:
             if param not in shapeParams.keys():
@@ -71,10 +79,22 @@ class Pulse(object):
             self.frameChange)
 
     def __str__(self):
-        if isinstance(self.channel, tuple):
-            return '{0}({1})'.format(self.label, ','.join([channel.label for channel in self.channel]))
+        kwvals = []
+        # object parameters outside of shapeParams
+        for param in ["amp", "phase", "frameChange"]:
+            if param not in self.ignoredStrParams:
+                kwvals.append("{0}={1}".format(param, getattr(self, param)))
+        # parameters inside shapeParams
+        for n, v in self.shapeParams.items():
+            if (n not in self.ignoredStrParams and
+                n in self.channel.pulseParams and
+                self.channel.pulseParams[n] != v):
+                kwvals.append("{0}={1}".format(n, v))
+        if kwvals:
+            kwstr = ", " + ", ".join(kwvals)
         else:
-            return '{0}({1})'.format(self.label, self.channel.label)
+            kwstr = ""
+        return '{0}({1}{2})'.format(self.label, self.channel.label, kwstr)
 
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
@@ -129,12 +149,13 @@ class Pulse(object):
         params.pop('shapeFun')
         return self.shapeParams['shapeFun'](**params)
 
-def TAPulse(label, channel, length, amp, phase=0, frameChange=0):
+def TAPulse(label, channel, length, amp, phase=0, frameChange=0, ignoredStrParams=[]):
     '''
     Creates a time/amplitude pulse with the given pulse length and amplitude
     '''
     params = {'length': length, 'shapeFun': PulseShapes.constant}
-    p = Pulse(label, channel, params, amp, phase, frameChange)
+    ignoredStrParams.append('shapeFun')
+    p = Pulse(label, channel, params, amp, phase, frameChange, ignoredStrParams)
     return p
 
 class CompositePulse(object):
