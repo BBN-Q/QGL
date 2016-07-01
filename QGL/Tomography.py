@@ -47,14 +47,15 @@ def state_tomo(seq, qubits, numPulses=4, measChans=None):
 	Parameters
 	-----------
 	seq : a single entry list sequence to perform tomography on
-	qubits : which qubits to act on 
+	qubits : which qubits to act on
 	numPulses : number of readout pulses
 	measChans : tuple of measurement channels to readout (defaults to individual qubit channels)
 	'''
 	if measChans is None:
 		measChans = qubits
-	
-	return [seq + [tomoBlock,  MEAS(*measChans)]
+	measBlock = reduce(operator.mul, [MEAS(q) for q in measChans])
+
+	return [seq + [tomoBlock,  measBlock]
 				 for tomoBlock in create_tomo_blocks(qubits, numPulses)]
 
 def process_tomo(seq, qubits, numPulses=4, measChans=None):
@@ -64,18 +65,18 @@ def process_tomo(seq, qubits, numPulses=4, measChans=None):
 	Parameters
 	-----------
 	seq : a single entry list sequence to perform tomography on
-	qubits : which qubits to act on 
+	qubits : which qubits to act on
 	numPulses : number of prep/readout pulses
 	measChans : tuple of measurement channels to readout (defaults to individual qubit channels)
 	'''
 	if measChans is None:
 		measChans = qubits
+	measBlock = reduce(operator.mul, [MEAS(q) for q in measChans])
 
 	seqs=[]
 	for k in range(numPulses**len(qubits)):
 		for readoutBlock in create_tomo_blocks(qubits, numPulses):
 			prepBlock = create_tomo_blocks(qubits,numPulses)[k]
-			tomoseq = [prepBlock] + seq + [readoutBlock, MEAS(*measChans)]
+			tomoseq = [prepBlock] + seq + [readoutBlock, measBlock]
 			seqs.append(tomoseq)
 	return seqs
-

@@ -277,9 +277,11 @@ def AC(qubit, cliffNum):
 ## two-qubit primitivies
 def CNOT(source, target, **kwargs):
     # construct (source, target) channel and pull parameters from there
-    channel = ChannelLibrary.QubitFactory(source.label + target.label)
-    params = overrideDefaults(channel, kwargs)
-    return Pulse("CNOT", (source, target), params, channel.pulseParams['piAmp'], 0.0, 0.0)
+    channel = ChannelLibrary.EdgeFactory(source, target)
+    channel.pulseParams['piAmp'] = channel.pulseParams['amp']
+    p = X(channel, **kwargs)
+    p.label = 'CNOT'
+    return p
 
 def flat_top_gaussian(chan, riseFall, length, amp, phase=0, label="flat_top_gaussian"):
     """
@@ -328,34 +330,19 @@ def CNOT_CR(controlQ, targetQ, **kwargs):
 
 ## Measurement operators
 # @_memoize
-def MEAS(*args, **kwargs):
+def MEAS(qubit, **kwargs):
     '''
-    MEAS(q1, ...) constructs a measurement pulse block of a measurment
-    Use the single-argument form for an individual readout channel, e.g.
-        MEAS(q1)
-    Use tuple-form for joint readout, e.g.
-        MEAS((q1, q2))
-    Use multi-argument form for joint simultaneous readout.
+    MEAS(q1) measures a qubit. Applies to the pulse with the label M-q1
     '''
-    def create_meas_pulse(qubit):
-        if isinstance(qubit, Channels.Qubit):
-            #Deal with single qubit readout channel
-            channelName = "M-" + qubit.label
-        elif isinstance(qubit, tuple):
-            #Deal with joint readout channel
-            channelName = "M-"
-            for q in qubit:
-                channelName += q.label
-        measChan = ChannelLibrary.MeasFactory(channelName)
-        params = overrideDefaults(measChan, kwargs)
-        if measChan.measType == 'autodyne':
-            params['frequency'] = measChan.autodyneFreq
-            params['baseShape'] = params.pop('shapeFun')
-            params['shapeFun'] = PulseShapes.autodyne
-        amp = params.pop('amp')
-        return Pulse("MEAS", measChan, params, amp, 0.0, 0.0)
-
-    return reduce(operator.mul, [create_meas_pulse(qubit) for qubit in args])
+    channelName = "M-" + qubit.label
+    measChan = ChannelLibrary.MeasFactory(channelName)
+    params = overrideDefaults(measChan, kwargs)
+    if measChan.measType == 'autodyne':
+        params['frequency'] = measChan.autodyneFreq
+        params['baseShape'] = params.pop('shapeFun')
+        params['shapeFun'] = PulseShapes.autodyne
+    amp = params.pop('amp')
+    return Pulse("MEAS", measChan, params, amp, 0.0, 0.0)
 
 #MEAS and ring-down time on one qubit, echo on every other
 def MeasEcho(qM, qD, delay, piShift = None, phase = 0):

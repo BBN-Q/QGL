@@ -122,7 +122,6 @@ class SingleQubitTestCases(SequenceTestCases):
         q1 = self.newQ1()
         self.sequences['ramsey'] = [[X90(q1), Id(q1, delay), X90(q1)] for delay in np.linspace(0.0, 1e-6, 11)]
 
-        q1 = self.newQ1()
         self.sequences['repeat'] = [X90(q1)] + repeat(5, Y(q1)) + [X90(q1)]
 
 class MultiQubitTestCases(SequenceTestCases):
@@ -137,16 +136,19 @@ class MultiQubitTestCases(SequenceTestCases):
         q2 = Qubit(label='q2')
         q2.pulseParams['length'] = 30e-9
         q2.physChan.samplingRate = 1.2e9
+        q1q2 = Edge(label='q1q2', source=q1, target=q2)
+        ChannelLibrary.channelLib.channelDict['q1'] = q1
+        ChannelLibrary.channelLib.channelDict['q2'] = q2
+        ChannelLibrary.channelLib.channelDict['q1q2'] = q1q2
+        ChannelLibrary.channelLib.build_connectivity_graph()
         return (q1,q2)
 
     def generate(self):
         q1, q2 = self.newQubits()
         self.sequences['operators'] = [X90(q1), X(q1)*Y(q2), CNOT(q1,q2), Xm(q2), Y(q1)*X(q2)]
 
-        q1, q2 = self.newQubits()
         self.sequences['align'] = [align(X90(q1)*Xtheta(q2, amp=0.5, length=100e-9), 'right'), Y90(q1)*Y90(q2)]
 
-        q1, q2 = self.newQubits()
         flipFlop = X(q1) + X(q1)
         self.sequences['composite'] = [align(flipFlop * Y(q2)), Y90(q1)]
 
