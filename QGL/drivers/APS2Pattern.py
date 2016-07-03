@@ -7,7 +7,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -374,7 +374,7 @@ def wf_sig(wf):
 		if USE_PHASE_OFFSET_INSTRUCTION:
 			return (wf.amp)
 		else:
-			return (wf.amp, wf.phase)
+			return (wf.amp, round(wf.phase * 2**13))
 	else:
 		#TODO: why do we need the length?
 		if USE_PHASE_OFFSET_INSTRUCTION:
@@ -789,23 +789,32 @@ def write_sequence_file(awgData, fileName):
 	wfInfo.append(create_wf_vector({key:wf.imag for key,wf in wfLib.items()}, awgData['ch12']['linkList']))
 
 	if SAVE_WF_OFFSETS:
-		offsets= {}
+		#create a set of all waveform signatures in offset dictionaries
+		#we could have multiple offsets for the same pulse becuase it could
+		#be repeated in multiple cache lines
 		wf_sigs = set()
 		for offset_dict in wfInfo[0][1]:
 			wf_sigs |= set(offset_dict.keys())
+		#create dictionary linking entry labels (that's what we'll have later) with offsets
+		offsets= {}
 		for seq in awgData['ch12']['linkList']:
 			for entry in seq:
+				if len(wf_sigs) == 0:
+					break
 				if isinstance(entry, Compiler.Waveform):
 					sig = wf_sig(entry)
 					if sig in wf_sigs:
-						offsets[entry.label] = ([_[sig] for _ in wfInfo[0][1]], entry.length)
+						#store offsets and wavefor lib length
+						#time ampltidue entries are clamped to ADDRESS_UNIT
+						wf_length = ADDRESS_UNIT if entry.isTimeAmp else entry.length
+						offsets[entry.label] = ([_[sig] for _ in wfInfo[0][1]], wf_length)
 						wf_sigs.discard(sig)
-					if len(wf_sigs) == 0:
-						break
 
+			#break out of outer loop too
 			if len(wf_sigs) == 0:
 				break
 
+		#now pickle the label=>offsets
 		with open(os.path.splitext(fileName)[0] + ".offsets", "wb") as FID:
 			pickle.dump(offsets, FID)
 
@@ -971,11 +980,19 @@ def read_sequence_file(fileName):
 	return seqs
 
 def update_wf_library(filename, pulses, offsets):
+	"""
+	Update a H5 waveform library in place give an iterable of (pulseName, pulse)
+	tuples and offsets into the waveform library.
+	"""
 	assert USE_PHASE_OFFSET_INSTRUCTION == False
 	#load the h5 file
 	with h5py.File(filename) as FID:
 		for label, pulse in pulses.items():
-			shape = pulse.amp*np.exp(1j*pulse.phase)*pulse.shape
+			#create a new waveform
+			if pulse.isTimeAmp:
+				shape = np.repeat(pulse.amp*np.exp(1j*pulse.phase), 4)
+			else:
+				shape = pulse.amp*np.exp(1j*pulse.phase)*pulse.shape
 			try:
 				length = offsets[label][1]
 			except KeyError:
