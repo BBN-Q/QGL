@@ -634,7 +634,7 @@ def set_log_level(loggerName='QGL.Compiler', levelDesired=logging.DEBUG,
 
 def save_code(seqs, filename):
     from IPython.lib.pretty import pretty
-    import io
+    import io #needed for writing unicode to file in Python 2.7
     # create the target folder if it does not exist
     targetFolder = os.path.split(os.path.normpath(os.path.join(config.AWGDir, filename)))[0]
     if not os.path.exists(targetFolder):
