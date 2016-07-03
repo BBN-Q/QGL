@@ -634,11 +634,12 @@ def set_log_level(loggerName='QGL.Compiler', levelDesired=logging.DEBUG,
 
 def save_code(seqs, filename):
     from IPython.lib.pretty import pretty
+    import io
     # create the target folder if it does not exist
     targetFolder = os.path.split(os.path.normpath(os.path.join(config.AWGDir, filename)))[0]
     if not os.path.exists(targetFolder):
         os.mkdir(targetFolder)
     fullname = os.path.normpath(os.path.join(config.AWGDir, filename + '-code.py'))
-    with open(fullname, 'w') as FID:
+    with io.open(fullname, 'w') as FID:
         FID.write(u'seqs =\n')
         FID.write(pretty(seqs))
