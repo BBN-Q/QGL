@@ -53,14 +53,15 @@ def Reset(qubits, measDelay = 1e-6, signVec = None, doubleRound = True, buf = 20
 		signVec = (0,)*len(qubits)
 
 	seqs = [prep + [qreset(qubits, signVec, measDelay, buf)] for prep in create_cal_seqs(qubits,1)]
+	measBlock = reduce(operator.mul, [MEAS(q) for q in qubits])
 	if doubleRound:
 		for seq in seqs:
-			seq += [MEAS(*qubits)]
+			seq += [measBlock]
 			seq.append(qreset(qubits, signVec, measDelay, buf))
 
 	# add final measurement
 	for seq in seqs:
-		seq += [MEAS(*qubits), Id(qubits[0], measDelay), qwait('CMP')]
+		seq += [measBlock, Id(qubits[0], measDelay), qwait('CMP')]
 
 	if docals:
 		seqs += create_cal_seqs(qubits, calRepeats, measChans=measChans, waitcmp=True)

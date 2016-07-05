@@ -52,59 +52,61 @@ def Id(channel, *args, **kwargs):
     if len(args) > 0 and isinstance(args[0], (int,float)):
         params['length'] = args[0]
 
-    return TAPulse("Id", channel, params['length'], 0)
+    return TAPulse("Id", channel, params['length'], 0, ignoredStrParams=['amp', 'phase', 'frameChange'])
 
 # the most generic pulse is Utheta
-def Utheta(qubit, amp=0, phase=0, label='Utheta', **kwargs):
+def Utheta(qubit, amp=0, phase=0, label='Utheta', ignoredStrParams=[], **kwargs):
     '''  A generic rotation with variable amplitude and phase. '''
     params = overrideDefaults(qubit, kwargs)
-    return Pulse(label, qubit, params, amp, phase, 0.0)
+    return Pulse(label, qubit, params, amp, phase, 0.0, ignoredStrParams)
 
 # generic pulses around X, Y, and Z axes
-def Xtheta(qubit, amp=0, label='Xtheta', **kwargs):
+def Xtheta(qubit, amp=0, label='Xtheta', ignoredStrParams=[], **kwargs):
     '''  A generic X rotation with a variable amplitude  '''
-    return Utheta(qubit, amp, 0, label=label, **kwargs)
+    ignoredStrParams += ['phase', 'frameChange']
+    return Utheta(qubit, amp, 0, label, ignoredStrParams, **kwargs)
 
-def Ytheta(qubit, amp=0, label='Ytheta', **kwargs):
+def Ytheta(qubit, amp=0, label='Ytheta', ignoredStrParams=[], **kwargs):
     ''' A generic Y rotation with a variable amplitude '''
-    return Utheta(qubit, amp, pi/2, label=label, **kwargs)
+    ignoredStrParams += ['phase', 'frameChange']
+    return Utheta(qubit, amp, pi/2, label, ignoredStrParams, **kwargs)
 
-def Ztheta(qubit, angle=0, label='Ztheta', **kwargs):
+def Ztheta(qubit, angle=0, label='Ztheta', ignoredStrParams=['amp', 'phase', 'length'], **kwargs):
     # special cased because it can be done with a frame update
-    return TAPulse(label, qubit, length=0, amp=0, phase=0, frameChange=-angle)
+    return TAPulse(label, qubit, length=0, amp=0, phase=0, frameChange=-angle, ignoredStrParams=ignoredStrParams)
 
 #Setup the default 90/180 rotations
 # @_memoize
 def X(qubit, **kwargs):
-    return Xtheta(qubit, qubit.pulseParams['piAmp'], label="X", **kwargs)
+    return Xtheta(qubit, qubit.pulseParams['piAmp'], label="X", ignoredStrParams=['amp'], **kwargs)
 
 # @_memoize
 def X90(qubit, **kwargs):
-    return Xtheta(qubit, qubit.pulseParams['pi2Amp'], label="X90", **kwargs)
+    return Xtheta(qubit, qubit.pulseParams['pi2Amp'], label="X90", ignoredStrParams=['amp'], **kwargs)
 
 # @_memoize
 def Xm(qubit, **kwargs):
-    return Xtheta(qubit, -qubit.pulseParams['piAmp'], label="Xm", **kwargs)
+    return Xtheta(qubit, -qubit.pulseParams['piAmp'], label="Xm", ignoredStrParams=['amp'], **kwargs)
 
 # @_memoize
 def X90m(qubit, **kwargs):
-    return Xtheta(qubit, -qubit.pulseParams['pi2Amp'], label="X90m", **kwargs)
+    return Xtheta(qubit, -qubit.pulseParams['pi2Amp'], label="X90m", ignoredStrParams=['amp'], **kwargs)
 
 # @_memoize
 def Y(qubit, **kwargs):
-    return Ytheta(qubit, qubit.pulseParams['piAmp'], label="Y", **kwargs)
+    return Ytheta(qubit, qubit.pulseParams['piAmp'], label="Y", ignoredStrParams=['amp'], **kwargs)
 
 # @_memoize
 def Y90(qubit, **kwargs):
-    return Ytheta(qubit, qubit.pulseParams['pi2Amp'], label="Y90", **kwargs)
+    return Ytheta(qubit, qubit.pulseParams['pi2Amp'], label="Y90", ignoredStrParams=['amp'], **kwargs)
 
 # @_memoize
 def Ym(qubit, **kwargs):
-    return Ytheta(qubit, -qubit.pulseParams['piAmp'], label="Ym", **kwargs)
+    return Ytheta(qubit, -qubit.pulseParams['piAmp'], label="Ym", ignoredStrParams=['amp'], **kwargs)
 
 # @_memoize
 def Y90m(qubit, **kwargs):
-    return Ytheta(qubit, -qubit.pulseParams['pi2Amp'], label="Y90m", **kwargs)
+    return Ytheta(qubit, -qubit.pulseParams['pi2Amp'], label="Y90m", ignoredStrParams=['amp'], **kwargs)
 
 # @_memoize
 def Z(qubit, **kwargs):
@@ -121,11 +123,11 @@ def Z90m(qubit, **kwargs):
 # 90/180 degree rotations with control over the rotation axis
 def U90(qubit, phase=0, **kwargs):
     ''' A generic 90 degree rotation with variable phase. '''
-    return Utheta(qubit, qubit.pulseParams['pi2Amp'], phase, label="U90", **kwargs)
+    return Utheta(qubit, qubit.pulseParams['pi2Amp'], phase, label="U90", ignoredStrParams=['amp'], **kwargs)
 
 def U(qubit, phase=0, **kwargs):
     ''' A generic 180 degree rotation with variable phase.  '''
-    return Utheta(qubit, qubit.pulseParams['piAmp'], phase, label="U", **kwargs)
+    return Utheta(qubit, qubit.pulseParams['piAmp'], phase, label="U", ignoredStrParams=['amp'], **kwargs)
 
 def arb_axis_drag(qubit, nutFreq, rotAngle=0, polarAngle=0, aziAngle=0, **kwargs):
     """
@@ -277,9 +279,11 @@ def AC(qubit, cliffNum):
 ## two-qubit primitivies
 def CNOT(source, target, **kwargs):
     # construct (source, target) channel and pull parameters from there
-    channel = ChannelLibrary.QubitFactory(source.label + target.label)
-    params = overrideDefaults(channel, kwargs)
-    return Pulse("CNOT", (source, target), params, channel.pulseParams['piAmp'], 0.0, 0.0)
+    channel = ChannelLibrary.EdgeFactory(source, target)
+    channel.pulseParams['piAmp'] = channel.pulseParams['amp']
+    p = X(channel, **kwargs)
+    p.label = 'CNOT'
+    return p
 
 def flat_top_gaussian(chan, riseFall, length, amp, phase=0, label="flat_top_gaussian"):
     """
@@ -328,34 +332,22 @@ def CNOT_CR(controlQ, targetQ, **kwargs):
 
 ## Measurement operators
 # @_memoize
-def MEAS(*args, **kwargs):
+def MEAS(qubit, **kwargs):
     '''
-    MEAS(q1, ...) constructs a measurement pulse block of a measurment
-    Use the single-argument form for an individual readout channel, e.g.
-        MEAS(q1)
-    Use tuple-form for joint readout, e.g.
-        MEAS((q1, q2))
-    Use multi-argument form for joint simultaneous readout.
+    MEAS(q1) measures a qubit. Applies to the pulse with the label M-q1
     '''
-    def create_meas_pulse(qubit):
-        if isinstance(qubit, Channels.Qubit):
-            #Deal with single qubit readout channel
-            channelName = "M-" + qubit.label
-        elif isinstance(qubit, tuple):
-            #Deal with joint readout channel
-            channelName = "M-"
-            for q in qubit:
-                channelName += q.label
-        measChan = ChannelLibrary.MeasFactory(channelName)
-        params = overrideDefaults(measChan, kwargs)
-        if measChan.measType == 'autodyne':
-            params['frequency'] = measChan.autodyneFreq
-            params['baseShape'] = params.pop('shapeFun')
-            params['shapeFun'] = PulseShapes.autodyne
-        amp = params.pop('amp')
-        return Pulse("MEAS", measChan, params, amp, 0.0, 0.0)
-
-    return reduce(operator.mul, [create_meas_pulse(qubit) for qubit in args])
+    channelName = "M-" + qubit.label
+    measChan = ChannelLibrary.MeasFactory(channelName)
+    params = overrideDefaults(measChan, kwargs)
+    if measChan.measType == 'autodyne':
+        params['frequency'] = measChan.autodyneFreq
+        params['baseShape'] = params.pop('shapeFun')
+        params['shapeFun'] = PulseShapes.autodyne
+    amp = params.pop('amp')
+    ignoredStrParams = ['phase', 'frameChange']
+    if 'amp' not in kwargs:
+        ignoredStrParams.append('amp')
+    return Pulse("MEAS", measChan, params, amp, 0.0, 0.0, ignoredStrParams)
 
 #MEAS and ring-down time on one qubit, echo on every other
 def MeasEcho(qM, qD, delay, piShift = None, phase = 0):
