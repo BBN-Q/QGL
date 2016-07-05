@@ -640,6 +640,6 @@ def save_code(seqs, filename):
     if not os.path.exists(targetFolder):
         os.mkdir(targetFolder)
     fullname = os.path.normpath(os.path.join(config.AWGDir, filename + '-code.py'))
-    with io.open(fullname, 'w') as FID:
+    with io.open(fullname, "w", encoding="utf-8") as FID:
         FID.write(u'seqs =\n')
         FID.write(pretty(seqs))
