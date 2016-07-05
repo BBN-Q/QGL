@@ -77,7 +77,8 @@ def RabiAmp_NQubits(qubits, amps, phase=0, showPlot=False, measChans=None, docal
 	if measChans is None:
 		measChans = qubits
 
-	seqs = [[reduce(operator.mul, [Utheta(q, amp=amp, phase=phase) for q in qubits]),MEAS(*measChans)] for amp in amps]
+	measBlock = reduce(operator.mul, [MEAS(q) for q in qubits])
+	seqs = [[reduce(operator.mul, [Utheta(q, amp=amp, phase=phase) for q in qubits]), measBlock] for amp in amps]
 
 	if docals:
 		seqs += create_cal_seqs(qubits, calRepeats, measChans=measChans)
