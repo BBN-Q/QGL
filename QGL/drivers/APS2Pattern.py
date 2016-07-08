@@ -495,7 +495,7 @@ def inject_modulation_cmds(seqs):
 						pending_frame_update = True
 						#zero length frame changes (Z pulses) need to be combined with the previous frame change or injected where possible
 						if entry.length == 0:
-							#if the last entry was a pulse with a frame change then we can add to the frame change
+							#if the last is a frame change then we can add to the frame change
 							if isinstance(mod_seq[-1], ModulationCommand) and mod_seq[-1].instruction == "UPDATE_FRAME":
 								mod_seq[-1].phase += entry.frameChange
 							#if last entry was pulse without frame change we add frame change
@@ -505,6 +505,8 @@ def inject_modulation_cmds(seqs):
 							#before the wait for trigger but after the RESET_PHASE
 							elif isinstance(mod_seq[-1], ControlFlow.Wait):
 								mod_seq.insert(-1, ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
+							elif isinstance(mod_seq[-2], ControlFlow.Wait) and isinstance(mod_seq[-1], ModulationCommand) and mod_seq[-1].instruction == "SET_FREQ":
+								mod_seq.insert(-2, ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
 							#otherwise drop and error if frame has been defined
 							else:
 								raise Exception("Unable to implement zero time Z pulse")
