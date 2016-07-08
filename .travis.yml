@@ -46,7 +46,7 @@ install:
   - source activate test-environment
   - if [[ $ATOM == 0.3 ]]; then conda install --yes atom; fi
   - if [[ $ATOM == 1.0 ]]; then pip install cppy; pip install git+https://github.com/nucleic/atom.git@1.0.0-dev; fi
-  - pip install watchdog coveralls
+  - pip install watchdog coveralls psutil
 
 script:
   - coverage run -m unittest discover
