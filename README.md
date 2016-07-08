@@ -5,7 +5,7 @@
 Quantum Gate Language (QGL) is a domain specific language embedded in python for
 specifying pulse sequences.
 
-See example usage in this [Jupyter notebook](https://github.com/BBN-Q/PyQLab/blob/develop/doc/QGL-demo.ipynb).
+See example usage in this [Jupyter notebook](https://github.com/BBN-Q/PyQLab/blob/master/doc/QGL-demo.ipynb).
 
 ## Setup instructions
 
