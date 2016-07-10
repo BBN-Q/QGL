@@ -57,6 +57,7 @@ def map_logical_to_physical(wires):
 
     return physicalWires
 
+
 def merge_channels(wires, channels):
     chan = channels[0]
     mergedWire = [[] for _ in range(len(wires[chan]))]
@@ -69,10 +70,12 @@ def merge_channels(wires, channels):
             except StopIteration:
                 break
             # control flow on any channel should pass thru
-            if any(isinstance(e, (ControlFlow.ControlInstruction, BlockLabel.BlockLabel)) for e in entries):
+            if any(isinstance(e, (ControlFlow.ControlInstruction,
+                                  BlockLabel.BlockLabel)) for e in entries):
                 # for the moment require uniform control flow so that we
                 # can pull from the first channel
-                assert all(e == entries[0] for e in entries), "Non-uniform control flow"
+                assert all(e == entries[0]
+                           for e in entries), "Non-uniform control flow"
                 segment.append(entries[0])
                 continue
             # at this point we have at least one waveform instruction
@@ -92,24 +95,32 @@ def merge_channels(wires, channels):
             newentry.isTimeAmp = all([e.isTimeAmp for e in entries])
 
             # If there is a non-zero SSB frequency copy it to the new entry
-            nonZeroSSBChan = np.nonzero([e.amp * e.frequency for e in entries])[0]
-            assert len(nonZeroSSBChan) <= 1, "Unable to handle merging more than one non-zero entry with non-zero frequency."
+            nonZeroSSBChan = np.nonzero(
+                [e.amp * e.frequency for e in entries])[0]
+            assert len(
+                nonZeroSSBChan) <= 1, "Unable to handle merging more than one non-zero entry with non-zero frequency."
             if nonZeroSSBChan:
                 newentry.frequency = entries[nonZeroSSBChan[0]].frequency
 
             newentry.phase = 0
 
-            pulsesHash = tuple([(e.hashshape(), e.amp, e.phase) for e in entries])
+            pulsesHash = tuple(
+                [(e.hashshape(), e.amp, e.phase) for e in entries])
             if pulsesHash not in shapeFunLib:
                 # create closure to sum waveforms
                 def sum_shapes(entries=entries, **kwargs):
-                    return reduce(operator.add, [e.amp * np.exp(1j*e.phase) * e.shape for e in entries])
+                    return reduce(operator.add,
+                                  [e.amp * np.exp(1j * e.phase) * e.shape
+                                   for e in entries])
+
                 shapeFunLib[pulsesHash] = sum_shapes
-            newentry.shapeParams = {'shapeFun':shapeFunLib[pulsesHash], 'length':blocklength}
+            newentry.shapeParams = {'shapeFun': shapeFunLib[pulsesHash],
+                                    'length': blocklength}
             newentry.label = "*".join([e.label for e in entries])
             segment.append(newentry)
 
     return mergedWire
+
 
 def pull_uniform_entries(entries, entryIterators):
     '''
@@ -125,7 +136,9 @@ def pull_uniform_entries(entries, entryIterators):
     The function returns the resulting block length.
     '''
     numChan = len(entries)
-    iterDone = [False]*numChan #keep track of how many entry iterators are used up
+    iterDone = [
+        False
+    ] * numChan  #keep track of how many entry iterators are used up
     ct = 0
     while True:
         #If we've used up all the entries on all the channels we're done
@@ -134,7 +147,7 @@ def pull_uniform_entries(entries, entryIterators):
 
         #If all the entry lengths are the same we are finished
         entryLengths = [e.length for e in entries]
-        if all(x==entryLengths[0] for x in entryLengths):
+        if all(x == entryLengths[0] for x in entryLengths):
             break
 
         #Otherwise try to concatenate on entries to match lengths
@@ -151,18 +164,22 @@ def pull_uniform_entries(entries, entryIterators):
 
     return max(e.length for e in entries)
 
+
 def concatenate_entries(entry1, entry2):
     newentry = copy(entry1)
     # TA waveforms with the same amplitude can be merged with a just length update
     # otherwise, need to concatenate the pulse shapes
-    if not (entry1.isTimeAmp and entry2.isTimeAmp and entry1.amp == entry2.amp and entry1.phase == (entry1.frameChange + entry2.phase)):
+    if not (entry1.isTimeAmp and entry2.isTimeAmp and entry1.amp == entry2.amp
+            and entry1.phase == (entry1.frameChange + entry2.phase)):
         # otherwise, need to build a closure to stack them
         def stack_shapes(entry1=entry1, entry2=entry2, **kwargs):
-            return np.hstack((entry1.amp * np.exp(1j*entry1.phase) * entry1.shape,
-                              entry2.amp * np.exp(1j*(entry1.frameChange + entry2.phase)) * entry2.shape))
+            return np.hstack((
+                entry1.amp * np.exp(1j * entry1.phase) * entry1.shape,
+                entry2.amp * np.exp(1j * (entry1.frameChange + entry2.phase)) *
+                entry2.shape))
 
         newentry.isTimeAmp = False
-        newentry.shapeParams = {'shapeFun' : stack_shapes}
+        newentry.shapeParams = {'shapeFun': stack_shapes}
         newentry.label = entry1.label + '+' + entry2.label
     newentry.frameChange += entry2.frameChange
     newentry.length = entry1.length + entry2.length
@@ -170,8 +187,9 @@ def concatenate_entries(entry1, entry2):
 
     return newentry
 
+
 def generate_waveforms(physicalWires):
-    wfs = {ch : {} for ch in physicalWires.keys()}
+    wfs = {ch: {} for ch in physicalWires.keys()}
     for ch, wire in physicalWires.items():
         for pulse in flatten(wire):
             if not isinstance(pulse, PulseSequencer.Pulse):
@@ -183,10 +201,11 @@ def generate_waveforms(physicalWires):
                     wfs[ch][pulse.hashshape()] = pulse.shape
     return wfs
 
+
 def pulses_to_waveforms(physicalWires):
     logger = logging.getLogger(__name__)
     logger.debug("Converting pulses_to_waveforms:")
-    wireOuts = {ch : [] for ch in physicalWires.keys()}
+    wireOuts = {ch: [] for ch in physicalWires.keys()}
     for ch, seqs in physicalWires.items():
         logger.debug('')
         logger.debug("Channel '%s':", ch)
@@ -202,16 +221,19 @@ def pulses_to_waveforms(physicalWires):
                     logger.debug(" %s", str(wf))
     return wireOuts
 
+
 def channel_delay_map(physicalWires):
-    chanDelays = {chan : chan.delay for chan in physicalWires.keys()}
+    chanDelays = {chan: chan.delay for chan in physicalWires.keys()}
     return PatternUtils.normalize_delays(chanDelays)
+
 
 def setup_awg_channels(physicalChannels):
     translators = {}
     for chan in physicalChannels:
-        translators[chan.AWG] = import_module('QGL.drivers.'+chan.translator)
+        translators[chan.AWG] = import_module('QGL.drivers.' + chan.translator)
 
-    data = {awg : translator.get_empty_channel_set() for awg, translator in translators.items()}
+    data = {awg: translator.get_empty_channel_set()
+            for awg, translator in translators.items()}
     for name, awg in data.items():
         for chan in awg.keys():
             awg[chan] = {
@@ -222,6 +244,7 @@ def setup_awg_channels(physicalChannels):
         data[name]['translator'] = translators[name]
         data[name]['seqFileExt'] = translators[name].get_seq_file_extension()
     return data
+
 
 def bundle_wires(physWires, wfs):
     awgData = setup_awg_channels(physWires.keys())
@@ -234,21 +257,28 @@ def bundle_wires(physWires, wfs):
             awgData[chan.AWG][awgChan]['correctionT'] = chan.correctionT
     return awgData
 
+
 def collect_specializations(seqs):
     '''
     Collects function definitions for all targets of Call instructions
     '''
-    targets = [x.target for x in flatten(seqs) if isinstance(x, ControlFlow.Call)]
+    targets = [x.target for x in flatten(seqs)
+               if isinstance(x, ControlFlow.Call)]
     funcs = []
     done = []
     #Manually keep track of done (instead of `set`) to keep calling order
     for target in targets:
         if target not in done:
-            funcs.append( ControlFlow.qfunction_specialization(target) )
+            funcs.append(ControlFlow.qfunction_specialization(target))
             done.append(target)
     return funcs
 
-def compile_to_hardware(seqs, fileName, suffix='', qgl2=False, addQGL2SlaveTrigger=False):
+
+def compile_to_hardware(seqs,
+                        fileName,
+                        suffix='',
+                        qgl2=False,
+                        addQGL2SlaveTrigger=False):
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'. Other inputs:
         suffix : string to append to end of fileName (e.g. with fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5)
@@ -263,7 +293,8 @@ def compile_to_hardware(seqs, fileName, suffix='', qgl2=False, addQGL2SlaveTrigg
     # all sequences should start with a WAIT for synchronization
     for seq in seqs:
         if not isinstance(seq[0], ControlFlow.Wait):
-            logger.debug("Adding a WAIT - first sequence element was %s", str(seq[0]))
+            logger.debug("Adding a WAIT - first sequence element was %s",
+                         str(seq[0]))
             seq.insert(0, ControlFlow.Wait())
 
     # Add the digitizer trigger to measurements
@@ -277,7 +308,8 @@ def compile_to_hardware(seqs, fileName, suffix='', qgl2=False, addQGL2SlaveTrigg
     if not qgl2 or addQGL2SlaveTrigger:
         # Add the slave trigger
         logger.debug("Adding slave trigger")
-        PatternUtils.add_slave_trigger(seqs, ChannelLibrary.channelLib['slaveTrig'])
+        PatternUtils.add_slave_trigger(seqs,
+                                       ChannelLibrary.channelLib['slaveTrig'])
     else:
         logger.debug("Not adding slave trigger")
 
@@ -298,7 +330,8 @@ def compile_to_hardware(seqs, fileName, suffix='', qgl2=False, addQGL2SlaveTrigg
     # apply gating constraints
     for chan, seq in wireSeqs.items():
         if isinstance(chan, Channels.LogicalMarkerChannel):
-            wireSeqs[chan] = PatternUtils.apply_gating_constraints(chan.physChan, seq)
+            wireSeqs[chan] = PatternUtils.apply_gating_constraints(
+                chan.physChan, seq)
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug('')
             logger.debug("Channel '%s':", chan)
@@ -343,16 +376,20 @@ def compile_to_hardware(seqs, fileName, suffix='', qgl2=False, addQGL2SlaveTrigg
     fileList = []
     for awgName, data in awgData.items():
         # create the target folder if it does not exist
-        targetFolder = os.path.split(os.path.normpath(os.path.join(config.AWGDir, fileName)))[0]
+        targetFolder = os.path.split(os.path.normpath(os.path.join(
+            config.AWGDir, fileName)))[0]
         if not os.path.exists(targetFolder):
             os.mkdir(targetFolder)
-        fullFileName = os.path.normpath(os.path.join(config.AWGDir, fileName + '-' + awgName + suffix + data['seqFileExt']))
+        fullFileName = os.path.normpath(os.path.join(
+            config.AWGDir, fileName + '-' + awgName + suffix + data[
+                'seqFileExt']))
         data['translator'].write_sequence_file(data, fullFileName)
 
         fileList.append(fullFileName)
 
     # Return the filenames we wrote
     return fileList
+
 
 def compile_sequences(seqs, channels=set(), qgl2=False):
     '''
@@ -402,6 +439,7 @@ def compile_sequences(seqs, channels=set(), qgl2=False):
 
     return wireSeqs
 
+
 def compile_sequence(seq, channels=None):
     '''
     Takes a list of control flow and pulses, and returns aligned blocks
@@ -431,7 +469,8 @@ def compile_sequence(seq, channels=None):
     for block in normalize(flatten(seq), channels):
         logger.debug(" %s", str(block))
         # labels and control flow instructions broadcast to all channels
-        if isinstance(block, (BlockLabel.BlockLabel, ControlFlow.ControlInstruction)):
+        if isinstance(block,
+                      (BlockLabel.BlockLabel, ControlFlow.ControlInstruction)):
             for chan in channels:
                 wires[chan] += [copy(block)]
             continue
@@ -441,19 +480,23 @@ def compile_sequence(seq, channels=None):
                 if block.pulses[chan].frameChange == 0:
                     continue
                 if len(wires[chan]) > 0:
-                    logger.debug("Modifying pulse on %s: %s", chan, wires[chan][-1])
+                    logger.debug("Modifying pulse on %s: %s", chan,
+                                 wires[chan][-1])
                     wires[chan][-1] = copy(wires[chan][-1])
-                    wires[chan][-1].frameChange += block.pulses[chan].frameChange
+                    wires[chan][-1].frameChange += block.pulses[
+                        chan].frameChange
                     if chan in ChannelLibrary.channelLib.connectivityG.nodes():
                         logger.debug("Doing propagate_node_frame_to_edges()")
-                        wires = propagate_node_frame_to_edges(wires, chan, block.pulses[chan].frameChange)
+                        wires = propagate_node_frame_to_edges(
+                            wires, chan, block.pulses[chan].frameChange)
                 else:
                     warn("Dropping initial frame change")
             continue
         # schedule the block
         for chan in channels:
             # add aligned Pulses (if the block contains a composite pulse, may get back multiple pulses)
-            wires[chan] += schedule(chan, block.pulses[chan], block.length, block.alignment)
+            wires[chan] += schedule(chan, block.pulses[chan], block.length,
+                                    block.alignment)
     if logger.isEnabledFor(logging.DEBUG):
         for chan in wires:
             logger.debug('')
@@ -462,16 +505,20 @@ def compile_sequence(seq, channels=None):
                 logger.debug(" %s", str(elem))
     return wires
 
+
 def propagate_node_frame_to_edges(wires, chan, frameChange):
     '''
     Propagate frame change in node to relevant edges (for CR gates)
     '''
-    for predecessor in ChannelLibrary.channelLib.connectivityG.predecessors(chan):
-        edge = ChannelLibrary.channelLib.connectivityG.edge[predecessor][chan]['channel']
+    for predecessor in ChannelLibrary.channelLib.connectivityG.predecessors(
+            chan):
+        edge = ChannelLibrary.channelLib.connectivityG.edge[predecessor][chan][
+            'channel']
         if edge in wires:
             wires[edge][-1] = copy(wires[edge][-1])
             wires[edge][-1].frameChange += frameChange
     return wires
+
 
 def find_unique_channels(seq):
     channels = set()
@@ -483,6 +530,7 @@ def find_unique_channels(seq):
         else:
             channels |= set(step.channel)
     return channels
+
 
 def normalize(seq, channels=None):
     '''
@@ -496,17 +544,20 @@ def normalize(seq, channels=None):
         channels = find_unique_channels(seq)
 
     # inject Id's for PulseBlocks not containing every channel
-    for block in filter(lambda x: isinstance(x, PulseSequencer.PulseBlock), seq):
+    for block in filter(lambda x: isinstance(x, PulseSequencer.PulseBlock),
+                        seq):
         blocklen = block.length
         emptyChannels = channels - set(block.pulses.keys())
         for ch in emptyChannels:
             block.pulses[ch] = Id(ch, length=blocklen)
     return seq
 
+
 class Waveform(object):
     '''
     IQ LL elements for quadrature mod channels.
     '''
+
     def __init__(self, pulse=None):
         if pulse is None:
             self.label = ""
@@ -535,7 +586,8 @@ class Waveform(object):
             TA = 'HIGH' if self.amp != 0 else 'LOW'
             return "Waveform-TA(" + TA + ", " + str(self.length) + ")"
         else:
-            return "Waveform(" + self.label + ", " + str(self.key)[:6] + ", " + str(self.length) + ")"
+            return "Waveform(" + self.label + ", " + str(
+                self.key)[:6] + ", " + str(self.length) + ")"
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -551,6 +603,7 @@ class Waveform(object):
     @property
     def isZero(self):
         return self.amp == 0
+
 
 def schedule(channel, pulse, blockLength, alignment):
     '''
@@ -580,14 +633,17 @@ def schedule(channel, pulse, blockLength, alignment):
         return pulses + [Id(channel, padLength)]
     elif alignment == "right":
         return [Id(channel, padLength)] + pulses
-    else: # center
-        return [Id(channel, padLength/2)] + pulses + [Id(channel, padLength/2)]
+    else:  # center
+        return [Id(channel, padLength / 2)] + pulses + [Id(channel, padLength /
+                                                           2)]
+
 
 def validate_linklist_channels(linklistChannels):
     errors = []
     channels = ChannelLibrary.channelLib.channelDict
     for channel in linklistChannels:
-        if channel.label not in channels.keys() and channel.label not in errors:
+        if channel.label not in channels.keys(
+        ) and channel.label not in errors:
             print("{0} not found in channel library".format(repr(channel)))
             errors.append(channel.label)
 
@@ -595,8 +651,10 @@ def validate_linklist_channels(linklistChannels):
         return False
     return True
 
-def set_log_level(loggerName='QGL.Compiler', levelDesired=logging.DEBUG,
-                  formatStr = '%(message)s'):
+
+def set_log_level(loggerName='QGL.Compiler',
+                  levelDesired=logging.DEBUG,
+                  formatStr='%(message)s'):
     '''Set the python logging level for a logger.
     Format messages with just the log message by default.
     Sets QGL.Compiler messages to DEBUG by default.
@@ -605,7 +663,8 @@ def set_log_level(loggerName='QGL.Compiler', levelDesired=logging.DEBUG,
     import sys
     # Do basicConfig to be safe, but ask for console to be STDOUT
     # so it doesn't look like an error in a jupyter notebook
-    logging.basicConfig(level=levelDesired, format=formatStr,
+    logging.basicConfig(level=levelDesired,
+                        format=formatStr,
                         stream=sys.stdout)
 
     # Enable our logger at specified level
@@ -625,21 +684,25 @@ def set_log_level(loggerName='QGL.Compiler', levelDesired=logging.DEBUG,
             return
 
     # No existing handler, so add a local one
-    handler = logging.StreamHandler(stream=sys.stdout) # Note we request STDOUT
+    handler = logging.StreamHandler(
+        stream=sys.stdout)  # Note we request STDOUT
     handler.setLevel(levelDesired)
     handler.setFormatter(logging.Formatter(formatStr))
     logger.addHandler(handler)
     # Without this when running in notebook, console gets log stmts at default format
     logger.propagate = 0
 
+
 def save_code(seqs, filename):
     from IPython.lib.pretty import pretty
-    import io #needed for writing unicode to file in Python 2.7
+    import io  #needed for writing unicode to file in Python 2.7
     # create the target folder if it does not exist
-    targetFolder = os.path.split(os.path.normpath(os.path.join(config.AWGDir, filename)))[0]
+    targetFolder = os.path.split(os.path.normpath(os.path.join(config.AWGDir,
+                                                               filename)))[0]
     if not os.path.exists(targetFolder):
         os.mkdir(targetFolder)
-    fullname = os.path.normpath(os.path.join(config.AWGDir, filename + '-code.py'))
+    fullname = os.path.normpath(os.path.join(config.AWGDir, filename +
+                                             '-code.py'))
     with io.open(fullname, "w", encoding="utf-8") as FID:
         FID.write(u'seqs =\n')
         FID.write(pretty(seqs))

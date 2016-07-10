@@ -17,6 +17,7 @@ from QGL import *
 # There are currently two classes which subclass unittest.TestCase
 # Which will run the validation as part of a unit test
 
+
 class SequenceTestCases(object):
     # base class for sequence test cases
     testFileDirectory = './tests/test_data/'
@@ -41,7 +42,7 @@ class SequenceTestCases(object):
 
     def compile(self):
         # compiles all available sequences
-        for name,seq in self.sequences.items():
+        for name, seq in self.sequences.items():
             self.waveforms[name] = build_waveforms(seq)
 
     def show(self):
@@ -52,7 +53,7 @@ class SequenceTestCases(object):
             # give bokeh time to generate the plot
             time.sleep(1)
 
-    def build_filename(self,name):
+    def build_filename(self, name):
         # utility for reading and writing
         return self.testFileDirectory + self.fileHeader + '-' + name + '.h5'
 
@@ -74,7 +75,8 @@ class SequenceTestCases(object):
                 chanGroup = FID.create_group(chanStr)
                 for channel in channels:
                     channelStr = repr(channel)
-                    FID.create_dataset( '/' + chanStr + '/' + channelStr, data=waveform[channel])
+                    FID.create_dataset('/' + chanStr + '/' + channelStr,
+                                       data=waveform[channel])
 
     def load(self):
         # attempts to load valid waveforms for each of the sequences test cases
@@ -82,7 +84,9 @@ class SequenceTestCases(object):
             validWaveform = {}
             fileName = self.build_filename(caseName)
             if not os.path.isfile(fileName):
-                print('Warning: valid waveform file for {0} not found at: {1}'.format(caseName,fileName))
+                print(
+                    'Warning: valid waveform file for {0} not found at: {1}'.format(
+                        caseName, fileName))
                 continue
             with h5py.File(fileName, 'r') as FID:
                 for name, waveform in FID['/channels'].items():
@@ -96,15 +100,16 @@ class SequenceTestCases(object):
     def validate_case(self, caseName):
         # validates each sequences by using numpy assert_allclose for each channel
 
-        assert(caseName in self.validWaveforms)
+        assert (caseName in self.validWaveforms)
         validWaveform = self.validWaveforms[caseName]
         for channelName, waveform in self.waveforms[caseName].items():
             print('Validating {0} Case {1} Channel {2}'.format(
-                self.__class__.__name__,
-                caseName,
-                repr(channelName)))
-            assert(repr(channelName) in validWaveform)
-            np.testing.assert_allclose(waveform, validWaveform[repr(channelName)], rtol=1e-5, atol=0)
+                self.__class__.__name__, caseName, repr(channelName)))
+            assert (repr(channelName) in validWaveform)
+            np.testing.assert_allclose(waveform,
+                                       validWaveform[repr(channelName)],
+                                       rtol=1e-5,
+                                       atol=0)
 
 
 class SingleQubitTestCases(SequenceTestCases):
@@ -120,9 +125,11 @@ class SingleQubitTestCases(SequenceTestCases):
 
     def generate(self):
         q1 = self.newQ1()
-        self.sequences['ramsey'] = [[X90(q1), Id(q1, delay), X90(q1)] for delay in np.linspace(0.0, 1e-6, 11)]
+        self.sequences['ramsey'] = [[X90(q1), Id(q1, delay), X90(q1)]
+                                    for delay in np.linspace(0.0, 1e-6, 11)]
 
         self.sequences['repeat'] = [X90(q1)] + repeat(5, Y(q1)) + [X90(q1)]
+
 
 class MultiQubitTestCases(SequenceTestCases):
     # Multi Qubit Sequence Test Cases
@@ -141,18 +148,22 @@ class MultiQubitTestCases(SequenceTestCases):
         ChannelLibrary.channelLib.channelDict['q2'] = q2
         ChannelLibrary.channelLib.channelDict['q1q2'] = q1q2
         ChannelLibrary.channelLib.build_connectivity_graph()
-        return (q1,q2)
+        return (q1, q2)
 
     def generate(self):
         q1, q2 = self.newQubits()
-        self.sequences['operators'] = [X90(q1), X(q1)*Y(q2), CNOT(q1,q2), Xm(q2), Y(q1)*X(q2)]
+        self.sequences['operators'] = [X90(q1), X(q1) * Y(q2), CNOT(q1, q2),
+                                       Xm(q2), Y(q1) * X(q2)]
 
-        self.sequences['align'] = [align(X90(q1)*Xtheta(q2, amp=0.5, length=100e-9), 'right'), Y90(q1)*Y90(q2)]
+        self.sequences['align'] = [align(
+            X90(q1) * Xtheta(q2, amp=0.5, length=100e-9),
+            'right'), Y90(q1) * Y90(q2)]
 
         flipFlop = X(q1) + X(q1)
         self.sequences['composite'] = [align(flipFlop * Y(q2)), Y90(q1)]
 
 # unittest classes
+
 
 class SingleQubit(unittest.TestCase):
     # Single Qubit  Unit Test
@@ -172,18 +183,22 @@ class MultiQubit(unittest.TestCase):
     def test_sequences(self):
         self.sequences.validate()
 
+
 ### Utilty functions which are intended to be run from a repl
 def show_test_cases():
     SingleQubitTestCases().show()
     MultiQubitTestCases().show()
 
+
 def write_test_cases():
     SingleQubitTestCases().write()
     MultiQubitTestCases().write()
 
+
 def validate():
     SingleQubitTestCases().validate()
     MultiQubitTestCases().validate()
+
 
 if __name__ == "__main__":
     unittest.main()

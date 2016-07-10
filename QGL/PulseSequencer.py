@@ -37,6 +37,7 @@ class Pulse(object):
         shape - numpy array pulse shape
         frameChange - accumulated phase from the pulse
     '''
+
     def __init__(self,
                  label,
                  channel,
@@ -48,7 +49,8 @@ class Pulse(object):
         self.label = label
         if isinstance(channel, (list, tuple)):
             # with more than one qubit, need to look up the channel
-            self.channel = ChannelLibrary.QubitFactory(reduce(operator.add, [c.label for c in channel]))
+            self.channel = ChannelLibrary.QubitFactory(reduce(
+                operator.add, [c.label for c in channel]))
         else:
             self.channel = channel
         self.shapeParams = shapeParams
@@ -66,18 +68,13 @@ class Pulse(object):
             if param not in shapeParams.keys():
                 raise NameError("shapeParams must include {0}".format(param))
         if (self.shapeParams['shapeFun'] == PulseShapes.constant or
-            self.shapeParams['shapeFun'] == PulseShapes.square):
+                self.shapeParams['shapeFun'] == PulseShapes.square):
             self.isTimeAmp = True
 
     def __repr__(self):
         return "Pulse({0}, {1}, {2}, {3}, {4}, {5}, {6})".format(
-            self.label,
-            self.channel,
-            self.shapeParams,
-            self.amp,
-            self.phase,
-            self.frameChange,
-            self.ignoredStrParams)
+            self.label, self.channel, self.shapeParams, self.amp, self.phase,
+            self.frameChange, self.ignoredStrParams)
 
     def __str__(self):
         kwvals = []
@@ -88,8 +85,8 @@ class Pulse(object):
         # parameters inside shapeParams
         for n, v in self.shapeParams.items():
             if (n not in self.ignoredStrParams and
-                n in self.channel.pulseParams and
-                self.channel.pulseParams[n] != v):
+                    n in self.channel.pulseParams and
+                    self.channel.pulseParams[n] != v):
                 kwvals.append("{0}={1}".format(n, v))
         if kwvals:
             kwstr = ", " + ", ".join(kwvals)
@@ -103,15 +100,17 @@ class Pulse(object):
     # adding pulses concatenates the pulse shapes
     def __add__(self, other):
         if self.channel != other.channel:
-            raise NameError("Can only concatenate pulses acting on the same channel")
+            raise NameError(
+                "Can only concatenate pulses acting on the same channel")
         return CompositePulse([self, other])
 
     # unary negation inverts the pulse amplitude and frame change
     def __neg__(self):
-        return Pulse(self.label, self.channel, copy(self.shapeParams), -self.amp, self.phase, -self.frameChange)
+        return Pulse(self.label, self.channel, copy(self.shapeParams),
+                     -self.amp, self.phase, -self.frameChange)
 
     def __mul__(self, other):
-        return self.promote()*other.promote()
+        return self.promote() * other.promote()
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -126,7 +125,7 @@ class Pulse(object):
 
     def promote(self):
         # promote a Pulse to a PulseBlock
-        pb =  PulseBlock()
+        pb = PulseBlock()
         pb.pulses[self.channel] = self
         return pb
 
@@ -150,19 +149,29 @@ class Pulse(object):
         params.pop('shapeFun')
         return self.shapeParams['shapeFun'](**params)
 
-def TAPulse(label, channel, length, amp, phase=0, frameChange=0, ignoredStrParams=[]):
+
+def TAPulse(label,
+            channel,
+            length,
+            amp,
+            phase=0,
+            frameChange=0,
+            ignoredStrParams=[]):
     '''
     Creates a time/amplitude pulse with the given pulse length and amplitude
     '''
     params = {'length': length, 'shapeFun': PulseShapes.constant}
     ignoredStrParams.append('shapeFun')
-    p = Pulse(label, channel, params, amp, phase, frameChange, ignoredStrParams)
+    p = Pulse(label, channel, params, amp, phase, frameChange,
+              ignoredStrParams)
     return p
+
 
 class CompositePulse(object):
     '''
     A sequential series of pulses that reside within one time bin of a pulse block
     '''
+
     def __init__(self, pulses, label=""):
         self.pulses = pulses
         self.label = label
@@ -181,14 +190,15 @@ class CompositePulse(object):
 
     def __add__(self, other):
         if self.channel != other.channel:
-            raise NameError("Can only concatenate pulses acting on the same channel")
+            raise NameError(
+                "Can only concatenate pulses acting on the same channel")
         if hasattr(other, 'pulses'):
             return CompositePulse(self.pulses + other.pulses)
         else:
             return CompositePulse(self.pulses + [other])
 
     def __mul__(self, other):
-        return self.promote()*other.promote()
+        return self.promote() * other.promote()
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -200,7 +210,7 @@ class CompositePulse(object):
 
     def promote(self):
         # promote a CompositePulse to a PulseBlock
-        pb =  PulseBlock()
+        pb = PulseBlock()
         pb.pulses[self.channel] = self
         return pb
 
@@ -221,12 +231,14 @@ class CompositePulse(object):
     def isZero(self):
         return all(p.isZero for p in self.pulses)
 
+
 class PulseBlock(object):
     '''
     The basic building block for pulse sequences. This is what we can concatenate together to make sequences.
     We overload the * operator so that we can combine pulse blocks on different channels.
     We overload the + operator to concatenate pulses on the same channel.
     '''
+
     def __init__(self):
         #Set some default values
         #How multiple channels are aligned.
@@ -235,15 +247,19 @@ class PulseBlock(object):
         self.label = None
 
     def __repr__(self):
-        return "Pulses " + ";".join([str(pulse) for pulse in self.pulses.values()]) + " alignment: {0}".format(self.alignment)
+        return "Pulses " + ";".join([
+            str(pulse) for pulse in self.pulses.values()
+        ]) + " alignment: {0}".format(self.alignment)
 
     def __str__(self):
         labelPart = "{0}: ".format(self.label) if self.label else ""
-        return labelPart + "*".join([str(pulse) for pulse in self.pulses.values()])
+        return labelPart + "*".join(
+            [str(pulse) for pulse in self.pulses.values()])
 
     def _repr_pretty_(self, p, cycle):
         labelPart = "{0}: ".format(self.label) if self.label else ""
-        p.text(labelPart + "⊗ ".join([str(pulse) for pulse in self.pulses.values()]))
+        p.text(labelPart + "⊗ ".join([str(pulse)
+                                      for pulse in self.pulses.values()]))
 
     #Overload the multiplication operator to combine pulse blocks
     def __mul__(self, rhs):
@@ -256,7 +272,8 @@ class PulseBlock(object):
 
         for (k, v) in rhs.pulses.items():
             if k in result.pulses.keys():
-                raise NameError("Attempted to multiply pulses acting on the same space")
+                raise NameError(
+                    "Attempted to multiply pulses acting on the same space")
             else:
                 result.pulses[k] = v
         return result
@@ -286,6 +303,7 @@ class PulseBlock(object):
     @property
     def length(self):
         return max([p.length for p in self.pulses.values()])
+
 
 def align(pulseBlock, mode="center"):
     # make sure we have a PulseBlock

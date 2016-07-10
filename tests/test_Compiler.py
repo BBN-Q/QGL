@@ -4,6 +4,7 @@ import numpy as np
 
 from QGL import *
 
+
 class CompileUtils(unittest.TestCase):
     def setUp(self):
         self.q1gate = Channels.LogicalMarkerChannel(label='q1-gate')
@@ -18,7 +19,9 @@ class CompileUtils(unittest.TestCase):
         self.measq1 = Channels.Measurement(label='M-q1', measType='autodyne')
         self.measq1.trigChan = self.trigger
 
-        ChannelLibrary.channelLib.channelDict = {'q1': self.q1, 'q2': self.q2, 'M-q1': self.measq1}
+        ChannelLibrary.channelLib.channelDict = {'q1': self.q1,
+                                                 'q2': self.q2,
+                                                 'M-q1': self.measq1}
         ChannelLibrary.channelLib.build_connectivity_graph()
 
     def test_add_digitizer_trigger(self):
@@ -26,20 +29,23 @@ class CompileUtils(unittest.TestCase):
         seq = [X90(q1), MEAS(q1), Y(q1), MEAS(q1)]
 
         PatternUtils.add_digitizer_trigger([seq])
-        assert(self.trigger in seq[1].pulses.keys())
-        assert(self.trigger in seq[3].pulses.keys())
+        assert (self.trigger in seq[1].pulses.keys())
+        assert (self.trigger in seq[3].pulses.keys())
 
     def test_add_gate_pulses(self):
         q1 = self.q1
         seq = [X90(q1), Y90(q1)]
         PatternUtils.add_gate_pulses([seq])
-        assert([self.q1gate in entry.pulses.keys() for entry in seq] == [True, True])
+        assert ([self.q1gate in entry.pulses.keys() for entry in seq] ==
+                [True, True])
 
         q2 = self.q2
-        seq = [X90(q1), X90(q2), X(q1)*Y(q2)]
+        seq = [X90(q1), X90(q2), X(q1) * Y(q2)]
         PatternUtils.add_gate_pulses([seq])
-        assert([self.q1gate in entry.pulses.keys() for entry in seq] == [True, False, True])
-        assert([self.q2gate in entry.pulses.keys() for entry in seq] == [False, True, True])
+        assert ([self.q1gate in entry.pulses.keys() for entry in seq] ==
+                [True, False, True])
+        assert ([self.q2gate in entry.pulses.keys() for entry in seq] ==
+                [False, True, True])
 
     def test_add_slave_trigger(self):
         q1 = self.q1
@@ -49,11 +55,12 @@ class CompileUtils(unittest.TestCase):
         seq2 = [qwait(), X90(q1)]
 
         PatternUtils.add_slave_trigger([seq1], trigger)
-        t = TAPulse("TRIG", trigger, trigger.pulseParams['length'], 1.0, 0.0, 0.0)
-        assert(seq1 == [qwait(), t, label, X90(q1)])
+        t = TAPulse("TRIG", trigger, trigger.pulseParams['length'], 1.0, 0.0,
+                    0.0)
+        assert (seq1 == [qwait(), t, label, X90(q1)])
 
         PatternUtils.add_slave_trigger([seq2], trigger)
-        assert(seq2 == [qwait(), X90(q1)*t])
+        assert (seq2 == [qwait(), X90(q1) * t])
 
     def test_concatenate_entries(self):
         q1 = self.q1
@@ -61,7 +68,8 @@ class CompileUtils(unittest.TestCase):
         ll = Compiler.compile_sequence(seq)
         entry = Compiler.concatenate_entries(ll[q1][0], ll[q1][1])
         assert entry.length == seq[0].length + seq[1].length
-        wf = np.hstack((seq[0].amp*seq[0].shape, 1j*seq[1].amp*seq[1].shape))
+        wf = np.hstack(
+            (seq[0].amp * seq[0].shape, 1j * seq[1].amp * seq[1].shape))
         assert all(abs(entry.shape - wf) < 1e-16)
 
     def test_pull_uniform_entries(self):
@@ -69,7 +77,7 @@ class CompileUtils(unittest.TestCase):
         q1.pulseParams['length'] = 20e-9
         q2 = self.q2
         q2.pulseParams['length'] = 60e-9
-        seq = [(X90(q1)+Y90(q1)+X90(q1)) * X(q2)]
+        seq = [(X90(q1) + Y90(q1) + X90(q1)) * X(q2)]
         ll = Compiler.compile_sequence(seq)
         entryIterators = [iter(ll[q1]), iter(ll[q2])]
         entries = [next(e) for e in entryIterators]
@@ -98,19 +106,20 @@ class CompileUtils(unittest.TestCase):
         entries = [next(e) for e in entryIterators]
         blocklen = Compiler.pull_uniform_entries(entries, entryIterators)
         self.assertAlmostEqual(blocklen, 120e-9)
-        self.assertTrue( all(e.length == blocklen for e in entries) )
+        self.assertTrue(all(e.length == blocklen for e in entries))
 
     def test_merge_channels(self):
         q1 = self.q1
         q1.pulseParams['length'] = 20e-9
         q2 = self.q2
         q2.pulseParams['length'] = 60e-9
-        seqs = [[(X90(q1)+Y90(q1)+X90(q1)) * X(q2)]]
+        seqs = [[(X90(q1) + Y90(q1) + X90(q1)) * X(q2)]]
         ll = Compiler.compile_sequences(seqs)
 
         chLL = Compiler.merge_channels(ll, [q1, q2])
         assert len(chLL[0]) == len(ll[q1][0]) - 2
         assert len(chLL[0]) == len(ll[q2][0]) - 1
+
 
 if __name__ == "__main__":
     unittest.main()

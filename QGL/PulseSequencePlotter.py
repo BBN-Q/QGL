@@ -1,4 +1,3 @@
-
 '''
 Created on Jan 8, 2012
 
@@ -38,8 +37,10 @@ from . import ChannelLibrary
 from . import drivers
 import pkgutil
 
+
 def all_zero_seqs(seqs):
     return all([np.allclose([_[1] for _ in seq], 0) for seq in seqs])
+
 
 def build_awg_translator_map():
     translators_map = {}
@@ -56,16 +57,19 @@ def build_awg_translator_map():
 # static translator map
 translators = build_awg_translator_map()
 
+
 def resolve_translator(filename, translators):
     ext = os.path.splitext(filename)[1]
     if ext not in translators:
-        raise NameError("No translator found to open the given file %s", filename)
+        raise NameError("No translator found to open the given file %s",
+                        filename)
     if len(translators[ext]) == 1:
         return translators[ext][0]
     for t in translators[ext]:
         if t.is_compatible_file(filename):
             return t
     raise NameError("No translator found to open the given file %s", filename)
+
 
 def plot_pulse_files(fileNames):
     '''
@@ -92,22 +96,19 @@ def plot_pulse_files(fileNames):
 
     # Colobrewer2 qualitative Set1 (http://colorbrewer2.org)
     colours = [
-        "#e41a1c",
-        "#377eb8",
-        "#4daf4a",
-        "#984ea3",
-        "#ff7f00",
-        "#ffff33",
-        "#a65628",
-        "#f781bf",
-        "#999999"
+        "#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#ffff33",
+        "#a65628", "#f781bf", "#999999"
     ]
 
     js_sources = {}
     js_sources["all_data"] = all_data
-    for ct,k in enumerate(lineNames):
+    for ct, k in enumerate(lineNames):
         k_ = k.replace("-", "_")
-        line = plot.line(dataDict[k_+"_x_1"], dataDict[k_+"_y_1"], color=colours[ct%len(colours)], line_width=2, legend=k)
+        line = plot.line(dataDict[k_ + "_x_1"],
+                         dataDict[k_ + "_y_1"],
+                         color=colours[ct % len(colours)],
+                         line_width=2,
+                         legend=k)
         js_sources[k_] = line.data_source
 
     code_template = Template("""
@@ -120,13 +121,22 @@ def plot_pulse_files(fileNames):
         console.log("Got here!")
     """)
 
-    callback = CustomJS(args=js_sources, code=code_template.render(lineNames=[l.replace("-","_") for l in lineNames]))
+    callback = CustomJS(
+        args=js_sources,
+        code=code_template.render(
+            lineNames=[l.replace("-", "_") for l in lineNames]))
 
-    slider = Slider(start=1, end=num_seqs, value=1, step=1, title="Sequence", callback=callback)
+    slider = Slider(start=1,
+                    end=num_seqs,
+                    value=1,
+                    step=1,
+                    title="Sequence",
+                    callback=callback)
 
     layout = vform(slider, plot)
 
     show(layout)
+
 
 def extract_waveforms(dataDict, fileNames, nameDecorator=''):
     lineNames = []
@@ -134,7 +144,8 @@ def extract_waveforms(dataDict, fileNames, nameDecorator=''):
     for fileName in sorted(fileNames):
 
         # Assume a naming convention path/to/file/SequenceName-AWGName.h5
-        AWGName = (os.path.split(os.path.splitext(fileName)[0])[1]).split('-')[1]
+        AWGName = (
+            os.path.split(os.path.splitext(fileName)[0])[1]).split('-')[1]
         # Strip any _ suffix
         if '_' in AWGName:
             AWGName = AWGName[:AWGName.index('_')]
@@ -142,17 +153,22 @@ def extract_waveforms(dataDict, fileNames, nameDecorator=''):
         translator = resolve_translator(fileName, translators)
         wfs = translator.read_sequence_file(fileName)
 
-        for (k,seqs) in sorted(wfs.items()):
+        for (k, seqs) in sorted(wfs.items()):
             if all_zero_seqs(seqs):
                 continue
             num_seqs = max(num_seqs, len(seqs))
             lineNames.append(AWGName + nameDecorator + '-' + k)
             k_ = lineNames[-1].replace("-", "_")
-            for ct,seq in enumerate(seqs):
+            for ct, seq in enumerate(seqs):
                 # Convert from time amplitude pairs to x,y lines with points at start and beginnning to prevent interpolation
-                dataDict[k_+"_x_{:d}".format(ct+1)] = np.tile( np.cumsum([0] + [_[0] for _ in seq]), (2,1)).flatten(order="F")[1:-1]
-                dataDict[k_+"_y_{:d}".format(ct+1)] = np.tile( [_[1] for _ in seq], (2,1)).flatten(order="F") + 2*(len(lineNames)-1)
+                dataDict[k_ + "_x_{:d}".format(ct + 1)] = np.tile(
+                    np.cumsum([0] + [_[0] for _ in seq]),
+                    (2, 1)).flatten(order="F")[1:-1]
+                dataDict[k_ + "_y_{:d}".format(ct + 1)] = np.tile(
+                    [_[1] for _ in seq],
+                    (2, 1)).flatten(order="F") + 2 * (len(lineNames) - 1)
     return lineNames, num_seqs
+
 
 def plot_pulse_files_compare(fileNames1, fileNames2):
     '''
@@ -184,22 +200,19 @@ def plot_pulse_files_compare(fileNames1, fileNames2):
 
     # Colobrewer2 qualitative Set1 (http://colorbrewer2.org)
     colours = [
-        "#e41a1c",
-        "#377eb8",
-        "#4daf4a",
-        "#984ea3",
-        "#ff7f00",
-        "#ffff33",
-        "#a65628",
-        "#f781bf",
-        "#999999"
+        "#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#ffff33",
+        "#a65628", "#f781bf", "#999999"
     ]
 
     js_sources = {}
     js_sources["all_data"] = all_data
-    for ct,k in enumerate(lineNames1 + lineNames2):
+    for ct, k in enumerate(lineNames1 + lineNames2):
         k_ = k.replace("-", "_")
-        line = plot.line(dataDict[k_+"_x_1"], dataDict[k_+"_y_1"], color=colours[ct%len(colours)], line_width=2, legend=k)
+        line = plot.line(dataDict[k_ + "_x_1"],
+                         dataDict[k_ + "_y_1"],
+                         color=colours[ct % len(colours)],
+                         line_width=2,
+                         legend=k)
         js_sources[k_] = line.data_source
 
     code_template = Template("""
@@ -212,9 +225,17 @@ def plot_pulse_files_compare(fileNames1, fileNames2):
         console.log("Got here!")
     """)
 
-    callback = CustomJS(args=js_sources, code=code_template.render(lineNames=[l.replace("-","_") for l in lineNames1+lineNames2]))
+    callback = CustomJS(
+        args=js_sources,
+        code=code_template.render(
+            lineNames=[l.replace("-", "_") for l in lineNames1 + lineNames2]))
 
-    slider = Slider(start=1, end=num_seqs, value=1, step=1, title="Sequence", callback=callback)
+    slider = Slider(start=1,
+                    end=num_seqs,
+                    value=1,
+                    step=1,
+                    title="Sequence",
+                    callback=callback)
 
     layout = vform(slider, plot)
 
