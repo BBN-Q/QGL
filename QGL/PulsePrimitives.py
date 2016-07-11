@@ -35,17 +35,19 @@ def overrideDefaults(chan, updateParams):
 
 def _memoize(pulseFunc):
     ''' Decorator for caching pulses to keep waveform memory usage down. '''
-    cache = {}
+    _memoize.cache = {}
 
     @wraps(pulseFunc)
-    def cacheWrap(*args):
-        if args not in cache:
-            cache[args] = pulseFunc(args)
-        return cache[args]
+    def cacheWrap(*args, **kwargs):
+        if kwargs:
+            return pulseFunc(*args, **kwargs)
+        if args not in _memoize.cache:
+            _memoize.cache[args] = pulseFunc(*args)
+        return _memoize.cache[args]
 
     return cacheWrap
 
-
+@_memoize
 def Id(channel, *args, **kwargs):
     '''
     A delay or no-op in the form of a pulse.
@@ -105,7 +107,7 @@ def Ztheta(qubit,
 
 
 #Setup the default 90/180 rotations
-# @_memoize
+@_memoize
 def X(qubit, **kwargs):
     return Xtheta(qubit,
                   qubit.pulseParams['piAmp'],
@@ -114,7 +116,7 @@ def X(qubit, **kwargs):
                   **kwargs)
 
 
-# @_memoize
+@_memoize
 def X90(qubit, **kwargs):
     return Xtheta(qubit,
                   qubit.pulseParams['pi2Amp'],
@@ -123,7 +125,7 @@ def X90(qubit, **kwargs):
                   **kwargs)
 
 
-# @_memoize
+@_memoize
 def Xm(qubit, **kwargs):
     return Xtheta(qubit,
                   -qubit.pulseParams['piAmp'],
@@ -132,7 +134,7 @@ def Xm(qubit, **kwargs):
                   **kwargs)
 
 
-# @_memoize
+@_memoize
 def X90m(qubit, **kwargs):
     return Xtheta(qubit,
                   -qubit.pulseParams['pi2Amp'],
@@ -141,7 +143,7 @@ def X90m(qubit, **kwargs):
                   **kwargs)
 
 
-# @_memoize
+@_memoize
 def Y(qubit, **kwargs):
     return Ytheta(qubit,
                   qubit.pulseParams['piAmp'],
@@ -150,7 +152,7 @@ def Y(qubit, **kwargs):
                   **kwargs)
 
 
-# @_memoize
+@_memoize
 def Y90(qubit, **kwargs):
     return Ytheta(qubit,
                   qubit.pulseParams['pi2Amp'],
@@ -159,7 +161,7 @@ def Y90(qubit, **kwargs):
                   **kwargs)
 
 
-# @_memoize
+@_memoize
 def Ym(qubit, **kwargs):
     return Ytheta(qubit,
                   -qubit.pulseParams['piAmp'],
@@ -168,7 +170,7 @@ def Ym(qubit, **kwargs):
                   **kwargs)
 
 
-# @_memoize
+@_memoize
 def Y90m(qubit, **kwargs):
     return Ytheta(qubit,
                   -qubit.pulseParams['pi2Amp'],
@@ -177,17 +179,17 @@ def Y90m(qubit, **kwargs):
                   **kwargs)
 
 
-# @_memoize
+@_memoize
 def Z(qubit, **kwargs):
     return Ztheta(qubit, pi, label="Z", **kwargs)
 
 
-# @_memoize
+@_memoize
 def Z90(qubit, **kwargs):
     return Ztheta(qubit, pi / 2, label="Z90", **kwargs)
 
 
-# @_memoize
+@_memoize
 def Z90m(qubit, **kwargs):
     return Ztheta(qubit, -pi / 2, label="Z90m", **kwargs)
 
@@ -501,7 +503,7 @@ def CNOT_CR(controlQ, targetQ, **kwargs):
 
 
 ## Measurement operators
-# @_memoize
+@_memoize
 def MEAS(qubit, **kwargs):
     '''
     MEAS(q1) measures a qubit. Applies to the pulse with the label M-q1

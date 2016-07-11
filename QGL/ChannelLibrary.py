@@ -174,6 +174,10 @@ class ChannelLibrary(Atom):
 
                 self.build_connectivity_graph()
 
+            #reset pulse cache
+            from . import PulsePrimitives
+            PulsePrimitives._memoize.cache.clear()
+
     def update_from_json(self, chName, chParams):
         # connect objects labeled by strings
         if 'pulseParams' in chParams.keys():
