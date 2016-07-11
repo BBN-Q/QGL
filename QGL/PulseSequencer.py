@@ -123,7 +123,7 @@ def TAPulse(label,
     """
     params = {'length': length, 'shapeFun': PulseShapes.constant}
     ignoredStrParams.append('shapeFun')
-    return Pulse(label, channel, params, amp, phase, frameChange)
+    return Pulse(label, channel, params, amp, phase, frameChange, ignoredStrParams)
 
 
 class CompositePulse(namedtuple("CompositePulse", ["label", "pulses"])):
