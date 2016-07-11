@@ -479,19 +479,19 @@ def compile_sequence(seq, channels=None):
             for chan in channels:
                 if block.pulses[chan].frameChange == 0:
                     continue
-                if len(wires[chan]) > 0:
-                    logger.debug("Modifying pulse on %s: %s", chan,
-                                 wires[chan][-1])
-                    wires[chan][-1] = copy(wires[chan][-1])
-                    wires[chan][-1].frameChange += block.pulses[
-                        chan].frameChange
-                    if chan in ChannelLibrary.channelLib.connectivityG.nodes():
-                        logger.debug("Doing propagate_node_frame_to_edges()")
-                        wires = propagate_node_frame_to_edges(
-                            wires, chan, block.pulses[chan].frameChange)
-                else:
+                if len(wires[chan]) == 0:
                     warn("Dropping initial frame change")
+                    continue
+                logger.debug("Modifying pulse on %s: %s", chan, wires[chan][-1])
+                updated_frameChange = wires[chan][-1].frameChange + block.pulses[chan].frameChange
+                wires[chan][-1] = wires[chan][-1]._replace(frameChange=updated_frameChange)
+                if chan in ChannelLibrary.channelLib.connectivityG.nodes():
+                    logger.debug("Doing propagate_node_frame_to_edges()")
+                    wires = propagate_node_frame_to_edges(
+                        wires, chan, block.pulses[chan].frameChange)
+
             continue
+
         # schedule the block
         for chan in channels:
             # add aligned Pulses (if the block contains a composite pulse, may get back multiple pulses)
@@ -515,8 +515,9 @@ def propagate_node_frame_to_edges(wires, chan, frameChange):
         edge = ChannelLibrary.channelLib.connectivityG.edge[predecessor][chan][
             'channel']
         if edge in wires:
-            wires[edge][-1] = copy(wires[edge][-1])
-            wires[edge][-1].frameChange += frameChange
+            updated_frameChange = wires[edge][-1].frameChange + frameChange
+            wires[edge][-1] = wires[edge][-1]._replace(frameChange=updated_frameChange)
+
     return wires
 
 

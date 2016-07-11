@@ -82,10 +82,16 @@ def add_gate_pulses(seqs):
     for seq in seqs:
         for ct in range(len(seq)):
             if isinstance(seq[ct], PulseBlock):
+                pb = None
                 for chan, pulse in seq[ct].pulses.items():
                     if has_gate(chan) and not pulse.isZero and not (
                             chan.gateChan in seq[ct].pulses.keys()):
-                        seq[ct] *= BLANK(chan, pulse.length)
+                        if pb:
+                            pb *= BLANK(chan, pulse.length)
+                        else:
+                            pb = BLANK(chan, pulse.length)
+                if pb:
+                    seq[ct] *= pb
             elif hasattr(seq[ct], 'channel'):
                 chan = seq[ct].channel
                 if has_gate(chan) and not seq[ct].isZero:
@@ -190,9 +196,7 @@ def add_digitizer_trigger(seqs):
             if not contains_measurement(seq[ct]):
                 continue
             #find corresponding digitizer trigger
-            chanlist = seq[ct].channel
-            if not isinstance(seq[ct], PulseBlock):
-                chanlist = [chanlist]
+            chanlist = list(flatten([seq[ct].channel]))
             for chan in chanlist:
                 if hasattr(chan, 'trigChan'):
                     trigChan = chan.trigChan
