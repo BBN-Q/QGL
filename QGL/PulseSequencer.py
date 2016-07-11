@@ -49,11 +49,6 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "amp", "phase", "frequency"
         isZero = (amp == 0)
         return super(cls, Pulse).__new__(cls, label, channel, amp, phase, frequency, frameChange, shapeParams, isTimeAmp, isZero, ignoredStrParams)
 
-    def __repr__(self):
-        return "Pulse({0}, {1}, {2}, {3}, {4}, {5}, {6})".format(
-            self.label, self.channel, self.shapeParams, self.amp, self.phase,
-            self.frameChange, self.ignoredStrParams)
-
     def __str__(self):
         kwvals = []
         # object parameters outside of shapeParams
@@ -94,7 +89,7 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "amp", "phase", "frequency"
         if self.channel != other.channel:
             raise NameError(
                 "Can only concatenate pulses acting on the same channel")
-        return CompositePulse([self, other])
+        return CompositePulse("", [self, other])
 
     # unary negation inverts the pulse amplitude and frame change
     def __neg__(self):
@@ -131,17 +126,11 @@ def TAPulse(label,
     return Pulse(label, channel, params, amp, phase, frameChange)
 
 
-class CompositePulse(object):
+class CompositePulse(namedtuple("CompositePulse", ["label", "pulses"])):
     '''
     A sequential series of pulses that reside within one time bin of a pulse block
     '''
-
-    def __init__(self, pulses, label=""):
-        self.pulses = pulses
-        self.label = label
-
-    def __repr__(self):
-        return "CompositePulse({0}, {1})".format(self.pulses, self.label)
+    __slots__ = ()
 
     def __str__(self):
         if self.label != "":
@@ -157,26 +146,16 @@ class CompositePulse(object):
             raise NameError(
                 "Can only concatenate pulses acting on the same channel")
         if hasattr(other, 'pulses'):
-            return CompositePulse(self.pulses + other.pulses)
+            return CompositePulse("", self.pulses + other.pulses)
         else:
-            return CompositePulse(self.pulses + [other])
+            return CompositePulse("", self.pulses + [other])
 
     def __mul__(self, other):
         return self.promote() * other.promote()
 
-    def __eq__(self, other):
-        if isinstance(other, self.__class__):
-            return self.__dict__ == other.__dict__
-        return False
-
-    def __ne__(self, other):
-        return not self == other
-
     def promote(self):
         # promote a CompositePulse to a PulseBlock
-        pb = PulseBlock()
-        pb.pulses[self.channel] = self
-        return pb
+        return PulseBlock(self)
 
     @property
     def channel(self):
