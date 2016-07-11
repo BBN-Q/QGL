@@ -30,7 +30,7 @@ from .PatternUtils import flatten
 from . import Channels
 from . import ChannelLibrary
 from .PulsePrimitives import Id
-from . import PulseSequencer
+from .PulseSequencer import Pulse, PulseBlock, CompositePulse
 from . import ControlFlow
 from . import BlockLabel
 
@@ -192,7 +192,7 @@ def generate_waveforms(physicalWires):
     wfs = {ch: {} for ch in physicalWires.keys()}
     for ch, wire in physicalWires.items():
         for pulse in flatten(wire):
-            if not isinstance(pulse, PulseSequencer.Pulse):
+            if not isinstance(pulse, Pulse):
                 continue
             if pulse.hashshape() not in wfs[ch]:
                 if pulse.isTimeAmp:
@@ -212,7 +212,7 @@ def pulses_to_waveforms(physicalWires):
         for seq in seqs:
             wireOuts[ch].append([])
             for pulse in seq:
-                if not isinstance(pulse, PulseSequencer.Pulse):
+                if not isinstance(pulse, Pulse):
                     wireOuts[ch][-1].append(pulse)
                     logger.debug(" %s", str(pulse))
                 else:
@@ -544,8 +544,7 @@ def normalize(seq, channels=None):
         channels = find_unique_channels(seq)
 
     # inject Id's for PulseBlocks not containing every channel
-    for block in filter(lambda x: isinstance(x, PulseSequencer.PulseBlock),
-                        seq):
+    for block in filter(lambda x: isinstance(x, PulseBlock), seq):
         blocklen = block.length
         emptyChannels = channels - set(block.pulses.keys())
         for ch in emptyChannels:
@@ -614,7 +613,7 @@ def schedule(channel, pulse, blockLength, alignment):
     '''
     logger = logging.getLogger(__name__)
     # make everything look like a sequence
-    if isinstance(pulse, PulseSequencer.CompositePulse):
+    if isinstance(pulse, CompositePulse):
         pulses = pulse.pulses
     else:
         pulses = [pulse]

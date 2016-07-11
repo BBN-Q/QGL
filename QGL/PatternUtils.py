@@ -116,7 +116,7 @@ def apply_gating_constraints(chan, linkList):
         gateSeq = []
         # first pass consolidates entries
         previousEntry = None
-        for entry in miniLL:
+        for ct,entry in enumerate(miniLL):
             if isinstance(entry, (ControlFlow.ControlInstruction,
                                   BlockLabel.BlockLabel)):
                 if previousEntry:
@@ -131,7 +131,10 @@ def apply_gating_constraints(chan, linkList):
 
             # matching entry types can be globbed together
             if previousEntry.isZero == entry.isZero:
-                previousEntry.length += entry.length
+                new_params = previousEntry.shapeParams
+                new_params["length"] = previousEntry.length + entry.length
+                miniLL[ct-1] = previousEntry._replace(shapeParams=new_params)
+
             else:
                 gateSeq.append(previousEntry)
                 previousEntry = entry
@@ -143,13 +146,16 @@ def apply_gating_constraints(chan, linkList):
         # second pass expands non-zeros by gateBuffer
         for ct in range(len(gateSeq)):
             if isNonZeroWaveform(gateSeq[ct]):
-                gateSeq[ct].length += gateBuffer
+                new_params = gateSeq[ct].shapeParams
+                new_params["length"] = gateSeq[ct].length + gateBuffer
+                gateSeq[ct] = gateSeq[ct]._replace(shapeParams=new_params)
+
                 # contract the next pulse by the same amount
-                if ct + 1 < len(gateSeq) - 1 and isinstance(gateSeq[ct + 1],
-                                                            Pulse):
-                    gateSeq[
-                        ct +
-                        1].length -= gateBuffer  #TODO: what if this becomes negative?
+                if ct + 1 < len(gateSeq) - 1 and isinstance(gateSeq[ct + 1], Pulse):
+                    new_params = gateSeq[ct+1].shapeParams
+                    new_params["length"] = gateSeq[ct+1].length - gateBuffer
+                    assert new_params["length"] > 0
+                    gateSeq[ct+1] = gateSeq[ct+1]._replace(shapeParams=new_params)
 
         # third pass ensures gateMinWidth
         ct = 0
@@ -158,8 +164,9 @@ def apply_gating_constraints(chan, linkList):
             if [isNonZeroWaveform(x) for x in gateSeq[ct:ct+3]] == [True, False, True] and \
                 gateSeq[ct+1].length < gateMinWidth and \
                 [isinstance(x, Pulse) for x in gateSeq[ct:ct+3]] == [True, True, True]:
-                gateSeq[ct].length += gateSeq[ct + 1].length + gateSeq[
-                    ct + 2].length
+                new_params = gateSeq[ct].shapeParams
+                new_params["length"] = gateSeq[ct + 1].length + gateSeq[ct + 2].length
+                gateSeq[ct] = gateSeq[ct]._replace(shapeParams=new_params)
                 del gateSeq[ct + 1:ct + 3]
             else:
                 ct += 1
@@ -180,25 +187,26 @@ def add_digitizer_trigger(seqs):
     # Attach a trigger to any pulse block containing a measurement. Each trigger is specific to each measurement
     for seq in seqs:
         for ct in range(len(seq)):
-            if contains_measurement(seq[ct]):
-                #find corresponding digitizer trigger
-                chanlist = seq[ct].channel
-                if not isinstance(seq[ct], PulseBlock):
-                    chanlist = [chanlist]
-                for chan in chanlist:
-                    if hasattr(chan, 'trigChan'):
-                        trigChan = chan.trigChan
-                        if not (hasattr(seq[ct], 'pulses') and
-                                trigChan in seq[ct].pulses.keys()):
-                            seq[ct] *= TAPulse("TRIG", trigChan,
-                                               trigChan.pulseParams['length'],
-                                               1.0, 0.0, 0.0)
+            if not contains_measurement(seq[ct]):
+                continue
+            #find corresponding digitizer trigger
+            chanlist = seq[ct].channel
+            if not isinstance(seq[ct], PulseBlock):
+                chanlist = [chanlist]
+            for chan in chanlist:
+                if hasattr(chan, 'trigChan'):
+                    trigChan = chan.trigChan
+                    if not (hasattr(seq[ct], 'pulses') and
+                            trigChan in seq[ct].pulses.keys()):
+                        seq[ct] *= TAPulse("TRIG", trigChan,
+                                           trigChan.pulseParams['length'], 1.0,
+                                           0.0, 0.0)
 
 
 def contains_measurement(entry):
-    '''
+    """
     Determines if a LL entry contains a measurement
-    '''
+    """
     if entry.label == "MEAS":
         return True
     elif isinstance(entry, PulseBlock):
@@ -269,7 +277,7 @@ def convert_lengths_to_samples(instructions, samplingRate, quantization=1):
 # from Stack Overflow: http://stackoverflow.com/questions/2158395/flatten-an-irregular-list-of-lists-in-python/2158532#2158532
 def flatten(l):
     for el in l:
-        if isinstance(el, collections.Iterable) and not isinstance(el, str):
+        if isinstance(el, collections.Iterable) and not isinstance(el, (str, Pulse)) :
             for sub in flatten(el):
                 yield sub
         else:
