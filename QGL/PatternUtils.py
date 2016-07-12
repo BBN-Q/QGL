@@ -104,8 +104,8 @@ def has_gate(channel):
 
 def update_pulse_length(pulse, new_length):
     """Return new Pulse with modified length"""
+    assert new_length >= 0
     #copy shape parameter dictionary to avoid updating other copies
-    assert new_length > 0
     new_params = copy(pulse.shapeParams)
     new_params["length"] = new_length
     return pulse._replace(shapeParams=new_params)
