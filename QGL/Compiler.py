@@ -35,6 +35,7 @@ from .PulseSequencer import Pulse, PulseBlock, CompositePulse
 from . import ControlFlow
 from . import BlockLabel
 
+logger = logging.getLogger(__name__)
 
 def map_logical_to_physical(wires):
     # construct a mapping of physical channels to lists of logical channels
@@ -213,7 +214,6 @@ def generate_waveforms(physicalWires):
 
 
 def pulses_to_waveforms(physicalWires):
-    logger = logging.getLogger(__name__)
     logger.debug("Converting pulses_to_waveforms:")
     wireOuts = {ch: [] for ch in physicalWires.keys()}
     for ch, seqs in physicalWires.items():
@@ -293,7 +293,6 @@ def compile_to_hardware(seqs,
     Compiles 'seqs' to a hardware description and saves it to 'fileName'. Other inputs:
         suffix : string to append to end of fileName (e.g. with fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5)
     '''
-    logger = logging.getLogger(__name__)
     logger.debug("Compiling %d sequence(s)", len(seqs))
 
     # save input code to file
@@ -404,7 +403,6 @@ def compile_sequences(seqs, channels=set(), qgl2=False):
     '''
     Main function to convert sequences to miniLL's and waveform libraries.
     '''
-    logger = logging.getLogger(__name__)
 
     # turn into a loop, by appending GOTO(0) at end of last sequence
     if not isinstance(seqs[-1][-1], ControlFlow.Goto):
@@ -454,7 +452,6 @@ def compile_sequence(seq, channels=None):
     Takes a list of control flow and pulses, and returns aligned blocks
     separated into individual abstract channels (wires).
     '''
-    logger = logging.getLogger(__name__)
     logger.debug('')
     logger.debug("In compile_sequence:")
     #Find the set of logical channels used here and initialize them
@@ -558,7 +555,7 @@ def normalize(seq, channels=None):
         blocklen = block.length
         emptyChannels = channels - set(block.pulses.keys())
         for ch in emptyChannels:
-            block.pulses[ch] = Id(ch, length=blocklen)
+            block.pulses[ch] = Id(ch, blocklen)
     return seq
 
 class Waveform(object):
@@ -621,7 +618,6 @@ def schedule(channel, pulse, blockLength, alignment):
     duration is `blockLength`.
         alignment = "left", "right", or "center"
     '''
-    logger = logging.getLogger(__name__)
     # make everything look like a sequence
     if isinstance(pulse, CompositePulse):
         pulses = pulse.pulses
