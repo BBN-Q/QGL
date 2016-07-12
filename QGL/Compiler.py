@@ -224,11 +224,11 @@ def pulses_to_waveforms(physicalWires):
             for pulse in seq:
                 if not isinstance(pulse, Pulse):
                     wireOuts[ch][-1].append(pulse)
-                    logger.debug(" %s", str(pulse))
+                    logger.debug(" %s", pulse)
                 else:
                     wf = Waveform(pulse)
                     wireOuts[ch][-1].append(wf)
-                    logger.debug(" %s", str(wf))
+                    logger.debug(" %s", wf)
     return wireOuts
 
 
@@ -303,8 +303,7 @@ def compile_to_hardware(seqs,
     # all sequences should start with a WAIT for synchronization
     for seq in seqs:
         if not isinstance(seq[0], ControlFlow.Wait):
-            logger.debug("Adding a WAIT - first sequence element was %s",
-                         str(seq[0]))
+            logger.debug("Adding a WAIT - first sequence element was %s", seq[0])
             seq.insert(0, ControlFlow.Wait())
 
     # Add the digitizer trigger to measurements
@@ -348,10 +347,10 @@ def compile_to_hardware(seqs,
             for elem in seq:
                 if isinstance(elem, list):
                     for e2 in elem:
-                        logger.debug(" %s", str(e2))
+                        logger.debug(" %s", e2)
                     logger.debug('')
                 else:
-                    logger.debug(" %s", str(elem))
+                    logger.debug(" %s", elem)
 
     # map logical to physical channels
     physWires = map_logical_to_physical(wireSeqs)
@@ -368,10 +367,10 @@ def compile_to_hardware(seqs,
             for elem in wire:
                 if isinstance(elem, list):
                     for e2 in elem:
-                        logger.debug(" %s", str(e2))
+                        logger.debug(" %s", e2)
                     logger.debug('')
                 else:
-                    logger.debug(" %s", str(elem))
+                    logger.debug(" %s", elem)
 
     # generate wf library (base shapes)
     wfs = generate_waveforms(physWires)
@@ -443,9 +442,9 @@ def compile_sequences(seqs, channels=set(), qgl2=False):
             for elem in seq:
                 if isinstance(elem, list):
                     for e2 in elem:
-                        logger.debug(" %s", str(e2))
+                        logger.debug(" %s", e2)
                 else:
-                    logger.debug(" %s", str(elem))
+                    logger.debug(" %s", elem)
 
     return wireSeqs
 
@@ -468,16 +467,16 @@ def compile_sequence(seq, channels=None):
     # Debugging: what does the sequence look like?
     if logger.isEnabledFor(logging.DEBUG):
         for elem in seq:
-            logger.debug(" %s", str(elem))
+            logger.debug(" %s", elem)
         logger.debug('')
         logger.debug("Channels:")
         for chan in channels:
-            logger.debug(" %s", str(chan))
+            logger.debug(" %s", chan)
 
     logger.debug('')
     logger.debug("Sequence before normalizing:")
     for block in normalize(flatten(seq), channels):
-        logger.debug(" %s", str(block))
+        logger.debug(" %s", block)
         # labels and control flow instructions broadcast to all channels
         if isinstance(block,
                       (BlockLabel.BlockLabel, ControlFlow.ControlInstruction)):
@@ -512,7 +511,7 @@ def compile_sequence(seq, channels=None):
             logger.debug('')
             logger.debug("compile_sequence() return for channel '%s':", chan)
             for elem in wires[chan]:
-                logger.debug(" %s", str(elem))
+                logger.debug(" %s", elem)
     return wires
 
 
@@ -562,11 +561,11 @@ def normalize(seq, channels=None):
             block.pulses[ch] = Id(ch, length=blocklen)
     return seq
 
-
 class Waveform(object):
-    '''
-    IQ LL elements for quadrature mod channels.
-    '''
+    """
+    Simplified channel independent version of a Pulse with a key into waveform library.
+    """
+
 
     def __init__(self, pulse=None):
         if pulse is None:
