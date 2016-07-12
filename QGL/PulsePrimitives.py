@@ -424,8 +424,7 @@ def CNOT(source, target, **kwargs):
     channel = ChannelLibrary.EdgeFactory(source, target)
     channel.pulseParams['piAmp'] = channel.pulseParams['amp']
     p = X(channel, **kwargs)
-    p.label = 'CNOT'
-    return p
+    return p._replace(label="CNOT")
 
 
 def flat_top_gaussian(chan,
