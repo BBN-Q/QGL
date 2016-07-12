@@ -494,19 +494,9 @@ def inject_modulation_cmds(seqs):
     cur_phase = 0
     for ct, seq in enumerate(seqs):
         #check whether we have modulation commands
-        freqs = np.unique(
-            [entry.frequency
-             for entry in filter(lambda s: isinstance(s, Compiler.Waveform),
-                                 seq)])
-        no_freq_cmds = np.allclose(freqs, 0)
-        phases = [entry.phase
-                  for entry in filter(
-                      lambda s: isinstance(s, Compiler.Waveform), seq)]
-        no_phase_cmds = np.allclose(phases, 0)
-        frame_changes = [entry.frameChange
-                         for entry in filter(
-                             lambda s: isinstance(s, Compiler.Waveform), seq)]
-        no_frame_cmds = np.allclose(frame_changes, 0)
+        no_freq_cmds = all(e.frequency == 0.0 for e in seq if isinstance(e, Compiler.Waveform))
+        no_phase_cmds = all(e.phase == 0.0 for e in seq if isinstance(e, Compiler.Waveform))
+        no_frame_cmds = all(e.frameChange == 0.0 for e in seq if isinstance(e, Compiler.Waveform))
         no_modulation_cmds = no_freq_cmds and no_phase_cmds and no_frame_cmds
 
         if no_modulation_cmds:
