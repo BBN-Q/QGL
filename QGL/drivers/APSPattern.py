@@ -22,11 +22,9 @@ import numpy as np
 from warnings import warn
 from itertools import chain
 from future.moves.itertools import zip_longest
-from copy import copy, deepcopy
-from collections import namedtuple
-
 from QGL import Compiler, ControlFlow, BlockLabel, PatternUtils
 from QGL.PatternUtils import hash_pulse, flatten
+from copy import copy, deepcopy
 
 #Some constants
 SAMPLING_RATE = 1.2e9
@@ -69,33 +67,6 @@ def is_compatible_file(filename):
     return False
 
 
-class APSWaveform(
-        namedtuple("APSWaveform", ["label", "key", "amp", "length", "phase",
-                                   "frameChange", "isTimeAmp", "frequency",
-                                   "repeat", "markerDelay1", "markerDelay2"])):
-    """
-    Simplified channel independent version of a Pulse with a key into waveform library.
-    """
-
-    def __new__(cls, waveform):
-        return super(cls, APSWaveform).__new__(
-            cls, waveform.label, waveform.key, waveform.amp, waveform.length,
-            waveform.phase, waveform.frameChange, waveform.isTimeAmp,
-            waveform.frequency, 0, None, None)
-
-    def __str__(self):
-        if self.isTimeAmp:
-            TA = 'HIGH' if self.amp != 0 else 'LOW'
-            return "Waveform-TA(" + TA + ", " + str(self.length) + ")"
-        else:
-            return "Waveform(" + self.label + ", " + str(
-                self.key)[:6] + ", " + str(self.length) + ")"
-
-    @property
-    def isZero(self):
-        return self.amp == 0
-
-
 def preprocess(seqs, shapeLib, T):
     seqs, miniLLrepeat = unroll_loops(seqs)
     for seq in seqs:
@@ -106,10 +77,6 @@ def preprocess(seqs, shapeLib, T):
     compress_sequences(seqs)
     wfLib = build_waveforms(seqs, shapeLib)
     PatternUtils.correct_mixers(wfLib, T)
-    for seq in seqs:
-        for ct in range(len(seq)):
-            if isinstance(seq[ct], Compiler.Waveform):
-                seq[ct] = APSWaveform(seq[ct])
     for ct in range(len(seqs)):
         seqs[ct] = apply_min_pulse_constraints(seqs[ct], wfLib)
     return seqs, miniLLrepeat, wfLib
@@ -124,14 +91,15 @@ def compress_sequences(seqs):
         while ct < len(seq):
             prevEntry = seq[ct - 1]
             curEntry = seq[ct]
-            if isinstance(curEntry, APSWaveform) and curEntry.length == 0:
+            if isinstance(curEntry,
+                          Compiler.Waveform) and curEntry.length == 0:
                 del seq[ct]
-            elif isinstance(prevEntry, APSWaveform) and \
-                    isinstance(curEntry, APSWaveform) and \
-                    prevEntry.isTimeAmp and curEntry.isTimeAmp and \
-                    prevEntry.amp == curEntry.amp and \
-                    prevEntry.phase == curEntry.phase:
-                seq[ct-1] = prevEntry._replace(length = prevEntry.length + curEntry.length, frameChange=prevEntry.frameChange + curEntry.frameChange)
+            elif isinstance(prevEntry, Compiler.Waveform) and isinstance(curEntry, Compiler.Waveform) and \
+               prevEntry.isTimeAmp and curEntry.isTimeAmp and \
+               prevEntry.amp == curEntry.amp and \
+               prevEntry.phase == curEntry.phase:
+                prevEntry.length += curEntry.length
+                prevEntry.frameChange += curEntry.frameChange
                 del seq[ct]
             ct += 1
 
@@ -152,7 +120,7 @@ def build_waveforms(seqs, shapeLib):
 
 def wf_sig(wf):
     '''
-	Compute a signature of a APSWaveform that identifies the relevant properties for
+	Compute a signature of a Compiler.Waveform that identifies the relevant properties for
 	two Waveforms to be considered "equal" in the waveform library. For example, we ignore
 	length of TA waveforms.
 	'''
@@ -169,11 +137,11 @@ TAZKey = hash_pulse(TAZShape)
 
 
 def padding_entry(length):
-    wf = Compiler.Waveform()
-    wf.length = length
-    wf.key = TAZKey
-    wf.isTimeAmp = True
-    return APSWaveform(wf)
+    entry = Compiler.Waveform()
+    entry.length = length
+    entry.key = TAZKey
+    entry.isTimeAmp = True
+    return entry
 
 
 def apply_min_pulse_constraints(miniLL, wfLib):
@@ -186,8 +154,9 @@ def apply_min_pulse_constraints(miniLL, wfLib):
     entryct = 0
     while entryct < len(miniLL):
         curEntry = miniLL[entryct]
-        if not isinstance(curEntry, APSWaveform) or \
-                curEntry.length >= MIN_ENTRY_LENGTH:
+        if not isinstance(
+                curEntry,
+                Compiler.Waveform) or curEntry.length >= MIN_ENTRY_LENGTH:
             newMiniLL.append(curEntry)
             entryct += 1
             continue
@@ -202,61 +171,69 @@ def apply_min_pulse_constraints(miniLL, wfLib):
         # For short TA pairs we see if we can add them to the next waveform
         if curEntry.isZero and not nextEntry.isZero:
             # Concatenate the waveforms
-            import ipdb; ipdb.set_trace()
             paddedWF = np.hstack((np.zeros(curEntry.length,
                                            dtype=np.complex),
                                   wfLib[wf_sig(nextEntry)]))
             # Generate a new key
-            newMiniLL.append(nextEntry._replace(key=hash_pulse(paddedWF), length=paddedWF.size, isTimeAmp=False))
-            wfLib[wf_sig(newMiniLL[-1])] = paddedWF
+            nextEntry.key = hash_pulse(paddedWF)
+            nextEntry.length = paddedWF.size
+            wfLib[wf_sig(nextEntry)] = paddedWF
+            newMiniLL.append(nextEntry)
             entryct += 2
 
         # For short pulses we see if we can steal some padding from the previous or next entry
-        elif isinstance(previousEntry, APSWaveform) and \
-                previousEntry.isZero and \
-                previousEntry.length > 2 * MIN_ENTRY_LENGTH:
+        elif isinstance(
+                previousEntry, Compiler.
+                Waveform) and previousEntry.isZero and previousEntry.length > 2 * MIN_ENTRY_LENGTH:
             padLength = MIN_ENTRY_LENGTH - curEntry.length
-            newMiniLL[-1] = newMiniLL[-1]._replace(length=newMiniLL[-1].length - padLength)
-
+            newMiniLL[-1].length -= padLength
             # Concatenate the waveforms
             if curEntry.isZero:
-                newMiniLL[-1].append(curEntry._replace(length=curEntry.length + padLength))
+                curEntry.length += padLength
                 entryct += 1
+                curEntry.isTimeAmp = True
                 continue
             elif curEntry.isTimeAmp:  # non-zero
                 paddedWF = np.hstack(
                     (np.zeros(padLength, dtype=np.complex),
                      wfLib[wf_sig(curEntry)] * np.ones(curEntry.length)))
+                curEntry.isTimeAmp = False
             else:
                 paddedWF = np.hstack((np.zeros(padLength,
                                                dtype=np.complex),
                                       wfLib[wf_sig(curEntry)]))
-            # Generate a new entry
-            newMiniLL.append(nextEntry._replace(key=hash_pulse(paddedWF), length=paddedWF.size, isTimeAmp=False))
-            wfLib[wf_sig(newMiniLL[-1])] = paddedWF
+            # Generate a new key
+            curEntry.key = hash_pulse(paddedWF)
+            curEntry.length = paddedWF.size
+            wfLib[wf_sig(curEntry)] = paddedWF
+            newMiniLL.append(curEntry)
             entryct += 1
 
-        elif isinstance(nextEntry, APSWaveform) and \
-                nextEntry.isZero and \
-                nextEntry.length > 2 * MIN_ENTRY_LENGTH:
+        elif isinstance(
+                nextEntry, Compiler.
+                Waveform) and nextEntry.isZero and nextEntry.length > 2 * MIN_ENTRY_LENGTH:
             padLength = MIN_ENTRY_LENGTH - curEntry.length
-            miniLL[entryct + 1] = nextEntry._replace(length=nextEntry.length - padLength)
+            nextEntry.length -= padLength
             # Concatenate the waveforms
             if curEntry.isZero:
-                newMiniLL[-1].append(curEntry._replace(length=curEntry.length + padLength))
+                curEntry.length += padLength
                 entryct += 1
+                curEntry.isTimeAmp = True
                 continue
             elif curEntry.isTimeAmp:  #non-zero
                 paddedWF = np.hstack(
                     (wfLib[curEntry.key] * np.ones(curEntry.length),
                      np.zeros(padLength, dtype=np.complex)))
+                curEntry.isTimeAmp = False
             else:
                 paddedWF = np.hstack((wfLib[curEntry.key],
                                       np.zeros(padLength,
                                                dtype=np.complex)))
-            # Generate a new entry
-            newMiniLL.append(nextEntry._replace(key=hash_pulse(paddedWF), length=paddedWF.size, isTimeAmp=False))
-            wfLib[wf_sig(newMiniLL[-1])] = paddedWF
+            # Generate a new key
+            curEntry.key = hash_pulse(paddedWF)
+            curEntry.length = paddedWF.size
+            wfLib[wf_sig(curEntry)] = paddedWF
+            newMiniLL.append(curEntry)
             entryct += 1
 
         else:
@@ -298,14 +275,14 @@ def create_wf_vector(wfLib):
 
 def calc_marker_delay(entry):
     #The firmware cannot handle 0 delay markers so push out one clock cycle
-    if entry.markerDelay1 is not None:
+    if hasattr(entry, 'markerDelay1') and entry.markerDelay1 is not None:
         if entry.markerDelay1 < ADDRESS_UNIT:
             entry.markerDelay1 = ADDRESS_UNIT
         markerDelay1 = entry.markerDelay1 // ADDRESS_UNIT
     else:
         markerDelay1 = 0
 
-    if entry.markerDelay2 is not None:
+    if hasattr(entry, 'markerDelay2') and entry.markerDelay2 is not None:
         if entry.markerDelay2 < ADDRESS_UNIT:
             entry.markerDelay2 = ADDRESS_UNIT
         markerDelay2 = entry.markerDelay2 // ADDRESS_UNIT
@@ -531,8 +508,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
             #   1) control-flow instruction or label (i.e. not a waveform)
             #   2) the trigger count is too long
             #   3) the previous trigger pulse entends into the current entry
-            import ipdb; ipdb.set_trace()
-            while (not isinstance(miniLL_IQ[curIQIdx], APSWaveform) or
+            while (not isinstance(miniLL_IQ[curIQIdx], Compiler.Waveform) or
                    (switchPt - timePts[curIQIdx]) >
                    (ADDRESS_UNIT * MAX_TRIGGER_COUNT) or len(trigQueue) > 1):
                 # update the trigger queue, dropping triggers that have played
@@ -553,7 +529,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
                 #See if the previous entry was a TA pair and whether we can split it
                 needToShift = switchPt - timePts[curIQIdx - 1]
                 assert needToShift > MIN_ENTRY_LENGTH + ADDRESS_UNIT, "Sequential marker blips too close together."
-                if isinstance(miniLL_IQ[curIQIdx-1], APSWaveform) and \
+                if isinstance(miniLL_IQ[curIQIdx-1], Compiler.Waveform) and \
                  miniLL_IQ[curIQIdx-1].isTimeAmp and \
                  miniLL_IQ[curIQIdx-1].length > (needToShift + MIN_ENTRY_LENGTH):
 
@@ -588,6 +564,14 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
                 else:
                     pad = MIN_ENTRY_LENGTH
                 miniLL_IQ.append(padding_entry(pad))
+
+    #Replace any remaining empty entries with None
+    for miniLL_IQ in IQLL:
+        for entry in miniLL_IQ:
+            if isinstance(entry, Compiler.Waveform) and not hasattr(
+                    entry, markerAttr):
+                setattr(entry, markerAttr, None)
+
 
 def unroll_loops(LLs):
     '''
