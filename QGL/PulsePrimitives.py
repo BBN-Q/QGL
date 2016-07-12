@@ -34,16 +34,18 @@ def overrideDefaults(chan, updateParams):
 
 
 def _memoize(pulseFunc):
-    ''' Decorator for caching pulses to keep waveform memory usage down. '''
+    """ Decorator for caching pulses to keep waveform memory usage down. """
+    # namespacce the cache so we can access (and reset) from elsewhere
     _memoize.cache = {}
 
     @wraps(pulseFunc)
     def cacheWrap(*args, **kwargs):
         if kwargs:
             return pulseFunc(*args, **kwargs)
-        if args not in _memoize.cache:
-            _memoize.cache[args] = pulseFunc(*args)
-        return _memoize.cache[args]
+        key = (pulseFunc, args)
+        if key not in _memoize.cache:
+            _memoize.cache[key] = pulseFunc(*args)
+        return _memoize.cache[key]
 
     return cacheWrap
 
