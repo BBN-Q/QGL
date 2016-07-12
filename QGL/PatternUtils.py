@@ -101,6 +101,13 @@ def add_gate_pulses(seqs):
 def has_gate(channel):
     return hasattr(channel, 'gateChan') and channel.gateChan
 
+def update_pulse_length(pulse, new_length):
+    """Return new Pulse with modified length"""
+    #copy shape parameter dictionary to avoid updating other copies
+    assert new_length > 0
+    new_params = copy(pulse.shapeParams)
+    new_params["length"] = new_length
+    return pulse._replace(shapeParams=new_params)
 
 def apply_gating_constraints(chan, linkList):
     # get channel parameters in samples
@@ -137,10 +144,7 @@ def apply_gating_constraints(chan, linkList):
 
             # matching entry types can be globbed together
             if previousEntry.isZero == entry.isZero:
-                new_params = previousEntry.shapeParams
-                new_params["length"] = previousEntry.length + entry.length
-                miniLL[ct-1] = previousEntry._replace(shapeParams=new_params)
-
+                miniLL[ct-1] = update_pulse_length(previousEntry, previousEntry.length + entry.length)
             else:
                 gateSeq.append(previousEntry)
                 previousEntry = entry
@@ -152,16 +156,11 @@ def apply_gating_constraints(chan, linkList):
         # second pass expands non-zeros by gateBuffer
         for ct in range(len(gateSeq)):
             if isNonZeroWaveform(gateSeq[ct]):
-                new_params = gateSeq[ct].shapeParams
-                new_params["length"] = gateSeq[ct].length + gateBuffer
-                gateSeq[ct] = gateSeq[ct]._replace(shapeParams=new_params)
+                gateSeq[ct] = update_pulse_length(gateSeq[ct], gateSeq[ct].length + gateBuffer)
 
                 # contract the next pulse by the same amount
                 if ct + 1 < len(gateSeq) - 1 and isinstance(gateSeq[ct + 1], Pulse):
-                    new_params = gateSeq[ct+1].shapeParams
-                    new_params["length"] = gateSeq[ct+1].length - gateBuffer
-                    assert new_params["length"] > 0
-                    gateSeq[ct+1] = gateSeq[ct+1]._replace(shapeParams=new_params)
+                    gateSeq[ct+1] = update_pulse_length(gateSeq[ct+1], gateSeq[ct+1].length - gateBuffer)
 
         # third pass ensures gateMinWidth
         ct = 0
@@ -170,9 +169,7 @@ def apply_gating_constraints(chan, linkList):
             if [isNonZeroWaveform(x) for x in gateSeq[ct:ct+3]] == [True, False, True] and \
                 gateSeq[ct+1].length < gateMinWidth and \
                 [isinstance(x, Pulse) for x in gateSeq[ct:ct+3]] == [True, True, True]:
-                new_params = gateSeq[ct].shapeParams
-                new_params["length"] = gateSeq[ct + 1].length + gateSeq[ct + 2].length
-                gateSeq[ct] = gateSeq[ct]._replace(shapeParams=new_params)
+                gateSeq[ct] = update_pulse_length(gateSeq[ct], gateSeq[ct + 1].length + gateSeq[ct + 2].length)
                 del gateSeq[ct + 1:ct + 3]
             else:
                 ct += 1
