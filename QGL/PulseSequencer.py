@@ -244,7 +244,7 @@ class PulseBlock(object):
     #The maximum length for any channel on this block
     @property
     def length(self):
-        return max([p.length for p in self.pulses.values()])
+        return max(p.length for p in self.pulses.values())
 
 
 def align(pulseBlock, mode="center"):
