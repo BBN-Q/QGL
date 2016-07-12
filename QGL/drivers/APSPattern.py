@@ -94,6 +94,14 @@ class APSWaveform(object):
             return "APSWaveform(" + self.label + ", " + str(
                 self.key)[:6] + ", " + str(self.length) + ")"
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.__dict__ == other.__dict__
+        return False
+
+    def __ne__(self, other):
+        return not self == other
+
     @property
     def isZero(self):
         return self.amp == 0
