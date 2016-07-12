@@ -29,6 +29,7 @@ from . import PatternUtils
 from .PatternUtils import flatten
 from . import Channels
 from . import ChannelLibrary
+from . import PulseShapes
 from .PulsePrimitives import Id
 from .PulseSequencer import Pulse, PulseBlock, CompositePulse
 from . import ControlFlow
@@ -89,35 +90,42 @@ def merge_channels(wires, channels):
             elif len(nonZeroEntries) == 1:
                 segment.append(nonZeroEntries[0])
                 continue
-            newentry = copy(entries[0])
-            # TODO properly deal with constant pulses
-            newentry.amp = 1.0
-            newentry.isTimeAmp = all([e.isTimeAmp for e in entries])
+
+            # create a new Pulse object for the merged pulse
 
             # If there is a non-zero SSB frequency copy it to the new entry
             nonZeroSSBChan = np.nonzero(
                 [e.amp * e.frequency for e in entries])[0]
-            assert len(
-                nonZeroSSBChan) <= 1, "Unable to handle merging more than one non-zero entry with non-zero frequency."
+            assert len(nonZeroSSBChan) <= 1, \
+                "Unable to handle merging more than one non-zero entry with non-zero frequency."
             if nonZeroSSBChan:
-                newentry.frequency = entries[nonZeroSSBChan[0]].frequency
+                frequency = entries[nonZeroSSBChan[0]].frequency
+            else:
+                frequency = 0.0
 
-            newentry.phase = 0
+            if all([(e.shapeParams['shapeFun'] == PulseShapes.constant or
+                    e.shapeParams['shapeFun'] == PulseShapes.square) for e in entries]):
+                phasor = np.sum([e.amp * np.exp(1j * e.phase) for e in entries])
+                amp = np.abs(phasor)
+                phase = np.angle(phasor)
+                shapeFun = PulseShapes.constant
+            else:
+                amp = 1.0
+                phase = 0.0
+                pulsesHash = tuple([(e.hashshape(), e.amp, e.phase) for e in entries])
+                if pulsesHash not in shapeFunLib:
+                    # create closure to sum waveforms
+                    def sum_shapes(entries=entries, **kwargs):
+                        return reduce(operator.add,
+                            [e.amp * np.exp(1j * e.phase) * e.shape for e in entries])
 
-            pulsesHash = tuple(
-                [(e.hashshape(), e.amp, e.phase) for e in entries])
-            if pulsesHash not in shapeFunLib:
-                # create closure to sum waveforms
-                def sum_shapes(entries=entries, **kwargs):
-                    return reduce(operator.add,
-                                  [e.amp * np.exp(1j * e.phase) * e.shape
-                                   for e in entries])
+                    shapeFunLib[pulsesHash] = sum_shapes
+                shapeFun = shapeFunLib[pulsesHash]
 
-                shapeFunLib[pulsesHash] = sum_shapes
-            newentry.shapeParams = {'shapeFun': shapeFunLib[pulsesHash],
-                                    'length': blocklength}
-            newentry.label = "*".join([e.label for e in entries])
-            segment.append(newentry)
+            shapeParams = {"shapeFun": shapeFun, "length": blocklength}
+
+            label = "*".join([e.label for e in entries])
+            segment.append(Pulse(label, entries[0].channel, shapeParams, amp, phase))
 
     return mergedWire
 
@@ -136,9 +144,8 @@ def pull_uniform_entries(entries, entryIterators):
     The function returns the resulting block length.
     '''
     numChan = len(entries)
-    iterDone = [
-        False
-    ] * numChan  #keep track of how many entry iterators are used up
+    #keep track of how many entry iterators are used up
+    iterDone = [ False ] * numChan
     ct = 0
     while True:
         #If we've used up all the entries on all the channels we're done
@@ -166,9 +173,14 @@ def pull_uniform_entries(entries, entryIterators):
 
 
 def concatenate_entries(entry1, entry2):
-    newentry = copy(entry1)
     # TA waveforms with the same amplitude can be merged with a just length update
     # otherwise, need to concatenate the pulse shapes
+    shapeParams = copy(entry1.shapeParams)
+    shapeParams["length"] = entry1.length + entry2.length
+    label = entry1.label
+    amp = entry1.amp
+    phase = entry1.phase
+    frameChange = entry1.frameChange + entry2.frameChange
     if not (entry1.isTimeAmp and entry2.isTimeAmp and entry1.amp == entry2.amp
             and entry1.phase == (entry1.frameChange + entry2.phase)):
         # otherwise, need to build a closure to stack them
@@ -178,14 +190,12 @@ def concatenate_entries(entry1, entry2):
                 entry2.amp * np.exp(1j * (entry1.frameChange + entry2.phase)) *
                 entry2.shape))
 
-        newentry.isTimeAmp = False
-        newentry.shapeParams = {'shapeFun': stack_shapes}
-        newentry.label = entry1.label + '+' + entry2.label
-    newentry.frameChange += entry2.frameChange
-    newentry.length = entry1.length + entry2.length
-    newentry.amp = 1.0
+        shapeParams['shapeFun'] = stack_shapes
+        label = entry1.label + '+' + entry2.label
+        amp = 1.0
+        phase = 0.0
 
-    return newentry
+    return Pulse(label, entry1.channel, shapeParams, amp, phase, frameChange)
 
 
 def generate_waveforms(physicalWires):
