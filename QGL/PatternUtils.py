@@ -145,7 +145,7 @@ def apply_gating_constraints(chan, linkList):
 
             # matching entry types can be globbed together
             if previousEntry.isZero == entry.isZero:
-                miniLL[ct-1] = update_pulse_length(previousEntry, previousEntry.length + entry.length)
+                previousEntry = update_pulse_length(previousEntry, previousEntry.length + entry.length)
             else:
                 gateSeq.append(previousEntry)
                 previousEntry = entry
@@ -174,7 +174,6 @@ def apply_gating_constraints(chan, linkList):
                 del gateSeq[ct + 1:ct + 3]
             else:
                 ct += 1
-
         gateSeqs.append(gateSeq)
 
     return gateSeqs
