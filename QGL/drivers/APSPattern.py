@@ -66,14 +66,48 @@ def is_compatible_file(filename):
             return True
     return False
 
+class APSWaveform(object):
+    """
+    More specific APS version of a waveform
+    """
+    def __init__(self, waveform):
+        self.label        = waveform.label
+        self.key          = waveform.key
+        self.amp          = waveform.amp
+        self.length       = PatternUtils.convert_length_to_samples(waveform.length, SAMPLING_RATE, ADDRESS_UNIT)
+        self.phase        = waveform.phase
+        self.frameChange  = waveform.frameChange
+        self.isTimeAmp    = waveform.isTimeAmp
+        self.frequency    = waveform.frequency
+        self.repeat       = 1
+        self.markerDelay1 = None
+        self.markerDelay2 = None
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        if self.isTimeAmp:
+            TA = 'HIGH' if self.amp != 0 else 'LOW'
+            return "APSWaveform-TA(" + TA + ", " + str(self.length) + ")"
+        else:
+            return "APSWaveform(" + self.label + ", " + str(
+                self.key)[:6] + ", " + str(self.length) + ")"
+
+    @property
+    def isZero(self):
+        return self.amp == 0
+
 
 def preprocess(seqs, shapeLib, T):
+    for seq in seqs:
+        for ct,e in enumerate(seq):
+            if isinstance(e, Compiler.Waveform):
+                seq[ct] = APSWaveform(e)
     seqs, miniLLrepeat = unroll_loops(seqs)
     for seq in seqs:
-        PatternUtils.propagate_frame_changes(seq)
-    seqs = PatternUtils.convert_lengths_to_samples(seqs, SAMPLING_RATE,
-                                                   ADDRESS_UNIT)
-    PatternUtils.quantize_phase(seqs, 1.0 / 2**13)
+        PatternUtils.propagate_frame_changes(seq, wf_type=APSWaveform)
+    PatternUtils.quantize_phase(seqs, 1.0 / 2**13, wf_type=APSWaveform)
     compress_sequences(seqs)
     wfLib = build_waveforms(seqs, shapeLib)
     PatternUtils.correct_mixers(wfLib, T)
@@ -91,10 +125,9 @@ def compress_sequences(seqs):
         while ct < len(seq):
             prevEntry = seq[ct - 1]
             curEntry = seq[ct]
-            if isinstance(curEntry,
-                          Compiler.Waveform) and curEntry.length == 0:
+            if isinstance(curEntry, APSWaveform) and curEntry.length == 0:
                 del seq[ct]
-            elif isinstance(prevEntry, Compiler.Waveform) and isinstance(curEntry, Compiler.Waveform) and \
+            elif isinstance(prevEntry, APSWaveform) and isinstance(curEntry, APSWaveform) and \
                prevEntry.isTimeAmp and curEntry.isTimeAmp and \
                prevEntry.amp == curEntry.amp and \
                prevEntry.phase == curEntry.phase:
@@ -108,7 +141,7 @@ def build_waveforms(seqs, shapeLib):
     # apply amplitude, phase, and modulation and add the resulting waveforms to the library
     wfLib = {wf_sig(padding_entry(0)): TAZShape}
     for wf in flatten(seqs):
-        if isinstance(wf, Compiler.Waveform) and wf_sig(wf) not in wfLib:
+        if isinstance(wf, APSWaveform) and wf_sig(wf) not in wfLib:
             shape = np.exp(1j * wf.phase) * wf.amp * shapeLib[wf.key]
             if wf.frequency != 0 and wf.amp != 0:
                 shape *= np.exp(
@@ -124,8 +157,8 @@ def wf_sig(wf):
 	two Waveforms to be considered "equal" in the waveform library. For example, we ignore
 	length of TA waveforms.
 	'''
-    if wf.isZero or (wf.isTimeAmp and wf.frequency == 0
-                     ):  # 2nd condition necessary until we support RT SSB
+    # 2nd condition necessary until we support RT SSB
+    if wf.isZero or (wf.isTimeAmp and wf.frequency == 0 ):
         return (wf.amp, wf.phase)
     else:
         return (wf.key, wf.amp, round(wf.phase * 2**13), wf.length,
@@ -138,10 +171,10 @@ TAZKey = hash_pulse(TAZShape)
 
 def padding_entry(length):
     entry = Compiler.Waveform()
-    entry.length = length
+    entry.length = length / SAMPLING_RATE
     entry.key = TAZKey
     entry.isTimeAmp = True
-    return entry
+    return APSWaveform(entry)
 
 
 def apply_min_pulse_constraints(miniLL, wfLib):
@@ -154,9 +187,8 @@ def apply_min_pulse_constraints(miniLL, wfLib):
     entryct = 0
     while entryct < len(miniLL):
         curEntry = miniLL[entryct]
-        if not isinstance(
-                curEntry,
-                Compiler.Waveform) or curEntry.length >= MIN_ENTRY_LENGTH:
+        if not isinstance(curEntry, APSWaveform) or \
+                curEntry.length >= MIN_ENTRY_LENGTH:
             newMiniLL.append(curEntry)
             entryct += 1
             continue
@@ -182,9 +214,9 @@ def apply_min_pulse_constraints(miniLL, wfLib):
             entryct += 2
 
         # For short pulses we see if we can steal some padding from the previous or next entry
-        elif isinstance(
-                previousEntry, Compiler.
-                Waveform) and previousEntry.isZero and previousEntry.length > 2 * MIN_ENTRY_LENGTH:
+        elif isinstance(previousEntry, APSWaveform) and \
+                previousEntry.isZero and \
+                previousEntry.length > 2 * MIN_ENTRY_LENGTH:
             padLength = MIN_ENTRY_LENGTH - curEntry.length
             newMiniLL[-1].length -= padLength
             # Concatenate the waveforms
@@ -209,9 +241,9 @@ def apply_min_pulse_constraints(miniLL, wfLib):
             newMiniLL.append(curEntry)
             entryct += 1
 
-        elif isinstance(
-                nextEntry, Compiler.
-                Waveform) and nextEntry.isZero and nextEntry.length > 2 * MIN_ENTRY_LENGTH:
+        elif isinstance(nextEntry, APSWaveform) and \
+                nextEntry.isZero and \
+                nextEntry.length > 2 * MIN_ENTRY_LENGTH:
             padLength = MIN_ENTRY_LENGTH - curEntry.length
             nextEntry.length -= padLength
             # Concatenate the waveforms
@@ -275,14 +307,14 @@ def create_wf_vector(wfLib):
 
 def calc_marker_delay(entry):
     #The firmware cannot handle 0 delay markers so push out one clock cycle
-    if hasattr(entry, 'markerDelay1') and entry.markerDelay1 is not None:
+    if entry.markerDelay1 is not None:
         if entry.markerDelay1 < ADDRESS_UNIT:
             entry.markerDelay1 = ADDRESS_UNIT
         markerDelay1 = entry.markerDelay1 // ADDRESS_UNIT
     else:
         markerDelay1 = 0
 
-    if hasattr(entry, 'markerDelay2') and entry.markerDelay2 is not None:
+    if entry.markerDelay2 is not None:
         if entry.markerDelay2 < ADDRESS_UNIT:
             entry.markerDelay2 = ADDRESS_UNIT
         markerDelay2 = entry.markerDelay2 // ADDRESS_UNIT
@@ -383,16 +415,12 @@ def create_LL_data(LLs, offsets, AWGName=''):
                     warn("skipping instruction {0}".format(entry))
             else:  # waveform instructions
                 t1, t2 = calc_marker_delay(entry)
-                if hasattr(entry, 'repeat'):
-                    repeat = entry.repeat - 1
-                else:
-                    repeat = 0
                 instr = Instruction(addr=offsets[wf_sig(entry)] //
                                     ADDRESS_UNIT,
                                     count=entry.length // ADDRESS_UNIT - 1,
                                     trig1=t1,
                                     trig2=t2,
-                                    repeat=repeat)
+                                    repeat=entry.repeat - 1)
                 # set flags
                 instr.TAPair = entry.isTimeAmp or entry.isZero
                 instr.wait = waitFlag
@@ -412,7 +440,6 @@ def create_LL_data(LLs, offsets, AWGName=''):
         LLData['trigger1'][ct] = instructions[ct].trig1
         LLData['trigger2'][ct] = instructions[ct].trig2
         LLData['repeat'][ct] = instructions[ct].repeat
-
     #Check streaming requirements
     if numEntries > MAX_LL_ENTRIES:
         print('Streaming will be necessary for {}'.format(AWGName))
@@ -444,7 +471,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 
     for seq in markerLL:
         PatternUtils.convert_lengths_to_samples(seq, SAMPLING_RATE,
-                                                ADDRESS_UNIT)
+                                                ADDRESS_UNIT, Compiler.Waveform)
 
     markerAttr = 'markerDelay' + str(markerNum)
 
@@ -508,7 +535,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
             #   1) control-flow instruction or label (i.e. not a waveform)
             #   2) the trigger count is too long
             #   3) the previous trigger pulse entends into the current entry
-            while (not isinstance(miniLL_IQ[curIQIdx], Compiler.Waveform) or
+            while (not isinstance(miniLL_IQ[curIQIdx], APSWaveform) or
                    (switchPt - timePts[curIQIdx]) >
                    (ADDRESS_UNIT * MAX_TRIGGER_COUNT) or len(trigQueue) > 1):
                 # update the trigger queue, dropping triggers that have played
@@ -529,7 +556,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
                 #See if the previous entry was a TA pair and whether we can split it
                 needToShift = switchPt - timePts[curIQIdx - 1]
                 assert needToShift > MIN_ENTRY_LENGTH + ADDRESS_UNIT, "Sequential marker blips too close together."
-                if isinstance(miniLL_IQ[curIQIdx-1], Compiler.Waveform) and \
+                if isinstance(miniLL_IQ[curIQIdx-1], APSWaveform) and \
                  miniLL_IQ[curIQIdx-1].isTimeAmp and \
                  miniLL_IQ[curIQIdx-1].length > (needToShift + MIN_ENTRY_LENGTH):
 
@@ -564,13 +591,6 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
                 else:
                     pad = MIN_ENTRY_LENGTH
                 miniLL_IQ.append(padding_entry(pad))
-
-    #Replace any remaining empty entries with None
-    for miniLL_IQ in IQLL:
-        for entry in miniLL_IQ:
-            if isinstance(entry, Compiler.Waveform) and not hasattr(
-                    entry, markerAttr):
-                setattr(entry, markerAttr, None)
 
 
 def unroll_loops(LLs):
@@ -650,7 +670,6 @@ def write_sequence_file(awgData, fileName, miniLLRepeat=1):
     merge_APS_markerData(LLs12, awgData['ch2m1']['linkList'], 2)
     merge_APS_markerData(LLs34, awgData['ch3m1']['linkList'], 1)
     merge_APS_markerData(LLs34, awgData['ch4m1']['linkList'], 2)
-
     #Open the HDF5 file
     if os.path.isfile(fileName):
         os.remove(fileName)

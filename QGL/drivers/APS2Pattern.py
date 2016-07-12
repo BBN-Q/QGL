@@ -394,7 +394,7 @@ def NoOp():
 
 def preprocess(seqs, shapeLib):
     seqs = PatternUtils.convert_lengths_to_samples(seqs, SAMPLING_RATE,
-                                                   ADDRESS_UNIT)
+                                                   ADDRESS_UNIT, Compiler.Waveform)
     wfLib = build_waveforms(seqs, shapeLib)
     inject_modulation_cmds(seqs)
     return seqs, wfLib
@@ -887,7 +887,7 @@ def write_sequence_file(awgData, fileName):
     for field in ['ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']:
         if 'linkList' in awgData[field].keys():
             PatternUtils.convert_lengths_to_samples(awgData[field]['linkList'],
-                                                    SAMPLING_RATE)
+                                                    SAMPLING_RATE, 1, Compiler.Waveform)
             compress_marker(awgData[field]['linkList'])
         else:
             awgData[field]['linkList'] = []

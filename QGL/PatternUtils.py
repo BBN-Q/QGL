@@ -24,7 +24,6 @@ from .PulseSequencer import Pulse, TAPulse, PulseBlock, CompositePulse
 from .PulsePrimitives import BLANK
 from . import ControlFlow
 from . import BlockLabel
-import QGL.Compiler
 
 def hash_pulse(shape):
     return hashlib.sha1(shape.tostring()).hexdigest()
@@ -239,13 +238,13 @@ def add_slave_trigger(seqs, slaveChan):
                 ct += 1
 
 
-def propagate_frame_changes(seq):
+def propagate_frame_changes(seq, wf_type):
     '''
     Propagates all frame changes through sequence
     '''
     frame = 0
     for entry in seq:
-        if not isinstance(entry, QGL.Compiler.Waveform):
+        if not isinstance(entry, wf_type):
             continue
         entry.phase = np.mod(frame + entry.phase, 2 * pi)
         frame += entry.frameChange + (-2 * np.pi * entry.frequency *
@@ -254,26 +253,30 @@ def propagate_frame_changes(seq):
     return seq
 
 
-def quantize_phase(seqs, precision):
+def quantize_phase(seqs, precision, wf_type):
     '''
     Quantizes waveform phases with given precision (in radians).
     '''
     for entry in flatten(seqs):
-        if not isinstance(entry, QGL.Compiler.Waveform):
+        if not isinstance(entry, wf_type):
             continue
         phase = np.mod(entry.phase, 2 * np.pi)
         entry.phase = precision * round(phase / precision)
     return seqs
 
 
-def convert_lengths_to_samples(instructions, samplingRate, quantization=1):
+def convert_lengths_to_samples(instructions, samplingRate, quantization=1, wf_type=None):
     for entry in flatten(instructions):
-        if isinstance(entry, QGL.Compiler.Waveform):
+        if isinstance(entry, wf_type):
             entry.length = int(round(entry.length * samplingRate))
             # TODO: warn when truncating?
             entry.length -= entry.length % quantization
     return instructions
 
+def convert_length_to_samples(wf_length, sampling_rate, quantization=1):
+    num_samples = int(round(wf_length * sampling_rate))
+    num_samples -= num_samples % quantization
+    return num_samples
 
 # from Stack Overflow: http://stackoverflow.com/questions/2158395/flatten-an-irregular-list-of-lists-in-python/2158532#2158532
 def flatten(l):
