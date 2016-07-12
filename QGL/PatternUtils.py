@@ -15,15 +15,16 @@ limitations under the License.
 '''
 import numpy as np
 from warnings import warn
+from math import pi
+import hashlib, collections
+import pickle
+from copy import copy
+
 from .PulseSequencer import Pulse, TAPulse, PulseBlock, CompositePulse
 from .PulsePrimitives import BLANK
 from . import ControlFlow
 from . import BlockLabel
 import QGL.Compiler
-from math import pi
-import hashlib, collections
-import pickle
-
 
 def hash_pulse(shape):
     return hashlib.sha1(shape.tostring()).hexdigest()
