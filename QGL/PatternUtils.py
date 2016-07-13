@@ -24,6 +24,7 @@ from .PulseSequencer import Pulse, TAPulse, PulseBlock, CompositePulse
 from .PulsePrimitives import BLANK
 from . import ControlFlow
 from . import BlockLabel
+import QGL.drivers
 
 def hash_pulse(shape):
     return hashlib.sha1(shape.tostring()).hexdigest()
