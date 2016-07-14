@@ -484,13 +484,11 @@ class ModulationCommand(object):
         instr.writeFlag = write_flag
         return instr
 
-
 def inject_modulation_cmds(seqs):
-    """
+	"""
 	Inject modulation commands from phase, frequency and frameChange of waveforms
 	in an IQ waveform sequence. Assume single NCO for now.
 	"""
-
 	cur_freq = 0
 	cur_phase = 0
 	for ct,seq in enumerate(seqs):
