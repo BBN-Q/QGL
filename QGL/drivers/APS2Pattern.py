@@ -484,80 +484,89 @@ class ModulationCommand(object):
         instr.writeFlag = write_flag
         return instr
 
-
 def inject_modulation_cmds(seqs):
-    """
+	"""
 	Inject modulation commands from phase, frequency and frameChange of waveforms
 	in an IQ waveform sequence. Assume single NCO for now.
 	"""
-    cur_freq = 0
-    cur_phase = 0
-    for ct, seq in enumerate(seqs):
-        #check whether we have modulation commands
-        no_freq_cmds = all(e.frequency == 0.0 for e in seq
-                           if isinstance(e, Compiler.Waveform))
-        no_phase_cmds = all(e.phase == 0.0 for e in seq
-                            if isinstance(e, Compiler.Waveform))
-        no_frame_cmds = all(e.frameChange == 0.0 for e in seq
-                            if isinstance(e, Compiler.Waveform))
-        no_modulation_cmds = no_freq_cmds and no_phase_cmds and no_frame_cmds
+	cur_freq = 0
+	cur_phase = 0
+	for ct,seq in enumerate(seqs):
+		#check whether we have modulation commands
+		freqs = np.unique([entry.frequency for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)])
+		no_freq_cmds = np.allclose(freqs, 0)
+		phases = [entry.phase for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
+		no_phase_cmds = np.allclose(phases, 0)
+		frame_changes = [entry.frameChange for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
+		no_frame_cmds = np.allclose(frame_changes, 0)
+		no_modulation_cmds = no_freq_cmds and no_phase_cmds and no_frame_cmds
 
-        if no_modulation_cmds:
-            continue
+		if no_modulation_cmds:
+			continue
 
-        mod_seq = []
+		mod_seq = []
+		pending_frame_update = False
 
-        for entry in seq:
+		for entry in seq:
 
-            #copies to avoid same object having different timestamps later
-            #copy through BlockLabel
-            if isinstance(entry, BlockLabel.BlockLabel):
-                mod_seq.append(copy(entry))
-            #mostly copy through control-flow
-            elif isinstance(entry, ControlFlow.ControlInstruction):
-                #heuristic to insert phase reset before trigger if we have modulation commands
-                if isinstance(entry, ControlFlow.Wait):
-                    if not (no_modulation_cmds and (cur_freq == 0) and
-                            (cur_phase == 0)):
-                        mod_seq.append(ModulationCommand("RESET_PHASE", 0x1))
-                elif isinstance(entry, ControlFlow.Return):
-                    cur_freq = 0  #makes sure that the frequency is set in the first sequence after the definition of subroutines
-                mod_seq.append(copy(entry))
-            elif isinstance(entry, Compiler.Waveform):
-                if not no_modulation_cmds:
-                    #insert phase and frequency commands before modulation command so they have the same start time
-                    phase_freq_cmds = []
-                    if cur_freq != entry.frequency:
-                        phase_freq_cmds.append(ModulationCommand(
-                            "SET_FREQ",
-                            0x1, frequency=-entry.frequency))
-                        cur_freq = entry.frequency
-                    if USE_PHASE_OFFSET_INSTRUCTION and (
-                            entry.length > 0) and (cur_phase != entry.phase):
-                        phase_freq_cmds.append(ModulationCommand(
-                            "SET_PHASE", 0x1,
-                            phase=entry.phase))
-                        cur_phase = entry.phase
-                    for cmd in phase_freq_cmds:
-                        mod_seq.append(cmd)
-                    #now apply modulation for count command and waveform command, if non-zero length
-                    if entry.length > 0:
-                        mod_seq.append(entry)
-                        if (len(mod_seq) > 1) and (isinstance(
-                                mod_seq[-2], ModulationCommand)) and (
-                                    mod_seq[-2].instruction == "MODULATE"):
-                            mod_seq[-2].length += entry.length
-                        else:
-                            mod_seq.append(ModulationCommand(
-                                "MODULATE",
-                                0x1, length=entry.length))
-                    #now apply non-zero frame changes after so it is applied at end
-                    if entry.frameChange != 0:
-                        mod_seq.append(ModulationCommand(
-                            "UPDATE_FRAME",
-                            0x1, phase=entry.frameChange))
-        seqs[ct] = mod_seq
+			#copies to avoid same object having different timestamps later
+			#copy through BlockLabel
+			if isinstance(entry, BlockLabel.BlockLabel):
+				mod_seq.append(copy(entry))
+			#mostly copy through control-flow
+			elif isinstance(entry, ControlFlow.ControlInstruction):
+				#heuristic to insert phase reset before trigger if we have modulation commands
+				if isinstance(entry, ControlFlow.Wait):
+					if not ( no_modulation_cmds and (cur_freq == 0) and (cur_phase == 0)):
+						mod_seq.append(ModulationCommand("RESET_PHASE", 0x1))
+				elif isinstance(entry, ControlFlow.Return):
+					cur_freq = 0 #makes sure that the frequency is set in the first sequence after the definition of subroutines
+				mod_seq.append(copy(entry))
+			elif isinstance(entry, Compiler.Waveform):
+				if not no_modulation_cmds:
+					#insert phase and frequency commands before modulation command so they have the same start time
+					phase_freq_cmds = []
+					if cur_freq != entry.frequency:
+						phase_freq_cmds.append( ModulationCommand("SET_FREQ", 0x1, frequency=-entry.frequency) )
+						cur_freq = entry.frequency
+					if USE_PHASE_OFFSET_INSTRUCTION and (entry.length > 0) and (cur_phase != entry.phase):
+						phase_freq_cmds.append( ModulationCommand("SET_PHASE", 0x1, phase=entry.phase) )
+						cur_phase = entry.phase
+					for cmd in phase_freq_cmds:
+						mod_seq.append(cmd)
+					#now apply modulation for count command and waveform command, if non-zero length
+					if entry.length > 0:
+						mod_seq.append(entry)
+						# if we have a modulate waveform modulate pattern and there is no pending frame update we can append length to previous modulation command
+						if (len(mod_seq) > 1) and (isinstance(mod_seq[-1], Compiler.Waveform)) and (isinstance(mod_seq[-2], ModulationCommand)) and (mod_seq[-2].instruction == "MODULATE") and not pending_frame_update:
+							mod_seq[-2].length += entry.length
+						else:
+							mod_seq.append( ModulationCommand("MODULATE", 0x1, length=entry.length))
+							pending_frame_update = False
+					#now apply non-zero frame changes after so it is applied at end
+					if entry.frameChange != 0:
+						pending_frame_update = True
+						#zero length frame changes (Z pulses) need to be combined with the previous frame change or injected where possible
+						if entry.length == 0:
+							#if the last is a frame change then we can add to the frame change
+							if isinstance(mod_seq[-1], ModulationCommand) and mod_seq[-1].instruction == "UPDATE_FRAME":
+								mod_seq[-1].phase += entry.frameChange
+							#if last entry was pulse without frame change we add frame change
+							elif (isinstance(mod_seq[-1], Compiler.Waveform)) or (mod_seq[-1].instruction == "MODULATE"):
+								mod_seq.append( ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
+							#if this is the first entry with a wait for trigger then we can inject a frame change
+							#before the wait for trigger but after the RESET_PHASE
+							elif isinstance(mod_seq[-1], ControlFlow.Wait):
+								mod_seq.insert(-1, ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
+							elif isinstance(mod_seq[-2], ControlFlow.Wait) and isinstance(mod_seq[-1], ModulationCommand) and mod_seq[-1].instruction == "SET_FREQ":
+								mod_seq.insert(-2, ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
+							#otherwise drop and error if frame has been defined
+							else:
+								raise Exception("Unable to implement zero time Z pulse")
+						else:
+							mod_seq.append( ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
 
+		seqs[ct] = mod_seq
 
 def build_waveforms(seqs, shapeLib):
     # apply amplitude (and optionally phase) and add the resulting waveforms to the library
