@@ -15,15 +15,16 @@ limitations under the License.
 '''
 import numpy as np
 from warnings import warn
+from math import pi
+import hashlib, collections
+import pickle
+from copy import copy
+
 from .PulseSequencer import Pulse, TAPulse, PulseBlock, CompositePulse
 from .PulsePrimitives import BLANK
 from . import ControlFlow
 from . import BlockLabel
-import QGL.Compiler
-from math import pi
-import hashlib, collections
-import pickle
-
+import QGL.drivers
 
 def hash_pulse(shape):
     return hashlib.sha1(shape.tostring()).hexdigest()
@@ -82,10 +83,16 @@ def add_gate_pulses(seqs):
     for seq in seqs:
         for ct in range(len(seq)):
             if isinstance(seq[ct], PulseBlock):
+                pb = None
                 for chan, pulse in seq[ct].pulses.items():
                     if has_gate(chan) and not pulse.isZero and not (
                             chan.gateChan in seq[ct].pulses.keys()):
-                        seq[ct] *= BLANK(chan, pulse.length)
+                        if pb:
+                            pb *= BLANK(chan, pulse.length)
+                        else:
+                            pb = BLANK(chan, pulse.length)
+                if pb:
+                    seq[ct] *= pb
             elif hasattr(seq[ct], 'channel'):
                 chan = seq[ct].channel
                 if has_gate(chan) and not seq[ct].isZero:
@@ -95,6 +102,13 @@ def add_gate_pulses(seqs):
 def has_gate(channel):
     return hasattr(channel, 'gateChan') and channel.gateChan
 
+def update_pulse_length(pulse, new_length):
+    """Return new Pulse with modified length"""
+    assert new_length >= 0
+    #copy shape parameter dictionary to avoid updating other copies
+    new_params = copy(pulse.shapeParams)
+    new_params["length"] = new_length
+    return pulse._replace(shapeParams=new_params)
 
 def apply_gating_constraints(chan, linkList):
     # get channel parameters in samples
@@ -116,7 +130,7 @@ def apply_gating_constraints(chan, linkList):
         gateSeq = []
         # first pass consolidates entries
         previousEntry = None
-        for entry in miniLL:
+        for ct,entry in enumerate(miniLL):
             if isinstance(entry, (ControlFlow.ControlInstruction,
                                   BlockLabel.BlockLabel)):
                 if previousEntry:
@@ -131,7 +145,7 @@ def apply_gating_constraints(chan, linkList):
 
             # matching entry types can be globbed together
             if previousEntry.isZero == entry.isZero:
-                previousEntry.length += entry.length
+                previousEntry = update_pulse_length(previousEntry, previousEntry.length + entry.length)
             else:
                 gateSeq.append(previousEntry)
                 previousEntry = entry
@@ -143,13 +157,11 @@ def apply_gating_constraints(chan, linkList):
         # second pass expands non-zeros by gateBuffer
         for ct in range(len(gateSeq)):
             if isNonZeroWaveform(gateSeq[ct]):
-                gateSeq[ct].length += gateBuffer
+                gateSeq[ct] = update_pulse_length(gateSeq[ct], gateSeq[ct].length + gateBuffer)
+
                 # contract the next pulse by the same amount
-                if ct + 1 < len(gateSeq) - 1 and isinstance(gateSeq[ct + 1],
-                                                            Pulse):
-                    gateSeq[
-                        ct +
-                        1].length -= gateBuffer  #TODO: what if this becomes negative?
+                if ct + 1 < len(gateSeq) - 1 and isinstance(gateSeq[ct + 1], Pulse):
+                    gateSeq[ct+1] = update_pulse_length(gateSeq[ct+1], gateSeq[ct+1].length - gateBuffer)
 
         # third pass ensures gateMinWidth
         ct = 0
@@ -158,12 +170,10 @@ def apply_gating_constraints(chan, linkList):
             if [isNonZeroWaveform(x) for x in gateSeq[ct:ct+3]] == [True, False, True] and \
                 gateSeq[ct+1].length < gateMinWidth and \
                 [isinstance(x, Pulse) for x in gateSeq[ct:ct+3]] == [True, True, True]:
-                gateSeq[ct].length += gateSeq[ct + 1].length + gateSeq[
-                    ct + 2].length
+                gateSeq[ct] = update_pulse_length(gateSeq[ct], gateSeq[ct + 1].length + gateSeq[ct + 2].length)
                 del gateSeq[ct + 1:ct + 3]
             else:
                 ct += 1
-
         gateSeqs.append(gateSeq)
 
     return gateSeqs
@@ -180,25 +190,24 @@ def add_digitizer_trigger(seqs):
     # Attach a trigger to any pulse block containing a measurement. Each trigger is specific to each measurement
     for seq in seqs:
         for ct in range(len(seq)):
-            if contains_measurement(seq[ct]):
-                #find corresponding digitizer trigger
-                chanlist = seq[ct].channel
-                if not isinstance(seq[ct], PulseBlock):
-                    chanlist = [chanlist]
-                for chan in chanlist:
-                    if hasattr(chan, 'trigChan'):
-                        trigChan = chan.trigChan
-                        if not (hasattr(seq[ct], 'pulses') and
-                                trigChan in seq[ct].pulses.keys()):
-                            seq[ct] *= TAPulse("TRIG", trigChan,
-                                               trigChan.pulseParams['length'],
-                                               1.0, 0.0, 0.0)
+            if not contains_measurement(seq[ct]):
+                continue
+            #find corresponding digitizer trigger
+            chanlist = list(flatten([seq[ct].channel]))
+            for chan in chanlist:
+                if hasattr(chan, 'trigChan'):
+                    trigChan = chan.trigChan
+                    if not (hasattr(seq[ct], 'pulses') and
+                            trigChan in seq[ct].pulses.keys()):
+                        seq[ct] *= TAPulse("TRIG", trigChan,
+                                           trigChan.pulseParams['length'], 1.0,
+                                           0.0, 0.0)
 
 
 def contains_measurement(entry):
-    '''
+    """
     Determines if a LL entry contains a measurement
-    '''
+    """
     if entry.label == "MEAS":
         return True
     elif isinstance(entry, PulseBlock):
@@ -230,13 +239,13 @@ def add_slave_trigger(seqs, slaveChan):
                 ct += 1
 
 
-def propagate_frame_changes(seq):
+def propagate_frame_changes(seq, wf_type):
     '''
     Propagates all frame changes through sequence
     '''
     frame = 0
     for entry in seq:
-        if not isinstance(entry, QGL.Compiler.Waveform):
+        if not isinstance(entry, wf_type):
             continue
         entry.phase = np.mod(frame + entry.phase, 2 * pi)
         frame += entry.frameChange + (-2 * np.pi * entry.frequency *
@@ -245,31 +254,35 @@ def propagate_frame_changes(seq):
     return seq
 
 
-def quantize_phase(seqs, precision):
+def quantize_phase(seqs, precision, wf_type):
     '''
     Quantizes waveform phases with given precision (in radians).
     '''
     for entry in flatten(seqs):
-        if not isinstance(entry, QGL.Compiler.Waveform):
+        if not isinstance(entry, wf_type):
             continue
         phase = np.mod(entry.phase, 2 * np.pi)
         entry.phase = precision * round(phase / precision)
     return seqs
 
 
-def convert_lengths_to_samples(instructions, samplingRate, quantization=1):
+def convert_lengths_to_samples(instructions, samplingRate, quantization=1, wf_type=None):
     for entry in flatten(instructions):
-        if isinstance(entry, QGL.Compiler.Waveform):
+        if isinstance(entry, wf_type):
             entry.length = int(round(entry.length * samplingRate))
             # TODO: warn when truncating?
             entry.length -= entry.length % quantization
     return instructions
 
+def convert_length_to_samples(wf_length, sampling_rate, quantization=1):
+    num_samples = int(round(wf_length * sampling_rate))
+    num_samples -= num_samples % quantization
+    return num_samples
 
 # from Stack Overflow: http://stackoverflow.com/questions/2158395/flatten-an-irregular-list-of-lists-in-python/2158532#2158532
 def flatten(l):
     for el in l:
-        if isinstance(el, collections.Iterable) and not isinstance(el, str):
+        if isinstance(el, collections.Iterable) and not isinstance(el, (str, Pulse, CompositePulse)) :
             for sub in flatten(el):
                 yield sub
         else:

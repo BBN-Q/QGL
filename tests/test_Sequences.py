@@ -171,8 +171,8 @@ class AWGTestHelper(object):
                               for ta in seqB]) if len(seqB) else np.empty(0)
 
         self.assertTrue(
-            len(wfA) == len(wfB), "{0} size {1} != size {2}".format(
-                errorHeader, str(seqA.size), str(seqB.size)))
+            len(wfA) == len(wfB), "{} size {} != size {}".format(
+                errorHeader, len(wfA), len(wfB)))
 
         #Check values
         wf_check = np.allclose(wfA, wfB, rtol=0, atol=self.tolerance)

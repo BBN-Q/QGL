@@ -393,8 +393,8 @@ def NoOp():
 
 
 def preprocess(seqs, shapeLib):
-    seqs = PatternUtils.convert_lengths_to_samples(seqs, SAMPLING_RATE,
-                                                   ADDRESS_UNIT)
+    seqs = PatternUtils.convert_lengths_to_samples(
+        seqs, SAMPLING_RATE, ADDRESS_UNIT, Compiler.Waveform)
     wfLib = build_waveforms(seqs, shapeLib)
     inject_modulation_cmds(seqs)
     return seqs, wfLib
@@ -468,8 +468,8 @@ class ModulationCommand(object):
         payload = (op_code_map[self.instruction] << MODULATOR_OP_OFFSET) | (
             self.nco_select << NCO_SELECT_OP_OFFSET)
         if self.instruction == "MODULATE":
-            payload |= np.uint32(
-                self.length / ADDRESS_UNIT - 1)  #zero-indexed quad count
+            #zero-indexed quad count
+            payload |= np.uint32(self.length / ADDRESS_UNIT - 1)
         elif self.instruction == "SET_FREQ":
             # frequencies can span -2 to 2 or 0 to 4 in unsigned
             payload |= np.uint32(
@@ -494,19 +494,12 @@ def inject_modulation_cmds(seqs):
     cur_phase = 0
     for ct, seq in enumerate(seqs):
         #check whether we have modulation commands
-        freqs = np.unique(
-            [entry.frequency
-             for entry in filter(lambda s: isinstance(s, Compiler.Waveform),
-                                 seq)])
-        no_freq_cmds = np.allclose(freqs, 0)
-        phases = [entry.phase
-                  for entry in filter(
-                      lambda s: isinstance(s, Compiler.Waveform), seq)]
-        no_phase_cmds = np.allclose(phases, 0)
-        frame_changes = [entry.frameChange
-                         for entry in filter(
-                             lambda s: isinstance(s, Compiler.Waveform), seq)]
-        no_frame_cmds = np.allclose(frame_changes, 0)
+        no_freq_cmds = all(e.frequency == 0.0 for e in seq
+                           if isinstance(e, Compiler.Waveform))
+        no_phase_cmds = all(e.phase == 0.0 for e in seq
+                            if isinstance(e, Compiler.Waveform))
+        no_frame_cmds = all(e.frameChange == 0.0 for e in seq
+                            if isinstance(e, Compiler.Waveform))
         no_modulation_cmds = no_freq_cmds and no_phase_cmds and no_frame_cmds
 
         if no_modulation_cmds:
@@ -838,12 +831,11 @@ def create_instr_data(seqs, offsets, cache_lines):
     #turn symbols into integers addresses
     resolve_symbols(instructions)
 
-    assert len(
-        instructions) < MAX_NUM_INSTRUCTIONS, 'Oops! too many instructions: {0}'.format(
-            len(instructions))
-    data = np.array([instr.flatten() for instr in instructions],
-                    dtype=np.uint64)
-    return data
+    assert len(instructions) < MAX_NUM_INSTRUCTIONS, \
+    'Oops! too many instructions: {0}'.format(len(instructions))
+
+    return np.fromiter((instr.flatten() for instr in instructions), np.uint64,
+                       len(instructions))
 
 
 def resolve_symbols(seq):
@@ -887,7 +879,8 @@ def write_sequence_file(awgData, fileName):
     for field in ['ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']:
         if 'linkList' in awgData[field].keys():
             PatternUtils.convert_lengths_to_samples(awgData[field]['linkList'],
-                                                    SAMPLING_RATE)
+                                                    SAMPLING_RATE, 1,
+                                                    Compiler.Waveform)
             compress_marker(awgData[field]['linkList'])
         else:
             awgData[field]['linkList'] = []

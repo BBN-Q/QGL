@@ -28,53 +28,26 @@ from builtins import str
 
 from . import ChannelLibrary, PulseShapes
 
+from collections import namedtuple
 
-class Pulse(object):
-    '''
-    A single channel pulse object
-        label - name of the pulse
-        channel - logical channel the pulse acts upon
-        shape - numpy array pulse shape
-        frameChange - accumulated phase from the pulse
-    '''
+class Pulse(namedtuple("Pulse", ["label", "channel", "amp", "phase", "frequency",
+                                 "frameChange", "shapeParams", "isTimeAmp",
+                                 "isZero", "ignoredStrParams"])):
+    __slots__ = ()
 
-    def __init__(self,
-                 label,
-                 channel,
-                 shapeParams,
-                 amp=1.0,
-                 phase=0,
-                 frameChange=0,
-                 ignoredStrParams=[]):
-        self.label = label
-        if isinstance(channel, (list, tuple)):
-            # with more than one qubit, need to look up the channel
-            self.channel = ChannelLibrary.QubitFactory(reduce(
-                operator.add, [c.label for c in channel]))
+    def __new__(cls, label, channel, shapeParams, amp=1.0, phase=0, frameChange=0, ignoredStrParams=[]):
+        if hasattr(channel, 'frequency'):
+            frequency = channel.frequency
         else:
-            self.channel = channel
-        self.shapeParams = shapeParams
-        self.phase = phase
-        self.amp = amp
-        self.frameChange = frameChange
-        self.isTimeAmp = False
-        if hasattr(self.channel, 'frequency'):
-            self.frequency = self.channel.frequency
-        else:
-            self.frequency = 0
-        self.ignoredStrParams = ignoredStrParams
+            frequency = 0
         requiredParams = ['length', 'shapeFun']
         for param in requiredParams:
             if param not in shapeParams.keys():
                 raise NameError("shapeParams must include {0}".format(param))
-        if (self.shapeParams['shapeFun'] == PulseShapes.constant or
-                self.shapeParams['shapeFun'] == PulseShapes.square):
-            self.isTimeAmp = True
-
-    def __repr__(self):
-        return "Pulse({0}, {1}, {2}, {3}, {4}, {5}, {6})".format(
-            self.label, self.channel, self.shapeParams, self.amp, self.phase,
-            self.frameChange, self.ignoredStrParams)
+        isTimeAmp = (shapeParams['shapeFun'] == PulseShapes.constant or
+                shapeParams['shapeFun'] == PulseShapes.square)
+        isZero = (amp == 0)
+        return super(cls, Pulse).__new__(cls, label, channel, amp, phase, frequency, frameChange, shapeParams, isTimeAmp, isZero, ignoredStrParams)
 
     def __str__(self):
         kwvals = []
@@ -97,12 +70,26 @@ class Pulse(object):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    # adding pulses concatenates the pulse shapes
+    @property
+    def length(self):
+        """Alias the shape parameter "length" """
+        return self.shapeParams["length"]
+
+    def __mul__(self, other):
+        """ Overload multiplication of Pulses as a "tensor" operator"""
+        if isinstance(other, Pulse):
+            return PulseBlock(self) * PulseBlock(other)
+        else:
+            return PulseBlock(self) * other
+
+    def hashshape(self):
+        return hash(frozenset(self.shapeParams.items()))
+
     def __add__(self, other):
         if self.channel != other.channel:
             raise NameError(
                 "Can only concatenate pulses acting on the same channel")
-        return CompositePulse([self, other])
+        return CompositePulse("", [self, other])
 
     # unary negation inverts the pulse amplitude and frame change
     def __neg__(self):
@@ -112,35 +99,9 @@ class Pulse(object):
     def __mul__(self, other):
         return self.promote() * other.promote()
 
-    def __eq__(self, other):
-        if isinstance(other, self.__class__):
-            return self.__dict__ == other.__dict__
-        return False
-
-    def __ne__(self, other):
-        return not self == other
-
-    def hashshape(self):
-        return hash(frozenset(self.shapeParams.items()))
-
     def promote(self):
         # promote a Pulse to a PulseBlock
-        pb = PulseBlock()
-        pb.pulses[self.channel] = self
-        return pb
-
-    @property
-    def length(self):
-        return self.shapeParams['length']
-
-    @length.setter
-    def length(self, value):
-        self.shapeParams['length'] = value
-        return value
-
-    @property
-    def isZero(self):
-        return self.amp == 0
+        return PulseBlock(self)
 
     @property
     def shape(self):
@@ -157,27 +118,19 @@ def TAPulse(label,
             phase=0,
             frameChange=0,
             ignoredStrParams=[]):
-    '''
+    """
     Creates a time/amplitude pulse with the given pulse length and amplitude
-    '''
+    """
     params = {'length': length, 'shapeFun': PulseShapes.constant}
     ignoredStrParams.append('shapeFun')
-    p = Pulse(label, channel, params, amp, phase, frameChange,
-              ignoredStrParams)
-    return p
+    return Pulse(label, channel, params, amp, phase, frameChange, ignoredStrParams)
 
 
-class CompositePulse(object):
+class CompositePulse(namedtuple("CompositePulse", ["label", "pulses"])):
     '''
     A sequential series of pulses that reside within one time bin of a pulse block
     '''
-
-    def __init__(self, pulses, label=""):
-        self.pulses = pulses
-        self.label = label
-
-    def __repr__(self):
-        return "CompositePulse({0}, {1})".format(self.pulses, self.label)
+    __slots__ = ()
 
     def __str__(self):
         if self.label != "":
@@ -193,26 +146,16 @@ class CompositePulse(object):
             raise NameError(
                 "Can only concatenate pulses acting on the same channel")
         if hasattr(other, 'pulses'):
-            return CompositePulse(self.pulses + other.pulses)
+            return CompositePulse("", self.pulses + other.pulses)
         else:
-            return CompositePulse(self.pulses + [other])
+            return CompositePulse("", self.pulses + [other])
 
     def __mul__(self, other):
         return self.promote() * other.promote()
 
-    def __eq__(self, other):
-        if isinstance(other, self.__class__):
-            return self.__dict__ == other.__dict__
-        return False
-
-    def __ne__(self, other):
-        return not self == other
-
     def promote(self):
         # promote a CompositePulse to a PulseBlock
-        pb = PulseBlock()
-        pb.pulses[self.channel] = self
-        return pb
+        return PulseBlock(self)
 
     @property
     def channel(self):
@@ -239,11 +182,11 @@ class PulseBlock(object):
     We overload the + operator to concatenate pulses on the same channel.
     '''
 
-    def __init__(self):
+    def __init__(self, *pulses):
         #Set some default values
         #How multiple channels are aligned.
         self.alignment = 'left'
-        self.pulses = OrderedDict()
+        self.pulses = OrderedDict([(pulse.channel, pulse) for pulse in pulses])
         self.label = None
 
     def __repr__(self):
@@ -265,10 +208,9 @@ class PulseBlock(object):
     def __mul__(self, rhs):
         # make sure RHS is a PulseBlock
         rhs = rhs.promote()
-        # we need to go one layer deep in the copy so that we can manipulate self.pulses and self.channel w/o affecting the original object
-        # should bundle this behavior into a __copy__ method
+
+        # copy PulseBlock so we don't modify other references
         result = copy(self)
-        result.pulses = copy(self.pulses)
 
         for (k, v) in rhs.pulses.items():
             if k in result.pulses.keys():
@@ -299,10 +241,10 @@ class PulseBlock(object):
     def channel(self):
         return self.pulses.keys()
 
-    #The maximum number of points needed for any channel on this block
+    #The maximum length for any channel on this block
     @property
     def length(self):
-        return max([p.length for p in self.pulses.values()])
+        return max(p.length for p in self.pulses.values())
 
 
 def align(pulseBlock, mode="center"):
