@@ -3,3 +3,5 @@
 *.awg
 *-code.py
 *.h5
+*.py~
+*.py#
