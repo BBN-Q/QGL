@@ -32,6 +32,7 @@ from . import PulseShapes
 from JSONLibraryUtils import LibraryCoders, FileWatcher, JSONMigrators
 from . import config
 
+
 class ChannelLibrary(Atom):
     # channelDict = Dict(Str, Channel)
     channelDict = Typed(dict)
@@ -45,7 +46,8 @@ class ChannelLibrary(Atom):
         self.connectivityG = nx.DiGraph()
         self.load_from_library()
         if self.libFile:
-            self.fileWatcher = FileWatcher.LibraryFileWatcher(self.libFile, self.update_from_file)
+            self.fileWatcher = FileWatcher.LibraryFileWatcher(
+                self.libFile, self.update_from_file)
 
     #Dictionary methods
     def __getitem__(self, key):
@@ -70,29 +72,31 @@ class ChannelLibrary(Atom):
         # build connectivity graph
         self.connectivityG.clear()
         for chan in self.channelDict.values():
-            if isinstance(chan, Channels.Qubit) and chan not in self.connectivityG:
+            if isinstance(chan,
+                          Channels.Qubit) and chan not in self.connectivityG:
                 self.connectivityG.add_node(chan)
         for chan in self.channelDict.values():
             if isinstance(chan, Channels.Edge):
                 self.connectivityG.add_edge(chan.source, chan.target)
                 self.connectivityG[chan.source][chan.target]['channel'] = chan
 
-    def write_to_file(self,fileName=None):
+    def write_to_file(self, fileName=None):
         libFileName = fileName if fileName != None else self.libFile
         if libFileName:
             #Pause the file watcher to stop cicular updating insanity
             if self.fileWatcher:
                 self.fileWatcher.pause()
             with open(libFileName, 'w') as FID:
-                json.dump(self, FID, cls=LibraryCoders.LibraryEncoder, indent=2, sort_keys=True)
+                json.dump(self,
+                          FID,
+                          cls=LibraryCoders.LibraryEncoder,
+                          indent=2,
+                          sort_keys=True)
             if self.fileWatcher:
                 self.fileWatcher.resume()
 
     def json_encode(self, matlabCompatible=False):
-        return {
-            "channelDict": self.channelDict,
-            "version": self.version
-        }
+        return {"channelDict": self.channelDict, "version": self.version}
 
     def load_from_library(self):
         if self.libFile:
@@ -105,15 +109,25 @@ class ChannelLibrary(Atom):
                     # connect objects labeled by strings
                     for chan in tmpLib.channelDict.values():
                         if hasattr(chan, 'physChan'):
-                            chan.physChan = tmpLib[chan.physChan] if chan.physChan in tmpLib.channelDict else None
+                            chan.physChan = tmpLib[
+                                chan.
+                                physChan] if chan.physChan in tmpLib.channelDict else None
                         if hasattr(chan, 'gateChan'):
-                            chan.gateChan = tmpLib[chan.gateChan] if chan.gateChan in tmpLib.channelDict else None
+                            chan.gateChan = tmpLib[
+                                chan.
+                                gateChan] if chan.gateChan in tmpLib.channelDict else None
                         if hasattr(chan, 'trigChan'):
-                            chan.trigChan = tmpLib[chan.trigChan] if chan.trigChan in tmpLib.channelDict else None
+                            chan.trigChan = tmpLib[
+                                chan.
+                                trigChan] if chan.trigChan in tmpLib.channelDict else None
                         if hasattr(chan, 'source'):
-                            chan.source = tmpLib[chan.source] if chan.source in tmpLib.channelDict else None
+                            chan.source = tmpLib[
+                                chan.
+                                source] if chan.source in tmpLib.channelDict else None
                         if hasattr(chan, 'target'):
-                            chan.target = tmpLib[chan.target] if chan.target in tmpLib.channelDict else None
+                            chan.target = tmpLib[
+                                chan.
+                                target] if chan.target in tmpLib.channelDict else None
                     self.channelDict.update(tmpLib.channelDict)
                     # grab library version
                     self.version = tmpLib.version
@@ -135,7 +149,8 @@ class ChannelLibrary(Atom):
                 try:
                     allParams = json.load(FID)['channelDict']
                 except ValueError:
-                    print('Failed to update channel library from file. Probably is just half-written.')
+                    print(
+                        'Failed to update channel library from file. Probably is just half-written.')
                     return
 
                 # update & insert
@@ -149,7 +164,7 @@ class ChannelLibrary(Atom):
 
                         mod = importlib.import_module(moduleName)
                         cls = getattr(mod, className)
-                        self.channelDict[chName]  = cls()
+                        self.channelDict[chName] = cls()
                         self.update_from_json(chName, chParams)
 
                 # remove
@@ -159,46 +174,63 @@ class ChannelLibrary(Atom):
 
                 self.build_connectivity_graph()
 
+            #reset pulse cache
+            from . import PulsePrimitives
+            PulsePrimitives._memoize.cache.clear()
+
     def update_from_json(self, chName, chParams):
         # connect objects labeled by strings
         if 'pulseParams' in chParams.keys():
-            paramDict = {str(k):v for k,v in chParams['pulseParams'].items()}
+            paramDict = {str(k): v for k, v in chParams['pulseParams'].items()}
             shapeFunName = paramDict.pop('shapeFun', None)
             if shapeFunName:
                 paramDict['shapeFun'] = getattr(PulseShapes, shapeFunName)
             self.channelDict[chName].pulseParams = paramDict
         if 'physChan' in chParams.keys():
-            self.channelDict[chName].physChan = self.channelDict[chParams['physChan']] if chParams['physChan'] in self.channelDict else None
+            self.channelDict[chName].physChan = self.channelDict[chParams[
+                'physChan']] if chParams[
+                    'physChan'] in self.channelDict else None
         if 'gateChan' in chParams.keys():
-            self.channelDict[chName].gateChan = self.channelDict[chParams['gateChan']] if chParams['gateChan'] in self.channelDict else None
+            self.channelDict[chName].gateChan = self.channelDict[chParams[
+                'gateChan']] if chParams[
+                    'gateChan'] in self.channelDict else None
         if 'trigChan' in chParams.keys():
-            self.channelDict[chName].trigChan = self.channelDict[chParams['trigChan']] if chParams['trigChan'] in self.channelDict else None
+            self.channelDict[chName].trigChan = self.channelDict[chParams[
+                'trigChan']] if chParams[
+                    'trigChan'] in self.channelDict else None
         if 'source' in chParams.keys():
-            self.channelDict[chName].source = self.channelDict[chParams['source']] if chParams['source'] in self.channelDict else None
+            self.channelDict[chName].source = self.channelDict[chParams[
+                'source']] if chParams['source'] in self.channelDict else None
         if 'target' in chParams.keys():
-            self.channelDict[chName].target = self.channelDict[chParams['target']] if chParams['target'] in self.channelDict else None
+            self.channelDict[chName].target = self.channelDict[chParams[
+                'target']] if chParams['target'] in self.channelDict else None
         # TODO: how do we follow changes to selected AWG or generator?
 
         # ignored or specially handled parameters
-        ignoreList = ['pulseParams', 'physChan', 'gateChan', 'trigChan', 'source', 'target', 'AWG', 'generator', 'x__class__', 'x__module__']
+        ignoreList = ['pulseParams', 'physChan', 'gateChan', 'trigChan',
+                      'source', 'target', 'AWG', 'generator', 'x__class__',
+                      'x__module__']
         for paramName in chParams:
             if paramName not in ignoreList:
-                setattr(self.channelDict[chName], paramName, chParams[paramName])
+                setattr(self.channelDict[chName], paramName,
+                        chParams[paramName])
 
     def on_awg_change(self, oldName, newName):
         print("Change AWG", oldName, newName)
         for chName in self.channelDict:
-            if isinstance(self.channelDict[chName], (PhysicalMarkerChannel, PhysicalQuadratureChannel)):
-                awgName, awgChannel = chName.rsplit('-',1)
+            if isinstance(self.channelDict[chName],
+                          (PhysicalMarkerChannel, PhysicalQuadratureChannel)):
+                awgName, awgChannel = chName.rsplit('-', 1)
                 if awgName == oldName:
-                    newLabel = "{0}-{1}".format(newName,awgChannel)
+                    newLabel = "{0}-{1}".format(newName, awgChannel)
                     print("Changing {0} to {1}".format(chName, newLabel))
                     self.physicalChannelManager.name_changed(chName, newLabel)
 
-class ChannelDecoder(json.JSONDecoder):
 
+class ChannelDecoder(json.JSONDecoder):
     def __init__(self, **kwargs):
-        super(ChannelDecoder, self).__init__(object_hook=self.dict_to_obj, **kwargs)
+        super(ChannelDecoder, self).__init__(object_hook=self.dict_to_obj,
+                                             **kwargs)
 
     def dict_to_obj(self, jsonDict):
         import QGL.PulseShapes
@@ -214,33 +246,38 @@ class ChannelDecoder(json.JSONDecoder):
             __import__(moduleName)
 
             #Re-encode the strings as ascii (this should go away in Python 3)
-            jsonDict = {str(k):v for k,v in jsonDict.items()}
+            jsonDict = {str(k): v for k, v in jsonDict.items()}
 
-			# instantiate the object
+            # instantiate the object
             inst = getattr(sys.modules[moduleName], className)(**jsonDict)
 
             return inst
         else:
             #Re-encode the strings as ascii (this should go away in Python 3)
-            jsonDict = {str(k):v for k,v in jsonDict.items()}
-            shapeFun = jsonDict.pop('shapeFun',None)
+            jsonDict = {str(k): v for k, v in jsonDict.items()}
+            shapeFun = jsonDict.pop('shapeFun', None)
             if shapeFun:
                 jsonDict['shapeFun'] = getattr(QGL.PulseShapes, shapeFun)
             return jsonDict
 
+
 def QubitFactory(label, **kwargs):
     ''' Return a saved qubit channel or create a new one. '''
-    if channelLib and label in channelLib and isinstance(channelLib[label], Channels.Qubit):
+    if channelLib and label in channelLib and isinstance(channelLib[label],
+                                                         Channels.Qubit):
         return channelLib[label]
     else:
         return Channels.Qubit(label=label, **kwargs)
 
+
 def MeasFactory(label, measType='autodyne', **kwargs):
     ''' Return a saved measurement channel or create a new one. '''
-    if channelLib and label in channelLib and isinstance(channelLib[label], Channels.Measurement):
+    if channelLib and label in channelLib and isinstance(channelLib[label],
+                                                         Channels.Measurement):
         return channelLib[label]
     else:
         return Channels.Measurement(label=label, measType=measType, **kwargs)
+
 
 def EdgeFactory(source, target):
     if not channelLib:
@@ -250,10 +287,11 @@ def EdgeFactory(source, target):
     elif channelLib.connectivityG.has_edge(target, source):
         return channelLib.connectivityG[target][source]['channel']
     else:
-        raise ValueError('Edge {0} not found in connectivity graph'.format((source, target)))
+        raise ValueError('Edge {0} not found in connectivity graph'.format((
+            source, target)))
 
 # global channel library
-migrator = JSONMigrators.ChannelMigrator(config.channelLibFile);
+migrator = JSONMigrators.ChannelMigrator(config.channelLibFile)
 migrationMsg = migrator.migrate()
 for msg in migrationMsg:
     print(msg)

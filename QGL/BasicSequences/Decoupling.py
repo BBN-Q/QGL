@@ -3,8 +3,9 @@ from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
 from .helpers import create_cal_seqs
 
-def HahnEcho(qubit, pulseSpacings, periods = 0, calRepeats=2, showPlot=False):
-	"""
+
+def HahnEcho(qubit, pulseSpacings, periods=0, calRepeats=2, showPlot=False):
+    """
 	A single pulse Hahn echo with variable phase of second pi/2 pulse. 
 
 	Parameters
@@ -19,23 +20,23 @@ def HahnEcho(qubit, pulseSpacings, periods = 0, calRepeats=2, showPlot=False):
 	-------
 	plotHandle : handle to plot window to prevent destruction
 	"""
-	seqs=[];
-	for k in range(len(pulseSpacings)):	
-		seqs.append([X90(qubit), Id(qubit, pulseSpacings[k]), Y(qubit), Id(qubit,pulseSpacings[k]), \
-			U90(qubit,phase=2*pi*periods/len(pulseSpacings)*k), MEAS(qubit)])
+    seqs = []
+    for k in range(len(pulseSpacings)):
+        seqs.append([X90(qubit), Id(qubit, pulseSpacings[k]), Y(qubit), Id(qubit,pulseSpacings[k]), \
+         U90(qubit,phase=2*pi*periods/len(pulseSpacings)*k), MEAS(qubit)])
 
- 	#Tack on the calibration scalings
-	seqs += create_cal_seqs((qubit,), calRepeats)
+#Tack on the calibration scalings
+    seqs += create_cal_seqs((qubit, ), calRepeats)
 
-	fileNames = compile_to_hardware(seqs, 'Echo/Echo')
-	print(fileNames)
+    fileNames = compile_to_hardware(seqs, 'Echo/Echo')
+    print(fileNames)
 
-	if showPlot:
-		plot_pulse_files(fileNames)
+    if showPlot:
+        plot_pulse_files(fileNames)
 
 
 def CPMG(qubit, numPulses, pulseSpacing, calRepeats=2, showPlot=False):
-	"""
+    """
 	CPMG pulse train with fixed pulse spacing. Note this pulse spacing is centre to centre,
 	i.e. it accounts for the pulse width
 
@@ -51,18 +52,19 @@ def CPMG(qubit, numPulses, pulseSpacing, calRepeats=2, showPlot=False):
 	-------
 	plotHandle : handle to plot window to prevent destruction
 	"""
-	#First setup the t-180-t block
-	CPMGBlock = [Id(qubit, (pulseSpacing-qubit.pulseParams['length'])/2),
-								 Y(qubit), Id(qubit, (pulseSpacing-qubit.pulseParams['length'])/2)]
+    #First setup the t-180-t block
+    CPMGBlock = [Id(qubit, (pulseSpacing - qubit.pulseParams['length']) / 2),
+                 Y(qubit),
+                 Id(qubit, (pulseSpacing - qubit.pulseParams['length']) / 2)]
 
-	seqs = [[X90(qubit)] + CPMGBlock*rep + [X90(qubit), MEAS(qubit)] for rep in numPulses]
+    seqs = [[X90(qubit)] + CPMGBlock * rep + [X90(qubit), MEAS(qubit)]
+            for rep in numPulses]
 
- 	#Tack on the calibration scalings
-	seqs += create_cal_seqs((qubit,), calRepeats)
+    #Tack on the calibration scalings
+    seqs += create_cal_seqs((qubit, ), calRepeats)
 
-	fileNames = compile_to_hardware(seqs, 'CPMG/CPMG')
-	print(fileNames)
+    fileNames = compile_to_hardware(seqs, 'CPMG/CPMG')
+    print(fileNames)
 
-	if showPlot:
-		plot_pulse_files(fileNames)
-
+    if showPlot:
+        plot_pulse_files(fileNames)

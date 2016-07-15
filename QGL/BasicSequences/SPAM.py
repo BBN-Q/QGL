@@ -5,8 +5,9 @@ from ..PulseSequencePlotter import plot_pulse_files
 from itertools import chain
 from numpy import pi
 
+
 def SPAM(qubit, angleSweep, maxSpamBlocks=10, showPlot=False):
-	"""
+    """
 
 	X-Y sequence (X-Y-X-Y)**n to determine quadrature angles or mixer correction.
 
@@ -20,27 +21,29 @@ def SPAM(qubit, angleSweep, maxSpamBlocks=10, showPlot=False):
 	Returns
 	-------
 	plotHandle : handle to plot window to prevent destruction
-	"""	
+	"""
 
-	def spam_seqs(angle):
-		""" Helper function to create a list of sequences increasing SPAM blocks with a given angle. """
-		SPAMBlock = [X(qubit), U(qubit, phase=pi/2+angle), X(qubit), U(qubit, phase=pi/2+angle)]
-		return [[Y90(qubit)] + SPAMBlock*rep + [X90(qubit)] for rep in range(maxSpamBlocks)]
+    def spam_seqs(angle):
+        """ Helper function to create a list of sequences increasing SPAM blocks with a given angle. """
+        SPAMBlock = [X(qubit), U(qubit, phase=pi / 2 + angle), X(qubit),
+                     U(qubit, phase=pi / 2 + angle)]
+        return [[Y90(qubit)] + SPAMBlock * rep + [X90(qubit)]
+                for rep in range(maxSpamBlocks)]
 
-	#Insert an identity at the start of every set to mark them off
-	seqs = list(chain.from_iterable([[[Id(qubit)]] + spam_seqs(angle) for angle in angleSweep]))
+    #Insert an identity at the start of every set to mark them off
+    seqs = list(chain.from_iterable([[[Id(qubit)]] + spam_seqs(angle)
+                                     for angle in angleSweep]))
 
-	#Add a final pi for reference
-	seqs.append([X(qubit)])
+    #Add a final pi for reference
+    seqs.append([X(qubit)])
 
-	#Add the measurment block to every sequence
-	measBlock = MEAS(qubit)
-	for seq in seqs:
-		seq.append(measBlock)
+    #Add the measurment block to every sequence
+    measBlock = MEAS(qubit)
+    for seq in seqs:
+        seq.append(measBlock)
 
-	fileNames = compile_to_hardware(seqs, 'SPAM/SPAM')
-	print(fileNames)
+    fileNames = compile_to_hardware(seqs, 'SPAM/SPAM')
+    print(fileNames)
 
-	if showPlot:
-		plot_pulse_files(fileNames)
-
+    if showPlot:
+        plot_pulse_files(fileNames)
