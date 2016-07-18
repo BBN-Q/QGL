@@ -44,8 +44,7 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "amp", "phase", "frequency"
         for param in requiredParams:
             if param not in shapeParams.keys():
                 raise NameError("shapeParams must include {0}".format(param))
-        isTimeAmp = (shapeParams['shapeFun'] == PulseShapes.constant or
-                shapeParams['shapeFun'] == PulseShapes.square)
+        isTimeAmp = (shapeParams['shapeFun'] == PulseShapes.constant)
         isZero = (amp == 0)
         return super(cls, Pulse).__new__(cls, label, channel, amp, phase, frequency, frameChange, shapeParams, isTimeAmp, isZero, ignoredStrParams)
 
