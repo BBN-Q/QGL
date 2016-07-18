@@ -27,6 +27,7 @@ import os.path
 from importlib import import_module
 import pkgutil
 from collections import OrderedDict
+import itertools
 
 import numpy as np
 
@@ -83,17 +84,16 @@ def plot_pulse_files(h5_files):
 
     bokeh_thread = BokehServerThread()
     bokeh_thread.start()
-    time.sleep(1) #make sure server is finish launching
+    time.sleep(1) #make sure server is finished launching
     output_server()
     curdoc().clear()
-    # output_notebook()
 
     #If we only got one filename turn it into a list
     if isinstance(h5_files, str):
         h5_files = [h5_files]
 
     wfs = extract_waveforms(h5_files)
-    num_seqs = max([len(_) for _ in wfs.values()])
+    num_seqs = max(len(_) for _ in wfs.values())
 
     filename = os.path.split(h5_files[0])[1]
     seq_name = filename.split('-')[0]
@@ -162,73 +162,56 @@ def extract_waveforms(h5_files, nameDecorator=''):
                 )
     return wfs
 
-def plot_pulse_files_compare(fileNames1, fileNames2):
+def plot_pulse_files_compare(h5_files_A, h5_files_B):
     '''
-    plot_pulse_files_compare(fileNames1, fileNames2)
+    plot_pulse_files_compare(h5_files_A, h5_files_B)
 
-    Helper function to plot a list of AWG files. A JS slider allows choice of sequence number.
+    Plots two sets of sequence for files for comparison purposes
     '''
+
+    bokeh_thread = BokehServerThread()
+    bokeh_thread.start()
+    time.sleep(1) #make sure server is finished launching
+    output_server()
+    curdoc().clear()
+
     #If we only go one filename turn it into a list
-    if isinstance(fileNames1, str):
-        fileNames1 = [fileNames1]
-    if isinstance(fileNames2, str):
-        fileNames2 = [fileNames2]
+    if isinstance(h5_files_A, str):
+        h5_files_A = [h5_files_A]
+    if isinstance(h5_files_B, str):
+        h5_files_B = [h5_files_B]
 
-    dataDict = {}
+    wfs_A = extract_waveforms(h5_files_A, "A")
+    wfs_B = extract_waveforms(h5_files_B, "B")
+    num_seqs = max(len(_) for _ in itertools.chain(wfs_A.values(), wfs_B.values()))
 
-    lineNames1, num_seqs1 = extract_waveforms(dataDict, fileNames1, 'A')
-    lineNames2, num_seqs2 = extract_waveforms(dataDict, fileNames2, 'B')
-    num_seqs = max(num_seqs1, num_seqs2)
+    filename = os.path.split(h5_files_A[0])[1]
+    seq_name = filename.split('-')[0]
 
-    localname = os.path.split(fileNames1[0])[1]
-    seq_name = localname.split('-')[0]
-
-    all_data = ColumnDataSource(data=dataDict)
-    plot = Figure(title=seq_name, plot_width=1000)
-    plot.background_fill_color = config.plotBackground
+    fig = Figure(title=seq_name, plot_width=800)
+    fig.background_fill_color = config.plotBackground
     if config.gridColor:
-        plot.xgrid.grid_line_color = config.gridColor
-        plot.ygrid.grid_line_color = config.gridColor
+        fig.xgrid.grid_line_color = config.gridColor
+        fig.ygrid.grid_line_color = config.gridColor
 
-    # Colobrewer2 qualitative Set1 (http://colorbrewer2.org)
-    colours = [
-        "#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#ffff33",
-        "#a65628", "#f781bf", "#999999"
-    ]
+    num_lines = len(wfs_A.keys())
+    #for some reason the qualitative maps aren't in bokeh.palettes
+    # see https://github.com/bokeh/bokeh/issues/4758
+    brewer_set3 = ['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd','#ccebc5','#ffed6f']
+    colours = list(np.resize(brewer_set3, num_lines))
 
-    js_sources = {}
-    js_sources["all_data"] = all_data
-    for ct, k in enumerate(lineNames1 + lineNames2):
-        k_ = k.replace("-", "_")
-        line = plot.line(dataDict[k_ + "_x_1"],
-                         dataDict[k_ + "_y_1"],
-                         color=colours[ct % len(colours)],
-                         line_width=2,
-                         legend=k)
-        js_sources[k_] = line.data_source
+    lines = []
+    for colour, (k,v) in zip(colours, itertools.chain(wfs_A.items(), wfs_B.items())):
+        lines.append( fig.line(v[0]["x"], v[0]["y"], color=colour, legend=k, line_width=2) )
 
-    code_template = Template("""
-        var seq_num = cb_obj.get('value');
-        console.log(seq_num)
-        var all_data = all_data.get('data');
-        {% for line in lineNames %}
-        {{line}}.set('data', {'x':all_data['{{line}}_x_'.concat(seq_num.toString())], 'y':all_data['{{line}}_y_'.concat(seq_num.toString())]} );
-        {% endfor %}
-        console.log("Got here!")
-    """)
+    def callback(attr, old, new):
+        for line, wf in zip(lines, itertools.chain(wfs_A.values(), wfs_B.values())):
+            new_xy = {"x":wf[new-1]["x"], "y":wf[new-1]["y"]}
+            line.data_source.data = new_xy
 
-    callback = CustomJS(
-        args=js_sources,
-        code=code_template.render(
-            lineNames=[l.replace("-", "_") for l in lineNames1 + lineNames2]))
+    slider = Slider(start=1, end=num_seqs, value=1, step=1, title="Sequence")
+    slider.on_change("value", callback)
 
-    slider = Slider(start=1,
-                    end=num_seqs,
-                    value=1,
-                    step=1,
-                    title="Sequence",
-                    callback=callback)
-
-    layout = vform(slider, plot)
-
-    show(layout)
+    session = push_session(curdoc())
+    session.show(column([slider, fig]))
+    session.loop_until_closed()
