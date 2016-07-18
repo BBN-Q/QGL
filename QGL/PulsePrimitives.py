@@ -434,10 +434,10 @@ def flat_top_gaussian(chan,
                       phase=0,
                       label="flat_top_gaussian"):
     """
-    A square pulse with rising and falling gaussian shape
+    A constant pulse with rising and falling gaussian shape
     """
     return Utheta(chan, length=riseFall, amp=amp, phase=phase, shapeFun=PulseShapes.gaussOn, label=label+"_rise") + \
-           Utheta(chan, length=length, amp=amp, phase=phase, shapeFun=PulseShapes.square, label=label+"_top") + \
+           Utheta(chan, length=length, amp=amp, phase=phase, shapeFun=PulseShapes.constant, label=label+"_top") + \
            Utheta(chan, length=riseFall, amp=amp, phase=phase, shapeFun=PulseShapes.gaussOff, label=label+"_fall")
 
 
