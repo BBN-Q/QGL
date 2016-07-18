@@ -98,7 +98,7 @@ def plot_pulse_files(h5_files):
     filename = os.path.split(h5_files[0])[1]
     seq_name = filename.split('-')[0]
 
-    fig = Figure(title=seq_name, plot_width=800)
+    fig = Figure(title=seq_name, plot_width=800, webgl=True)
     fig.background_fill_color = config.plotBackground
     if config.gridColor:
         fig.xgrid.grid_line_color = config.gridColor
@@ -190,7 +190,7 @@ def plot_pulse_files_compare(h5_files_A, h5_files_B):
     filename = os.path.split(h5_files_A[0])[1]
     seq_name = filename.split('-')[0]
 
-    fig = Figure(title=seq_name, plot_width=800)
+    fig = Figure(title=seq_name, plot_width=800, webgl=True)
     fig.background_fill_color = config.plotBackground
     if config.gridColor:
         fig.xgrid.grid_line_color = config.gridColor
