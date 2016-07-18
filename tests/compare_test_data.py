@@ -32,8 +32,10 @@ def compare_sequences():
             newfiles = filter_py27(newfiles)
             PulseSequencePlotter.plot_pulse_files_compare(testfiles, newfiles)
             c = input('Enter to continue (q to quit): ')
-            if c == 'q':
+            if c == "q":
                 break
+        if c == "q":
+            break
 
 
 def filter_py27(filenames):
