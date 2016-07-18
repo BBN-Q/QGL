@@ -124,6 +124,8 @@ def plot_pulse_files(h5_files):
 
     session = push_session(curdoc())
     session.show(column([slider, fig]))
+
+    print("Press Ctrl-C or interrupt kernel stop plotting and continue.")
     session.loop_until_closed()
 
 def extract_waveforms(h5_files, nameDecorator=''):
@@ -214,4 +216,6 @@ def plot_pulse_files_compare(h5_files_A, h5_files_B):
 
     session = push_session(curdoc())
     session.show(column([slider, fig]))
+
+    print("Press Ctrl-C or interrupt kernel stop plotting and continue.")
     session.loop_until_closed()
