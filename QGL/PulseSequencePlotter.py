@@ -1,4 +1,3 @@
-
 '''
 Created on Jan 8, 2012
 
@@ -44,8 +43,10 @@ from . import drivers
 
 from .Plotting import BokehServerThread, in_notebook
 
+
 def all_zero_seqs(seqs):
     return all([np.allclose([_[1] for _ in seq], 0) for seq in seqs])
+
 
 def build_awg_translator_map():
     translators_map = {}
@@ -62,10 +63,12 @@ def build_awg_translator_map():
 # static translator map
 translators = build_awg_translator_map()
 
+
 def resolve_translator(filename, translators):
     ext = os.path.splitext(filename)[1]
     if ext not in translators:
-        raise NameError("No translator found to open the given file %s", filename)
+        raise NameError("No translator found to open the given file %s",
+                        filename)
     if len(translators[ext]) == 1:
         return translators[ext][0]
     for t in translators[ext]:
@@ -189,22 +192,19 @@ def plot_pulse_files_compare(fileNames1, fileNames2):
 
     # Colobrewer2 qualitative Set1 (http://colorbrewer2.org)
     colours = [
-        "#e41a1c",
-        "#377eb8",
-        "#4daf4a",
-        "#984ea3",
-        "#ff7f00",
-        "#ffff33",
-        "#a65628",
-        "#f781bf",
-        "#999999"
+        "#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#ffff33",
+        "#a65628", "#f781bf", "#999999"
     ]
 
     js_sources = {}
     js_sources["all_data"] = all_data
-    for ct,k in enumerate(lineNames1 + lineNames2):
+    for ct, k in enumerate(lineNames1 + lineNames2):
         k_ = k.replace("-", "_")
-        line = plot.line(dataDict[k_+"_x_1"], dataDict[k_+"_y_1"], color=colours[ct%len(colours)], line_width=2, legend=k)
+        line = plot.line(dataDict[k_ + "_x_1"],
+                         dataDict[k_ + "_y_1"],
+                         color=colours[ct % len(colours)],
+                         line_width=2,
+                         legend=k)
         js_sources[k_] = line.data_source
 
     code_template = Template("""
@@ -217,9 +217,17 @@ def plot_pulse_files_compare(fileNames1, fileNames2):
         console.log("Got here!")
     """)
 
-    callback = CustomJS(args=js_sources, code=code_template.render(lineNames=[l.replace("-","_") for l in lineNames1+lineNames2]))
+    callback = CustomJS(
+        args=js_sources,
+        code=code_template.render(
+            lineNames=[l.replace("-", "_") for l in lineNames1 + lineNames2]))
 
-    slider = Slider(start=1, end=num_seqs, value=1, step=1, title="Sequence", callback=callback)
+    slider = Slider(start=1,
+                    end=num_seqs,
+                    value=1,
+                    step=1,
+                    title="Sequence",
+                    callback=callback)
 
     layout = vform(slider, plot)
 

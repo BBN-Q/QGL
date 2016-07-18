@@ -32,17 +32,21 @@ import sys
 
 from . import config
 
+
 def output_notebook():
     bk.output_notebook()
 
+
 def output_file():
-    bk.output_file(os.path.join(tempfile.gettempdir(), str(uuid.uuid4()) + ".html"))
+    bk.output_file(os.path.join(tempfile.gettempdir(), str(uuid.uuid4()) +
+                                ".html"))
 
 # Default to output_file
 # Commented out because recent versions of Bokeh remember the state of
 # output_notebook/output_file on a per module basis.
 
 # output_file()
+
 
 def build_waveforms(seq):
     # import here to avoid circular imports
@@ -58,7 +62,8 @@ def build_waveforms(seq):
         label_idx = {}
         for entry in wires[q]:
             if isinstance(entry, PulseSequencer.Pulse):
-                shape = np.exp(1j*(frame+entry.phase)) * entry.amp * entry.shape
+                shape = np.exp(1j *
+                               (frame + entry.phase)) * entry.amp * entry.shape
                 frame += entry.frameChange
                 concatShapes[q] = np.append(concatShapes[q], shape)
             elif isinstance(entry, BlockLabel.BlockLabel):
@@ -66,7 +71,8 @@ def build_waveforms(seq):
             elif isinstance(entry, ControlFlow.LoadRepeat):
                 repeat = entry.value - 1
             elif isinstance(entry, ControlFlow.Repeat):
-                concatShapes[q] = np.append(concatShapes[q], np.tile(concatShapes[q][label_idx[entry.target]:],repeat) )
+                concatShapes[q] = np.append(concatShapes[q], np.tile(
+                    concatShapes[q][label_idx[entry.target]:], repeat))
 
     # add an extra zero to make things look more normal
     for q in channels:
@@ -74,22 +80,27 @@ def build_waveforms(seq):
     return concatShapes
 
 
-def plot_waveforms(waveforms, figTitle = ''):
+def plot_waveforms(waveforms, figTitle=''):
     channels = waveforms.keys()
-     # plot
+    # plot
     plots = []
-    for (ct,chan) in enumerate(channels):
-        fig = bk.figure(title=figTitle + repr(chan), plot_width=800, plot_height=350, y_range=[-1.05, 1.05])
+    for (ct, chan) in enumerate(channels):
+        fig = bk.figure(title=figTitle + repr(chan),
+                        plot_width=800,
+                        plot_height=350,
+                        y_range=[-1.05, 1.05])
         fig.background_fill_color = config.plotBackground
         if config.gridColor:
             fig.xgrid.grid_line_color = config.gridColor
             fig.ygrid.grid_line_color = config.gridColor
         waveformToPlot = waveforms[chan]
-        xpts = np.linspace(0,len(waveformToPlot)/chan.physChan.samplingRate/1e-6,len(waveformToPlot))
+        xpts = np.linspace(0, len(waveformToPlot) / chan.physChan.samplingRate
+                           / 1e-6, len(waveformToPlot))
         fig.line(xpts, np.real(waveformToPlot), color='red')
         fig.line(xpts, np.imag(waveformToPlot), color='blue')
         plots.append(fig)
     bk.show(bk.vplot(*plots))
+
 
 def show(seq):
     waveforms = build_waveforms(seq)
