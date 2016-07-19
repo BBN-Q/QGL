@@ -108,7 +108,7 @@ def update_pulse_length(pulse, new_length):
     #copy shape parameter dictionary to avoid updating other copies
     new_params = copy(pulse.shapeParams)
     new_params["length"] = new_length
-    return pulse._replace(shapeParams=new_params)
+    return pulse._replace(shapeParams=new_params, length=new_length)
 
 def apply_gating_constraints(chan, linkList):
     # get channel parameters in samples
