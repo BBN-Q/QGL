@@ -105,12 +105,15 @@ def TAPulse(label,
             amp,
             phase=0,
             frameChange=0,
-            ignoredStrParams=[]):
+            ignoredStrParams=None):
     """
     Creates a time/amplitude pulse with the given pulse length and amplitude
     """
     params = {'length': length, 'shapeFun': PulseShapes.constant}
-    ignoredStrParams.append('shapeFun')
+    if ignoredStrParams:
+        ignoredStrParams.append('shapeFun')
+    else:
+        ignoredStrParams = ['shapeFun']
     return Pulse(label, channel, params, amp, phase, frameChange, ignoredStrParams)
 
 
