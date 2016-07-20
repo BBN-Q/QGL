@@ -23,7 +23,7 @@ limitations under the License.
 from . import PulseShapes
 import numpy as np
 
-from math import tan,cos,pi
+from math import tan, cos, pi
 # Python 2/3 compatibility: use the py3 meaning of 'str'
 from builtins import str
 
@@ -31,6 +31,7 @@ from atom.api import Atom, Str, Float, Instance, \
     Dict, Enum, Bool, Typed, Int
 
 from copy import deepcopy
+
 
 class Channel(Atom):
     '''
@@ -64,6 +65,7 @@ class Channel(Atom):
 
         return jsonDict
 
+
 class PhysicalChannel(Channel):
     '''
     The main class for actual AWG channels.
@@ -74,25 +76,29 @@ class PhysicalChannel(Channel):
     samplingRate = Float(default=1.2e9)
     delay = Float()
 
+
 class LogicalChannel(Channel):
     '''
     The main class from which we will generate sequences.
     At some point it needs to be assigned to a physical channel.
     '''
     #During initilization we may just have a string reference to the channel
-    physChan = Instance((str,PhysicalChannel))
+    physChan = Instance((str, PhysicalChannel))
 
     def __init__(self, **kwargs):
         super(LogicalChannel, self).__init__(**kwargs)
         if self.physChan is None:
-            self.physChan = PhysicalChannel(label=kwargs['label']+'-phys')
+            self.physChan = PhysicalChannel(label=kwargs['label'] + '-phys')
+
 
 class PhysicalMarkerChannel(PhysicalChannel):
     '''
     An digital output channel on an AWG.
     '''
-    gateBuffer = Float(0.0).tag(desc="How much extra time should be added onto the beginning of a gating pulse")
+    gateBuffer = Float(0.0).tag(
+        desc="How much extra time should be added onto the beginning of a gating pulse")
     gateMinWidth = Float(0.0).tag(desc="The minimum marker pulse width")
+
 
 class PhysicalQuadratureChannel(PhysicalChannel):
     '''
@@ -106,24 +112,37 @@ class PhysicalQuadratureChannel(PhysicalChannel):
 
     @property
     def correctionT(self):
-        return np.array([[self.ampFactor, self.ampFactor*tan(self.phaseSkew*pi/180)], [0, 1/cos(self.phaseSkew*pi/180)]])
+        return np.array(
+            [[self.ampFactor, self.ampFactor * tan(self.phaseSkew * pi / 180)],
+             [0, 1 / cos(self.phaseSkew * pi / 180)]])
+
 
 class LogicalMarkerChannel(LogicalChannel):
     '''
     A class for digital channels for gating sources or triggering other things.
     '''
-    pulseParams = Dict(default={'shapeFun': PulseShapes.square, 'length':10e-9})
+    pulseParams = Dict(default={'shapeFun': PulseShapes.constant,
+                                'length': 10e-9})
+
 
 class Qubit(LogicalChannel):
     '''
     The main class for generating qubit pulses.  Effectively a logical "QuadratureChannel".
     '''
-    pulseParams = Dict(default={'length':20e-9, 'piAmp':1.0, 'pi2Amp':0.5, 'shapeFun':PulseShapes.gaussian, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9})
+    pulseParams = Dict(default={'length': 20e-9,
+                                'piAmp': 1.0,
+                                'pi2Amp': 0.5,
+                                'shapeFun': PulseShapes.gaussian,
+                                'cutoff': 2,
+                                'dragScaling': 0,
+                                'sigma': 5e-9})
     gateChan = Instance((str, LogicalMarkerChannel))
-    frequency = Float(0.0).tag(desc='modulation frequency of the channel (can be positive or negative)')
+    frequency = Float(0.0).tag(
+        desc='modulation frequency of the channel (can be positive or negative)')
 
     def __init__(self, **kwargs):
         super(Qubit, self).__init__(**kwargs)
+
 
 class Measurement(LogicalChannel):
     '''
@@ -133,13 +152,21 @@ class Measurement(LogicalChannel):
     '''
     import sys
     if sys.version_info[0] == 2:
-        measType = Enum('autodyne','homodyne').tag(desc='Type of measurement (autodyne, homodyne)')
+        measType = Enum('autodyne', 'homodyne').tag(
+            desc='Type of measurement (autodyne, homodyne)')
     else:
-        measType = Enum(('autodyne','homodyne')).tag(desc='Type of measurement (autodyne, homodyne)')
+        measType = Enum(('autodyne', 'homodyne')).tag(
+            desc='Type of measurement (autodyne, homodyne)')
 
-    autodyneFreq = Float(0.0).tag(desc='use to bake the modulation into the pulse, so that it has constant phase')
-    frequency = Float(0.0).tag(desc='use frequency to asssociate modulation with the channel')
-    pulseParams = Dict(default={'length':100e-9, 'amp':1.0, 'shapeFun':PulseShapes.tanh, 'cutoff':2, 'sigma':1e-9})
+    autodyneFreq = Float(0.0).tag(
+        desc='use to bake the modulation into the pulse, so that it has constant phase')
+    frequency = Float(0.0).tag(
+        desc='use frequency to asssociate modulation with the channel')
+    pulseParams = Dict(default={'length': 100e-9,
+                                'amp': 1.0,
+                                'shapeFun': PulseShapes.tanh,
+                                'cutoff': 2,
+                                'sigma': 1e-9})
     gateChan = Instance((str, LogicalMarkerChannel))
     trigChan = Instance((str, LogicalMarkerChannel))
 
@@ -147,6 +174,7 @@ class Measurement(LogicalChannel):
         super(Measurement, self).__init__(**kwargs)
         if self.trigChan is None:
             self.trigChan = LogicalMarkerChannel(label='digitizerTrig')
+
 
 class Edge(LogicalChannel):
     '''
@@ -159,24 +187,35 @@ class Edge(LogicalChannel):
     # allow string in source and target so that we can store a label or an object
     source = Instance((str, Qubit))
     target = Instance((str, Qubit))
-    pulseParams = Dict(default={'length':20e-9, 'amp':1.0, 'phase':0.0, 'shapeFun':PulseShapes.gaussian, 'cutoff':2, 'dragScaling':0, 'sigma':5e-9, 'riseFall': 20e-9})
+    pulseParams = Dict(default={'length': 20e-9,
+                                'amp': 1.0,
+                                'phase': 0.0,
+                                'shapeFun': PulseShapes.gaussian,
+                                'cutoff': 2,
+                                'dragScaling': 0,
+                                'sigma': 5e-9,
+                                'riseFall': 20e-9})
     gateChan = Instance((str, LogicalMarkerChannel))
-    frequency = Float(0.0).tag(desc='modulation frequency of the channel (can be positive or negative)')
+    frequency = Float(0.0).tag(
+        desc='modulation frequency of the channel (can be positive or negative)')
 
     def __init__(self, **kwargs):
         super(Edge, self).__init__(**kwargs)
         if self.gateChan is None:
-            self.gateChan = LogicalMarkerChannel(label=kwargs['label']+'-gate')
+            self.gateChan = LogicalMarkerChannel(
+                label=kwargs['label'] + '-gate')
 
     def isforward(self, source, target):
         ''' Test whether (source, target) matches the directionality of the edge. '''
         nodes = (self.source, self.target)
         if (source not in nodes) or (target not in nodes):
-            raise ValueError('One of {0} is not a node in the edge'.format((source, target)))
+            raise ValueError('One of {0} is not a node in the edge'.format((
+                source, target)))
         if (self.source, self.target) == (source, target):
             return True
         else:
             return False
+
 
 NewLogicalChannelList = [Qubit, Edge, LogicalMarkerChannel, Measurement]
 NewPhysicalChannelList = [PhysicalMarkerChannel, PhysicalQuadratureChannel]

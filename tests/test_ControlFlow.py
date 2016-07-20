@@ -21,7 +21,8 @@ class ControlFlowTest(unittest.TestCase):
         label(seq2)
         # print qif(0, seq1, seq2)
         # print ([CmpEq(0), Goto(label(seq1))] + seq2 + [Goto(endlabel(seq1))] + seq1
-        assert( qif(0, seq1, seq2) == [CmpEq(0), Goto(label(seq1))] + seq2 + [Goto(endlabel(seq1))] + seq1 )
+        assert (qif(0, seq1, seq2) == [CmpEq(0), Goto(label(seq1))] + seq2 +
+                [Goto(endlabel(seq1))] + seq1)
 
     @unittest.expectedFailure
     def test_qif_single_element(self):
@@ -44,8 +45,9 @@ class ControlFlowTest(unittest.TestCase):
         q1 = self.q1
         seq1 = [X90(q1), Y90(q1)]
         seq2 = qwhile(0, seq1)
-        seq3 = [label(seq2), CmpNeq(0), Goto(endlabel(seq2))] + seq1 + [Goto(label(seq2)), endlabel(seq2)]
-        assert( seq2 ==  seq3)
+        seq3 = [label(seq2), CmpNeq(0), Goto(endlabel(seq2))] + seq1 + [Goto(
+            label(seq2)), endlabel(seq2)]
+        assert (seq2 == seq3)
 
     def test_qdowhile(self):
         q1 = self.q1
@@ -53,11 +55,12 @@ class ControlFlowTest(unittest.TestCase):
         label(seq1)
         # print qdowhile(0, seq1)
         # print seq1 + [CmpEq(0), Goto(label(seq1))]
-        assert( qdowhile(0, seq1) == seq1 + [CmpEq(0), Goto(label(seq1))] )
+        assert (qdowhile(0, seq1) == seq1 + [CmpEq(0), Goto(label(seq1))])
 
     def test_qcall(self):
         q1 = self.q1
         q2 = self.q2
+
         @qfunction
         def dummy(q):
             return [X(q), Y(q)]
@@ -68,19 +71,21 @@ class ControlFlowTest(unittest.TestCase):
         assert dummy(q1) != dummy(q2)
 
         # specialization lookup with label at beginning and RETURN at end
-        assert ControlFlow.qfunction_specialization(dummy(q1).target) == [dummy(q1).target, X(q1), Y(q1), Return()]
+        assert ControlFlow.qfunction_specialization(dummy(
+            q1).target) == [dummy(q1).target, X(q1), Y(q1), Return()]
 
     def test_repeat(self):
         q1 = self.q1
         seq1 = [X90(q1), Y90(q1)]
         label(seq1)
-        assert( repeat(5, seq1) == [LoadRepeat(5)] + seq1 + [Repeat(label(seq1))] )
+        assert (
+            repeat(5, seq1) == [LoadRepeat(5)] + seq1 + [Repeat(label(seq1))])
 
     def test_qwait(self):
         q1 = self.q1
         seq1 = [qwait(), qwait("CMP")]
-        assert( isinstance(seq1[0], ControlFlow.Wait) )
-        assert( isinstance(seq1[1], ControlFlow.LoadCmp) )
+        assert (isinstance(seq1[0], ControlFlow.Wait))
+        assert (isinstance(seq1[1], ControlFlow.LoadCmp))
 
     def test_compile(self):
         q1 = self.q1
@@ -99,5 +104,5 @@ class ControlFlowTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    
+
     unittest.main()
