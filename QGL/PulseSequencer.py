@@ -30,7 +30,7 @@ from . import ChannelLibrary, PulseShapes
 
 from collections import namedtuple
 
-class Pulse(namedtuple("Pulse", ["label", "channel", "amp", "phase", "frequency",
+class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "frequency",
                                  "frameChange", "shapeParams", "isTimeAmp",
                                  "isZero", "ignoredStrParams"])):
     __slots__ = ()
@@ -46,7 +46,7 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "amp", "phase", "frequency"
                 raise NameError("shapeParams must include {0}".format(param))
         isTimeAmp = (shapeParams['shapeFun'] == PulseShapes.constant)
         isZero = (amp == 0)
-        return super(cls, Pulse).__new__(cls, label, channel, amp, phase, frequency, frameChange, shapeParams, isTimeAmp, isZero, ignoredStrParams)
+        return super(cls, Pulse).__new__(cls, label, channel, shapeParams['length'], amp, phase, frequency, frameChange, shapeParams, isTimeAmp, isZero, ignoredStrParams)
 
     def __str__(self):
         kwvals = []
@@ -69,18 +69,6 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "amp", "phase", "frequency"
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    @property
-    def length(self):
-        """Alias the shape parameter "length" """
-        return self.shapeParams["length"]
-
-    def __mul__(self, other):
-        """ Overload multiplication of Pulses as a "tensor" operator"""
-        if isinstance(other, Pulse):
-            return PulseBlock(self) * PulseBlock(other)
-        else:
-            return PulseBlock(self) * other
-
     def hashshape(self):
         return hash(frozenset(self.shapeParams.items()))
 
@@ -96,6 +84,7 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "amp", "phase", "frequency"
                      -self.amp, self.phase, -self.frameChange)
 
     def __mul__(self, other):
+        """ Overload multiplication of Pulses as a "tensor" operator"""
         return self.promote() * other.promote()
 
     def promote(self):
@@ -116,12 +105,15 @@ def TAPulse(label,
             amp,
             phase=0,
             frameChange=0,
-            ignoredStrParams=[]):
+            ignoredStrParams=None):
     """
     Creates a time/amplitude pulse with the given pulse length and amplitude
     """
     params = {'length': length, 'shapeFun': PulseShapes.constant}
-    ignoredStrParams.append('shapeFun')
+    if ignoredStrParams:
+        ignoredStrParams.append('shapeFun')
+    else:
+        ignoredStrParams = ['shapeFun']
     return Pulse(label, channel, params, amp, phase, frameChange, ignoredStrParams)
 
 
@@ -182,10 +174,10 @@ class PulseBlock(object):
     '''
 
     def __init__(self, *pulses):
-        #Set some default values
-        #How multiple channels are aligned.
         self.alignment = 'left'
         self.pulses = OrderedDict([(pulse.channel, pulse) for pulse in pulses])
+        # The maximum length for any channel on this block
+        self.length = max(p.length for p in self.pulses.values())
         self.label = None
 
     def __repr__(self):
@@ -203,7 +195,7 @@ class PulseBlock(object):
         p.text(labelPart + "⊗ ".join([str(pulse)
                                       for pulse in self.pulses.values()]))
 
-    #Overload the multiplication operator to combine pulse blocks
+    # Overload the multiplication operator to combine pulse blocks
     def __mul__(self, rhs):
         # make sure RHS is a PulseBlock
         rhs = rhs.promote()
@@ -217,6 +209,7 @@ class PulseBlock(object):
                     "Attempted to multiply pulses acting on the same space")
             else:
                 result.pulses[k] = v
+        result.length = max(self.length, rhs.length)
         return result
 
     def __eq__(self, other):
@@ -232,19 +225,13 @@ class PulseBlock(object):
     def __ne__(self, other):
         return not self == other
 
-    #PulseBlocks don't need to be promoted, so just return self
+    # PulseBlocks don't need to be promoted, so just return self
     def promote(self):
         return self
 
     @property
     def channel(self):
         return self.pulses.keys()
-
-    #The maximum length for any channel on this block
-    @property
-    def length(self):
-        return max(p.length for p in self.pulses.values())
-
 
 def align(pulseBlock, mode="center"):
     # make sure we have a PulseBlock
