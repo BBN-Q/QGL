@@ -8,7 +8,7 @@ from math import pi, sin, cos, acos, sqrt
 
 def gaussian(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
     '''
-    A simple gaussian shaped pulse. 
+    A simple gaussian shaped pulse.
     cutoff is how many sigma the pulse goes out
     '''
     #Round to how many points we need
@@ -17,15 +17,6 @@ def gaussian(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
     xStep = xPts[1] - xPts[0]
     return (amp * (np.exp(-0.5 * (xPts**2)) - np.exp(-0.5 * (
         (xPts[-1] + xStep)**2)))).astype(np.complex)
-
-
-def square(amp=1, length=0, samplingRate=1e9, **params):
-    '''
-    A simple rectangular shaped pulse. 
-    '''
-    #Round to how many points we need
-    numPts = np.round(length * samplingRate)
-    return (amp * np.ones(numPts)).astype(np.complex)
 
 
 def delay(length=0, samplingRate=1e9, **params):
@@ -42,6 +33,8 @@ def constant(amp=1, length=0, samplingRate=1e9, **params):
     numPts = np.round(length * samplingRate)
     return amp * np.ones(numPts, dtype=np.complex)
 
+# square is deprecated but alias square to constant
+square = constant
 
 def drag(amp=1,
          length=0,
@@ -134,7 +127,7 @@ def dragGaussOff(amp=1,
 
 def tanh(amp=1, length=0, sigma=0, cutoff=2, samplingRate=1e9, **params):
     '''
-    A rounded square shape from the sum of two tanh shapes. 
+    A rounded constant shape from the sum of two tanh shapes.
     '''
     numPts = np.round(length * samplingRate)
     xPts = np.linspace(-length / 2, length / 2, numPts)

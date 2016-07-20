@@ -104,8 +104,7 @@ def merge_channels(wires, channels):
             else:
                 frequency = 0.0
 
-            if all([(e.shapeParams['shapeFun'] == PulseShapes.constant or
-                    e.shapeParams['shapeFun'] == PulseShapes.square) for e in entries]):
+            if all([e.shapeParams['shapeFun'] == PulseShapes.constant for e in entries]):
                 phasor = np.sum([e.amp * np.exp(1j * e.phase) for e in entries])
                 amp = np.abs(phasor)
                 phase = np.angle(phasor)
