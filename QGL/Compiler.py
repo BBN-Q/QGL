@@ -23,6 +23,7 @@ from warnings import warn
 from copy import copy
 from functools import reduce
 from importlib import import_module
+import json
 
 from . import config
 from . import PatternUtils
@@ -380,7 +381,7 @@ def compile_to_hardware(seqs,
     awgData = bundle_wires(physWires, wfs)
 
     # convert to hardware formats
-    fileList = []
+    files = {}
     for awgName, data in awgData.items():
         # create the target folder if it does not exist
         targetFolder = os.path.split(os.path.normpath(os.path.join(
@@ -392,10 +393,25 @@ def compile_to_hardware(seqs,
                 'seqFileExt']))
         data['translator'].write_sequence_file(data, fullFileName)
 
-        fileList.append(fullFileName)
+        files[awgName] = fullFileName
+
+    # create meta output
+    axis_descriptor = {
+        'name': 'segment',
+        'unit': None,
+        'points': list(range(1, 1+len(seqs)))
+    }
+    meta = {
+        'instruments': files,
+        'num_sequences': len(seqs),
+        'axis_descriptor': axis_descriptor
+    }
+    metafilepath = os.path.join(config.AWGDir, fileName + '-meta.json')
+    with open(metafilepath, 'w') as FID:
+        json.dump(meta, FID, indent=2, sort_keys=True)
 
     # Return the filenames we wrote
-    return fileList
+    return list(files.values())
 
 
 def compile_sequences(seqs, channels=set(), qgl2=False):
