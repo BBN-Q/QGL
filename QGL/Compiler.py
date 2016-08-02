@@ -398,11 +398,13 @@ def compile_to_hardware(seqs,
         files[awgName] = fullFileName
 
     # create meta output
+    num_measurements = sum(PatternUtils.contains_measurement(e)
+                           for e in flatten(seqs))
     if not axis_descriptor:
         axis_descriptor = {
             'name': 'segment',
             'unit': None,
-            'points': list(range(1, 1+len(seqs)))
+            'points': list(range(1, 1 + num_measurements))
         }
     if not cal_descriptor:
         # contains a dictionary of states and a list of associated indices
@@ -410,6 +412,7 @@ def compile_to_hardware(seqs,
     meta = {
         'instruments': files,
         'num_sequences': len(seqs),
+        'num_measurements': num_measurements,
         'axis_descriptor': axis_descriptor,
         'cal_descriptor': cal_descriptor
     }
