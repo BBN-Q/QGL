@@ -28,3 +28,19 @@ def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False):
     measBlock = reduce(operator.mul, [MEAS(q) for q in qubits])
     return [[seq, measBlock, qwait('CMP')] if waitcmp else [seq, measBlock]
             for seq in calSeqs]
+
+def time_descriptor(times, desired_units="us"):
+    if desired_units == "s":
+        scale = 1
+    elif desired_units == "ms":
+        scale = 1e3
+    elif desired_units == "us" or desired_units == "μs":
+        scale = 1e6
+    elif desired_units == "ns":
+        scale = 1e9
+    axis_descriptor = {
+        'name': 'time',
+        'unit': desired_units,
+        'points': list(scale * times)
+    }
+    return axis_descriptor

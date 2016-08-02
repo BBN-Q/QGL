@@ -2,7 +2,7 @@ from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
 import QGL.PulseShapes
-from .helpers import create_cal_seqs
+from .helpers import create_cal_seqs, time_descriptor
 from functools import reduce
 
 
@@ -24,7 +24,13 @@ def RabiAmp(qubit, amps, phase=0, showPlot=False):
 	"""
     seqs = [[Utheta(qubit, amp=amp, phase=phase), MEAS(qubit)] for amp in amps]
 
-    fileNames = compile_to_hardware(seqs, 'Rabi/Rabi')
+    axis_descriptor = {
+        'name': 'amplitude',
+        'unit': None,
+        'points': list(amps)
+    }
+
+    fileNames = compile_to_hardware(seqs, 'Rabi/Rabi', axis_descriptor=axis_descriptor)
     print(fileNames)
 
     if showPlot:
@@ -59,7 +65,8 @@ def RabiWidth(qubit,
                     phase=phase,
                     shapeFun=shapeFun), MEAS(qubit)] for l in widths]
 
-    fileNames = compile_to_hardware(seqs, 'Rabi/Rabi')
+    fileNames = compile_to_hardware(seqs, 'Rabi/Rabi',
+        axis_descriptor=time_descriptor(widths))
     print(fileNames)
 
     if showPlot:
@@ -101,7 +108,13 @@ def RabiAmp_NQubits(qubits,
     if docals:
         seqs += create_cal_seqs(qubits, calRepeats, measChans=measChans)
 
-    fileNames = compile_to_hardware(seqs, 'Rabi/Rabi')
+    axis_descriptor = {
+        'name': 'amplitude',
+        'unit': None,
+        'points': list(amps)
+    }
+
+    fileNames = compile_to_hardware(seqs, 'Rabi/Rabi', axis_descriptor=axis_descriptor)
     print(fileNames)
 
     if showPlot:
@@ -127,7 +140,13 @@ def RabiAmpPi(qubit, mqubit, amps, phase=0, showPlot=False):
     seqs = [[X(mqubit), Utheta(qubit, amp=amp, phase=phase), X(mqubit),
              MEAS(mqubit)] for amp in amps]
 
-    fileNames = compile_to_hardware(seqs, 'Rabi/Rabi')
+    axis_descriptor = {
+        'name': 'amplitude',
+        'unit': None,
+        'points': list(amps)
+    }
+
+    fileNames = compile_to_hardware(seqs, 'Rabi/Rabi', axis_descriptor=axis_descriptor)
     print(fileNames)
 
     if showPlot:
@@ -140,6 +159,13 @@ def SingleShot(qubit, showPlot=False):
 	2-segment sequence with qubit prepared in |0> and |1>, useful for single-shot fidelity measurements and kernel calibration
     """
     seqs = [[Id(qubit), MEAS(qubit)], [X(qubit), MEAS(qubit)]]
+
+    axis_descriptor = {
+        'name': 'state',
+        'unit': None,
+        'points': [0, 1]
+    }
+
     filenames = compile_to_hardware(seqs, 'SingleShot/SingleShot')
     print(filenames)
 
@@ -181,7 +207,8 @@ def Swap(qubit, mqubit, delays, showPlot=False):
                 (mqubit, qubit), 2,
                 measChans=(mqubit, qubit))
 
-    fileNames = compile_to_hardware(seqs, 'Rabi/Rabi')
+    fileNames = compile_to_hardware(seqs, 'Rabi/Rabi',
+        time_descriptor=time_descriptor(delays))
     print(fileNames)
 
     if showPlot:

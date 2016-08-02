@@ -1,16 +1,16 @@
 from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
-from .helpers import create_cal_seqs
+from .helpers import create_cal_seqs, time_descriptor
 
 
 def HahnEcho(qubit, pulseSpacings, periods=0, calRepeats=2, showPlot=False):
     """
-	A single pulse Hahn echo with variable phase of second pi/2 pulse. 
+	A single pulse Hahn echo with variable phase of second pi/2 pulse.
 
 	Parameters
 	----------
-	qubit : logical channel to implement sequence (LogicalChannel) 
+	qubit : logical channel to implement sequence (LogicalChannel)
 	pulseSpacings : pulse spacings to sweep over; the t in 90-t-180-t-180 (iterable)
 	periods: number of artificial oscillations
 	calRepeats : how many times to repeat calibration scalings (default 2)
@@ -28,7 +28,8 @@ def HahnEcho(qubit, pulseSpacings, periods=0, calRepeats=2, showPlot=False):
 #Tack on the calibration scalings
     seqs += create_cal_seqs((qubit, ), calRepeats)
 
-    fileNames = compile_to_hardware(seqs, 'Echo/Echo')
+    fileNames = compile_to_hardware(seqs, 'Echo/Echo',
+        axis_descriptor=time_descriptor(2 * pulseSpacings))
     print(fileNames)
 
     if showPlot:
@@ -42,7 +43,7 @@ def CPMG(qubit, numPulses, pulseSpacing, calRepeats=2, showPlot=False):
 
 	Parameters
 	----------
-	qubit : logical channel to implement sequence (LogicalChannel) 
+	qubit : logical channel to implement sequence (LogicalChannel)
 	numPulses : number of 180 pulses; should be even (iterable)
 	pulseSpacing : spacing between the 180's (seconds)
 	calRepeats : how many times to repeat calibration scalings (default 2)
@@ -63,7 +64,8 @@ def CPMG(qubit, numPulses, pulseSpacing, calRepeats=2, showPlot=False):
     #Tack on the calibration scalings
     seqs += create_cal_seqs((qubit, ), calRepeats)
 
-    fileNames = compile_to_hardware(seqs, 'CPMG/CPMG')
+    fileNames = compile_to_hardware(seqs, 'CPMG/CPMG',
+        axis_descriptor=time_descriptor(pulseSpacing * numPulses))
     print(fileNames)
 
     if showPlot:
