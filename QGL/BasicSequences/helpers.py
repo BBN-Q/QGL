@@ -1,3 +1,5 @@
+# coding=utf-8
+
 from itertools import product
 import operator
 from ..PulsePrimitives import Id, X, MEAS
@@ -29,12 +31,18 @@ def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False):
     return [[seq, measBlock, qwait('CMP')] if waitcmp else [seq, measBlock]
             for seq in calSeqs]
 
+def cal_descriptor(qubits, numRepeats, startIdx):
+    states = ['0', '1']
+    state_set = [reduce(operator.add, s) for s in product(states, repeat=len(qubits))]
+    descriptor = {state: startIdx + (ct * numRepeats) for ct, state in enumerate(state_set)}
+    return descriptor
+
 def time_descriptor(times, desired_units="us"):
     if desired_units == "s":
         scale = 1
     elif desired_units == "ms":
         scale = 1e3
-    elif desired_units == "us" or desired_units == "μs":
+    elif desired_units == "us" or desired_units == u"μs":
         scale = 1e6
     elif desired_units == "ns":
         scale = 1e9

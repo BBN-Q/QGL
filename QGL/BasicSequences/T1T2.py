@@ -2,7 +2,7 @@ from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
 from scipy.constants import pi
-from .helpers import create_cal_seqs, time_descriptor
+from .helpers import create_cal_seqs, time_descriptor, cal_descriptor
 
 
 def InversionRecovery(qubit,
@@ -31,10 +31,10 @@ def InversionRecovery(qubit,
     #Tack on the calibration scalings
     seqs += create_cal_seqs((qubit, ), calRepeats)
 
-    fileNames = compile_to_hardware(seqs, 'T1' +
-                                    ('_' + qubit.label) * suffix + '/T1' +
-                                    ('_' + qubit.label) * suffix,
-                                    axis_descriptor=time_descriptor(delays))
+    fileNames = compile_to_hardware(seqs,
+        'T1' + ('_' + qubit.label) * suffix + '/T1' + ('_' + qubit.label) * suffix,
+        axis_descriptor=time_descriptor(delays),
+        cal_descriptor=cal_descriptor((qubit,), calRepeats, len(delays)+1))
     print(fileNames)
 
     if showPlot:
@@ -73,10 +73,10 @@ def Ramsey(qubit,
     #Tack on the calibration scalings
     seqs += create_cal_seqs((qubit, ), calRepeats)
 
-    fileNames = compile_to_hardware(seqs, 'Ramsey' +
-                                    ('_' + qubit.label) * suffix + '/Ramsey' +
-                                    ('_' + qubit.label) * suffix,
-                                    axis_descriptor=time_descriptor(pulseSpacings))
+    fileNames = compile_to_hardware(seqs,
+        'Ramsey' + ('_' + qubit.label) * suffix + '/Ramsey' + ('_' + qubit.label) * suffix,
+        axis_descriptor=time_descriptor(pulseSpacings),
+        cal_descriptor=cal_descriptor((qubit,), calRepeats, len(pulseSpacings)+1))
     print(fileNames)
 
     if showPlot:

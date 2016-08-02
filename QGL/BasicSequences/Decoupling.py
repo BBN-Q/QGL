@@ -1,7 +1,7 @@
 from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
-from .helpers import create_cal_seqs, time_descriptor
+from .helpers import create_cal_seqs, time_descriptor, cal_descriptor
 
 
 def HahnEcho(qubit, pulseSpacings, periods=0, calRepeats=2, showPlot=False):
@@ -29,7 +29,8 @@ def HahnEcho(qubit, pulseSpacings, periods=0, calRepeats=2, showPlot=False):
     seqs += create_cal_seqs((qubit, ), calRepeats)
 
     fileNames = compile_to_hardware(seqs, 'Echo/Echo',
-        axis_descriptor=time_descriptor(2 * pulseSpacings))
+        axis_descriptor=time_descriptor(2 * pulseSpacings),
+        cal_descriptor=cal_descriptor((qubit,), calRepeats, len(pulseSpacings)+1))
     print(fileNames)
 
     if showPlot:
@@ -65,7 +66,8 @@ def CPMG(qubit, numPulses, pulseSpacing, calRepeats=2, showPlot=False):
     seqs += create_cal_seqs((qubit, ), calRepeats)
 
     fileNames = compile_to_hardware(seqs, 'CPMG/CPMG',
-        axis_descriptor=time_descriptor(pulseSpacing * numPulses))
+        axis_descriptor=time_descriptor(pulseSpacing * numPulses),
+        cal_descriptor=cal_descriptor((qubit,), calRepeats, len(numPulses)+1))
     print(fileNames)
 
     if showPlot:

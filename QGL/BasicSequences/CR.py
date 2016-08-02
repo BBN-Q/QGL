@@ -2,7 +2,7 @@ from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
 from ..ChannelLibrary import EdgeFactory
 from ..PulseSequencePlotter import plot_pulse_files
-from .helpers import create_cal_seqs, time_descriptor
+from .helpers import create_cal_seqs, time_descriptor, cal_descriptor
 
 
 def PiRabi(controlQ,
@@ -38,7 +38,8 @@ def PiRabi(controlQ,
               create_cal_seqs([targetQ,controlQ], calRepeats, measChans=(targetQ,controlQ))
 
     fileNames = compile_to_hardware(seqs, 'PiRabi/PiRabi',
-        axis_descriptor=time_descriptor(lengths))
+        axis_descriptor=time_descriptor(lengths),
+        cal_descriptor=cal_descriptor((controlQ, targetQ), calRepeats, len(lengths)+1))
     print(fileNames)
 
     if showPlot:
@@ -72,7 +73,8 @@ def EchoCRLen(controlQ,
       for l in lengths] + create_cal_seqs((targetQ,controlQ), calRepeats, measChans=(targetQ,controlQ))
 
     fileNames = compile_to_hardware(seqs, 'EchoCR/EchoCR',
-        axis_descriptor=time_descriptor(lengths))
+        axis_descriptor=time_descriptor(lengths),
+        cal_descriptor=cal_descriptor((controlQ, targetQ), calRepeats, len(lengths)+1))
     print(fileNames)
 
     if showPlot:
@@ -111,7 +113,9 @@ def EchoCRPhase(controlQ,
         'points': list(phases)
     }
 
-    fileNames = compile_to_hardware(seqs, 'EchoCR/EchoCR', axis_descriptor=axis_descriptor)
+    fileNames = compile_to_hardware(seqs, 'EchoCR/EchoCR',
+        axis_descriptor=axis_descriptor,
+        cal_descriptor=cal_descriptor((controlQ, targetQ), calRepeats, len(phases)+1))
     print(fileNames)
 
     if showPlot:
@@ -150,7 +154,9 @@ def EchoCRAmp(controlQ,
         'points': list(amps)
     }
 
-    fileNames = compile_to_hardware(seqs, 'EchoCR/EchoCR', axis_descriptor=axis_descriptor)
+    fileNames = compile_to_hardware(seqs, 'EchoCR/EchoCR',
+        axis_descriptor=axis_descriptor,
+        cal_descriptor=cal_descriptor((controlQ, targetQ), calRepeats, len(amps)+1))
     print(fileNames)
 
     if showPlot:

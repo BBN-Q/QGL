@@ -2,7 +2,7 @@ from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
 import QGL.PulseShapes
-from .helpers import create_cal_seqs, time_descriptor
+from .helpers import create_cal_seqs, time_descriptor, cal_descriptor
 from functools import reduce
 
 
@@ -114,7 +114,9 @@ def RabiAmp_NQubits(qubits,
         'points': list(amps)
     }
 
-    fileNames = compile_to_hardware(seqs, 'Rabi/Rabi', axis_descriptor=axis_descriptor)
+    fileNames = compile_to_hardware(seqs, 'Rabi/Rabi',
+        axis_descriptor=axis_descriptor,
+        cal_descriptor=cal_descriptor(qubits, calRepeats, len(amps)+1))
     print(fileNames)
 
     if showPlot:
@@ -208,7 +210,8 @@ def Swap(qubit, mqubit, delays, showPlot=False):
                 measChans=(mqubit, qubit))
 
     fileNames = compile_to_hardware(seqs, 'Rabi/Rabi',
-        time_descriptor=time_descriptor(delays))
+        time_descriptor=time_descriptor(delays),
+        cal_descriptor=cal_descriptor((mqubit, qubit), 2, len(delays)+1))
     print(fileNames)
 
     if showPlot:
