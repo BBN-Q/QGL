@@ -292,8 +292,17 @@ def compile_to_hardware(seqs,
                         qgl2=False,
                         addQGL2SlaveTrigger=False):
     '''
-    Compiles 'seqs' to a hardware description and saves it to 'fileName'. Other inputs:
-        suffix : string to append to end of fileName (e.g. with fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5)
+    Compiles 'seqs' to a hardware description and saves it to 'fileName'.
+    Other inputs:
+        suffix (optional): string to append to end of fileName, e.g. with
+            fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5
+        axis_descriptor (optional): a list of dictionaries describing the effective
+            axes of the measurements that the sequence will yield. For instance,
+            if `seqs` generates a Ramsey experiment, axis_descriptor would describe
+            the time delays between pulses.
+        cal_descriptor (optional): a dictionary of labels and indices for calibration
+            experiments within `seqs`
+        qgl2 (optional): Launch compiler in QGL2 mode
     '''
     logger.debug("Compiling %d sequence(s)", len(seqs))
 
