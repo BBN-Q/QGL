@@ -202,7 +202,7 @@ class PulseBlock(object):
 
         # copy PulseBlock so we don't modify other references
         result = copy(self)
-
+        result.pulses = copy(self.pulses)
         for (k, v) in rhs.pulses.items():
             if k in result.pulses.keys():
                 raise NameError(
