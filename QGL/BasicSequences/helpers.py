@@ -33,8 +33,12 @@ def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False):
 
 def cal_descriptor(qubits, numRepeats, startIdx):
     states = ['0', '1']
+    # generate state set in same order as we do above in create_cal_seqs()
     state_set = [reduce(operator.add, s) for s in product(states, repeat=len(qubits))]
-    descriptor = {state: startIdx + (ct * numRepeats) for ct, state in enumerate(state_set)}
+    descriptor = {}
+    cal_range = range(startIdx, startIdx + numRepeats*len(state_set))
+    for ct, state in enumerate(state_set):
+        descriptor[state] = list(cal_range[ct*numRepeats : (ct+1)*numRepeats])
     return descriptor
 
 def time_descriptor(times, desired_units="us"):
@@ -46,9 +50,9 @@ def time_descriptor(times, desired_units="us"):
         scale = 1e6
     elif desired_units == "ns":
         scale = 1e9
-    axis_descriptor = {
+    axis_descriptor = [{
         'name': 'time',
         'unit': desired_units,
         'points': list(scale * times)
-    }
+    }]
     return axis_descriptor
