@@ -401,11 +401,11 @@ def compile_to_hardware(seqs,
     num_measurements = sum(PatternUtils.contains_measurement(e)
                            for e in flatten(seqs))
     if not axis_descriptor:
-        axis_descriptor = {
+        axis_descriptor = [{
             'name': 'segment',
             'unit': None,
             'points': list(range(1, 1 + num_measurements))
-        }
+        }]
     if not cal_descriptor:
         # contains a dictionary of states and a list of associated indices
         cal_descriptor = {}

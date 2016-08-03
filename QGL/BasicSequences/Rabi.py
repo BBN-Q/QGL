@@ -24,11 +24,11 @@ def RabiAmp(qubit, amps, phase=0, showPlot=False):
 	"""
     seqs = [[Utheta(qubit, amp=amp, phase=phase), MEAS(qubit)] for amp in amps]
 
-    axis_descriptor = {
+    axis_descriptor = [{
         'name': 'amplitude',
         'unit': None,
         'points': list(amps)
-    }
+    }]
 
     fileNames = compile_to_hardware(seqs, 'Rabi/Rabi', axis_descriptor=axis_descriptor)
     print(fileNames)
@@ -108,11 +108,11 @@ def RabiAmp_NQubits(qubits,
     if docals:
         seqs += create_cal_seqs(qubits, calRepeats, measChans=measChans)
 
-    axis_descriptor = {
+    axis_descriptor = [{
         'name': 'amplitude',
         'unit': None,
         'points': list(amps)
-    }
+    }]
 
     fileNames = compile_to_hardware(seqs, 'Rabi/Rabi',
         axis_descriptor=axis_descriptor,
@@ -142,11 +142,11 @@ def RabiAmpPi(qubit, mqubit, amps, phase=0, showPlot=False):
     seqs = [[X(mqubit), Utheta(qubit, amp=amp, phase=phase), X(mqubit),
              MEAS(mqubit)] for amp in amps]
 
-    axis_descriptor = {
+    axis_descriptor = [{
         'name': 'amplitude',
         'unit': None,
         'points': list(amps)
-    }
+    }]
 
     fileNames = compile_to_hardware(seqs, 'Rabi/Rabi', axis_descriptor=axis_descriptor)
     print(fileNames)

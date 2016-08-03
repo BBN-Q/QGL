@@ -107,11 +107,11 @@ def EchoCRPhase(controlQ,
     for ph in phases]+[[X(controlQ)] + echoCR(controlQ, targetQ, length=length, phase= ph, riseFall = riseFall) + [X90(targetQ)*X(controlQ), MEAS(targetQ)*MEAS(controlQ)]\
      for ph in phases]+create_cal_seqs((targetQ,controlQ), calRepeats, measChans=(targetQ,controlQ))
 
-    axis_descriptor = {
+    axis_descriptor = [{
         'name': 'phase',
         'unit': 'radians',
         'points': list(phases)
-    }
+    }]
 
     fileNames = compile_to_hardware(seqs, 'EchoCR/EchoCR',
         axis_descriptor=axis_descriptor,
@@ -148,11 +148,11 @@ def EchoCRAmp(controlQ,
      for a in amps]+ [[X(controlQ)] + echoCR(controlQ, targetQ, length=length, phase= phase, riseFall=riseFall,amp=a) + [X(controlQ), MEAS(targetQ)*MEAS(controlQ)]\
       for a in amps] + create_cal_seqs((targetQ,controlQ), calRepeats, measChans=(targetQ,controlQ))
 
-    axis_descriptor = {
+    axis_descriptor = [{
         'name': 'amplitude',
         'unit': None,
         'points': list(amps)
-    }
+    }]
 
     fileNames = compile_to_hardware(seqs, 'EchoCR/EchoCR',
         axis_descriptor=axis_descriptor,
