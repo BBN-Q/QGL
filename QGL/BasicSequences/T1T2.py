@@ -2,7 +2,7 @@ from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
 from scipy.constants import pi
-from .helpers import create_cal_seqs
+from .helpers import create_cal_seqs, time_descriptor, cal_descriptor
 
 
 def InversionRecovery(qubit,
@@ -11,20 +11,19 @@ def InversionRecovery(qubit,
                       calRepeats=2,
                       suffix=False):
     """
+    Inversion recovery experiment to measure qubit T1
 
-	Inversion recovery experiment to measure qubit T1
-	
-	Parameters
-	----------
-	qubit : logical channel to implement sequence (LogicalChannel) 
-	delays : delays after inversion before measurement (iterable; seconds)
-	showPlot : whether to plot (boolean)
-	calRepeats : how many repetitions of calibration pulses (int)
+    Parameters
+    ----------
+    qubit : logical channel to implement sequence (LogicalChannel)
+    delays : delays after inversion before measurement (iterable; seconds)
+    showPlot : whether to plot (boolean)
+    calRepeats : how many repetitions of calibration pulses (int)
 
-	Returns
-	-------
-	plotHandle : handle to plot window to prevent destruction
-	"""
+    Returns
+    -------
+    plotHandle : handle to plot window to prevent destruction
+    """
 
     #Create the basic sequences
     seqs = [[X(qubit), Id(qubit, d), MEAS(qubit)] for d in delays]
@@ -32,9 +31,10 @@ def InversionRecovery(qubit,
     #Tack on the calibration scalings
     seqs += create_cal_seqs((qubit, ), calRepeats)
 
-    fileNames = compile_to_hardware(seqs, 'T1' +
-                                    ('_' + qubit.label) * suffix + '/T1' +
-                                    ('_' + qubit.label) * suffix)
+    fileNames = compile_to_hardware(seqs,
+        'T1' + ('_' + qubit.label) * suffix + '/T1' + ('_' + qubit.label) * suffix,
+        axis_descriptor=time_descriptor(delays),
+        cal_descriptor=cal_descriptor((qubit,), calRepeats, len(delays)+1))
     print(fileNames)
 
     if showPlot:
@@ -48,21 +48,20 @@ def Ramsey(qubit,
            calRepeats=2,
            suffix=False):
     """
+    Variable pulse spacing Ramsey (pi/2 - tau - pi/2) with optional TPPI.
 
-	Variable pulse spacing Ramsey (pi/2 - tau - pi/2) with optional TPPI.
-	
-	Parameters
-	----------
-	qubit : logical channel to implement sequence (LogicalChannel) 
-	pulseSpacings : pulse spacings (iterable; seconds)
-	TPPIFreq : frequency for TPPI phase updates of second Ramsey pulse (Hz)
-	showPlot : whether to plot (boolean)
-	calRepeats : how many repetitions of calibration pulses (int)
+    Parameters
+    ----------
+    qubit : logical channel to implement sequence (LogicalChannel)
+    pulseSpacings : pulse spacings (iterable; seconds)
+    TPPIFreq : frequency for TPPI phase updates of second Ramsey pulse (Hz)
+    showPlot : whether to plot (boolean)
+    calRepeats : how many repetitions of calibration pulses (int)
 
-	Returns
-	-------
-	plotHandle : handle to plot window to prevent destruction
-	"""
+    Returns
+    -------
+    plotHandle : handle to plot window to prevent destruction
+    """
 
     #Create the phases for the TPPI
     phases = 2 * pi * TPPIFreq * pulseSpacings
@@ -74,9 +73,10 @@ def Ramsey(qubit,
     #Tack on the calibration scalings
     seqs += create_cal_seqs((qubit, ), calRepeats)
 
-    fileNames = compile_to_hardware(seqs, 'Ramsey' +
-                                    ('_' + qubit.label) * suffix + '/Ramsey' +
-                                    ('_' + qubit.label) * suffix)
+    fileNames = compile_to_hardware(seqs,
+        'Ramsey' + ('_' + qubit.label) * suffix + '/Ramsey' + ('_' + qubit.label) * suffix,
+        axis_descriptor=time_descriptor(pulseSpacings),
+        cal_descriptor=cal_descriptor((qubit,), calRepeats, len(pulseSpacings)+1))
     print(fileNames)
 
     if showPlot:

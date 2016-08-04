@@ -23,6 +23,7 @@ from warnings import warn
 from copy import copy
 from functools import reduce
 from importlib import import_module
+import json
 
 from . import config
 from . import PatternUtils
@@ -286,11 +287,22 @@ def collect_specializations(seqs):
 def compile_to_hardware(seqs,
                         fileName,
                         suffix='',
+                        axis_descriptor=None,
+                        cal_descriptor=None,
                         qgl2=False,
                         addQGL2SlaveTrigger=False):
     '''
-    Compiles 'seqs' to a hardware description and saves it to 'fileName'. Other inputs:
-        suffix : string to append to end of fileName (e.g. with fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5)
+    Compiles 'seqs' to a hardware description and saves it to 'fileName'.
+    Other inputs:
+        suffix (optional): string to append to end of fileName, e.g. with
+            fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5
+        axis_descriptor (optional): a list of dictionaries describing the effective
+            axes of the measurements that the sequence will yield. For instance,
+            if `seqs` generates a Ramsey experiment, axis_descriptor would describe
+            the time delays between pulses.
+        cal_descriptor (optional): a dictionary of labels and indices for calibration
+            experiments within `seqs`
+        qgl2 (optional): Launch compiler in QGL2 mode
     '''
     logger.debug("Compiling %d sequence(s)", len(seqs))
 
@@ -380,7 +392,7 @@ def compile_to_hardware(seqs,
     awgData = bundle_wires(physWires, wfs)
 
     # convert to hardware formats
-    fileList = []
+    files = {}
     for awgName, data in awgData.items():
         # create the target folder if it does not exist
         targetFolder = os.path.split(os.path.normpath(os.path.join(
@@ -392,10 +404,33 @@ def compile_to_hardware(seqs,
                 'seqFileExt']))
         data['translator'].write_sequence_file(data, fullFileName)
 
-        fileList.append(fullFileName)
+        files[awgName] = fullFileName
+
+    # create meta output
+    num_measurements = sum(PatternUtils.contains_measurement(e)
+                           for e in flatten(seqs))
+    if not axis_descriptor:
+        axis_descriptor = [{
+            'name': 'segment',
+            'unit': None,
+            'points': list(range(1, 1 + num_measurements))
+        }]
+    if not cal_descriptor:
+        # contains a dictionary of states and a list of associated indices
+        cal_descriptor = {}
+    meta = {
+        'instruments': files,
+        'num_sequences': len(seqs),
+        'num_measurements': num_measurements,
+        'axis_descriptor': axis_descriptor,
+        'cal_descriptor': cal_descriptor
+    }
+    metafilepath = os.path.join(config.AWGDir, fileName + '-meta.json')
+    with open(metafilepath, 'w') as FID:
+        json.dump(meta, FID, indent=2, sort_keys=True)
 
     # Return the filenames we wrote
-    return fileList
+    return list(files.values())
 
 
 def compile_sequences(seqs, channels=set(), qgl2=False):
