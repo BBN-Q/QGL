@@ -31,14 +31,18 @@ def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False):
     return [[seq, measBlock, qwait('CMP')] if waitcmp else [seq, measBlock]
             for seq in calSeqs]
 
-def cal_descriptor(qubits, numRepeats, startIdx):
+def cal_descriptor(qubits, numRepeats):
     states = ['0', '1']
     # generate state set in same order as we do above in create_cal_seqs()
     state_set = [reduce(operator.add, s) for s in product(states, repeat=len(qubits))]
-    descriptor = {}
-    cal_range = range(startIdx, startIdx + numRepeats*len(state_set))
-    for ct, state in enumerate(state_set):
-        descriptor[state] = list(cal_range[ct*numRepeats : (ct+1)*numRepeats])
+    descriptor = {
+        'name': 'calibration',
+        'unit': 'state',
+        'partition': 2,
+        'points': []
+    }
+    for state in state_set:
+        descriptor['points'] += [state] * numRepeats
     return descriptor
 
 def time_descriptor(times, desired_units="us"):
@@ -50,9 +54,10 @@ def time_descriptor(times, desired_units="us"):
         scale = 1e6
     elif desired_units == "ns":
         scale = 1e9
-    axis_descriptor = [{
+    axis_descriptor = {
         'name': 'time',
         'unit': desired_units,
-        'points': list(scale * times)
-    }]
+        'points': list(scale * times),
+        'partition': 1
+    }
     return axis_descriptor

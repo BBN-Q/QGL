@@ -3,7 +3,7 @@ from ..Compiler import compile_to_hardware
 from ..ChannelLibrary import EdgeFactory
 from ..PulseSequencePlotter import plot_pulse_files
 from .helpers import create_cal_seqs, time_descriptor, cal_descriptor
-
+import numpy as np
 
 def PiRabi(controlQ,
            targetQ,
@@ -38,8 +38,10 @@ def PiRabi(controlQ,
               create_cal_seqs([targetQ,controlQ], calRepeats, measChans=(targetQ,controlQ))
 
     fileNames = compile_to_hardware(seqs, 'PiRabi/PiRabi',
-        axis_descriptor=time_descriptor(lengths),
-        cal_descriptor=cal_descriptor((controlQ, targetQ), calRepeats, len(lengths)+1))
+        axis_descriptor=[
+            time_descriptor(np.concatenate((lengths, lengths))),
+            cal_descriptor((controlQ, targetQ), calRepeats)
+        ])
     print(fileNames)
 
     if showPlot:
@@ -73,8 +75,10 @@ def EchoCRLen(controlQ,
       for l in lengths] + create_cal_seqs((targetQ,controlQ), calRepeats, measChans=(targetQ,controlQ))
 
     fileNames = compile_to_hardware(seqs, 'EchoCR/EchoCR',
-        axis_descriptor=time_descriptor(lengths),
-        cal_descriptor=cal_descriptor((controlQ, targetQ), calRepeats, len(lengths)+1))
+        axis_descriptor=[
+            time_descriptor(np.concatenate((lengths, lengths))),
+            cal_descriptor((controlQ, targetQ), calRepeats)
+        ])
     print(fileNames)
 
     if showPlot:
@@ -107,15 +111,18 @@ def EchoCRPhase(controlQ,
     for ph in phases]+[[X(controlQ)] + echoCR(controlQ, targetQ, length=length, phase= ph, riseFall = riseFall) + [X90(targetQ)*X(controlQ), MEAS(targetQ)*MEAS(controlQ)]\
      for ph in phases]+create_cal_seqs((targetQ,controlQ), calRepeats, measChans=(targetQ,controlQ))
 
-    axis_descriptor = [{
-        'name': 'phase',
-        'unit': 'radians',
-        'points': list(phases)
-    }]
+    axis_descriptor = [
+        {
+            'name': 'phase',
+            'unit': 'radians',
+            'points': list(phases)+list(phases),
+            'partition': 1
+        },
+        cal_descriptor((controlQ, targetQ), calRepeats)
+    ]
 
     fileNames = compile_to_hardware(seqs, 'EchoCR/EchoCR',
-        axis_descriptor=axis_descriptor,
-        cal_descriptor=cal_descriptor((controlQ, targetQ), calRepeats, len(phases)+1))
+        axis_descriptor=axis_descriptor)
     print(fileNames)
 
     if showPlot:
@@ -148,15 +155,18 @@ def EchoCRAmp(controlQ,
      for a in amps]+ [[X(controlQ)] + echoCR(controlQ, targetQ, length=length, phase= phase, riseFall=riseFall,amp=a) + [X(controlQ), MEAS(targetQ)*MEAS(controlQ)]\
       for a in amps] + create_cal_seqs((targetQ,controlQ), calRepeats, measChans=(targetQ,controlQ))
 
-    axis_descriptor = [{
-        'name': 'amplitude',
-        'unit': None,
-        'points': list(amps)
-    }]
+    axis_descriptor = [
+        {
+            'name': 'amplitude',
+            'unit': None,
+            'points': list(amps)+list(amps),
+            'partition': 1
+        },
+        cal_descriptor((controlQ, targetQ), calRepeats)
+    ]
 
     fileNames = compile_to_hardware(seqs, 'EchoCR/EchoCR',
-        axis_descriptor=axis_descriptor,
-        cal_descriptor=cal_descriptor((controlQ, targetQ), calRepeats, len(amps)+1))
+        axis_descriptor=axis_descriptor)
     print(fileNames)
 
     if showPlot:

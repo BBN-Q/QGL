@@ -27,7 +27,8 @@ def RabiAmp(qubit, amps, phase=0, showPlot=False):
     axis_descriptor = [{
         'name': 'amplitude',
         'unit': None,
-        'points': list(amps)
+        'points': list(amps),
+        'partition': 1
     }]
 
     fileNames = compile_to_hardware(seqs, 'Rabi/Rabi', axis_descriptor=axis_descriptor)
@@ -66,7 +67,7 @@ def RabiWidth(qubit,
                     shapeFun=shapeFun), MEAS(qubit)] for l in widths]
 
     fileNames = compile_to_hardware(seqs, 'Rabi/Rabi',
-        axis_descriptor=time_descriptor(widths))
+        axis_descriptor=[time_descriptor(widths)])
     print(fileNames)
 
     if showPlot:
@@ -108,15 +109,18 @@ def RabiAmp_NQubits(qubits,
     if docals:
         seqs += create_cal_seqs(qubits, calRepeats, measChans=measChans)
 
-    axis_descriptor = [{
-        'name': 'amplitude',
-        'unit': None,
-        'points': list(amps)
-    }]
+    axis_descriptor = [
+        {
+            'name': 'amplitude',
+            'unit': None,
+            'points': list(amps),
+            'partition': 1
+        },
+        cal_descriptor(qubits, calRepeats)
+    ]
 
     fileNames = compile_to_hardware(seqs, 'Rabi/Rabi',
-        axis_descriptor=axis_descriptor,
-        cal_descriptor=cal_descriptor(qubits, calRepeats, len(amps)+1))
+        axis_descriptor=axis_descriptor)
     print(fileNames)
 
     if showPlot:
@@ -145,7 +149,8 @@ def RabiAmpPi(qubit, mqubit, amps, phase=0, showPlot=False):
     axis_descriptor = [{
         'name': 'amplitude',
         'unit': None,
-        'points': list(amps)
+        'points': list(amps),
+        'partition': 1
     }]
 
     fileNames = compile_to_hardware(seqs, 'Rabi/Rabi', axis_descriptor=axis_descriptor)
@@ -164,8 +169,9 @@ def SingleShot(qubit, showPlot=False):
 
     axis_descriptor = {
         'name': 'state',
-        'unit': None,
-        'points': [0, 1]
+        'unit': 'state',
+        'points': ["0", "1"],
+        'partition': 1
     }
 
     filenames = compile_to_hardware(seqs, 'SingleShot/SingleShot')
@@ -210,8 +216,10 @@ def Swap(qubit, mqubit, delays, showPlot=False):
                 measChans=(mqubit, qubit))
 
     fileNames = compile_to_hardware(seqs, 'Rabi/Rabi',
-        time_descriptor=time_descriptor(delays),
-        cal_descriptor=cal_descriptor((mqubit, qubit), 2, len(delays)+1))
+        axis_descriptor=[
+            time_descriptor(delays),
+            cal_descriptor((mqubit, qubit), 2)
+        ])
     print(fileNames)
 
     if showPlot:

@@ -288,7 +288,6 @@ def compile_to_hardware(seqs,
                         fileName,
                         suffix='',
                         axis_descriptor=None,
-                        cal_descriptor=None,
                         qgl2=False,
                         addQGL2SlaveTrigger=False):
     '''
@@ -300,8 +299,6 @@ def compile_to_hardware(seqs,
             axes of the measurements that the sequence will yield. For instance,
             if `seqs` generates a Ramsey experiment, axis_descriptor would describe
             the time delays between pulses.
-        cal_descriptor (optional): a dictionary of labels and indices for calibration
-            experiments within `seqs`
         qgl2 (optional): Launch compiler in QGL2 mode
     '''
     logger.debug("Compiling %d sequence(s)", len(seqs))
@@ -413,17 +410,14 @@ def compile_to_hardware(seqs,
         axis_descriptor = [{
             'name': 'segment',
             'unit': None,
-            'points': list(range(1, 1 + num_measurements))
+            'points': list(range(1, 1 + num_measurements)),
+            'partition': 1
         }]
-    if not cal_descriptor:
-        # contains a dictionary of states and a list of associated indices
-        cal_descriptor = {}
     meta = {
         'instruments': files,
         'num_sequences': len(seqs),
         'num_measurements': num_measurements,
         'axis_descriptor': axis_descriptor,
-        'cal_descriptor': cal_descriptor
     }
     metafilepath = os.path.join(config.AWGDir, fileName + '-meta.json')
     with open(metafilepath, 'w') as FID:

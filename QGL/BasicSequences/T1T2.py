@@ -33,8 +33,10 @@ def InversionRecovery(qubit,
 
     fileNames = compile_to_hardware(seqs,
         'T1' + ('_' + qubit.label) * suffix + '/T1' + ('_' + qubit.label) * suffix,
-        axis_descriptor=time_descriptor(delays),
-        cal_descriptor=cal_descriptor((qubit,), calRepeats, len(delays)+1))
+        axis_descriptor=[
+            time_descriptor(delays),
+            cal_descriptor((qubit,), calRepeats)
+        ])
     print(fileNames)
 
     if showPlot:
@@ -75,8 +77,10 @@ def Ramsey(qubit,
 
     fileNames = compile_to_hardware(seqs,
         'Ramsey' + ('_' + qubit.label) * suffix + '/Ramsey' + ('_' + qubit.label) * suffix,
-        axis_descriptor=time_descriptor(pulseSpacings),
-        cal_descriptor=cal_descriptor((qubit,), calRepeats, len(pulseSpacings)+1))
+        axis_descriptor=[
+            time_descriptor(pulseSpacings),
+            cal_descriptor((qubit,), calRepeats)
+        ])
     print(fileNames)
 
     if showPlot:
