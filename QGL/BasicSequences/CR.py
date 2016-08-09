@@ -3,7 +3,7 @@ from ..Compiler import compile_to_hardware
 from ..ChannelLibrary import EdgeFactory
 from ..PulseSequencePlotter import plot_pulse_files
 from .helpers import create_cal_seqs, time_descriptor, cal_descriptor
-
+import numpy as np
 
 def PiRabi(controlQ,
            targetQ,
@@ -39,7 +39,7 @@ def PiRabi(controlQ,
 
     fileNames = compile_to_hardware(seqs, 'PiRabi/PiRabi',
         axis_descriptor=[
-            time_descriptor(lengths),
+            time_descriptor(np.concatenate((lengths, lengths))),
             cal_descriptor((controlQ, targetQ), calRepeats)
         ])
     print(fileNames)
@@ -76,7 +76,7 @@ def EchoCRLen(controlQ,
 
     fileNames = compile_to_hardware(seqs, 'EchoCR/EchoCR',
         axis_descriptor=[
-            time_descriptor(lengths),
+            time_descriptor(np.concatenate((lengths, lengths))),
             cal_descriptor((controlQ, targetQ), calRepeats)
         ])
     print(fileNames)
@@ -115,7 +115,7 @@ def EchoCRPhase(controlQ,
         {
             'name': 'phase',
             'unit': 'radians',
-            'points': list(phases),
+            'points': list(phases)+list(phases),
             'partition': 1
         },
         cal_descriptor((controlQ, targetQ), calRepeats)
@@ -159,7 +159,7 @@ def EchoCRAmp(controlQ,
         {
             'name': 'amplitude',
             'unit': None,
-            'points': list(amps),
+            'points': list(amps)+list(amps),
             'partition': 1
         },
         cal_descriptor((controlQ, targetQ), calRepeats)
