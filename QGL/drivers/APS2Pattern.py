@@ -715,7 +715,7 @@ def create_seq_instructions(seqs, offsets):
                 #analog - waveforms or modulation
                 if isinstance(entry, Compiler.Waveform):
                     if entry.length < MIN_ENTRY_LENGTH:
-                        warn("Dropping entry!")
+                        warn("Dropping Waveform entry of length %s!" % entry.length)
                         continue
                     instructions.append(Waveform(offsets[wf_sig(entry)],
                                                  entry.length,
