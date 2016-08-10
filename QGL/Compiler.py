@@ -27,7 +27,7 @@ import json
 
 from . import config
 from . import PatternUtils
-from .PatternUtils import flatten
+from .PatternUtils import flatten, has_gate
 from . import Channels
 from . import ChannelLibrary
 from . import PulseShapes
@@ -299,7 +299,9 @@ def compile_to_hardware(seqs,
                         suffix='',
                         axis_descriptor=None,
                         qgl2=False,
-                        addQGL2SlaveTrigger=False):
+                        addQGL2SlaveTrigger=False,
+                        edgesToCompile = None,
+                        qubitToCompile = None):
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'.
     Other inputs:
@@ -310,6 +312,9 @@ def compile_to_hardware(seqs,
             if `seqs` generates a Ramsey experiment, axis_descriptor would describe
             the time delays between pulses.
         qgl2 (optional): Launch compiler in QGL2 mode
+        addQGL2SlaveTrigger : When qgl2 only add the slave trigger when this is true
+        edgesToCompile : When not None, only compile edges (and their gates) on this list; else compile all edges and their gates
+        qubitToCompile : When not None, only compile the given Qubit (and its gate), else compile all Qubits and their gates
     '''
     logger.debug("Compiling %d sequence(s)", len(seqs))
 
@@ -345,7 +350,7 @@ def compile_to_hardware(seqs,
         channels |= find_unique_channels(seq)
 
     # Compile all the pulses/pulseblocks to sequences of pulses and control flow
-    wireSeqs = compile_sequences(seqs, channels, qgl2=qgl2)
+    wireSeqs = compile_sequences(seqs, channels, edgesToCompile=edgesToCompile, qubitToCompile=qubitToCompile)
 
     if not validate_linklist_channels(wireSeqs.keys()):
         print("Compile to hardware failed")
@@ -437,9 +442,11 @@ def compile_to_hardware(seqs,
     return list(files.values())
 
 
-def compile_sequences(seqs, channels=set(), qgl2=False):
+def compile_sequences(seqs, channels=set(), edgesToCompile=None, qubitToCompile=None):
     '''
     Main function to convert sequences to miniLL's and waveform libraries.
+        edgesToCompile : When not None, only compile edges (and their gates) on this list; else compile all edges and their gates
+        qubitToCompile : When not None, only compile the given Qubit (and its gate), else compile all Qubits and their gates
     '''
 
     # turn into a loop, by appending GOTO(0) at end of last sequence
@@ -456,12 +463,12 @@ def compile_sequences(seqs, channels=set(), qgl2=False):
         channels |= find_unique_channels(subroutines)
 
     # use seqs[0] as prototype in case we were not given a set of channels
-    wires = compile_sequence(seqs[0], channels)
+    wires = compile_sequence(seqs[0], channels, edgesToCompile, qubitToCompile)
     if not channels:
         channels = set(wires.keys())
     wireSeqs = {chan: [seq] for chan, seq in wires.items()}
     for seq in seqs[1:]:
-        wires = compile_sequence(seq, channels)
+        wires = compile_sequence(seq, channels, edgesToCompile, qubitToCompile)
         for chan in wireSeqs.keys():
             wireSeqs[chan].append(wires[chan])
     #Print a message so for the experiment we know how many sequences there are
@@ -484,11 +491,69 @@ def compile_sequences(seqs, channels=set(), qgl2=False):
 
     return wireSeqs
 
+def channels_to_compile(channels, edgesToCompile=None, qubitToCompile=None):
+    '''
+    Filter input set of channels to exclude those not on given lists
+        edgesToCompile : When not None, only compile edges (and their gates) on this list; else compile all edges and their gates
+        qubitToCompile : When not None, only compile the given Qubit (and its gate), else compile all Qubits and their gates
+    '''
+    # Edited set of channels to return
+    newchans = set()
 
-def compile_sequence(seq, channels=None):
+    # Skip the gates for any edges/qubits we are skipping
+    gatesToSkip = set()
+    for chan in channels:
+        if isinstance(chan, Channels.Edge):
+            if edgesToCompile is not None and chan not in edgesToCompile:
+                if has_gate(chan):
+                    gatesToSkip.add(chan.gateChan)
+                    logger.debug("%s to be excluded so excluding its gate %s", chan, chan.gateChan)
+                else:
+                    logger.debug("%s didn't have a gate", chan)
+        elif isinstance(chan, Channels.Qubit):
+            if qubitToCompile is not None and chan != qubitToCompile:
+                if has_gate(chan):
+                    gatesToSkip.add(chan.gateChan)
+                    logger.debug("%s to be excluded so excluding its gate %s", chan, chan.gateChan)
+                else:
+                    logger.debug("%s didn't have a gate", chan)
+
+    # Now for each channel skip the relevant channels, building
+    # a new set of channels
+    for chan in channels:
+        if chan in gatesToSkip:
+            logger.debug("Compilation skipping gate %s", chan)
+            continue
+        if isinstance(chan, Channels.Edge):
+            if edgesToCompile is None or chan in edgesToCompile:
+                # add chan
+                logger.debug("Compilation including %s", chan)
+                newchans.add(chan)
+                continue
+            else:
+                # skip this edge
+                logger.debug("Compilation skipping %s", chan)
+                continue
+        if isinstance(chan, Channels.Qubit):
+            if qubitToCompile is None or chan == qubitToCompile:
+                # add
+                newchans.add(chan)
+                logger.debug("Compilation including %s", chan)
+                continue
+            else:
+                # skip
+                logger.debug("Compilation skipping %s", chan)
+                continue
+        newchans.add(chan)
+        logger.debug("Compilation including %s", chan)
+    return newchans
+
+def compile_sequence(seq, channels=None, edgesToCompile=None, qubitToCompile=None):
     '''
     Takes a list of control flow and pulses, and returns aligned blocks
     separated into individual abstract channels (wires).
+        edgesToCompile : When not None, only compile edges (and their gates) on this list; else compile all edges and their gates
+        qubitToCompile : When not None, only compile the given Qubit (and its gate), else compile all Qubits and their gates
     '''
     logger.debug('')
     logger.debug("In compile_sequence:")
@@ -496,6 +561,10 @@ def compile_sequence(seq, channels=None):
     if not channels:
         logger.debug("<Had no channels>")
         channels = find_unique_channels(seq)
+
+    # Filter list of channels to only include designated edges and Qubit (and their gates)
+    if edgesToCompile is not None or qubitToCompile is not None:
+        channels = channels_to_compile(channels, edgesToCompile, qubitToCompile)
 
     wires = {chan: [] for chan in channels}
 
