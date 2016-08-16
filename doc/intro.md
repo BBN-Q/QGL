@@ -9,20 +9,20 @@ channels. An example minimal library might include these *logical* channels:
 * q1 (Qubit)
 * M-q1 (Measurement)
 * slaveTrig (LogicalMarker)
-* digitizerTrig (LogicalMarker)
 
 The naming convention for measurement channels of M-**qubitname** *must* be
-followed. In addition, the `slaveTrig` and `digitizerTrig` channels are required
-to compile a sequence.
+followed. The `slaveTrig` channel is used in master-slave AWG configurations
+where one master AWG is used to trigger the start of the slave AWGs.
 
-To create and manage this library, you can use the `ExpSettingsGUI` from
+To create and manage this library, one can use the `ExpSettingsGUI` from
 [PyQLab](https://github.com/BBN-Q/PyQLab). The first tab, labeled "Channels" has
 two sub-panels for logical and physical channels, respectively. The fastest way
 to get started is to go to the "Instruments" tab, select the "AWG's" sub-tab,
-and create one or more AWGs of the appropriate type. Then, from the File menu
-choose "auto populate physical channels".  Finally, create a set of logical
-channels (e.g. `q1` and `M-q1`) and select the appropriate physical channel for
-each.
+and create one or more AWGs of the appropriate type. Then, on the "Physical"
+sub-tab of "Channels", click the "Auto" button to populate a list of physical
+channels.  Finally, create a set of logical channels (e.g. `q1` of type `Qubit`,
+`M-q1` of type `Measurement`, and `slaveTrig` of type `LogicalMarker`) and
+select the appropriate physical channel for each.
 
 If you choose to create physical channels manually, note that these channel
 names must follow the convention *AWGName*-**channel**, where *AWGName*
@@ -55,10 +55,10 @@ compile_to_hardware(seqs)
 The `QubitFactory` method is a convenience method to create a `Qubit` object
 with parameters read from the pulse parameters file. The string `'q1'`
 identifies the qubit label to look up in the parameter file. You can also create
-`Qubit`s on the fly by passing in the parameters.
+`Qubit`s on the fly by passing in parameters to the `Qubit` constructor.
 
-To define the QGL program, the example uses a python list comprehension to
-express a list of sequences in a single line.
+To define the QGL program, the Ramsey example uses a python list comprehension
+to express a list of sequences in a single line.
 
 ### Multi-qubit
 
