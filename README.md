@@ -26,8 +26,7 @@ pip install watchdog
 ```bash
 conda install future
 pip install watchdog
-pip install cppy
-pip install git+https://github.com/nucleic/atom.git@1.0.0-dev
+conda install -c ecpy atom
 ```
 
 Use of the `QGL` module requires modification of your `PYTHONPATH`. On windows machines, you add/modify this environment variable by going to System -> Advanced Settings -> Environment variables. On Mac/Linux machines add the following line to your .bashrc or .bash_profile:
@@ -41,7 +40,7 @@ The QGL config file will be created the first time you run `import QGL` or `from
 * Python 2.7 or 3.4+
 * JSONLibraryUtils (https://github.com/BBN-Q/JSONLibraryUtils, integrated as a Git submodule)
 * Numpy/Scipy
-* Nucleic atom (1.0 branch for Python 3)
+* Nucleic atom (from ecpy channel for Python 3)
 * h5py
 * watchdog
 * Bokeh 0.11
