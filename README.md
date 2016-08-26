@@ -29,10 +29,11 @@ pip install watchdog
 conda install -c ecpy atom
 ```
 
-Use of the `QGL` module requires modification of your `PYTHONPATH`. On windows machines, you add/modify this environment variable by going to System -> Advanced Settings -> Environment variables. On Mac/Linux machines add the following line to your .bashrc or .bash_profile:
-```
-export PYTHONPATH=/path/to/QGL:$PYTHONPATH
-```
+If the `QGL` module is not installed, the repository path needs to be in the
+`PYTHONPATH`. On Windows machines, you add/modify this environment variable by
+going to System -> Advanced Settings -> Environment variables. On Mac/Linux
+machines add the following line to your .bashrc or .bash_profile: ``` export
+PYTHONPATH=/path/to/QGL/repo:$PYTHONPATH```
 
 The QGL config file will be created the first time you run `import QGL` or `from QGL import *`.
 
