@@ -506,6 +506,7 @@ def inject_modulation_cmds(seqs):
 
 		mod_seq = []
 		pending_frame_update = False
+		nco_select = 0x1
 
 		for entry in seq:
 
@@ -518,7 +519,7 @@ def inject_modulation_cmds(seqs):
 				#heuristic to insert phase reset before trigger if we have modulation commands
 				if isinstance(entry, ControlFlow.Wait):
 					if not ( no_modulation_cmds and (cur_freq == 0) and (cur_phase == 0)):
-						mod_seq.append(ModulationCommand("RESET_PHASE", 0x1))
+						mod_seq.append(ModulationCommand("RESET_PHASE", 0x3))
 				elif isinstance(entry, ControlFlow.Return):
 					cur_freq = 0 #makes sure that the frequency is set in the first sequence after the definition of subroutines
 				mod_seq.append(copy(entry))
@@ -527,10 +528,14 @@ def inject_modulation_cmds(seqs):
 					#insert phase and frequency commands before modulation command so they have the same start time
 					phase_freq_cmds = []
 					if cur_freq != entry.frequency:
-						phase_freq_cmds.append( ModulationCommand("SET_FREQ", 0x1, frequency=-entry.frequency) )
+						if nco_select == 0x1 and cur_freq!=0:
+							nco_select = 0x2
+						else:
+							nco_select = 0x1
+						phase_freq_cmds.append( ModulationCommand("SET_FREQ", nco_select, frequency=-entry.frequency) )
 						cur_freq = entry.frequency
 					if USE_PHASE_OFFSET_INSTRUCTION and (entry.length > 0) and (cur_phase != entry.phase):
-						phase_freq_cmds.append( ModulationCommand("SET_PHASE", 0x1, phase=entry.phase) )
+						phase_freq_cmds.append( ModulationCommand("SET_PHASE", nco_select, phase=entry.phase) )
 						cur_phase = entry.phase
 					for cmd in phase_freq_cmds:
 						mod_seq.append(cmd)
@@ -541,7 +546,7 @@ def inject_modulation_cmds(seqs):
 						if (len(mod_seq) > 1) and (isinstance(mod_seq[-1], Compiler.Waveform)) and (isinstance(mod_seq[-2], ModulationCommand)) and (mod_seq[-2].instruction == "MODULATE") and not pending_frame_update:
 							mod_seq[-2].length += entry.length
 						else:
-							mod_seq.append( ModulationCommand("MODULATE", 0x1, length=entry.length))
+							mod_seq.append( ModulationCommand("MODULATE", nco_select, length=entry.length))
 							pending_frame_update = False
 					#now apply non-zero frame changes after so it is applied at end
 					if entry.frameChange != 0:
@@ -553,18 +558,18 @@ def inject_modulation_cmds(seqs):
 								mod_seq[-1].phase += entry.frameChange
 							#if last entry was pulse without frame change we add frame change
 							elif (isinstance(mod_seq[-1], Compiler.Waveform)) or (mod_seq[-1].instruction == "MODULATE"):
-								mod_seq.append( ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
+								mod_seq.append( ModulationCommand("UPDATE_FRAME", nco_select, phase=entry.frameChange) )
 							#if this is the first entry with a wait for trigger then we can inject a frame change
 							#before the wait for trigger but after the RESET_PHASE
 							elif isinstance(mod_seq[-1], ControlFlow.Wait):
-								mod_seq.insert(-1, ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
+								mod_seq.insert(-1, ModulationCommand("UPDATE_FRAME", nco_select, phase=entry.frameChange) )
 							elif isinstance(mod_seq[-2], ControlFlow.Wait) and isinstance(mod_seq[-1], ModulationCommand) and mod_seq[-1].instruction == "SET_FREQ":
-								mod_seq.insert(-2, ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
+								mod_seq.insert(-2, ModulationCommand("UPDATE_FRAME", nco_select, phase=entry.frameChange) )
 							#otherwise drop and error if frame has been defined
 							else:
 								raise Exception("Unable to implement zero time Z pulse")
 						else:
-							mod_seq.append( ModulationCommand("UPDATE_FRAME", 0x1, phase=entry.frameChange) )
+							mod_seq.append( ModulationCommand("UPDATE_FRAME", nco_select, phase=entry.frameChange) )
 
 		seqs[ct] = mod_seq
 
