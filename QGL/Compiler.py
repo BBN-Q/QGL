@@ -517,8 +517,12 @@ def compile_sequence(seq, channels=None):
                     warn("Dropping initial frame change")
                     continue
                 logger.debug("Modifying pulse on %s: %s", chan, wires[chan][-1])
-                updated_frameChange = wires[chan][-1].frameChange + block.pulses[chan].frameChange
-                wires[chan][-1] = wires[chan][-1]._replace(frameChange=updated_frameChange)
+                # search for last non-TA entry
+                for ct in range(1,len(wires[chan])):
+                    if not wires[chan][-ct].isTimeAmp:
+                        updated_frameChange = wires[chan][-ct].frameChange + block.pulses[chan].frameChange
+                        wires[chan][-ct] = wires[chan][-ct]._replace(frameChange=updated_frameChange)
+                        break
                 if chan in ChannelLibrary.channelLib.connectivityG.nodes():
                     logger.debug("Doing propagate_node_frame_to_edges()")
                     wires = propagate_node_frame_to_edges(
