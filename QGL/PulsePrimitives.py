@@ -481,7 +481,7 @@ def ZX90_CR(controlQ, targetQ, **kwargs):
     return echoCR(controlQ,
                   targetQ,
                   amp=params['amp'],
-                  phase=params['phase'] / 180 * np.pi,
+                  phase=params['phase'],
                   length=params['length'],
                   riseFall=params['riseFall'])
 
