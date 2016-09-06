@@ -527,7 +527,7 @@ def inject_modulation_cmds(seqs):
 				if not no_modulation_cmds:
 					#insert phase and frequency commands before modulation command so they have the same start time
 					phase_freq_cmds = []
-					if cur_freq != entry.frequency:
+					if cur_freq != entry.frequency and not entry.isTimeAmp:
 						if nco_select == 0x1 and cur_freq!=0:
 							nco_select = 0x2
 						else:
