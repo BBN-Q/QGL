@@ -543,7 +543,8 @@ def inject_modulation_cmds(seqs):
 					if entry.length > 0:
 						mod_seq.append(entry)
 						# if we have a modulate waveform modulate pattern and there is no pending frame update we can append length to previous modulation command
-						if (len(mod_seq) > 1) and (isinstance(mod_seq[-1], Compiler.Waveform)) and (isinstance(mod_seq[-2], ModulationCommand)) and (mod_seq[-2].instruction == "MODULATE") and not pending_frame_update:
+						if (len(mod_seq) > 1) and (isinstance(mod_seq[-1], Compiler.Waveform)) and (isinstance(mod_seq[-2], ModulationCommand)) and (mod_seq[-2].instruction == "MODULATE") \
+						and mod_seq[-1].frequency == cur_freq and not pending_frame_update:
 							mod_seq[-2].length += entry.length
 						else:
 							mod_seq.append( ModulationCommand("MODULATE", nco_select, length=entry.length))
