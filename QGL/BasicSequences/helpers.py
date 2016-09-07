@@ -1,3 +1,5 @@
+# coding=utf-8
+
 from itertools import product
 import operator
 from ..PulsePrimitives import Id, X, MEAS
@@ -28,3 +30,34 @@ def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False):
     measBlock = reduce(operator.mul, [MEAS(q) for q in qubits])
     return [[seq, measBlock, qwait('CMP')] if waitcmp else [seq, measBlock]
             for seq in calSeqs]
+
+def cal_descriptor(qubits, numRepeats):
+    states = ['0', '1']
+    # generate state set in same order as we do above in create_cal_seqs()
+    state_set = [reduce(operator.add, s) for s in product(states, repeat=len(qubits))]
+    descriptor = {
+        'name': 'calibration',
+        'unit': 'state',
+        'partition': 2,
+        'points': []
+    }
+    for state in state_set:
+        descriptor['points'] += [state] * numRepeats
+    return descriptor
+
+def time_descriptor(times, desired_units="us"):
+    if desired_units == "s":
+        scale = 1
+    elif desired_units == "ms":
+        scale = 1e3
+    elif desired_units == "us" or desired_units == u"μs":
+        scale = 1e6
+    elif desired_units == "ns":
+        scale = 1e9
+    axis_descriptor = {
+        'name': 'time',
+        'unit': desired_units,
+        'points': list(scale * times),
+        'partition': 1
+    }
+    return axis_descriptor

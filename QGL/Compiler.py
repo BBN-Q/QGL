@@ -23,6 +23,7 @@ from warnings import warn
 from copy import copy
 from functools import reduce
 from importlib import import_module
+import json
 
 from . import config
 from . import PatternUtils
@@ -286,6 +287,7 @@ def collect_specializations(seqs):
 def compile_to_hardware(seqs,
                         fileName,
                         suffix='',
+                        axis_descriptor=None,
                         qgl2=False,
                         addQGL2SlaveTrigger=False,
                         edgesToCompile = None,
@@ -293,12 +295,22 @@ def compile_to_hardware(seqs,
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'.
     Other inputs:
-        suffix : string to append to end of fileName (e.g. with fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5)
+        suffix (optional): string to append to end of fileName, e.g. with
+            fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5
+        axis_descriptor (optional): a list of dictionaries describing the effective
+            axes of the measurements that the sequence will yield. For instance,
+            if `seqs` generates a Ramsey experiment, axis_descriptor would describe
+            the time delays between pulses.
         qgl2 (optional): When True, run QGL2 specific debug code and only
-             selectively add the slaveTrigger; when False (default), always add the slave trigger
-        addQGL2SlaveTrigger (optional): When qgl2=True only add the slave trigger when this is also True
-        edgesToCompile (optional): When not None, only compile edges (and their gates) on this list; else compile all edges and their gates (default)
-        qubitToCompile (optional): When not None, only compile the given Qubit (and its gate), else compile all Qubits and their gates (default)
+             selectively add the slaveTrigger; when False (default), 
+             always add the slave trigger
+        addQGL2SlaveTrigger (optional): When qgl2=True only add the
+             slave trigger when this is also True
+        edgesToCompile (optional): When not None, only compile edges
+             (and their gates) on this list; else compile all edges 
+             and their gates (default)
+        qubitToCompile (optional): When not None, only compile the
+             given Qubit (and its gate), else compile all Qubits and their gates (default)
     '''
     logger.debug("Compiling %d sequence(s)", len(seqs))
 
@@ -388,7 +400,7 @@ def compile_to_hardware(seqs,
     awgData = bundle_wires(physWires, wfs)
 
     # convert to hardware formats
-    fileList = []
+    files = {}
     for awgName, data in awgData.items():
         # create the target folder if it does not exist
         targetFolder = os.path.split(os.path.normpath(os.path.join(
@@ -400,17 +412,39 @@ def compile_to_hardware(seqs,
                 'seqFileExt']))
         data['translator'].write_sequence_file(data, fullFileName)
 
-        fileList.append(fullFileName)
+        files[awgName] = fullFileName
+
+    # create meta output
+    num_measurements = sum(PatternUtils.contains_measurement(e)
+                           for e in flatten(seqs))
+    if not axis_descriptor:
+        axis_descriptor = [{
+            'name': 'segment',
+            'unit': None,
+            'points': list(range(1, 1 + num_measurements)),
+            'partition': 1
+        }]
+    meta = {
+        'instruments': files,
+        'num_sequences': len(seqs),
+        'num_measurements': num_measurements,
+        'axis_descriptor': axis_descriptor,
+    }
+    metafilepath = os.path.join(config.AWGDir, fileName + '-meta.json')
+    with open(metafilepath, 'w') as FID:
+        json.dump(meta, FID, indent=2, sort_keys=True)
 
     # Return the filenames we wrote
-    return fileList
+    return list(files.values())
 
 
 def compile_sequences(seqs, channels=set(), edgesToCompile=None, qubitToCompile=None):
     '''
     Main function to convert sequences to miniLL's and waveform libraries.
-        edgesToCompile : When not None, only compile edges (and their gates) on this list; else compile all edges and their gates (default)
-        qubitToCompile : When not None, only compile the given Qubit (and its gate), else compile all Qubits and their gates (default)
+        edgesToCompile : When not None, only compile edges (and their
+             gates) on this list; else compile all edges and their gates (default)
+        qubitToCompile : When not None, only compile the given Qubit
+             (and its gate), else compile all Qubits and their gates (default)
     '''
 
     # turn into a loop, by appending GOTO(0) at end of last sequence
@@ -458,8 +492,10 @@ def compile_sequences(seqs, channels=set(), edgesToCompile=None, qubitToCompile=
 def channelsToCompile(channels, edgesToCompile=None, qubitToCompile=None):
     '''
     Filter input set of channels to exclude those not on given lists
-        edgesToCompile : When not None, only compile edges (and their gates) on this list; else compile all edges and their gates (default)
-        qubitToCompile : When not None, only compile the given Qubit (and its gate), else compile all Qubits and their gates (default)
+        edgesToCompile : When not None, only compile edges (and their
+             gates) on this list; else compile all edges and their gates (default)
+        qubitToCompile : When not None, only compile the given Qubit
+             (and its gate), else compile all Qubits and their gates (default)
     '''
     # Edited set of channels to return
     newchans = set()
@@ -516,8 +552,10 @@ def compile_sequence(seq, channels=None, edgesToCompile=None, qubitToCompile=Non
     '''
     Takes a list of control flow and pulses, and returns aligned blocks
     separated into individual abstract channels (wires).
-        edgesToCompile : When not None, only compile edges (and their gates) on this list; else compile all edges and their gates (default)
-        qubitToCompile : When not None, only compile the given Qubit (and its gate), else compile all Qubits and their gates (default)
+        edgesToCompile : When not None, only compile edges (and their
+             gates) on this list; else compile all edges and their gates (default)
+        qubitToCompile : When not None, only compile the given Qubit
+             (and its gate), else compile all Qubits and their gates (default)
     '''
     logger.debug('')
     logger.debug("In compile_sequence:")
