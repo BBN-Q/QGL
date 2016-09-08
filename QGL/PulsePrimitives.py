@@ -49,6 +49,9 @@ def _memoize(pulseFunc):
 
     return cacheWrap
 
+def clear_pulse_cache():
+    _memoize.cache = {}
+
 @_memoize
 def Id(channel, *args, **kwargs):
     '''
@@ -198,21 +201,23 @@ def Z90m(qubit, **kwargs):
 
 # 90/180 degree rotations with control over the rotation axis
 def U90(qubit, phase=0, **kwargs):
-    ''' A generic 90 degree rotation with variable phase. '''
+    """ A generic 90 degree rotation with variable phase. """
+    if "label" not in kwargs:
+        kwargs["label"] = "U90"
     return Utheta(qubit,
                   qubit.pulseParams['pi2Amp'],
                   phase,
-                  label="U90",
                   ignoredStrParams=['amp'],
                   **kwargs)
 
 
 def U(qubit, phase=0, **kwargs):
-    ''' A generic 180 degree rotation with variable phase.  '''
+    """ A generic 180 degree rotation with variable phase.  """
+    if "label" not in kwargs:
+        kwargs["label"] = "U"
     return Utheta(qubit,
                   qubit.pulseParams['piAmp'],
                   phase,
-                  label="U",
                   ignoredStrParams=['amp'],
                   **kwargs)
 
@@ -274,7 +279,8 @@ def arb_axis_drag(qubit,
     params['rotAngle'] = rotAngle
     params['polarAngle'] = polarAngle
     params['shapeFun'] = PulseShapes.arb_axis_drag
-    return Pulse("ArbAxis", qubit, params, 1.0, aziAngle, frameChange)
+    return Pulse(kwargs["label"] if "label" in kwargs else "ArbAxis", qubit,
+                 params, 1.0, aziAngle, frameChange)
 
 
 def AC(qubit, cliffNum):
@@ -330,90 +336,105 @@ def AC(qubit, cliffNum):
         return Z90m(qubit)
     elif cliffNum == 10:
         #X+Y 180
-        return U(qubit, phase=pi / 4)
+        return U(qubit, phase=pi / 4, label="AC_10")
     elif cliffNum == 11:
         #X-Y 180
-        return U(qubit, phase=-pi / 4)
+        return U(qubit, phase=-pi / 4, label="AC_11")
     elif cliffNum == 12:
         #X+Z 180(Hadamard)
-        return arb_axis_drag(qubit, nutFreq, rotAngle=pi, polarAngle=pi / 4)
+        return arb_axis_drag(qubit,
+                             nutFreq,
+                             rotAngle=pi,
+                             polarAngle=pi / 4,
+                             label="AC_12")
     elif cliffNum == 13:
         #X-Z 180
         return arb_axis_drag(qubit,
                              nutFreq,
                              rotAngle=pi,
                              polarAngle=pi / 4,
-                             aziAngle=pi)
+                             aziAngle=pi,
+                             label="AC_13")
     elif cliffNum == 14:
         #Y+Z 180
         return arb_axis_drag(qubit,
                              nutFreq,
                              rotAngle=pi,
                              polarAngle=pi / 4,
-                             aziAngle=pi / 2)
+                             aziAngle=pi / 2,
+                             label="AC_14")
     elif cliffNum == 15:
         #Y-Z 180
         return arb_axis_drag(qubit,
                              nutFreq,
                              rotAngle=pi,
                              polarAngle=pi / 4,
-                             aziAngle=-pi / 2)
+                             aziAngle=-pi / 2,
+                             label="AC_15")
     elif cliffNum == 16:
         #X+Y+Z 120
         return arb_axis_drag(qubit,
                              nutFreq,
                              rotAngle=2 * pi / 3,
                              polarAngle=acos(1 / sqrt(3)),
-                             aziAngle=pi / 4)
+                             aziAngle=pi / 4,
+                             label="AC_16")
     elif cliffNum == 17:
         #X+Y+Z -120 (equivalent to -X-Y-Z 120)
         return arb_axis_drag(qubit,
                              nutFreq,
                              rotAngle=2 * pi / 3,
                              polarAngle=pi - acos(1 / sqrt(3)),
-                             aziAngle=5 * pi / 4)
+                             aziAngle=5 * pi / 4,
+                             label="AC_17")
     elif cliffNum == 18:
         #X-Y+Z 120
         return arb_axis_drag(qubit,
                              nutFreq,
                              rotAngle=2 * pi / 3,
                              polarAngle=acos(1 / sqrt(3)),
-                             aziAngle=-pi / 4)
+                             aziAngle=-pi / 4,
+                             label="AC_18")
     elif cliffNum == 19:
         #X-Y+Z 120 (equivalent to -X+Y-Z 120)
         return arb_axis_drag(qubit,
                              nutFreq,
                              rotAngle=2 * pi / 3,
                              polarAngle=pi - acos(1 / sqrt(3)),
-                             aziAngle=3 * pi / 4)
+                             aziAngle=3 * pi / 4,
+                             label="AC_19")
     elif cliffNum == 20:
         #X+Y-Z 120
         return arb_axis_drag(qubit,
                              nutFreq,
                              rotAngle=2 * pi / 3,
                              polarAngle=pi - acos(1 / sqrt(3)),
-                             aziAngle=pi / 4)
+                             aziAngle=pi / 4,
+                             label="AC_20")
     elif cliffNum == 21:
         #X+Y-Z -120 (equivalent to -X-Y+Z 120)
         return arb_axis_drag(qubit,
                              nutFreq,
                              rotAngle=2 * pi / 3,
                              polarAngle=acos(1 / sqrt(3)),
-                             aziAngle=5 * pi / 4)
+                             aziAngle=5 * pi / 4,
+                             label="AC_21")
     elif cliffNum == 22:
         #-X+Y+Z 120
         return arb_axis_drag(qubit,
                              nutFreq,
                              rotAngle=2 * pi / 3,
                              polarAngle=acos(1 / sqrt(3)),
-                             aziAngle=3 * pi / 4)
+                             aziAngle=3 * pi / 4,
+                             label="AC_22")
     elif cliffNum == 23:
         #-X+Y+Z -120 (equivalent to X-Y-Z 120)
         return arb_axis_drag(qubit,
                              nutFreq,
                              rotAngle=2 * pi / 3,
                              polarAngle=pi - acos(1 / sqrt(3)),
-                             aziAngle=-pi / 4)
+                             aziAngle=-pi / 4,
+                             label="AC_23")
     else:
         raise ValueError('Clifford number must be between 0 and 23')
 
