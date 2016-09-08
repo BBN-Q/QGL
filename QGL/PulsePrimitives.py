@@ -49,6 +49,8 @@ def _memoize(pulseFunc):
 
     return cacheWrap
 
+def clear_pulse_cache():
+    _memoize.cache = {}
 
 @_memoize
 def Id(channel, *args, **kwargs):
