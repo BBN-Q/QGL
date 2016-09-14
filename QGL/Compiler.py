@@ -66,10 +66,10 @@ def merge_channels(wires, channels):
     mergedWire = [[] for _ in range(len(wires[chan]))]
     shapeFunLib = {}
     for ct, segment in enumerate(mergedWire):
-        entryIterators = [iter(wires[ch][ct]) for ch in channels]
+        entry_iterators = [iter(wires[ch][ct]) for ch in channels]
         while True:
             try:
-                entries = [next(e) for e in entryIterators]
+                entries = [next(e) for e in entry_iterators]
             except StopIteration:
                 break
             # control flow on any channel should pass thru
@@ -82,15 +82,11 @@ def merge_channels(wires, channels):
                 segment.append(entries[0])
                 continue
             # at this point we have at least one waveform instruction
-            blocklength = pull_uniform_entries(entries, entryIterators)
+            entries, block_length = pull_uniform_entries(entries, entry_iterators)
 
             # look for the simplest case of at most one non-identity
-            nonZeroEntries = [e for e in entries if not e.isZero]
-            if len(nonZeroEntries) == 0:
-                segment.append(entries[0])
-                continue
-            elif len(nonZeroEntries) == 1:
-                segment.append(nonZeroEntries[0])
+            if len(entries) == 1:
+                segment.extend(entries[0])
                 continue
 
             # create a new Pulse object for the merged pulse
@@ -103,7 +99,7 @@ def merge_channels(wires, channels):
             if nonZeroSSBChan:
                 frequency = entries[nonZeroSSBChan[0]].frequency
             else:
-                frequency = 0.0
+                frequency = 0.0  
 
             if all([e.shapeParams['shapeFun'] == PulseShapes.constant for e in entries]):
                 phasor = np.sum([e.amp * np.exp(1j * e.phase) for e in entries])
@@ -123,7 +119,7 @@ def merge_channels(wires, channels):
                     shapeFunLib[pulsesHash] = sum_shapes
                 shapeFun = shapeFunLib[pulsesHash]
 
-            shapeParams = {"shapeFun": shapeFun, "length": blocklength}
+            shapeParams = {"shapeFun": shapeFun, "length": block_length}
 
             label = "*".join([e.label for e in entries])
             segment.append(Pulse(label, entries[0].channel, shapeParams, amp, phase))
@@ -131,7 +127,7 @@ def merge_channels(wires, channels):
     return mergedWire
 
 
-def pull_uniform_entries(entries, entryIterators):
+def pull_uniform_entries(entries, entry_iterators):
     '''
     Given entries from a set of logical channels (that share a physical
     channel), pull enough entries from each channel so that the total pulse
@@ -148,29 +144,43 @@ def pull_uniform_entries(entries, entryIterators):
     #keep track of how many entry iterators are used up
     iterDone = [ False ] * numChan
     ct = 0
+    lengths = [e.length for e in entries]
+    entries_stack = [[e] for e in entries]
+
     while True:
         #If we've used up all the entries on all the channels we're done
         if all(iterDone):
             raise StopIteration("Unable to find a uniform set of entries")
 
-        #If all the entry lengths are the same we are finished
-        entryLengths = [e.length for e in entries]
-        if all(x == entryLengths[0] for x in entryLengths):
+        if all(x == lengths[0] for x in lengths):
             break
 
         #Otherwise try to concatenate on entries to match lengths
-        while entries[ct].length < max(e.length for e in entries):
+        while lengths[ct] < max(lengths):
             # concatenate with following entry to make up the length difference
             try:
-                nextentry = next(entryIterators[ct])
+                next_entry = next(entry_iterators[ct])
             except StopIteration:
                 iterDone[ct] = True
 
-            entries[ct] = concatenate_entries(entries[ct], nextentry)
+            entries_stack[ct].append(next_entry)
+            lengths[ct] += next_entry.length
 
         ct = (ct + 1) % numChan
 
-    return max(e.length for e in entries)
+
+    #if we have all zeros or a single non zero we return that as a list of entries
+    allzero_chan = [all([e.isZero for e in stack]) for stack in entries_stack ]
+    if all(allzero_chan):
+        entries = [ entries_stack[0] ]
+    elif np.sum(allzero_chan) == len(entries) - 1:
+        entries = [ entries_stack[allzero_chan.index(False)] ]
+    else:
+        entries = []
+        for stack in entries_stack:
+            entries.append( reduce(concatenate_entries, stack) )
+
+    return entries, max(lengths)
 
 
 def concatenate_entries(entry1, entry2):
@@ -517,8 +527,12 @@ def compile_sequence(seq, channels=None):
                     warn("Dropping initial frame change")
                     continue
                 logger.debug("Modifying pulse on %s: %s", chan, wires[chan][-1])
-                updated_frameChange = wires[chan][-1].frameChange + block.pulses[chan].frameChange
-                wires[chan][-1] = wires[chan][-1]._replace(frameChange=updated_frameChange)
+                # search for last non-TA entry
+                for ct in range(1,len(wires[chan])):
+                    if not wires[chan][-ct].isTimeAmp:
+                        updated_frameChange = wires[chan][-ct].frameChange + block.pulses[chan].frameChange
+                        wires[chan][-ct] = wires[chan][-ct]._replace(frameChange=updated_frameChange)
+                        break
                 if chan in ChannelLibrary.channelLib.connectivityG.nodes():
                     logger.debug("Doing propagate_node_frame_to_edges()")
                     wires = propagate_node_frame_to_edges(

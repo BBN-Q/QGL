@@ -80,6 +80,11 @@ def Utheta(qubit,
            **kwargs):
     '''  A generic rotation with variable amplitude and phase. '''
     params = overrideDefaults(qubit, kwargs)
+        #amp and phase are now pulse parameters rather than shape parameters
+    if "amp" in params:
+      del params["amp"]
+    if "phase" in params:
+      del params["phase"]
     return Pulse(label, qubit, params, amp, phase, 0.0, ignoredStrParams)
 
 

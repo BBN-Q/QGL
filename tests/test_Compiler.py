@@ -81,9 +81,9 @@ class CompileUtils(unittest.TestCase):
         ll = Compiler.compile_sequence(seq)
         entryIterators = [iter(ll[q1]), iter(ll[q2])]
         entries = [next(e) for e in entryIterators]
-        blocklen = Compiler.pull_uniform_entries(entries, entryIterators)
-        self.assertAlmostEqual(blocklen, 60e-9)
-        assert all(e.length == blocklen for e in entries)
+        entries, max_length = Compiler.pull_uniform_entries(entries, entryIterators)
+        self.assertAlmostEqual(max_length, 60e-9)
+        assert all(e.length == max_length for e in entries)
         self.assertRaises(StopIteration, next, entryIterators[0])
 
         q2.pulseParams['length'] = 40e-9
@@ -91,9 +91,9 @@ class CompileUtils(unittest.TestCase):
         ll = Compiler.compile_sequence(seq)
         entryIterators = [iter(ll[q1]), iter(ll[q2])]
         entries = [next(e) for e in entryIterators]
-        blocklen = Compiler.pull_uniform_entries(entries, entryIterators)
-        self.assertAlmostEqual(blocklen, 40e-9)
-        assert all(e.length == blocklen for e in entries)
+        entries, max_length = Compiler.pull_uniform_entries(entries, entryIterators)
+        self.assertAlmostEqual(max_length, 40e-9)
+        assert all(e.length == max_length for e in entries)
 
     def test_pull_uniform_entries2(self):
         q1 = self.q1
@@ -104,9 +104,9 @@ class CompileUtils(unittest.TestCase):
         ll = Compiler.compile_sequence(seq)
         entryIterators = [iter(ll[q1]), iter(ll[q2])]
         entries = [next(e) for e in entryIterators]
-        blocklen = Compiler.pull_uniform_entries(entries, entryIterators)
-        self.assertAlmostEqual(blocklen, 120e-9)
-        self.assertTrue(all(e.length == blocklen for e in entries))
+        entries, max_length = Compiler.pull_uniform_entries(entries, entryIterators)
+        self.assertAlmostEqual(max_length, 120e-9)
+        self.assertTrue(all(e.length == max_length for e in entries))
 
     def test_merge_channels(self):
         q1 = self.q1

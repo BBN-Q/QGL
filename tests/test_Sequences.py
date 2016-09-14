@@ -418,11 +418,23 @@ class TestAPS2(unittest.TestCase, APS2Helper, TestSequences):
         APS2Helper.__init__(self)
         APS2Helper.setUp(self)
 
+    def test_mux_CR(self):
+        #control and CR sharing the same chans
+        self.channels['cr'].physChan = self.channels['q1'].physChan
+        self.channels['q1'].frequency = 100e6 
+        self.channels['cr'].frequency = 200e6
+        ChannelLibrary.channelLib.build_connectivity_graph()
+        seqs = [CNOT_CR(self.q1, self.q2)]
+
+        filenames = compile_to_hardware(seqs, 'CNOT_CR_mux/CNOT_CR_mux')
+        self.compare_sequences('CNOT_CR_mux')
+
+
     @unittest.expectedFailure
     def test_misc_seqs1(self):
         """
 		Fails to do nutFreq being set to a very small value (5.0) for the
-		arb_axis_drag pulse causing a large waveform ampliutde. Previously this
+		arb_axis_drag pulse causing a large waveform amplitude. Previously this
 		got phase shifted and then clipped so both chA and chB were railed. With
 		onboard modulation it gets clipped and then rotated.
 		"""
@@ -611,6 +623,10 @@ class TestTek5014(unittest.TestCase, AWGTestHelper, TestSequences):
     @unittest.expectedFailure
     def test_misc_seqs4(self):
         TestSequences.test_misc_seqs4(self)
+
+    @unittest.expectedFailure
+    def test_mux_CR(self):
+        TestSequences.test_mux_CR(self)
 
     @unittest.expectedFailure
     def test_AllXY(self):

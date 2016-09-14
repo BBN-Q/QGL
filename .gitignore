@@ -1,2 +1,5 @@
 *.pyc
 *.json
+*.awg
+*-code.py
+*.h5
