@@ -312,10 +312,14 @@ def compile_to_hardware(seqs,
             if `seqs` generates a Ramsey experiment, axis_descriptor would describe
             the time delays between pulses.
         qgl2 (optional): When True, run QGL2 specific debug code and only
-             selectively add the slaveTrigger; when False (default), always add the slave trigger
-        addQGL2SlaveTrigger (optional): When qgl2=True only add the slave trigger when this is also True
-        edgesToCompile (optional): When not None, only compile edges (and their gates) on this list; else compile all edges and their gates (default)
-        qubitToCompile (optional): When not None, only compile the given Qubit (and its gate), else compile all Qubits and their gates (default)
+            selectively add the slaveTrigger; when False (default), always add
+            the slave trigger
+        addQGL2SlaveTrigger (optional): When qgl2=True only add the slave trigger
+            when this is also True
+        edgesToCompile (optional): When not None, only compile edges (and their
+            gates) on this list; else compile all edges and their gates (default)
+        qubitToCompile (optional): When not None, only compile the given Qubit
+            (and its gate), else compile all Qubits and their gates (default)
     '''
     logger.debug("Compiling %d sequence(s)", len(seqs))
 
@@ -446,8 +450,10 @@ def compile_to_hardware(seqs,
 def compile_sequences(seqs, channels=set(), edgesToCompile=None, qubitToCompile=None):
     '''
     Main function to convert sequences to miniLL's and waveform libraries.
-        edgesToCompile : When not None, only compile edges (and their gates) on this list; else compile all edges and their gates (default)
-        qubitToCompile : When not None, only compile the given Qubit (and its gate), else compile all Qubits and their gates (default)
+        edgesToCompile : When not None, only compile edges (and their gates) on
+            this list; else compile all edges and their gates (default)
+        qubitToCompile : When not None, only compile the given Qubit (and its
+            gate), else compile all Qubits and their gates (default)
     '''
 
     # turn into a loop, by appending GOTO(0) at end of last sequence
@@ -495,8 +501,10 @@ def compile_sequences(seqs, channels=set(), edgesToCompile=None, qubitToCompile=
 def channels_to_compile(channels, edgesToCompile=None, qubitToCompile=None):
     '''
     Filter input set of channels to exclude those not on given lists
-        edgesToCompile : When not None, only compile edges (and their gates) on this list; else compile all edges and their gates (default)
-        qubitToCompile : When not None, only compile the given Qubit (and its gate), else compile all Qubits and their gates (default)
+        edgesToCompile : When not None, only compile edges (and their gates) on
+            this list; else compile all edges and their gates (default)
+        qubitToCompile : When not None, only compile the given Qubit (and its
+            gate), else compile all Qubits and their gates (default)
     '''
     # Edited set of channels to return
     newchans = set()
@@ -553,8 +561,10 @@ def compile_sequence(seq, channels=None, edgesToCompile=None, qubitToCompile=Non
     '''
     Takes a list of control flow and pulses, and returns aligned blocks
     separated into individual abstract channels (wires).
-        edgesToCompile : When not None, only compile edges (and their gates) on this list; else compile all edges and their gates (default)
-        qubitToCompile : When not None, only compile the given Qubit (and its gate), else compile all Qubits and their gates (default)
+        edgesToCompile : When not None, only compile edges (and their gates) on
+            this list; else compile all edges and their gates (default)
+        qubitToCompile : When not None, only compile the given Qubit (and its
+            gate), else compile all Qubits and their gates (default)
     '''
     logger.debug('')
     logger.debug("In compile_sequence:")
