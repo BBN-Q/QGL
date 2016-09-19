@@ -491,10 +491,10 @@ def DiAC(qubit, cliffNum, Xonly = False):
         return Z90m(qubit)
     elif cliffNum == 10:
         #X+Y 180
-        return X90(qubit) + X90(qubit) + Z90(qubit) if Xonly else Y(qubit) + Z90m(qubit)
+        return X90(qubit) + X90(qubit) + Z90(qubit) if Xonly else Y90(qubit) + Y90(qubit) + Z90m(qubit)
     elif cliffNum == 11:
         #X-Y 180
-        return X90(qubit) + X90(qubit) + Z90m(qubit) if Xonly else Y(qubit) + Z90(qubit)
+        return X90(qubit) + X90(qubit) + Z90m(qubit) if Xonly else Y90(qubit) + Y90(qubit) + Z90(qubit)
     elif cliffNum == 12:
         #X+Z 180(Hadamard)
         return Z(qubit) + X90(qubit) + Z90m(qubit) + X90(qubit) + Z(qubit) if Xonly else Z(qubit) + Y90(qubit)
