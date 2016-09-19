@@ -150,7 +150,7 @@ def SingleQubitRB_AC(qubit, seqs, showPlot=False):
     if showPlot:
         plot_pulse_files(fileNames)
 
-def SingleQubitRB_DiAC(qubit, seqs, showPlot=False):
+def SingleQubitRB_DiAC(qubit, seqs, Xonly = False, showPlot=False):
     """
 
     Single qubit randomized benchmarking using atomic Clifford pulses.
@@ -167,7 +167,7 @@ def SingleQubitRB_DiAC(qubit, seqs, showPlot=False):
     """
     seqsBis = []
     for seq in seqs:
-        seqsBis.append([DiAC(qubit, c) for c in seq])
+        seqsBis.append([DiAC(qubit, c, Xonly) for c in seq])
 
     #Add the measurement to all sequences
     for seq in seqsBis:
@@ -175,7 +175,7 @@ def SingleQubitRB_DiAC(qubit, seqs, showPlot=False):
 
     #Tack on the calibration sequences (using pi/2 pulses for consistency)
     seqsBis += [[Id(qubit), MEAS(qubit)], [Id(qubit), MEAS(qubit)], [X90(qubit), X90(qubit), MEAS(qubit)], [X90(qubit), X90(qubit), MEAS(qubit)]]
-    
+
     fileNames = compile_to_hardware(seqsBis, 'RB_DiAC/RB_DiAC')
     print(fileNames)
 

@@ -444,7 +444,7 @@ def AC(qubit, cliffNum):
         raise ValueError('Clifford number must be between 0 and 23')
 
 
-def DiAC(qubit, cliffNum):
+def DiAC(qubit, cliffNum, Xonly = False):
     """
 
     The set of 24 Diatomic Clifford single qubit pulses.
@@ -473,13 +473,13 @@ def DiAC(qubit, cliffNum):
         return X90m(qubit)
     elif cliffNum == 4:
         #Y90
-        return Y90(qubit)
+        return X90(qubit) + Z90m(qubit) + X90(qubit) + Z(qubit) if Xonly else Y90(qubit)
     elif cliffNum == 5:
         #Y180
-        return Y90(qubit)+Y90(qubit)
+        return X90(qubit) + X90(qubit) + Z(qubit) if Xonly else Y90(qubit) + Y90(qubit)
     elif cliffNum == 6:
         #Y90m
-        return Y90m(qubit)
+        return X90(qubit) + Z90(qubit) + X90(qubit) + Z(qubit) if Xonly else Y90m(qubit)
     elif cliffNum == 7:
         #Z90
         return Z90(qubit)
@@ -491,46 +491,46 @@ def DiAC(qubit, cliffNum):
         return Z90m(qubit)
     elif cliffNum == 10:
         #X+Y 180
-        return X90(qubit) + X90(qubit) + Z90(qubit)
+        return X90(qubit) + X90(qubit) + Z90(qubit) if Xonly else Y(qubit) + Z90m(qubit)
     elif cliffNum == 11:
         #X-Y 180
-        return X90(qubit) + X90(qubit) + Z90m(qubit)
+        return X90(qubit) + X90(qubit) + Z90m(qubit) if Xonly else Y(qubit) + Z90(qubit)
     elif cliffNum == 12:
         #X+Z 180(Hadamard)
-        return Z(qubit) + X90(qubit) + Z90m(qubit) + X90(qubit) + Z(qubit)
+        return Z(qubit) + X90(qubit) + Z90m(qubit) + X90(qubit) + Z(qubit) if Xonly else Z(qubit) + Y90(qubit)
     elif cliffNum == 13:
         #X-Z 180
-        return Z(qubit) + X90(qubit) + Z90(qubit) + X90(qubit) + Z(qubit)
+        return Z(qubit) + X90(qubit) + Z90(qubit) + X90(qubit) + Z(qubit) if Xonly else Z(qubit) + Y90m(qubit)
     elif cliffNum == 14:
         #Y+Z 180
-        return Z90(qubit) + X90(qubit) + Z90m(qubit) + X90(qubit) + Z90m(qubit)
+        return Z90(qubit) + X90(qubit) + Z90m(qubit) + X90(qubit) + Z90m(qubit) if Xonly else Z90(qubit) + Y90(qubit) + Z90(qubit)
     elif cliffNum == 15:
         #Y-Z 180
-        return Z90(qubit) + X90(qubit) + Z90(qubit) + X90(qubit) + Z90m(qubit)
+        return Z90(qubit) + X90(qubit) + Z90(qubit) + X90(qubit) + Z90m(qubit) if Xonly else Z90(qubit) + Y90m(qubit) + Z90(qubit)
     elif cliffNum == 16:
             #X+Y+Z -120 (equivalent to -X-Y-Z 120)
-        return Z90(qubit) + X90(qubit) + Z90m(qubit) + X90(qubit) + Z(qubit)
+        return Z90(qubit) + X90(qubit) + Z90m(qubit) + X90(qubit) + Z(qubit) if Xonly else Z90(qubit) + Y90(qubit)
     elif cliffNum == 17:
         #X+Y+Z 120
-        return Z(qubit) + X90(qubit) + Z90m(qubit) + X90(qubit) + Z90m(qubit)
+        return Z(qubit) + X90(qubit) + Z90m(qubit) + X90(qubit) + Z90m(qubit) if Xonly else Z(qubit) + Y90(qubit) + Z90(qubit)
     elif cliffNum == 18:
             #X-Y+Z 120 (equivalent to -X+Y-Z 120)
-            return X90(qubit) + Z90(qubit) + X90(qubit) + Z90m(qubit)
+            return X90(qubit) + Z90(qubit) + X90(qubit) + Z90m(qubit) if Xonly else Y90m(qubit) + Z90(qubit)
     elif cliffNum == 19:
         #X-Y+Z -120
-        return Z90m(qubit) + X90(qubit) + Z90m(qubit) + X90(qubit) + Z(qubit)
+        return Z90m(qubit) + X90(qubit) + Z90m(qubit) + X90(qubit) + Z(qubit) if Xonly else Z90m(qubit) + Y90(qubit)
     elif cliffNum == 20:
             #X+Y-Z -120 (equivalent to -X-Y+Z 120)
-            return Z(qubit) + X90(qubit) + Z90(qubit) + X90(qubit) + Z90m(qubit)
+            return Z(qubit) + X90(qubit) + Z90(qubit) + X90(qubit) + Z90m(qubit) if Xonly else Z(qubit) + Y90m(qubit) + Z90(qubit)
     elif cliffNum == 21:
         #X+Y-Z 120
-        return Z90(qubit) + X90(qubit) + Z90(qubit) + X90(qubit) + Z(qubit)
+        return Z90(qubit) + X90(qubit) + Z90(qubit) + X90(qubit) + Z(qubit) if Xonly else Z90(qubit) + Y90m(qubit)
     elif cliffNum == 22:
         #-X+Y+Z -120 (equivalent to X-Y-Z 120)
-        return X90(qubit) + Z90m(qubit) + X90(qubit) + Z90m(qubit)
+        return X90(qubit) + Z90m(qubit) + X90(qubit) + Z90m(qubit) if Xonly else Y90(qubit) + Z90(qubit)
     elif cliffNum == 23:
         #-X+Y+Z 120
-        return Z90m(qubit) + X90(qubit) + Z90(qubit) + X90(qubit) + Z(qubit)
+        return Z90m(qubit) + X90(qubit) + Z90(qubit) + X90(qubit) + Z(qubit) if Xonly else Z90m(qubit) + Y90m(qubit)
     else:
         raise ValueError('Clifford number must be between 0 and 23')
 
