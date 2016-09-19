@@ -173,10 +173,10 @@ def SingleQubitRB_DiAC(qubit, seqs, showPlot=False):
     for seq in seqsBis:
         seq.append(MEAS(qubit))
 
-    #Tack on the calibration sequences
-    seqsBis += create_cal_seqs((qubit, ), 2)
-
-    fileNames = compile_to_hardware(seqsBis, 'RB/RB')
+    #Tack on the calibration sequences (using pi/2 pulses for consistency)
+    seqsBis += [[Id(qubit), MEAS(qubit)], [Id(qubit), MEAS(qubit)], [X90(qubit), X90(qubit), MEAS(qubit)], [X90(qubit), X90(qubit), MEAS(qubit)]]
+    
+    fileNames = compile_to_hardware(seqsBis, 'RB_DiAC/RB_DiAC')
     print(fileNames)
 
     if showPlot:
