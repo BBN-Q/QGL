@@ -401,7 +401,7 @@ def AC(qubit, cliffNum):
                              aziAngle=-pi / 4,
                              label="AC_18")
     elif cliffNum == 19:
-        #X-Y+Z 120 (equivalent to -X+Y-Z 120)
+        #X-Y+Z 120 (equivalent to -X+Y-Z -120)
         return arb_axis_drag(qubit,
                              nutFreq,
                              rotAngle=2 * pi / 3,
@@ -507,33 +507,32 @@ def DiAC(qubit, cliffNum):
     elif cliffNum == 15:
         #Y-Z 180
         return Z90(qubit) + X90(qubit) + Z90(qubit) + X90(qubit) + Z90m(qubit)
+    elif cliffNum == 16:
+            #X+Y+Z -120 (equivalent to -X-Y-Z 120)
+        return Z90(qubit) + X90(qubit) + Z90m(qubit) + X90(qubit) + Z(qubit)
     elif cliffNum == 17:
         #X+Y+Z 120
         return Z(qubit) + X90(qubit) + Z90m(qubit) + X90(qubit) + Z90m(qubit)
-    elif cliffNum == 16:
-        #X+Y+Z -120 (equivalent to -X-Y-Z 120)
-        return Z90(qubit) + X90(qubit) + Z90m(qubit) + X90(qubit) + Z(qubit)
-    elif cliffNum == 19:
-        #X-Y+Z 120
-        return Z90m(qubit) + X90(qubit) + Z90m(qubit) + X90(qubit) + Z(qubit)
     elif cliffNum == 18:
-        #X-Y+Z 120 (equivalent to -X+Y-Z 120)
-        return X90(qubit) + Z90(qubit) + X90(qubit) + Z90m(qubit)
+            #X-Y+Z 120 (equivalent to -X+Y-Z 120)
+            return X90(qubit) + Z90(qubit) + X90(qubit) + Z90m(qubit)
+    elif cliffNum == 19:
+        #X-Y+Z -120
+        return Z90m(qubit) + X90(qubit) + Z90m(qubit) + X90(qubit) + Z(qubit)
+    elif cliffNum == 20:
+            #X+Y-Z -120 (equivalent to -X-Y+Z 120)
+            return Z(qubit) + X90(qubit) + Z90(qubit) + X90(qubit) + Z90m(qubit)
     elif cliffNum == 21:
         #X+Y-Z 120
         return Z90(qubit) + X90(qubit) + Z90(qubit) + X90(qubit) + Z(qubit)
-    elif cliffNum == 20:
-        #X+Y-Z -120 (equivalent to -X-Y+Z 120)
-        return Z(qubit) + X90(qubit) + Z90(qubit) + X90(qubit) + Z90m(qubit)
-    elif cliffNum == 23:
-        #-X+Y+Z 120
-        return Z90m(qubit) + X90(qubit) + Z90(qubit) + X90(qubit) + Z(qubit)
     elif cliffNum == 22:
         #-X+Y+Z -120 (equivalent to X-Y-Z 120)
         return X90(qubit) + Z90m(qubit) + X90(qubit) + Z90m(qubit)
+    elif cliffNum == 23:
+        #-X+Y+Z 120
+        return Z90m(qubit) + X90(qubit) + Z90(qubit) + X90(qubit) + Z(qubit)
     else:
         raise ValueError('Clifford number must be between 0 and 23')
-
 
 ## two-qubit primitivies
 def CNOT(source, target, **kwargs):
