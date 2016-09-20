@@ -14,9 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 '''
 
-from .common_primitives import overrideDefaults, _memoize, clear_pulse_cache, Id, Z, X90, X90m, Y90, Y90m, Z90, Z90m, Utheta, Xtheta, Ytheta, Ztheta, U90, U, arb_axis_drag,\
-AC, DiAC, CNOT, CNOT_CR, flat_top_gaussian, echoCR, ZX90_CR, MEAS, MeasEcho, BLANK
-
+from .helpers import overrideDefaults, _memoize, clear_pulse_cache
+from .common_primitives import X90, X90m, Y90, Y90m
 #Setup the default 90/180 rotations
 @_memoize
 def X(qubit, **kwargs):
