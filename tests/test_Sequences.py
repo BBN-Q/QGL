@@ -61,7 +61,7 @@ class AWGTestHelper(object):
 
             q = Qubit(label=name, gateChan=qg)
             q.pulseParams['length'] = 30e-9
-            q.pulseParams['phase'] = pi / 2
+            q.pulseParams['phase'] = np.pi / 2
 
             self.channels[name] = q
             self.channels[mName] = m
@@ -77,7 +77,7 @@ class AWGTestHelper(object):
                   target=q2,
                   gateChan=self.channels['cr-gate'])
         cr.pulseParams['length'] = 30e-9
-        cr.pulseParams['phase'] = pi / 4
+        cr.pulseParams['phase'] = np.pi / 4
         self.channels["cr"] = cr
 
         mq1q2g = LogicalMarkerChannel(label='M-q1q2-gate')
@@ -265,7 +265,7 @@ class TestSequences(object):
 
     def test_CR_EchoCRPhase(self):
         self.set_awg_dir('EchoCRPhase')
-        EchoCRPhase(self.q1, self.q2, np.linspace(0, pi / 2, 11))
+        EchoCRPhase(self.q1, self.q2, np.linspace(0, np.pi / 2, 11))
         self.compare_sequences('EchoCR')
 
     def test_Decoupling_HannEcho(self):
@@ -295,7 +295,7 @@ class TestSequences(object):
 
     def test_SPAM(self):
         self.set_awg_dir()
-        SPAM(self.q1, np.linspace(0, pi / 2, 11))
+        SPAM(self.q1, np.linspace(0, np.pi / 2, 11))
         self.compare_sequences('SPAM')
 
     def test_Rabi_RabiAmp(self):
