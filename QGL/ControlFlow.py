@@ -130,11 +130,13 @@ class ControlInstruction(object):
 
 
 class Goto(ControlInstruction):
+    # target is a BlockLabel
     def __init__(self, target):
         super(Goto, self).__init__("GOTO", target=target)
 
 
 class Call(ControlInstruction):
+    # target is a BlockLabel
     def __init__(self, target):
         super(Call, self).__init__("CALL", target=target)
 
@@ -145,11 +147,13 @@ class Return(ControlInstruction):
 
 
 class LoadRepeat(ControlInstruction):
+    # n is an integer
     def __init__(self, n):
         super(LoadRepeat, self).__init__("LOAD", value=n)
 
 
 class Repeat(ControlInstruction):
+    # target is a BlockLabel
     def __init__(self, target):
         super(Repeat, self).__init__("REPEAT", target=target)
 
