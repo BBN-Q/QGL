@@ -30,3 +30,7 @@ channelLibFile = os.path.abspath(QGLCfg['ChannelLibraryFile'])
 plotBackground = QGLCfg[
     'PlotBackground'] if 'PlotBackground' in QGLCfg else '#EAEAF2'
 gridColor = QGLCfg['GridColor'] if 'GridColor' in QGLCfg else None
+
+# select pulse library (standard or all90)
+pulse_primitives_lib = QGLCfg['PulsePrimitivesLibrary'] \
+if 'PulsePrimitivesLibrary' in QGLCfg else 'standard'
