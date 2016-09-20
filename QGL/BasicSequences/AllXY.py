@@ -3,7 +3,7 @@ from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
 import QGL.PulseShapes
 from .helpers import create_cal_seqs
-
+import numpy as np
 
 def AllXY(q, showPlot=False):
     firstPulses = [Id(q)] + 2 * [X(q), Y(q)] + 3 * [X90(q), Y90(q)] + [

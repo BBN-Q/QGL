@@ -2,7 +2,7 @@ from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
 from .helpers import create_cal_seqs, time_descriptor, cal_descriptor
-
+import numpy as np
 
 def HahnEcho(qubit, pulseSpacings, periods=0, calRepeats=2, showPlot=False):
     """
@@ -23,7 +23,7 @@ def HahnEcho(qubit, pulseSpacings, periods=0, calRepeats=2, showPlot=False):
     seqs = []
     for k in range(len(pulseSpacings)):
         seqs.append([X90(qubit), Id(qubit, pulseSpacings[k]), Y(qubit), Id(qubit,pulseSpacings[k]), \
-         U90(qubit,phase=2*pi*periods/len(pulseSpacings)*k), MEAS(qubit)])
+         U90(qubit,phase=2*np.pi*periods/len(pulseSpacings)*k), MEAS(qubit)])
 
 #Tack on the calibration scalings
     seqs += create_cal_seqs((qubit, ), calRepeats)
