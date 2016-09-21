@@ -192,36 +192,3 @@ def PulsedSpec(qubit, specOn=True, showPlot=False):
 
     if showPlot:
         plot_pulse_files(filenames)
-
-
-def Swap(qubit, mqubit, delays, showPlot=False):
-    """
-
-	Variable amplitude Rabi nutation experiment.
-
-	Parameters
-	----------
-	qubit : logical channel to implement sequence (LogicalChannel)
-	amps : pulse amplitudes to sweep over (iterable)
-	phase : phase of the pulse (radians)
-	showPlot : whether to plot (boolean)
-
-	Returns
-	-------
-	plotHandle : handle to plot window to prevent destruction
-	"""
-    seqs = [[X(qubit), X(mqubit), Id(mqubit, d), MEAS(mqubit) * MEAS(qubit)]
-            for d in delays] + create_cal_seqs(
-                (mqubit, qubit), 2,
-                measChans=(mqubit, qubit))
-
-    fileNames = compile_to_hardware(seqs, 'Rabi/Rabi',
-        axis_descriptor=[
-            time_descriptor(delays),
-            cal_descriptor((mqubit, qubit), 2)
-        ])
-    print(fileNames)
-
-    if showPlot:
-        plotWin = plot_pulse_files(fileNames)
-        return plotWin
