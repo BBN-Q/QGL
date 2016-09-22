@@ -27,6 +27,8 @@ AWGDir = os.path.abspath(QGLCfg['AWGDir'])
 channelLibFile = os.path.abspath(QGLCfg['ChannelLibraryFile'])
 
 # plotting options
-plotBackground = QGLCfg[
-    'PlotBackground'] if 'PlotBackground' in QGLCfg else '#EAEAF2'
-gridColor = QGLCfg['GridColor'] if 'GridColor' in QGLCfg else None
+plotBackground = QGLCfg.get('PlotBackground', '#EAEAF2')
+gridColor = QGLCfg.get('GridColor', None)
+
+# select pulse library (standard or all90)
+pulse_primitives_lib = QGLCfg.get('PulsePrimitivesLibrary', 'standard')
