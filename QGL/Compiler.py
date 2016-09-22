@@ -31,7 +31,7 @@ from .PatternUtils import flatten, has_gate
 from . import Channels
 from . import ChannelLibrary
 from . import PulseShapes
-from .PulsePrimitives import Id
+from .PulsePrimitives.common_primitives import Id
 from .PulseSequencer import Pulse, PulseBlock, CompositePulse
 from . import ControlFlow
 from . import BlockLabel
@@ -99,8 +99,8 @@ def merge_channels(wires, channels):
             if nonZeroSSBChan:
                 frequency = entries[nonZeroSSBChan[0]].frequency
             else:
-                frequency = 0.0  
-
+                frequency = 0.0
+                 
             if all([e.shapeParams['shapeFun'] == PulseShapes.constant for e in entries]):
                 phasor = np.sum([e.amp * np.exp(1j * e.phase) for e in entries])
                 amp = np.abs(phasor)

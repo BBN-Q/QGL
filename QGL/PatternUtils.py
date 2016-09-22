@@ -21,7 +21,7 @@ import pickle
 from copy import copy
 
 from .PulseSequencer import Pulse, TAPulse, PulseBlock, CompositePulse
-from .PulsePrimitives import BLANK
+from .PulsePrimitives.common_primitives import BLANK
 from . import ControlFlow
 from . import BlockLabel
 import QGL.drivers

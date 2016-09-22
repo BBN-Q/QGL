@@ -1,7 +1,7 @@
 import h5py
 import unittest
 import numpy as np
-
+from QGL.PulseSequencer import TAPulse
 from QGL import *
 
 
