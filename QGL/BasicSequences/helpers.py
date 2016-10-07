@@ -6,8 +6,7 @@ from ..PulsePrimitives import Id, X, MEAS
 from ..ControlFlow import qwait
 from functools import reduce
 
-
-def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False):
+def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False, delay=None):
     """
 	Helper function to create a set of calibration sequences.
 
@@ -16,6 +15,7 @@ def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False):
 	qubits : logical channels, e.g. (q1,) or (q1,q2) (tuple)
 	numRepeats = number of times to repeat calibration sequences (int)
 	waitcmp = True if the sequence contains branching
+    delay: optional time between state preparation and measurement (s)
 	"""
     if measChans is None:
         measChans = qubits
@@ -28,7 +28,7 @@ def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False):
 
     #Add on the measurement operator.
     measBlock = reduce(operator.mul, [MEAS(q) for q in qubits])
-    return [[seq, measBlock, qwait('CMP')] if waitcmp else [seq, measBlock]
+    return [[seq, Id(qubits[0], delay), measBlock, qwait('CMP')] if waitcmp else [seq, Id(qubits[0], delay), measBlock]
             for seq in calSeqs]
 
 def cal_descriptor(qubits, numRepeats):
