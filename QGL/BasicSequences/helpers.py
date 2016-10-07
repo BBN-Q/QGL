@@ -22,14 +22,17 @@ def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False, delay=Non
 
     calSet = [Id, X]
     #Make all combination for qubit calibration states for n qubits and repeat
-    calSeqs = [reduce(operator.mul, [p(q) for p, q in zip(pulseSet, qubits)])
+    cal_seqs = [reduce(operator.mul, [p(q) for p, q in zip(pulseSet, qubits)])
                for pulseSet in product(calSet, repeat=len(qubits))
                for _ in range(numRepeats)]
 
     #Add on the measurement operator.
     measBlock = reduce(operator.mul, [MEAS(q) for q in qubits])
-    return [[seq, Id(qubits[0], delay), measBlock, qwait('CMP')] if waitcmp else [seq, Id(qubits[0], delay), measBlock]
-            for seq in calSeqs]
+    #Add optional delay
+    full_cal_seqs = [[seq, Id(qubits[0], delay), measBlock] if delay else [seq, measBlock] for seq in cal_seqs]
+    if waitcmp:
+        [cal_seq.append(qwait('CMP')) for cal_seq in full_cal_seqs]
+    return full_cal_seqs
 
 def cal_descriptor(qubits, numRepeats):
     states = ['0', '1']
