@@ -144,8 +144,25 @@ def measPulse(amp=1, length=0, sigma=0, samplingRate=1e9, **params):
     """
     numPts = np.round(length * samplingRate)
     timePts = (1.0 / samplingRate) * np.arange(numPts)
-    return amp * (0.8 * np.exp(-timePts / sigma) + 0.2).astype(np.complex)
+    return amp * (0.6 * np.exp(-timePts / sigma) + 0.4).astype(np.complex)
 
+def CLEAR(amp=1, length=0, sigma=0, samplingRate=1e9, **params):
+    """
+    Pulse shape to quickly deplete the cavity at the end of a measurement.
+    measPulse followed by 2 steps of length step_length and amplitudes amp1, amp2.
+    """
+    if 'amp1' not in params:
+        params['amp1'] = 0
+    if 'amp2' not in params:
+        params['amp2'] = 0
+    if 'step_length' not in params:
+        params['step_length'] = 100e-9
+    timePts = (1.0 / samplingRate) * np.arange(np.round((length-2*params['step_length']) * samplingRate))
+    flat_step = amp * (0.6 * np.exp(-timePts / sigma) + 0.4).astype(np.complex)
+    numPts_clear_step = np.round(params['step_length'] * samplingRate)
+    clear_step_one = amp * params['amp1'] * np.ones(numPts_clear_step, dtype=np.complex)
+    clear_step_two = amp * params['amp2'] * np.ones(numPts_clear_step, dtype=np.complex)
+    return np.append(flat_step, [clear_step_one, clear_step_two])
 
 def autodyne(frequency=10e6, baseShape=constant, **params):
     '''
