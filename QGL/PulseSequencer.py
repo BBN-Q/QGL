@@ -111,7 +111,8 @@ def TAPulse(label,
     """
     params = {'length': length, 'shapeFun': PulseShapes.constant}
     if ignoredStrParams:
-        ignoredStrParams.append('shapeFun')
+        if 'shapeFun' not in ignoredStrParams:
+            ignoredStrParams.append('shapeFun')
     else:
         ignoredStrParams = ['shapeFun']
     return Pulse(label, channel, params, amp, phase, frameChange, ignoredStrParams)
