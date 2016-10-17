@@ -379,6 +379,9 @@ def compile_to_hardware(seqs,
                 else:
                     logger.debug(" %s", elem)
 
+    # save number of measurements for meta info
+    num_measurements = count_measurements(wireSeqs)
+
     # map logical to physical channels
     physWires = map_logical_to_physical(wireSeqs)
 
@@ -407,9 +410,6 @@ def compile_to_hardware(seqs,
 
     # bundle wires on instruments
     awgData = bundle_wires(physWires, wfs)
-
-    # save number of measurements for meta info
-    num_measurements = count_measurements(physWires)
 
     # convert to hardware formats
     files = {}
