@@ -120,6 +120,36 @@ class CompileUtils(unittest.TestCase):
         assert len(chLL[0]) == len(ll[q1][0]) - 2
         assert len(chLL[0]) == len(ll[q2][0]) - 1
 
+    def test_num_measurements(self):
+        q1 = self.q1
+        q2 = self.q2
+        seqs = [[X(q1)*X(q2)]]
+        wireSeqs = Compiler.compile_sequences(seqs)
+        assert Compiler.count_measurements(wireSeqs) == 0
+
+        seqs = [[MEAS(q1)]]
+        wireSeqs = Compiler.compile_sequences(seqs)
+        assert Compiler.count_measurements(wireSeqs) == 1
+
+        seqs = [[MEAS(q1)*MEAS(q2)]]
+        wireSeqs = Compiler.compile_sequences(seqs)
+        assert Compiler.count_measurements(wireSeqs) == 1
+
+        seqs = [[MEAS(q1), MEAS(q2)]]
+        wireSeqs = Compiler.compile_sequences(seqs)
+        assert Compiler.count_measurements(wireSeqs) == 1
+
+        seqs = [[MEAS(q1)*MEAS(q2), MEAS(q2)]]
+        wireSeqs = Compiler.compile_sequences(seqs)
+        assert Compiler.count_measurements(wireSeqs) == 2
+
+        seqs = [[MEAS(q1)*MEAS(q2), MEAS(q2)],
+                [MEAS(q1)],
+                [MEAS(q2)],
+                [MEAS(q1), MEAS(q2)],
+                [X(q1)]]
+        wireSeqs = Compiler.compile_sequences(seqs)
+        assert Compiler.count_measurements(wireSeqs) == 5
 
 if __name__ == "__main__":
     unittest.main()

@@ -99,7 +99,7 @@ def merge_channels(wires, channels):
             if nonZeroSSBChan:
                 frequency = entries[nonZeroSSBChan[0]].frequency
             else:
-                frequency = 0.0  
+                frequency = 0.0
 
             if all([e.shapeParams['shapeFun'] == PulseShapes.constant for e in entries]):
                 phasor = np.sum([e.amp * np.exp(1j * e.phase) for e in entries])
@@ -379,6 +379,9 @@ def compile_to_hardware(seqs,
                 else:
                     logger.debug(" %s", elem)
 
+    # save number of measurements for meta info
+    num_measurements = count_measurements(wireSeqs)
+
     # map logical to physical channels
     physWires = map_logical_to_physical(wireSeqs)
 
@@ -424,8 +427,6 @@ def compile_to_hardware(seqs,
         files[awgName] = fullFileName
 
     # create meta output
-    num_measurements = sum(PatternUtils.contains_measurement(e)
-                           for e in flatten(seqs))
     if not axis_descriptor:
         axis_descriptor = [{
             'name': 'segment',
@@ -833,3 +834,17 @@ def save_code(seqs, filename):
     with io.open(fullname, "w", encoding="utf-8") as FID:
         FID.write(u'seqs =\n')
         FID.write(pretty(seqs))
+
+def count_measurements(wireSeqs):
+    # count number of measurements per sequence as the max over the the number
+    # of measurements per wire
+
+    # pick an arbitrary key to determine sequence length
+    seq_len = len(wireSeqs[list(wireSeqs)[0]])
+    seq_measurements = [0 for _ in range(seq_len)]
+    for ct in range(seq_len):
+        for wire, seqs in wireSeqs.items():
+            seq_measurements[ct] = max(
+                seq_measurements[ct],
+                sum(PatternUtils.contains_measurement(e) for e in seqs[ct]))
+    return sum(seq_measurements)
