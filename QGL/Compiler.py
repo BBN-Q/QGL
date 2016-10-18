@@ -250,7 +250,7 @@ def channel_delay_map(physicalWires):
 def setup_awg_channels(physicalChannels):
     translators = {}
     for chan in physicalChannels:
-        translators[chan.AWG] = import_module('QGL.drivers.' + chan.translator)
+        translators[chan.instrument] = import_module('QGL.drivers.' + chan.translator)
 
     data = {awg: translator.get_empty_channel_set()
             for awg, translator in translators.items()}
@@ -271,10 +271,10 @@ def bundle_wires(physWires, wfs):
     for chan in physWires.keys():
         _, awgChan = chan.label.split('-')
         awgChan = 'ch' + awgChan
-        awgData[chan.AWG][awgChan]['linkList'] = physWires[chan]
-        awgData[chan.AWG][awgChan]['wfLib'] = wfs[chan]
+        awgData[chan.instrument][awgChan]['linkList'] = physWires[chan]
+        awgData[chan.instrument][awgChan]['wfLib'] = wfs[chan]
         if hasattr(chan, 'correctionT'):
-            awgData[chan.AWG][awgChan]['correctionT'] = chan.correctionT
+            awgData[chan.instrument][awgChan]['correctionT'] = chan.correctionT
     return awgData
 
 
