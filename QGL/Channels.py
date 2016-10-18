@@ -70,7 +70,7 @@ class PhysicalChannel(Channel):
     '''
     The main class for actual AWG channels.
     '''
-    AWG = Str()
+    instrument = Str() # i.e. the AWG or receiver
     translator = Str()
     generator = Str()
     samplingRate = Float(default=1.2e9)
@@ -93,7 +93,7 @@ class LogicalChannel(Channel):
 
 class PhysicalMarkerChannel(PhysicalChannel):
     '''
-    An digital output channel on an AWG.
+    A digital output channel on an AWG.
     '''
     gateBuffer = Float(0.0).tag(
         desc="How much extra time should be added onto the beginning of a gating pulse")
@@ -116,6 +116,11 @@ class PhysicalQuadratureChannel(PhysicalChannel):
             [[self.ampFactor, self.ampFactor * tan(self.phaseSkew * pi / 180)],
              [0, 1 / cos(self.phaseSkew * pi / 180)]])
 
+class ReceiverChannel(PhysicalChannel):
+    '''
+    A trigger input on a receiver.
+    '''
+    channel = Str()
 
 class LogicalMarkerChannel(LogicalChannel):
     '''

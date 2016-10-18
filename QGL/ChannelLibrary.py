@@ -39,7 +39,7 @@ class ChannelLibrary(Atom):
     connectivityG = Typed(nx.DiGraph)
     libFile = Str()
     fileWatcher = Typed(FileWatcher.LibraryFileWatcher)
-    version = Int(4)
+    version = Int(5)
 
     def __init__(self, channelDict={}, **kwargs):
         super(ChannelLibrary, self).__init__(channelDict=channelDict, **kwargs)
