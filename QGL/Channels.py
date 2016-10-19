@@ -218,4 +218,8 @@ class Edge(LogicalChannel):
 
 
 NewLogicalChannelList = [Qubit, Edge, LogicalMarkerChannel, Measurement]
-NewPhysicalChannelList = [PhysicalMarkerChannel, PhysicalQuadratureChannel]
+NewPhysicalChannelList = [
+    PhysicalMarkerChannel,
+    PhysicalQuadratureChannel,
+    ReceiverChannel
+]
