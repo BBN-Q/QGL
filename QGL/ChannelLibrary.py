@@ -41,6 +41,9 @@ class ChannelLibrary(Atom):
     fileWatcher = Typed(FileWatcher.LibraryFileWatcher)
     version = Int(5)
 
+    specialParams = ['physChan', 'gateChan', 'trigChan', 'receiverChan',
+                     'source', 'target']
+
     def __init__(self, channelDict={}, **kwargs):
         super(ChannelLibrary, self).__init__(channelDict=channelDict, **kwargs)
         self.connectivityG = nx.DiGraph()
@@ -99,43 +102,30 @@ class ChannelLibrary(Atom):
         return {"channelDict": self.channelDict, "version": self.version}
 
     def load_from_library(self):
-        if self.libFile:
-            try:
-                with open(self.libFile, 'r') as FID:
-                    tmpLib = json.load(FID, cls=ChannelDecoder)
-                    if not isinstance(tmpLib, ChannelLibrary):
-                        raise ValueError('Failed to load channel library')
+        if not self.libFile:
+            return
+        try:
+            FID = open(self.libFile, 'r')
+            tmpLib = json.load(FID, cls=ChannelDecoder)
+            FID.close()
+            if not isinstance(tmpLib, ChannelLibrary):
+                raise ValueError('Failed to load channel library')
 
-                    # connect objects labeled by strings
-                    for chan in tmpLib.channelDict.values():
-                        if hasattr(chan, 'physChan'):
-                            chan.physChan = tmpLib[
-                                chan.
-                                physChan] if chan.physChan in tmpLib.channelDict else None
-                        if hasattr(chan, 'gateChan'):
-                            chan.gateChan = tmpLib[
-                                chan.
-                                gateChan] if chan.gateChan in tmpLib.channelDict else None
-                        if hasattr(chan, 'trigChan'):
-                            chan.trigChan = tmpLib[
-                                chan.
-                                trigChan] if chan.trigChan in tmpLib.channelDict else None
-                        if hasattr(chan, 'source'):
-                            chan.source = tmpLib[
-                                chan.
-                                source] if chan.source in tmpLib.channelDict else None
-                        if hasattr(chan, 'target'):
-                            chan.target = tmpLib[
-                                chan.
-                                target] if chan.target in tmpLib.channelDict else None
-                    self.channelDict.update(tmpLib.channelDict)
-                    # grab library version
-                    self.version = tmpLib.version
-                    self.build_connectivity_graph()
-            except IOError:
-                print('No channel library found.')
-            except ValueError:
-                print('Failed to load channel library.')
+            # connect objects labeled by strings
+            for chan in tmpLib.channelDict.values():
+                for param in self.specialParams:
+                    if hasattr(chan, param):
+                        setattr(chan, param,
+                                tmpLib.channelDict.get(getattr(chan, param), None)
+                                )
+            self.channelDict.update(tmpLib.channelDict)
+            # grab library version
+            self.version = tmpLib.version
+            self.build_connectivity_graph()
+        except IOError:
+            print('No channel library found.')
+        except ValueError:
+            print('Failed to load channel library.')
 
     def update_from_file(self):
         """
@@ -186,30 +176,18 @@ class ChannelLibrary(Atom):
             if shapeFunName:
                 paramDict['shapeFun'] = getattr(PulseShapes, shapeFunName)
             self.channelDict[chName].pulseParams = paramDict
-        if 'physChan' in chParams.keys():
-            self.channelDict[chName].physChan = self.channelDict[chParams[
-                'physChan']] if chParams[
-                    'physChan'] in self.channelDict else None
-        if 'gateChan' in chParams.keys():
-            self.channelDict[chName].gateChan = self.channelDict[chParams[
-                'gateChan']] if chParams[
-                    'gateChan'] in self.channelDict else None
-        if 'trigChan' in chParams.keys():
-            self.channelDict[chName].trigChan = self.channelDict[chParams[
-                'trigChan']] if chParams[
-                    'trigChan'] in self.channelDict else None
-        if 'source' in chParams.keys():
-            self.channelDict[chName].source = self.channelDict[chParams[
-                'source']] if chParams['source'] in self.channelDict else None
-        if 'target' in chParams.keys():
-            self.channelDict[chName].target = self.channelDict[chParams[
-                'target']] if chParams['target'] in self.channelDict else None
+
+        for param in self.specialParams:
+            if param in chParams.keys():
+                setattr(self.channelDict[chName],
+                        param,
+                        self.channelDict.get(chParams[param], None)
+                        )
         # TODO: how do we follow changes to selected AWG or generator?
 
         # ignored or specially handled parameters
-        ignoreList = ['pulseParams', 'physChan', 'gateChan', 'trigChan',
-                      'source', 'target', 'AWG', 'generator', 'x__class__',
-                      'x__module__']
+        ignoreList = self.specialParams + ['pulseParams', 'AWG', 'generator',
+                     'x__class__', 'x__module__']
         for paramName in chParams:
             if paramName not in ignoreList:
                 setattr(self.channelDict[chName], paramName,

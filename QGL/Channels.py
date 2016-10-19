@@ -50,7 +50,7 @@ class Channel(Atom):
         jsonDict = self.__getstate__()
 
         #Turn objects into labels
-        for member in ["physChan", "gateChan", "trigChan", "source", "target"]:
+        for member in ["physChan", "gateChan", "trigChan", "receiverChan", "source", "target"]:
             if member in jsonDict and not isinstance(jsonDict[member], str):
                 obj = jsonDict.pop(member)
                 if obj:
@@ -169,6 +169,7 @@ class Measurement(LogicalChannel):
                                 'sigma': 1e-9})
     gateChan = Instance((str, LogicalMarkerChannel))
     trigChan = Instance((str, LogicalMarkerChannel))
+    receiverChan = Instance((str, ReceiverChannel))
 
     def __init__(self, **kwargs):
         super(Measurement, self).__init__(**kwargs)
