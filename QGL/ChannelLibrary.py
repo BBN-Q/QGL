@@ -105,9 +105,8 @@ class ChannelLibrary(Atom):
         if not self.libFile:
             return
         try:
-            FID = open(self.libFile, 'r')
-            tmpLib = json.load(FID, cls=ChannelDecoder)
-            FID.close()
+            with open(self.libFile, 'r') as FID:
+                tmpLib = json.load(FID, cls=ChannelDecoder)
             if not isinstance(tmpLib, ChannelLibrary):
                 raise ValueError('Failed to load channel library')
 
@@ -134,39 +133,39 @@ class ChannelLibrary(Atom):
         and the overhead of recreating everything.
         """
 
-        if self.libFile:
+        if not self.libFile:
+            return
+        try:
             with open(self.libFile, 'r') as FID:
-                try:
-                    allParams = json.load(FID)['channelDict']
-                except ValueError:
-                    print(
-                        'Failed to update channel library from file. Probably is just half-written.')
-                    return
+                allParams = json.load(FID)['channelDict']
 
-                # update & insert
-                for chName, chParams in allParams.items():
-                    if chName in self.channelDict:
-                        self.update_from_json(chName, chParams)
-                    else:
-                        # load class from name and update from json
-                        className = chParams['x__class__']
-                        moduleName = chParams['x__module__']
+            # update & insert
+            for chName, chParams in allParams.items():
+                if chName in self.channelDict:
+                    self.update_from_json(chName, chParams)
+                else:
+                    # load class from name and update from json
+                    className = chParams['x__class__']
+                    moduleName = chParams['x__module__']
 
-                        mod = importlib.import_module(moduleName)
-                        cls = getattr(mod, className)
-                        self.channelDict[chName] = cls()
-                        self.update_from_json(chName, chParams)
+                    mod = importlib.import_module(moduleName)
+                    cls = getattr(mod, className)
+                    self.channelDict[chName] = cls()
+                    self.update_from_json(chName, chParams)
 
-                # remove
-                for chName in list(self.channelDict.keys()):
-                    if chName not in allParams:
-                        del self.channelDict[chName]
+            # remove
+            for chName in list(self.channelDict.keys()):
+                if chName not in allParams:
+                    del self.channelDict[chName]
 
-                self.build_connectivity_graph()
+            self.build_connectivity_graph()
+        except:
+            print('Failed to update channel library from file. Probably is just half-written.')
+            return
 
-            #reset pulse cache
-            from . import PulsePrimitives
-            PulsePrimitives._memoize.cache.clear()
+        # reset pulse cache
+        from . import PulsePrimitives
+        PulsePrimitives._memoize.cache.clear()
 
     def update_from_json(self, chName, chParams):
         # connect objects labeled by strings
