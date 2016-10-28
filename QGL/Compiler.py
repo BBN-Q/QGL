@@ -644,9 +644,12 @@ def propagate_node_frame_to_edges(wires, chan, frameChange):
         edge = ChannelLibrary.channelLib.connectivityG.edge[predecessor][chan][
             'channel']
         if edge in wires:
-            updated_frameChange = wires[edge][-1].frameChange + frameChange
-            wires[edge][-1] = wires[edge][-1]._replace(frameChange=updated_frameChange)
-
+            # search for last non-TA entry
+            for ct in range(1,len(wires[edge])):
+                if hasattr(wires[edge][-ct], 'isTimeAmp') and not wires[edge][-ct].isTimeAmp:
+                    updated_frameChange = wires[edge][-ct].frameChange + frameChange
+                    wires[edge][-ct] = wires[edge][-ct]._replace(frameChange=updated_frameChange)
+                    break
     return wires
 
 
