@@ -447,7 +447,8 @@ def AC(qubit, cliffNum):
 def DiAC(qubit, cliffNum, Xonly = False):
     """
 
-    The set of 24 Diatomic Clifford single qubit pulses.
+    The set of 24 Diatomic Clifford single qubit pulses. Use X90(m), Z, Z90
+    if Xonly; use also Y90(m) otherwise
 
     Parameters
     ----------

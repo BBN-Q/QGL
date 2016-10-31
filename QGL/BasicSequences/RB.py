@@ -153,12 +153,13 @@ def SingleQubitRB_AC(qubit, seqs, showPlot=False):
 def SingleQubitRB_DiAC(qubit, seqs, Xonly = False, showPlot=False):
     """
 
-    Single qubit randomized benchmarking using atomic Clifford pulses.
+    Single qubit randomized benchmarking using diatomic Clifford pulses.
 
     Parameters
     ----------
     qubit : logical channel to implement sequence (LogicalChannel)
     seqFile : file containing sequence strings
+    Xonly : if true, exclude Y90(m) pulses
     showPlot : whether to plot (boolean)
 
     Returns
