@@ -16,6 +16,7 @@ limitations under the License.
 from . import PulseShapes
 from . import Channels
 from . import ChannelLibrary
+from . import config
 import operator
 
 from math import pi, sin, cos, acos, sqrt
@@ -118,31 +119,12 @@ def Ztheta(qubit,
 
 #Setup the default 90/180 rotations
 @_memoize
-def X(qubit, **kwargs):
-    return Xtheta(qubit,
-                  qubit.pulseParams['piAmp'],
-                  label="X",
-                  ignoredStrParams=['amp'],
-                  **kwargs)
-
-
-@_memoize
 def X90(qubit, **kwargs):
     return Xtheta(qubit,
                   qubit.pulseParams['pi2Amp'],
                   label="X90",
                   ignoredStrParams=['amp'],
                   **kwargs)
-
-
-@_memoize
-def Xm(qubit, **kwargs):
-    return Xtheta(qubit,
-                  -qubit.pulseParams['piAmp'],
-                  label="Xm",
-                  ignoredStrParams=['amp'],
-                  **kwargs)
-
 
 @_memoize
 def X90m(qubit, **kwargs):
@@ -152,16 +134,6 @@ def X90m(qubit, **kwargs):
                   ignoredStrParams=['amp'],
                   **kwargs)
 
-
-@_memoize
-def Y(qubit, **kwargs):
-    return Ytheta(qubit,
-                  qubit.pulseParams['piAmp'],
-                  label="Y",
-                  ignoredStrParams=['amp'],
-                  **kwargs)
-
-
 @_memoize
 def Y90(qubit, **kwargs):
     return Ytheta(qubit,
@@ -169,16 +141,6 @@ def Y90(qubit, **kwargs):
                   label="Y90",
                   ignoredStrParams=['amp'],
                   **kwargs)
-
-
-@_memoize
-def Ym(qubit, **kwargs):
-    return Ytheta(qubit,
-                  -qubit.pulseParams['piAmp'],
-                  label="Ym",
-                  ignoredStrParams=['amp'],
-                  **kwargs)
-
 
 @_memoize
 def Y90m(qubit, **kwargs):
@@ -188,6 +150,88 @@ def Y90m(qubit, **kwargs):
                   ignoredStrParams=['amp'],
                   **kwargs)
 
+#90 degree rotation with control over the rotation axis
+@_memoize
+def U90(qubit, phase=0, **kwargs):
+    """ A generic 90 degree rotation with variable phase. """
+    if "label" not in kwargs:
+        kwargs["label"] = "U90"
+    return Utheta(qubit,
+        qubit.pulseParams['pi2Amp'],
+        phase,
+        ignoredStrParams=['amp'],
+        **kwargs)
+
+if config.pulse_primitives_lib == 'standard':
+    # pi rotations formed by different choice of pulse amplitude
+    @_memoize
+    def X(qubit, **kwargs):
+        return Xtheta(qubit,
+                      qubit.pulseParams['piAmp'],
+                      label="X",
+                      ignoredStrParams=['amp'],
+                      **kwargs)
+
+    @_memoize
+    def Xm(qubit, **kwargs):
+        return Xtheta(qubit,
+                      -qubit.pulseParams['piAmp'],
+                      label="Xm",
+                      ignoredStrParams=['amp'],
+                      **kwargs)
+
+    @_memoize
+    def Y(qubit, **kwargs):
+        return Ytheta(qubit,
+                      qubit.pulseParams['piAmp'],
+                      label="Y",
+                      ignoredStrParams=['amp'],
+                      **kwargs)
+
+    @_memoize
+    def Ym(qubit, **kwargs):
+        return Ytheta(qubit,
+                      -qubit.pulseParams['piAmp'],
+                      label="Ym",
+                      ignoredStrParams=['amp'],
+                      **kwargs)
+
+    @_memoize
+    def U(qubit, phase=0, **kwargs):
+        """ A generic 180 degree rotation with variable phase.  """
+        if "label" not in kwargs:
+            kwargs["label"] = "U"
+        return Utheta(qubit,
+            qubit.pulseParams['piAmp'],
+            phase,
+            ignoredStrParams=['amp'],
+            **kwargs)
+
+elif config.pulse_primitives_lib == 'all90':
+    # pi rotations formed by two pi/2 rotations
+    @_memoize
+    def X(qubit, **kwargs):
+        return X90(qubit, **kwargs) + X90(qubit, **kwargs)
+
+    @_memoize
+    def Xm(qubit, **kwargs):
+        return X90m(qubit, **kwargs) + X90m(qubit, **kwargs)
+
+    @_memoize
+    def Y(qubit, **kwargs):
+        return Y90(qubit, **kwargs) + Y90(qubit, **kwargs)
+
+    @_memoize
+    def Ym(qubit, **kwargs):
+        return Y90m(qubit, **kwargs) + Y90m(qubit, **kwargs)
+
+    @_memoize
+    def U(qubit, phase=0, **kwargs):
+        """ A generic 180 degree rotation with variable phase.  """
+        return U90(qubit, phase, *kwargs) + U90(qubit, phase, *kwargs)
+
+else:
+    raise Exception("Invalid pulse library")
 
 @_memoize
 def Z(qubit, **kwargs):
@@ -202,29 +246,6 @@ def Z90(qubit, **kwargs):
 @_memoize
 def Z90m(qubit, **kwargs):
     return Ztheta(qubit, -pi / 2, label="Z90m", **kwargs)
-
-
-# 90/180 degree rotations with control over the rotation axis
-def U90(qubit, phase=0, **kwargs):
-    """ A generic 90 degree rotation with variable phase. """
-    if "label" not in kwargs:
-        kwargs["label"] = "U90"
-    return Utheta(qubit,
-                  qubit.pulseParams['pi2Amp'],
-                  phase,
-                  ignoredStrParams=['amp'],
-                  **kwargs)
-
-
-def U(qubit, phase=0, **kwargs):
-    """ A generic 180 degree rotation with variable phase.  """
-    if "label" not in kwargs:
-        kwargs["label"] = "U"
-    return Utheta(qubit,
-                  qubit.pulseParams['piAmp'],
-                  phase,
-                  ignoredStrParams=['amp'],
-                  **kwargs)
 
 
 def arb_axis_drag(qubit,

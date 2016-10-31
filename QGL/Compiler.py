@@ -741,11 +741,17 @@ def schedule(channel, pulse, blockLength, alignment):
     duration is `blockLength`.
         alignment = "left", "right", or "center"
     '''
-    # make everything look like a sequence
-    if isinstance(pulse, CompositePulse):
-        pulses = pulse.pulses
-    else:
-        pulses = [pulse]
+    # make everything look like a sequence of pulses
+    def flatten_to_pulses(obj):
+        if isinstance(obj, Pulse):
+            yield obj
+        else:
+            # TODO: change to yield from once we drop Python 2
+            for pulse in obj.pulses:
+                for p in flatten_to_pulses(pulse):
+                    yield p
+
+    pulses = list(flatten_to_pulses(pulse))
 
     padLength = blockLength - pulse.length
     if padLength == 0:
