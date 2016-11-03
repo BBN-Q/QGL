@@ -585,7 +585,8 @@ def echoCR(controlQ,
            phase=0,
            length=200e-9,
            riseFall=20e-9,
-           lastPi=True):
+           lastPi=True,
+           echoQs=[]):
     """
     An echoed CR pulse.  Used for calibration of CR gate
     """
@@ -598,7 +599,9 @@ def echoCR(controlQ,
                              riseFall=riseFall,
                              length=length,
                              phase=phase,
-                             label="echoCR_first_half"), X(controlQ),
+                             label="echoCR_first_half"),
+                             reduce(operator.mul,
+                                    [X(q) for q in echoQs + [controlQ]]),
            flat_top_gaussian(CRchan,
                              amp=amp,
                              riseFall=riseFall,
@@ -606,18 +609,21 @@ def echoCR(controlQ,
                              phase=phase + np.pi,
                              label="echoCR_second_half")]
     if lastPi:
-        seq += [X(controlQ)]
+        seq += [reduce(operator.mul,
+               [X(q) for q in echoQs + [controlQ]])]
     return seq
 
 
-def ZX90_CR(controlQ, targetQ, **kwargs):
+def ZX90_CR(controlQ, targetQ, echoQs=[], **kwargs):
     """
     A calibrated CR ZX90 pulse.  Uses 'amp' for the pulse amplitude, 'phase' for its phase (in deg).
+    echoQs: list of qubits to decouple during the gate
     """
     CRchan = ChannelLibrary.EdgeFactory(controlQ, targetQ)
     params = overrideDefaults(CRchan, kwargs)
     return echoCR(controlQ,
                   targetQ,
+                  echoQs = echoQs,
                   amp=params['amp'],
                   phase=params['phase'],
                   length=params['length'],
