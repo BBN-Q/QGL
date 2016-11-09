@@ -999,7 +999,7 @@ def read_sequence_file(fileName):
         next_phase = np.zeros(NUM_NCO)
         next_frame = np.zeros(NUM_NCO)
         accumulated_phase = np.zeros(NUM_NCO)
-        reset_flag = [False, False]
+        reset_flag = [False]*NUM_NCO
 
         for data in instructions:
             instr = Instruction.unflatten(data)
@@ -1011,12 +1011,12 @@ def read_sequence_file(fileName):
                 (instr.opcode) == MODULATION and (modulator_opcode == 0x0)):
                 for ct in range(NUM_NCO):
                     if reset_flag[ct]:
-                        accumulated_phase[ct] = freq[
-                            ct] * ADDRESS_UNIT  #would expect this to be zero but this is first non-zero point
+                        #would expect this to be zero but this is first non-zero point
+                        accumulated_phase[ct] = next_freq[ct] * ADDRESS_UNIT
                         reset_flag[ct] = False
-                freq = next_freq
-                phase = next_phase
-                frame = next_frame
+                freq[:] = next_freq[:]
+                phase[:] = next_phase[:]
+                frame[:] = next_frame[:]
 
             #Assume new sequence at every WAIT
             if instr.opcode == WAIT:
