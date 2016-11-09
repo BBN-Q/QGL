@@ -590,7 +590,7 @@ class TestTek5014(unittest.TestCase, AWGTestHelper, TestSequences):
 
         self.finalize_map(mapping)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_misc_seqs2(self):
         """ Fails due to a divide by zero
 		    File "C:\Projects\Q\lib\PyQLab\QGL\TekPattern.py", line 77, in merge_waveform
@@ -599,7 +599,7 @@ class TestTek5014(unittest.TestCase, AWGTestHelper, TestSequences):
 		"""
         TestSequences.test_misc_seqs2(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_misc_seqs5(self):
         """ Fails due to a divide by zero
 		    File "C:\Projects\Q\lib\PyQLab\QGL\TekPattern.py", line 77, in merge_waveform
@@ -612,91 +612,91 @@ class TestTek5014(unittest.TestCase, AWGTestHelper, TestSequences):
     # AttributeError: 'Wait' object has no attribute 'isTimeAmp' at line 78
     # in TekPattern.py in merge_waveform
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_misc_seqs1(self):
         TestSequences.test_misc_seqs1(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_misc_seqs3(self):
         TestSequences.test_misc_seqs3(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_misc_seqs4(self):
         TestSequences.test_misc_seqs4(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_mux_CR(self):
         TestSequences.test_mux_CR(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_AllXY(self):
         TestSequences.test_AllXY(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_CR_PiRabi(self):
         TestSequences.test_CR_PiRabi(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_CR_EchoCRLen(self):
         TestSequences.test_CR_EchoCRLen(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_CR_EchoCRPhase(self):
         TestSequences.test_CR_EchoCRPhase(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_Decoupling_HannEcho(self):
         TestSequences.test_Decoupling_HannEcho(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_Decoupling_CPMG(self):
         TestSequences.test_Decoupling_CPMG(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_FlipFlop(self):
         TestSequences.test_FlipFlop(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_T1T2_InversionRecovery(self):
         TestSequences.test_T1T2_InversionRecovery(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_T1T2_Ramsey(self):
         TestSequences.test_T1T2_Ramsey(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_SPAM(self):
         TestSequences.test_SPAM(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_Rabi_RabiAmp(self):
         TestSequences.test_Rabi_RabiAmp(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_Rabi_RabiWidth(self):
         TestSequences.test_Rabi_RabiWidth(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_Rabi_RabiAmp_NQubits(self):
         TestSequences.test_Rabi_RabiAmp_NQubits(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_Rabi_RabiAmpPi(self):
         TestSequences.test_Rabi_RabiAmpPi(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_Rabi_SingleShot(self):
         TestSequences.test_Rabi_SingleShot(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_Rabi_PulsedSpec(self):
         TestSequences.test_Rabi_PulsedSpec(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_RB_SingleQubitRB(self):
         TestSequences.test_RB_SingleQubitRB(self)
 
-    @unittest.expectedFailure
+    @unittest.skip("Tek5014 unused in years")
     def test_RB_SimultaneousRB_AC(self):
         TestSequences.test_RB_SimultaneousRB_AC(self)
 
