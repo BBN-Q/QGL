@@ -150,7 +150,7 @@ def SingleQubitRB_AC(qubit, seqs, showPlot=False):
     if showPlot:
         plot_pulse_files(fileNames)
 
-def SingleQubitRB_DiAC(qubit, seqs, Xonly = False, showPlot=False):
+def SingleQubitRB_DiAC(qubit, seqs, compiled = True, showPlot=False):
     """
 
     Single qubit randomized benchmarking using diatomic Clifford pulses.
@@ -168,7 +168,7 @@ def SingleQubitRB_DiAC(qubit, seqs, Xonly = False, showPlot=False):
     """
     seqsBis = []
     for seq in seqs:
-        seqsBis.append([DiAC(qubit, c, Xonly) for c in seq])
+        seqsBis.append([DiAC(qubit, c, compiled) for c in seq])
 
     #Add the measurement to all sequences
     for seq in seqsBis:
