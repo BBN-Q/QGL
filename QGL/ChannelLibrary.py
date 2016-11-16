@@ -168,7 +168,7 @@ class ChannelLibrary(Atom):
                         self.update_from_json(chName, chParams)
 
                 # remove
-                for chName in self.channelDict.keys():
+                for chName in list(self.channelDict.keys()):
                     if chName not in allParams:
                         del self.channelDict[chName]
 
