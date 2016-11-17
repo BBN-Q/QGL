@@ -599,6 +599,14 @@ def compile_sequence(seq, channels=None, edgesToCompile=None, qubitToCompile=Non
             for chan in channels:
                 wires[chan] += [copy(block)]
             continue
+        # propagate frame change from nodes to edges
+        for chan in channels:
+            if block.pulses[chan].frameChange == 0:
+                continue
+            if chan in ChannelLibrary.channelLib.connectivityG.nodes():
+                logger.debug("Doing propagate_node_frame_to_edges()")
+                wires = propagate_node_frame_to_edges(
+                    wires, chan, block.pulses[chan].frameChange)
         # drop length 0 blocks but push nonzero frame changes onto previous entries
         if block.length == 0:
             for chan in channels:
@@ -614,11 +622,6 @@ def compile_sequence(seq, channels=None, edgesToCompile=None, qubitToCompile=Non
                         updated_frameChange = wires[chan][-ct].frameChange + block.pulses[chan].frameChange
                         wires[chan][-ct] = wires[chan][-ct]._replace(frameChange=updated_frameChange)
                         break
-                if chan in ChannelLibrary.channelLib.connectivityG.nodes():
-                    logger.debug("Doing propagate_node_frame_to_edges()")
-                    wires = propagate_node_frame_to_edges(
-                        wires, chan, block.pulses[chan].frameChange)
-
             continue
 
         # schedule the block
