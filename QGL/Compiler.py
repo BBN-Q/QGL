@@ -435,8 +435,10 @@ def compile_to_hardware(seqs,
             'points': list(range(1, 1 + num_measurements)),
             'partition': 1
         }]
-    receiver_measurements = {wire.receiverChan.label: n
-                             for wire, n in wire_measurements.items()}
+    receiver_measurements = {}
+    for wire, n in wire_measurements.items():
+        if wire.receiverChan:
+            receiver_measurements[wire.receiverChan.label] = n
     meta = {
         'instruments': files,
         'num_sequences': len(seqs),
