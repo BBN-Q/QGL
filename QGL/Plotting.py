@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 '''
 Created on Feb 18, 2015
 
@@ -22,6 +23,7 @@ limitations under the License.
 
 import os.path, uuid, tempfile
 import bokeh.plotting as bk
+from bokeh.layouts import column
 import numpy as np
 
 from . import config
@@ -82,7 +84,8 @@ def plot_waveforms(waveforms, figTitle=''):
         fig = bk.figure(title=figTitle + repr(chan),
                         plot_width=800,
                         plot_height=350,
-                        y_range=[-1.05, 1.05])
+                        y_range=[-1.05, 1.05],
+                        x_axis_label=u'Time (μs)')
         fig.background_fill_color = config.plotBackground
         if config.gridColor:
             fig.xgrid.grid_line_color = config.gridColor
@@ -93,7 +96,7 @@ def plot_waveforms(waveforms, figTitle=''):
         fig.line(xpts, np.real(waveformToPlot), color='red')
         fig.line(xpts, np.imag(waveformToPlot), color='blue')
         plots.append(fig)
-    bk.show(bk.vplot(*plots))
+    bk.show(column(*plots))
 
 
 def show(seq):
