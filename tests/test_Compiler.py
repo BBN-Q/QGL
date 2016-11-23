@@ -123,6 +123,8 @@ class CompileUtils(unittest.TestCase):
     def test_num_measurements(self):
         q1 = self.q1
         q2 = self.q2
+        mq1 = MEAS(q1).channel
+        mq2 = MEAS(q2).channel
         seqs = [[X(q1)*X(q2)]]
         wireSeqs = Compiler.compile_sequences(seqs)
         assert Compiler.count_measurements(wireSeqs) == 0
@@ -142,6 +144,9 @@ class CompileUtils(unittest.TestCase):
         seqs = [[MEAS(q1)*MEAS(q2), MEAS(q2)]]
         wireSeqs = Compiler.compile_sequences(seqs)
         assert Compiler.count_measurements(wireSeqs) == 2
+        wire_meas = Compiler.count_measurements_per_wire(wireSeqs)
+        assert wire_meas[mq1] == 1
+        assert wire_meas[mq2] == 2
 
         seqs = [[MEAS(q1)*MEAS(q2), MEAS(q2)],
                 [MEAS(q1)],
@@ -150,6 +155,9 @@ class CompileUtils(unittest.TestCase):
                 [X(q1)]]
         wireSeqs = Compiler.compile_sequences(seqs)
         assert Compiler.count_measurements(wireSeqs) == 5
+        wire_meas = Compiler.count_measurements_per_wire(wireSeqs)
+        assert wire_meas[mq1] == 3
+        assert wire_meas[mq2] == 4
 
 if __name__ == "__main__":
     unittest.main()

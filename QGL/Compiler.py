@@ -250,7 +250,7 @@ def channel_delay_map(physicalWires):
 def setup_awg_channels(physicalChannels):
     translators = {}
     for chan in physicalChannels:
-        translators[chan.AWG] = import_module('QGL.drivers.' + chan.translator)
+        translators[chan.instrument] = import_module('QGL.drivers.' + chan.translator)
 
     data = {awg: translator.get_empty_channel_set()
             for awg, translator in translators.items()}
@@ -271,10 +271,10 @@ def bundle_wires(physWires, wfs):
     for chan in physWires.keys():
         _, awgChan = chan.label.split('-')
         awgChan = 'ch' + awgChan
-        awgData[chan.AWG][awgChan]['linkList'] = physWires[chan]
-        awgData[chan.AWG][awgChan]['wfLib'] = wfs[chan]
+        awgData[chan.instrument][awgChan]['linkList'] = physWires[chan]
+        awgData[chan.instrument][awgChan]['wfLib'] = wfs[chan]
         if hasattr(chan, 'correctionT'):
-            awgData[chan.AWG][awgChan]['correctionT'] = chan.correctionT
+            awgData[chan.instrument][awgChan]['correctionT'] = chan.correctionT
     return awgData
 
 
@@ -381,6 +381,7 @@ def compile_to_hardware(seqs,
 
     # save number of measurements for meta info
     num_measurements = count_measurements(wireSeqs)
+    wire_measurements = count_measurements_per_wire(wireSeqs)
 
     # map logical to physical channels
     physWires = map_logical_to_physical(wireSeqs)
@@ -434,11 +435,16 @@ def compile_to_hardware(seqs,
             'points': list(range(1, 1 + num_measurements)),
             'partition': 1
         }]
+    receiver_measurements = {}
+    for wire, n in wire_measurements.items():
+        if wire.receiverChan:
+            receiver_measurements[wire.receiverChan.label] = n
     meta = {
         'instruments': files,
         'num_sequences': len(seqs),
         'num_measurements': num_measurements,
         'axis_descriptor': axis_descriptor,
+        'receivers': receiver_measurements
     }
     metafilepath = os.path.join(config.AWGDir, fileName + '-meta.json')
     with open(metafilepath, 'w') as FID:
@@ -849,8 +855,24 @@ def count_measurements(wireSeqs):
     seq_len = len(wireSeqs[list(wireSeqs)[0]])
     seq_measurements = [0 for _ in range(seq_len)]
     for ct in range(seq_len):
-        for wire, seqs in wireSeqs.items():
-            seq_measurements[ct] = max(
-                seq_measurements[ct],
-                sum(PatternUtils.contains_measurement(e) for e in seqs[ct]))
+        seq_measurements[ct] = \
+            reduce(max, count_measurements_per_wire_idx(wireSeqs, ct).values())
     return sum(seq_measurements)
+
+def count_measurements_per_wire(wireSeqs):
+    # pick an arbitrary key to determine sequence length
+    seq_len = len(wireSeqs[list(wireSeqs)[0]])
+    meas_wires = list(filter(lambda x: isinstance(x, Channels.Measurement), wireSeqs))
+    measurements = {wire: 0 for wire in meas_wires}
+    for ct in range(seq_len):
+        seq_measurements = count_measurements_per_wire_idx(wireSeqs, ct)
+        for wire in meas_wires:
+            measurements[wire] += seq_measurements[wire]
+    return measurements
+
+def count_measurements_per_wire_idx(wireSeqs, idx):
+    measurements = {
+        wire: sum(PatternUtils.contains_measurement(e) for e in seqs[idx])
+              for wire, seqs in wireSeqs.items()
+    }
+    return measurements

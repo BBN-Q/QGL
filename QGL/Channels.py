@@ -50,7 +50,7 @@ class Channel(Atom):
         jsonDict = self.__getstate__()
 
         #Turn objects into labels
-        for member in ["physChan", "gateChan", "trigChan", "source", "target"]:
+        for member in ["physChan", "gateChan", "trigChan", "receiverChan", "source", "target"]:
             if member in jsonDict and not isinstance(jsonDict[member], str):
                 obj = jsonDict.pop(member)
                 if obj:
@@ -70,7 +70,7 @@ class PhysicalChannel(Channel):
     '''
     The main class for actual AWG channels.
     '''
-    AWG = Str()
+    instrument = Str() # i.e. the AWG or receiver
     translator = Str()
     generator = Str()
     samplingRate = Float(default=1.2e9)
@@ -93,7 +93,7 @@ class LogicalChannel(Channel):
 
 class PhysicalMarkerChannel(PhysicalChannel):
     '''
-    An digital output channel on an AWG.
+    A digital output channel on an AWG.
     '''
     gateBuffer = Float(0.0).tag(
         desc="How much extra time should be added onto the beginning of a gating pulse")
@@ -116,6 +116,11 @@ class PhysicalQuadratureChannel(PhysicalChannel):
             [[self.ampFactor, self.ampFactor * tan(self.phaseSkew * pi / 180)],
              [0, 1 / cos(self.phaseSkew * pi / 180)]])
 
+class ReceiverChannel(PhysicalChannel):
+    '''
+    A trigger input on a receiver.
+    '''
+    channel = Str()
 
 class LogicalMarkerChannel(LogicalChannel):
     '''
@@ -164,6 +169,7 @@ class Measurement(LogicalChannel):
                                 'sigma': 1e-9})
     gateChan = Instance((str, LogicalMarkerChannel))
     trigChan = Instance((str, LogicalMarkerChannel))
+    receiverChan = Instance((str, ReceiverChannel))
 
     def __init__(self, **kwargs):
         super(Measurement, self).__init__(**kwargs)
@@ -213,4 +219,8 @@ class Edge(LogicalChannel):
 
 
 NewLogicalChannelList = [Qubit, Edge, LogicalMarkerChannel, Measurement]
-NewPhysicalChannelList = [PhysicalMarkerChannel, PhysicalQuadratureChannel]
+NewPhysicalChannelList = [
+    PhysicalMarkerChannel,
+    PhysicalQuadratureChannel,
+    ReceiverChannel
+]

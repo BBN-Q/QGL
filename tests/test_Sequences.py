@@ -382,7 +382,7 @@ class APS2Helper(AWGTestHelper):
             channelName = name + '-12'
             channel = PhysicalQuadratureChannel(label=channelName)
             channel.samplingRate = 1.2e9
-            channel.AWG = name
+            channel.instrument = name
             channel.translator = 'APS2Pattern'
             self.channels[channelName] = channel
 
@@ -390,7 +390,7 @@ class APS2Helper(AWGTestHelper):
                 channelName = "{0}-12m{1}".format(name, m)
                 channel = PhysicalMarkerChannel(label=channelName)
                 channel.samplingRate = 1.2e9
-                channel.AWG = name
+                channel.instrument = name
                 channel.translator = 'APS2Pattern'
                 self.channels[channelName] = channel
 
@@ -421,7 +421,7 @@ class TestAPS2(unittest.TestCase, APS2Helper, TestSequences):
     def test_mux_CR(self):
         #control and CR sharing the same chans
         self.channels['cr'].physChan = self.channels['q1'].physChan
-        self.channels['q1'].frequency = 100e6 
+        self.channels['q1'].frequency = 100e6
         self.channels['cr'].frequency = 200e6
         ChannelLibrary.channelLib.build_connectivity_graph()
         seqs = [CNOT_CR(self.q1, self.q2)]
@@ -449,7 +449,7 @@ class TestAPS1(unittest.TestCase, AWGTestHelper, TestSequences):
                 channelName = name + '-' + ch
                 channel = PhysicalQuadratureChannel(label=channelName)
                 channel.samplingRate = 1.2e9
-                channel.AWG = name
+                channel.instrument = name
                 channel.translator = 'APSPattern'
                 self.channels[channelName] = channel
 
@@ -457,7 +457,7 @@ class TestAPS1(unittest.TestCase, AWGTestHelper, TestSequences):
                 channelName = "{0}-{1}m1".format(name, m)
                 channel = PhysicalMarkerChannel(label=channelName)
                 channel.samplingRate = 1.2e9
-                channel.AWG = name
+                channel.instrument = name
                 channel.translator = 'APSPattern'
                 self.channels[channelName] = channel
 
@@ -561,7 +561,7 @@ class TestTek5014(unittest.TestCase, AWGTestHelper, TestSequences):
                 channelName = name + '-' + ch
                 channel = PhysicalQuadratureChannel(label=channelName)
                 channel.samplingRate = 1.2e9
-                channel.AWG = name
+                channel.instrument = name
                 channel.translator = 'TekPattern'
                 self.channels[channelName] = channel
 
@@ -569,7 +569,7 @@ class TestTek5014(unittest.TestCase, AWGTestHelper, TestSequences):
                 channelName = "{0}-{1}".format(name, m)
                 channel = PhysicalMarkerChannel(label=channelName)
                 channel.samplingRate = 1.2e9
-                channel.AWG = name
+                channel.instrument = name
                 channel.translator = 'TekPattern'
                 self.channels[channelName] = channel
 
@@ -710,13 +710,13 @@ class TestTek5014(unittest.TestCase, AWGTestHelper, TestSequences):
 # 			for ch in ['12']:
 # 				channelName = name + '-' + ch
 # 				channel = PhysicalQuadratureChannel(label=channelName)
-# 				channel.AWG = self.instruments[name]
+# 				channel.instrument = self.instruments[name]
 # 				self.channels[channelName] = channel
 
 # 			for m in ['1m1', '1m2', '2m1', '2m2']:
 # 				channelName = "{0}-{1}".format(name,m)
 # 				channel = PhysicalMarkerChannel(label=channelName)
-# 				channel.AWG = self.instruments[name]
+# 				channel.instrument = self.instruments[name]
 # 				self.channels[channelName] = channel
 
 # 		mapping = { 'digitizerTrig'	:'TEK1-1m2',
