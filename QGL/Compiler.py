@@ -775,7 +775,7 @@ def schedule(channel, pulse, blockLength, alignment):
     if padLength == 0:
         # no padding element required
         return pulses
-    elif alignment == "left":
+    elif alignment == "left" or pulse.label == 'TRIG':
         return pulses + [Id(channel, padLength)]
     elif alignment == "right":
         return [Id(channel, padLength)] + pulses
