@@ -605,6 +605,14 @@ def compile_sequence(seq, channels=None, edgesToCompile=None, qubitToCompile=Non
             for chan in channels:
                 wires[chan] += [copy(block)]
             continue
+        # propagate frame change from nodes to edges
+        for chan in channels:
+            if block.pulses[chan].frameChange == 0:
+                continue
+            if chan in ChannelLibrary.channelLib.connectivityG.nodes():
+                logger.debug("Doing propagate_node_frame_to_edges()")
+                wires = propagate_node_frame_to_edges(
+                    wires, chan, block.pulses[chan].frameChange)
         # drop length 0 blocks but push nonzero frame changes onto previous entries
         if block.length == 0:
             for chan in channels:
@@ -620,11 +628,6 @@ def compile_sequence(seq, channels=None, edgesToCompile=None, qubitToCompile=Non
                         updated_frameChange = wires[chan][-ct].frameChange + block.pulses[chan].frameChange
                         wires[chan][-ct] = wires[chan][-ct]._replace(frameChange=updated_frameChange)
                         break
-                if chan in ChannelLibrary.channelLib.connectivityG.nodes():
-                    logger.debug("Doing propagate_node_frame_to_edges()")
-                    wires = propagate_node_frame_to_edges(
-                        wires, chan, block.pulses[chan].frameChange)
-
             continue
 
         # schedule the block
@@ -650,9 +653,12 @@ def propagate_node_frame_to_edges(wires, chan, frameChange):
         edge = ChannelLibrary.channelLib.connectivityG.edge[predecessor][chan][
             'channel']
         if edge in wires:
-            updated_frameChange = wires[edge][-1].frameChange + frameChange
-            wires[edge][-1] = wires[edge][-1]._replace(frameChange=updated_frameChange)
-
+            # search for last non-TA entry
+            for ct in range(1,len(wires[edge])):
+                if hasattr(wires[edge][-ct], 'isTimeAmp') and not wires[edge][-ct].isTimeAmp:
+                    updated_frameChange = wires[edge][-ct].frameChange + frameChange
+                    wires[edge][-ct] = wires[edge][-ct]._replace(frameChange=updated_frameChange)
+                    break
     return wires
 
 
