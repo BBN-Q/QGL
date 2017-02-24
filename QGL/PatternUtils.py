@@ -314,7 +314,7 @@ def update_wf_library(pulses, path):
 
     pulse_list = list(flatten_pulses())
     for ct, pulse in enumerate(pulse_list):
-        awg = pulse.channel.physChan.AWG
+        awg = pulse.channel.physChan.instrument
         if awg not in translators:
             translators[awg] = getattr(QGL.drivers,
                                        pulse.channel.physChan.translator)
