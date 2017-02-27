@@ -15,6 +15,7 @@ before_install:
   - tar xzf $HOME/download/git-lfs-linux-amd64-1.5.6.tar.gz
   - (cd git-lfs-1.5.6 && PREFIX=$HOME/.local ./install.sh)
   - export PATH=$HOME/.local/bin:$PATH
+  - pwd
   - git lfs pull
 
 install:
