@@ -165,9 +165,9 @@ class AWGTestHelper(object):
 
     def compare_sequence(self, seqA, seqB, errorHeader):
         #unroll the time amplitude pairs for comparison
-        wfA = np.concatenate([ta[1] * np.ones(ta[0])
+        wfA = np.concatenate([ta[1] * np.ones(int(ta[0]))
                               for ta in seqA]) if len(seqA) else np.empty(0)
-        wfB = np.concatenate([ta[1] * np.ones(ta[0])
+        wfB = np.concatenate([ta[1] * np.ones(int(ta[0]))
                               for ta in seqB]) if len(seqB) else np.empty(0)
 
         self.assertTrue(

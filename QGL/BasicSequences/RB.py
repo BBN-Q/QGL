@@ -25,8 +25,8 @@ def create_RB_seqs(numQubits, lengths, repeats=32, interleaveGate=None):
     #Subtract one from length for recovery gate
     seqs = []
     for length in lengths:
-        seqs += np.random.random_integers(0, cliffGroupSize - 1,
-                                          (repeats, length - 1)).tolist()
+        seqs += np.random.randint(0, cliffGroupSize,
+                                  size=(repeats, length - 1)).tolist()
 
     #Possibly inject the interleaved gate
     if interleaveGate:
