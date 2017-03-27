@@ -626,7 +626,8 @@ def echoCR(controlQ,
            phase=0,
            length=200e-9,
            riseFall=20e-9,
-           lastPi=True):
+           lastPi=True,
+           echoQs=[]):
     """
     An echoed CR pulse.  Used for calibration of CR gate
     """
@@ -639,7 +640,9 @@ def echoCR(controlQ,
                              riseFall=riseFall,
                              length=length,
                              phase=phase,
-                             label="echoCR_first_half"), X(controlQ),
+                             label="echoCR_first_half"),
+                             reduce(operator.mul,
+                                    [X(q) for q in echoQs + [controlQ]]),
            flat_top_gaussian(CRchan,
                              amp=amp,
                              riseFall=riseFall,
@@ -647,18 +650,21 @@ def echoCR(controlQ,
                              phase=phase + np.pi,
                              label="echoCR_second_half")]
     if lastPi:
-        seq += [X(controlQ)]
+        seq += [reduce(operator.mul,
+               [X(q) for q in echoQs + [controlQ]])]
     return seq
 
 
-def ZX90_CR(controlQ, targetQ, **kwargs):
+def ZX90_CR(controlQ, targetQ, echoQs=[], **kwargs):
     """
     A calibrated CR ZX90 pulse.  Uses 'amp' for the pulse amplitude, 'phase' for its phase (in deg).
+    echoQs: list of qubits to decouple during the gate
     """
     CRchan = ChannelLibrary.EdgeFactory(controlQ, targetQ)
     params = overrideDefaults(CRchan, kwargs)
     return echoCR(controlQ,
                   targetQ,
+                  echoQs = echoQs,
                   amp=params['amp'],
                   phase=params['phase'],
                   length=params['length'],
@@ -703,7 +709,7 @@ def MEAS(qubit, **kwargs):
 
 
 #MEAS and ring-down time on one qubit, echo on every other
-def MeasEcho(qM, qD, delay, piShift=None, phase=0):
+def MeasEcho(qM, qD, delay, piShift=None, phase=0, **kwargs):
     '''
     qM : qubit to be measured (single qubit)
     qD : qubits to be echoed (single qubit or tuple)
@@ -711,22 +717,26 @@ def MeasEcho(qM, qD, delay, piShift=None, phase=0):
     PiShift: relative shift of the echo pulse from the center of the pulse block (in s, to the right if >0)
     phase : rotation axis of the echo pulse
     '''
+    channelName = "M-" + qM.label
+    measChan = ChannelLibrary.MeasFactory(channelName)
+    params = overrideDefaults(measChan, kwargs)
+
     if not isinstance(qD, tuple):
         qD = (qD, )
     measChan = ChannelLibrary.MeasFactory('M-%s' % qM.label)
     if piShift:
         if piShift > 0:
             measEcho = align(
-                (MEAS(qM) + TAPulse('Id', measChan, delay, 0)) *
+                (MEAS(qM, **params) + TAPulse('Id', measChan, delay, 0)) *
                 reduce(operator.mul,
                        [Id(q, piShift) + U(q, phase=phase) for q in qD]))
         elif piShift < 0:
             measEcho = align(
-                (MEAS(qM) + TAPulse('Id', measChan, delay, 0)) *
+                (MEAS(qM, **params) + TAPulse('Id', measChan, delay, 0)) *
                 reduce(operator.mul,
                        [U(q, phase=phase) + Id(q, -piShift) for q in qD]))
     else:
-        measEcho = align((MEAS(qM) + TAPulse('Id', measChan, delay, 0)) *
+        measEcho = align((MEAS(qM, **params) + TAPulse('Id', measChan, delay, 0)) *
                          reduce(operator.mul, [U(q, phase=phase) for q in qD]))
     measEcho.label = 'MEAS'  #to generate the digitizer trigger
     return measEcho
