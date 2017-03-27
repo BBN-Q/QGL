@@ -4,5 +4,5 @@
 	"PulsePrimitivesLibrary": "standard",
 	"cnot_implementation": "CNOT_CR",
 	"PlotBackground": "#EAEAF2",
-	"GridColor": "white",
+	"GridColor": "white"
 }
