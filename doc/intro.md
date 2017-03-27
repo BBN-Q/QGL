@@ -82,12 +82,15 @@ output_file() # or output_notebook() from a jupyter notebook
 
 q1 = QubitFactory('q1')
 q2 = QubitFactory('q2')
-seq = [X90(q1)*Y(q2), CNOT_CR(q1,q2), Y(q1), CNOT(q1,q2), X90(q1)*Y(q2), MEAS(q1)*MEAS(q2)]
+seq = [X90(q1)*Y(q2), CNOT(q1,q2), Y(q1), CNOT(q1,q2), X90(q1)*Y(q2), MEAS(q1)*MEAS(q2)]
 show(seq)
 compile_to_hardware(seq)
 ```
 
-In this example you can see the use of the two-qubit primitive `CNOT_CR`, which
-emits a sequence of 1- and 2-qubit gates necessary to compose a CNOT operation
-from single-qubit gates and a ZX90. The exact sequence will depend on the
-(source, target) order you selected in creating the **q1-q2** `Edge`.
+In this example you can see the use of the two-qubit primitive `CNOT`, which by
+default emits a sequence of 1- and 2-qubit gates necessary to compose a CNOT
+operation from single-qubit gates and a ZX90, as is appropriate for a
+cross-resonance interaction. The exact sequence will depend on the (source,
+target) order you selected in creating the **q1-q2** `Edge`. You can select a
+different default CNOT implementation by modifying the 'cnot_implementation' key
+in QGL's config.json configuration file.

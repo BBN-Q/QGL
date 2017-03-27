@@ -598,14 +598,8 @@ def DiAC(qubit, cliffNum, compiled = True):
             raise ValueError('Clifford number must be between 0 and 23')
 
 ## two-qubit primitivies
-def CNOT(source, target, **kwargs):
-    # construct (source, target) channel and pull parameters from there
-    channel = ChannelLibrary.EdgeFactory(source, target)
-    channel.pulseParams['piAmp'] = channel.pulseParams['amp']
-    p = X(channel, **kwargs)
-    return p._replace(label="CNOT")
 
-
+# helper used by echoCR
 def flat_top_gaussian(chan,
                       riseFall,
                       length,
@@ -634,12 +628,14 @@ def echoCR(controlQ,
     if not CRchan.isforward(controlQ, targetQ):
         raise ValueError(
             'Could not find an edge with control qubit {0}'.format(controlQ))
+
     seq = [flat_top_gaussian(CRchan,
                              amp=amp,
                              riseFall=riseFall,
                              length=length,
                              phase=phase,
-                             label="echoCR_first_half"), X(controlQ),
+                             label="echoCR_first_half"),
+           X(controlQ),
            flat_top_gaussian(CRchan,
                              amp=amp,
                              riseFall=riseFall,
@@ -670,8 +666,8 @@ def CNOT_CR(controlQ, targetQ, **kwargs):
 
     if edge.isforward(controlQ, targetQ):
         # control and target for CNOT and CR match
-        return ZX90_CR(controlQ, targetQ, **
-                       kwargs) + [Z90m(controlQ) * X90m(targetQ)]
+        return ZX90_CR(controlQ, targetQ, **kwargs) + \
+            [Z90m(controlQ) * X90m(targetQ)]
     else:
         # control and target for CNOT and CR are inverted
         return [Y90(controlQ) * Y90(targetQ),
@@ -681,6 +677,21 @@ def CNOT_CR(controlQ, targetQ, **kwargs):
                 X90(controlQ) * Y90(targetQ),
                 Y90m(controlQ) * X(targetQ)]
 
+def CNOT_simple(source, target, **kwargs):
+    # construct (source, target) channel and pull parameters from there
+    channel = ChannelLibrary.EdgeFactory(source, target)
+    channel.pulseParams['piAmp'] = channel.pulseParams['amp']
+    p = X(channel, **kwargs)
+    return p._replace(label="CNOT")
+
+try:
+    cnot_impl = globals()[config.cnot_implementation]
+except:
+    raise NameError("A valid CNOT implementation was not defined [{}]".format(config.cnot_implementation))
+
+@_memoize
+def CNOT(source, target, **kwargs):
+    return cnot_impl(source, target, **kwargs)
 
 ## Measurement operators
 @_memoize
