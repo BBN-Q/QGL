@@ -175,8 +175,7 @@ class ComparisonInstruction(ControlInstruction):
         self.operator = operator
 
     def __str__(self):
-        labelPart = "{0}: ".format(self.label) if self.label else ""
-        return labelPart + "CMP " + self.operator + " " + str(self.mask)
+        return "CMP " + self.operator + " " + str(self.mask)
 
 
 def CmpEq(mask):
