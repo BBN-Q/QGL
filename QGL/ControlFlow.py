@@ -79,15 +79,15 @@ def repeatall(n, seqs):
     return seqs
 
 
-def qwait(kind="TRIG"):
+def qwait(channel=None, kind="TRIG"):
     if kind == "TRIG":
-        return Wait()
+        return Wait(channel)
     else:
-        return LoadCmp()
+        return LoadCmp(channel)
 
 
-def qsync():
-    return Sync()
+def qsync(channel=None):
+    return Sync(channel)
 
 ## Sequencer primitives ##
 
