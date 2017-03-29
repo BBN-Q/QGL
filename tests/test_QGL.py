@@ -152,7 +152,7 @@ class MultiQubitTestCases(SequenceTestCases):
 
     def generate(self):
         q1, q2 = self.newQubits()
-        self.sequences['operators'] = [X90(q1), X(q1) * Y(q2), CNOT(q1, q2),
+        self.sequences['operators'] = [X90(q1), X(q1) * Y(q2), CNOT_simple(q1, q2),
                                        Xm(q2), Y(q1) * X(q2)]
 
         self.sequences['align'] = [align(

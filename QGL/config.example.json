@@ -1,4 +1,8 @@
 {
 	"AWGDir": "/my/path/to/awg/",
-	"ChannelLibraryFile": "/my/path/to/ChannelParams.json"
+	"ChannelLibraryFile": "/my/path/to/ChannelParams.json",
+	"PulsePrimitivesLibrary": "standard",
+	"cnot_implementation": "CNOT_CR",
+	"PlotBackground": "#EAEAF2",
+	"GridColor": "white"
 }
