@@ -34,5 +34,5 @@ gridColor = QGLCfg.get('GridColor', None)
 pulse_primitives_lib = QGLCfg.get('PulsePrimitivesLibrary', 'standard')
 
 # select a CNOT implementation (a name of a Pulse function that implements
-# CNOT in your gate set)
-cnot_implementation = QGLCfg.get('cnot_implementation', 'CNOT_CR')
+# CNOT in your gate set, e.g. CNOT_simple or CNOT_CR)
+cnot_implementation = QGLCfg.get('cnot_implementation', 'CNOT_simple')
