@@ -34,10 +34,10 @@ class ControlFlowTest(unittest.TestCase):
 
     def test_inline_qif(self):
         q1 = self.q1
-        seq = [X90(q1), Y(q1), qwait("CMP"), qif(0, [Id(q1)], [X(q1)]), Y(q1)]
+        seq = [X90(q1), Y(q1), qwait(kind="CMP"), qif(0, [Id(q1)], [X(q1)]), Y(q1)]
         Compiler.compile_sequence(seq)
 
-        seq = [X90(q1), Y(q1), qwait("CMP"), qif(0, [Id(q1)], [X(q1)]), Y(q1)]
+        seq = [X90(q1), Y(q1), qwait(kind="CMP"), qif(0, [Id(q1)], [X(q1)]), Y(q1)]
         seqs = [[Id(q1), Y(q1)], [X(q1), Y(q1)], seq]
         Compiler.compile_sequences(seqs)
 
@@ -83,7 +83,7 @@ class ControlFlowTest(unittest.TestCase):
 
     def test_qwait(self):
         q1 = self.q1
-        seq1 = [qwait(), qwait("CMP")]
+        seq1 = [qwait(), qwait(kind="CMP")]
         assert (isinstance(seq1[0], ControlFlow.Wait))
         assert (isinstance(seq1[1], ControlFlow.LoadCmp))
 

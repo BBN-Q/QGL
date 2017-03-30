@@ -208,11 +208,11 @@ def contains_measurement(entry):
     """
     Determines if a LL entry contains a measurement
     """
-    if entry.label == "MEAS":
+    if hasattr(entry, 'label') and entry.label == "MEAS":
         return True
     elif isinstance(entry, PulseBlock):
         for p in entry.pulses.values():
-            if p.label == "MEAS":
+            if hasattr(p, 'label') and p.label == "MEAS":
                 return True
     return False
 

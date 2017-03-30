@@ -670,7 +670,7 @@ def propagate_node_frame_to_edges(wires, chan, frameChange):
 def find_unique_channels(seq):
     channels = set()
     for step in flatten(seq):
-        if not hasattr(step, 'channel'):
+        if not hasattr(step, 'channel') or step.channel is None:
             continue
         if isinstance(step.channel, Channels.Channel):
             channels.add(step.channel)
