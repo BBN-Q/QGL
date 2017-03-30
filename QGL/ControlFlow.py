@@ -123,6 +123,9 @@ class ControlInstruction(object):
     def promote(self):
         return self
 
+class Store(ControlInstruction):
+    def __init__(self, target, value):
+        super(Store, self).__init__("STORE", target=target, value=value)
 
 class Goto(ControlInstruction):
     # target is a BlockLabel
