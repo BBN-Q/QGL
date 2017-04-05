@@ -606,7 +606,7 @@ def compile_sequence(seq, channels=None, edgesToCompile=None, qubitToCompile=Non
             continue
         # control flow broadcasts to all channels if channel attribute is None
         if isinstance(block, ControlFlow.ControlInstruction):
-            block_channels = block.channel if block.channel else channels
+            block_channels = block.channels if block.channels else channels
             for chan in block_channels:
                 wires[chan] += [copy(block)]
             continue
