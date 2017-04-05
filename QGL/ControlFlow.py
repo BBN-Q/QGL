@@ -79,47 +79,48 @@ def repeatall(n, seqs):
     return seqs
 
 
-def qwait(kind="TRIG"):
+def qwait(channels=None, kind="TRIG"):
+    '''
+    Insert a WAIT or LOADCMP command on the target channels (an iterable, or None)
+    '''
     if kind == "TRIG":
-        return Wait()
+        return Wait(channels)
     else:
-        return LoadCmp()
+        return LoadCmp(channels)
 
 
-def qsync():
-    return Sync()
+def qsync(channels=None):
+    '''
+    Insert a SYNC command on the target channels (an iterable, or None).
+    '''
+    return Sync(channels)
 
 ## Sequencer primitives ##
 
 
 class ControlInstruction(object):
-    def __init__(self, instruction, target=None, value=None):
+    def __init__(self, instruction, channels=None, target=None, value=None):
+        self.channels = channels
         self.instruction = instruction
         self.target = target  #refactor into payload field??
         self.value = value
-        self.label = None
         self.length = 0
 
     def __repr__(self):
         return self.__str__()
 
     def __str__(self):
-        labelPart = "{0}: ".format(self.label) if self.label else ""
-        result = labelPart + self.instruction
-        if self.target:
-            result += "(" + str(self.target) + ")"
-        elif self.value:
-            result += "(" + str(self.value) + ")"
+        result = self.instruction + "("
+        chan_str = str(self.channels) if self.channels else None
+        target_str = str(self.target) if self.target else None
+        value_str = str(self.value) if self.value else None
+        result += ", ".join(filter(None, [chan_str, target_str, value_str]))
+        result += ")"
         return result
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            # ignore label in equality testing
-            mydict = self.__dict__.copy()
-            otherdict = other.__dict__.copy()
-            mydict.pop('label')
-            otherdict.pop('label')
-            return mydict == otherdict
+            return self.__dict__ == other.__dict__
         return False
 
     def __ne__(self, other):
@@ -128,6 +129,9 @@ class ControlInstruction(object):
     def promote(self):
         return self
 
+class Store(ControlInstruction):
+    def __init__(self, target, value):
+        super(Store, self).__init__("STORE", target=target, value=value)
 
 class Goto(ControlInstruction):
     # target is a BlockLabel
@@ -159,18 +163,18 @@ class Repeat(ControlInstruction):
 
 
 class Wait(ControlInstruction):
-    def __init__(self):
-        super(Wait, self).__init__("WAIT")
+    def __init__(self, channels=None):
+        super(Wait, self).__init__("WAIT", channels)
 
 
 class LoadCmp(ControlInstruction):
-    def __init__(self):
-        super(LoadCmp, self).__init__("LOADCMP")
+    def __init__(self, channels=None):
+        super(LoadCmp, self).__init__("LOADCMP", channels)
 
 
 class Sync(ControlInstruction):
-    def __init__(self):
-        super(Sync, self).__init__("SYNC")
+    def __init__(self, channels=None):
+        super(Sync, self).__init__("SYNC", channels)
 
 
 class ComparisonInstruction(ControlInstruction):
@@ -180,8 +184,7 @@ class ComparisonInstruction(ControlInstruction):
         self.operator = operator
 
     def __str__(self):
-        labelPart = "{0}: ".format(self.label) if self.label else ""
-        return labelPart + "CMP " + self.operator + " " + str(self.mask)
+        return "CMP " + self.operator + " " + str(self.mask)
 
 
 def CmpEq(mask):
