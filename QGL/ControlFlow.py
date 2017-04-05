@@ -5,25 +5,29 @@ from .mm import multimethod
 
 ## QGL control-flow statements ##
 
+# FIXME qif, qwhile, and qdowhile need an address to pass to CMP
 
-def qif(mask, ifSeq, elseSeq=None):
+def qif(value, ifSeq, elseSeq=None):
+    '''
+    Create a branching sequence that
+    '''
     if elseSeq:
-        return [CmpEq(mask), Goto(label(ifSeq))] + elseSeq + [
+        return [CmpEq("m", value), Goto(label(ifSeq))] + elseSeq + [
             Goto(endlabel(ifSeq))
         ] + ifSeq
     else:
         endlabel(ifSeq)
-        return [CmpNeq(mask), Goto(endlabel(ifSeq))] + ifSeq
+        return [CmpNeq("m", value), Goto(endlabel(ifSeq))] + ifSeq
 
 
-def qwhile(mask, seq):
+def qwhile(value, seq):
     label1 = newlabel()
     label2 = newlabel()
-    return [label1, CmpNeq(mask), Goto(label2)] + seq + [Goto(label1), label2]
+    return [label1, CmpNeq("m", value), Goto(label2)] + seq + [Goto(label1), label2]
 
 
-def qdowhile(mask, seq):
-    return seq + [CmpEq(mask), Goto(label(seq))]
+def qdowhile(value, seq):
+    return seq + [CmpEq("m", value), Goto(label(seq))]
 
 # caches for sequences and labels
 qfunction_seq = {}
@@ -178,26 +182,28 @@ class Sync(ControlInstruction):
 
 
 class ComparisonInstruction(ControlInstruction):
-    def __init__(self, mask, operator):
+    def __init__(self, operator, address, value):
         super(ComparisonInstruction, self).__init__("CMP")
-        self.mask = mask
         self.operator = operator
+        self.address = address
+        self.value = value
 
     def __str__(self):
-        return "CMP " + self.operator + " " + str(self.mask)
+        return "CMP " + str(self.address) + " " + self.operator + " " + \
+            str(self.value)
 
 
-def CmpEq(mask):
-    return ComparisonInstruction(mask, "==")
+def CmpEq(address, value):
+    return ComparisonInstruction("==", address, value)
 
 
-def CmpNeq(mask):
-    return ComparisonInstruction(mask, "!=")
+def CmpNeq(address, value):
+    return ComparisonInstruction("!=", address, value)
 
 
-def CmpLt(mask):
-    return ComparisonInstruction(mask, "<")
+def CmpLt(address, value):
+    return ComparisonInstruction("<", address, value)
 
 
-def CmpGt(mask):
-    return ComparisonInstruction(mask, ">")
+def CmpGt(address, value):
+    return ComparisonInstruction(">", address, value)
