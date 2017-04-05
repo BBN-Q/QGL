@@ -79,22 +79,28 @@ def repeatall(n, seqs):
     return seqs
 
 
-def qwait(channel=None, kind="TRIG"):
+def qwait(channels=None, kind="TRIG"):
+    '''
+    Insert a WAIT or LOADCMP command on the target channels (an iterable, or None)
+    '''
     if kind == "TRIG":
-        return Wait(channel)
+        return Wait(channels)
     else:
-        return LoadCmp(channel)
+        return LoadCmp(channels)
 
 
-def qsync(channel=None):
-    return Sync(channel)
+def qsync(channels=None):
+    '''
+    Insert a SYNC command on the target channels (an iterable, or None).
+    '''
+    return Sync(channels)
 
 ## Sequencer primitives ##
 
 
 class ControlInstruction(object):
-    def __init__(self, instruction, channel=None, target=None, value=None):
-        self.channel = channel
+    def __init__(self, instruction, channels=None, target=None, value=None):
+        self.channels = channels
         self.instruction = instruction
         self.target = target  #refactor into payload field??
         self.value = value
@@ -105,7 +111,7 @@ class ControlInstruction(object):
 
     def __str__(self):
         result = self.instruction + "("
-        chan_str = str(self.channel) if self.channel else None
+        chan_str = str(self.channels) if self.channels else None
         target_str = str(self.target) if self.target else None
         value_str = str(self.value) if self.value else None
         result += ", ".join(filter(None, [chan_str, target_str, value_str]))
@@ -157,18 +163,18 @@ class Repeat(ControlInstruction):
 
 
 class Wait(ControlInstruction):
-    def __init__(self, channel=None):
-        super(Wait, self).__init__("WAIT", channel)
+    def __init__(self, channels=None):
+        super(Wait, self).__init__("WAIT", channels)
 
 
 class LoadCmp(ControlInstruction):
-    def __init__(self, channel=None):
-        super(LoadCmp, self).__init__("LOADCMP", channel)
+    def __init__(self, channels=None):
+        super(LoadCmp, self).__init__("LOADCMP", channels)
 
 
 class Sync(ControlInstruction):
-    def __init__(self, channel=None):
-        super(Sync, self).__init__("SYNC", channel)
+    def __init__(self, channels=None):
+        super(Sync, self).__init__("SYNC", channels)
 
 
 class ComparisonInstruction(ControlInstruction):
