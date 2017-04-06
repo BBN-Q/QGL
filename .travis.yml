@@ -8,17 +8,15 @@ python:
 
 before_install:
   # install git lfs and fetch test data
-  - if [ ! -f $HOME/download/git-lfs-linux-amd64-1.5.6.tar.gz ]; then
+  - if [ ! -f $HOME/download/git-lfs-linux-amd64-2.0.2.tar.gz ]; then
       pushd $HOME/download;
-      wget https://github.com/github/git-lfs/releases/download/v1.5.6/git-lfs-linux-amd64-1.5.6.tar.gz;
+      wget https://github.com/github/git-lfs/releases/download/v2.0.2/git-lfs-linux-amd64-2.0.2.tar.gz;
       popd;
     fi
-  - tar xzf $HOME/download/git-lfs-linux-amd64-1.5.6.tar.gz
-  - (cd git-lfs-1.5.6 && PREFIX=$HOME/.local ./install.sh)
+  - tar xzf $HOME/download/git-lfs-linux-amd64-2.0.2.tar.gz
+  - (cd git-lfs-2.0.2 && PREFIX=$HOME/.local ./install.sh)
   - export PATH=$HOME/.local/bin:$PATH
   - git lfs pull
-  # list files that were not downloaded
-  - git lfs ls-files | grep -v "*"
 
 install:
   # Setup anaconda. See http://conda.pydata.org/docs/travis.html
