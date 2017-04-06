@@ -261,7 +261,7 @@ class Instruction(object):
             cmpCodes = ["EQUAL", "NOTEQUAL", "GREATERTHAN", "LESSTHAN"]
             cmpCode = (self.payload >> 8) & 0x3
             out += " | " + cmpCodes[cmpCode]
-            out += ", mask = {}".format(self.payload & 0xff)
+            out += ", value = {}".format(self.payload & 0xff)
 
         elif any(
             [instrOpCode == op for op in [GOTO, CALL, RET, REPEAT, PREFETCH]]):
@@ -360,8 +360,8 @@ def LoadCmp(label=None):
     return Command(LOADCMP, 0, label=label)
 
 
-def Cmp(op, mask, label=None):
-    return Command(CMP, (op << 8) | (mask & 0xff), label=label)
+def Cmp(op, value, label=None):
+    return Command(CMP, (op << 8) | (value & 0xff), label=label)
 
 
 def Goto(addr, label=None):
@@ -705,8 +705,9 @@ def create_seq_instructions(seqs, offsets):
                 elif isinstance(entry, ControlFlow.LoadRepeat):
                     instructions.append(Load(entry.value - 1, label=label))
                 elif isinstance(entry, ControlFlow.ComparisonInstruction):
+                    # TODO modify Cmp operator to load from specified address
                     instructions.append(Cmp(cmpTable[entry.operator],
-                                            entry.mask,
+                                            entry.value,
                                             label=label))
 
                 continue
