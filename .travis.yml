@@ -17,6 +17,8 @@ before_install:
   - (cd git-lfs-1.5.6 && PREFIX=$HOME/.local ./install.sh)
   - export PATH=$HOME/.local/bin:$PATH
   - git lfs pull
+  # list files that were not downloaded
+  - git lfs ls-files | grep -v "*"
 
 install:
   # Setup anaconda. See http://conda.pydata.org/docs/travis.html
