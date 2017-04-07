@@ -180,10 +180,6 @@ def SingleQubitRB_DiAC(qubit, seqs, compiled = True, showPlot = False, purity = 
             # append measurement
             seqsBis[-1].append(MEAS(qubit))
 
-    #Add the measurement to all sequences
-    for seq in seqsBis:
-        seq.append(MEAS(qubit))
-
     #Tack on the calibration sequences (using pi/2 pulses for consistency)
     seqsBis += [[Id(qubit), MEAS(qubit)], [Id(qubit), MEAS(qubit)], [X90(qubit), X90(qubit), MEAS(qubit)], [X90(qubit), X90(qubit), MEAS(qubit)]]
 
