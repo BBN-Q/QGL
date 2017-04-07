@@ -10,7 +10,7 @@ import numpy as np
 from functools import reduce
 
 
-def create_RB_seqs(numQubits, lengths, repeats=32, interleaveGate=None):
+def create_RB_seqs(numQubits, lengths, repeats=32, interleaveGate=None, recovery = True):
     """
 	Create a list of lists of Clifford gates to implement RB.
 	"""
@@ -36,14 +36,16 @@ def create_RB_seqs(numQubits, lengths, repeats=32, interleaveGate=None):
                 seq, dtype=np.int), interleaveGate * np.ones(
                     len(seq), dtype=np.int))).flatten(order='F').tolist())
         seqs = newSeqs
-    #Calculate the recovery gate
-    for seq in seqs:
-        if len(seq) == 1:
-            mat = clifford_mat(seq[0], numQubits)
-        else:
-            mat = reduce(lambda x, y: np.dot(y, x),
-                         [clifford_mat(c, numQubits) for c in seq])
-        seq.append(inverse_clifford(mat))
+
+    if recovery:
+        #Calculate the recovery gate
+        for seq in seqs:
+            if len(seq) == 1:
+                mat = clifford_mat(seq[0], numQubits)
+            else:
+                mat = reduce(lambda x, y: np.dot(y, x),
+                             [clifford_mat(c, numQubits) for c in seq])
+            seq.append(inverse_clifford(mat))
 
     return seqs
 
@@ -150,7 +152,7 @@ def SingleQubitRB_AC(qubit, seqs, showPlot=False):
     if showPlot:
         plot_pulse_files(fileNames)
 
-def SingleQubitRB_DiAC(qubit, seqs, compiled = True, showPlot=False):
+def SingleQubitRB_DiAC(qubit, seqs, compiled = True, showPlot = False, purity = False):
     """
 
     Single qubit randomized benchmarking using diatomic Clifford pulses.
@@ -161,14 +163,22 @@ def SingleQubitRB_DiAC(qubit, seqs, compiled = True, showPlot=False):
     seqFile : file containing sequence strings
     Xonly : if true, exclude Y90(m) pulses
     showPlot : whether to plot (boolean)
+    purityRB: measure <Z>,<X>,<Y> of final state, to measure purity
 
     Returns
     -------
     plotHandle : handle to plot window to prevent destruction
     """
     seqsBis = []
-    for seq in seqs:
-        seqsBis.append([DiAC(qubit, c, compiled) for c in seq])
+    op = [Id(qubit, length=0), Y90m(qubit), X90(qubit)]
+    for ct in range(1+2*purity):
+        for seq in seqs:
+            seqsBis.append([DiAC(qubit, c, compiled) for c in seq])
+            if purity:
+                #append tomography pulse to measure purity
+                seqsBis[-1].append(op[ct])
+            # append measurement
+            seqsBis[-1].append(MEAS(qubit))
 
     #Add the measurement to all sequences
     for seq in seqsBis:
