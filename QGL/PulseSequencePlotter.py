@@ -24,7 +24,7 @@ limitations under the License.
 
 import os.path
 from importlib import import_module
-from bokeh.io import vform
+from bokeh.layouts import column
 from bokeh.models import CustomJS, ColumnDataSource, Slider
 from bokeh.plotting import Figure, show
 
@@ -133,7 +133,7 @@ def plot_pulse_files(fileNames):
                     title="Sequence",
                     callback=callback)
 
-    layout = vform(slider, plot)
+    layout = column(slider, plot)
 
     show(layout)
 
@@ -237,6 +237,6 @@ def plot_pulse_files_compare(fileNames1, fileNames2):
                     title="Sequence",
                     callback=callback)
 
-    layout = vform(slider, plot)
+    layout = column(slider, plot)
 
     show(layout)
