@@ -58,7 +58,7 @@ def time_descriptor(times, desired_units="us"):
     elif desired_units == "ns":
         scale = 1e9
     axis_descriptor = {
-        'name': 'time',
+        'name': 'delay',
         'unit': desired_units,
         'points': list(scale * times),
         'partition': 1
