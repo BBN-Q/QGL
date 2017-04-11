@@ -2,7 +2,7 @@ from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
 from ..ChannelLibrary import EdgeFactory
 from ..PulseSequencePlotter import plot_pulse_files
-from .helpers import create_cal_seqs, time_descriptor, cal_descriptor
+from .helpers import create_cal_seqs, delay_descriptor, cal_descriptor
 import numpy as np
 
 def PiRabi(controlQ,
@@ -39,7 +39,7 @@ def PiRabi(controlQ,
 
     fileNames = compile_to_hardware(seqs, 'PiRabi/PiRabi',
         axis_descriptor=[
-            time_descriptor(np.concatenate((lengths, lengths))),
+            delay_descriptor(np.concatenate((lengths, lengths))),
             cal_descriptor((controlQ, targetQ), calRepeats)
         ])
     print(fileNames)
@@ -76,7 +76,7 @@ def EchoCRLen(controlQ,
 
     fileNames = compile_to_hardware(seqs, 'EchoCR/EchoCR',
         axis_descriptor=[
-            time_descriptor(np.concatenate((lengths, lengths))),
+            delay_descriptor(np.concatenate((lengths, lengths))),
             cal_descriptor((controlQ, targetQ), calRepeats)
         ])
     print(fileNames)

@@ -2,7 +2,7 @@ from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
 import QGL.PulseShapes
-from .helpers import create_cal_seqs, time_descriptor, cal_descriptor
+from .helpers import create_cal_seqs, delay_descriptor, cal_descriptor
 from functools import reduce
 
 
@@ -67,7 +67,7 @@ def RabiWidth(qubit,
                     shapeFun=shapeFun), MEAS(qubit)] for l in widths]
 
     fileNames = compile_to_hardware(seqs, 'Rabi/Rabi',
-        axis_descriptor=[time_descriptor(widths)])
+        axis_descriptor=[delay_descriptor(widths)])
     print(fileNames)
 
     if showPlot:

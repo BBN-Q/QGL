@@ -48,7 +48,7 @@ def cal_descriptor(qubits, numRepeats):
         descriptor['points'] += [state] * numRepeats
     return descriptor
 
-def time_descriptor(times, desired_units="us"):
+def delay_descriptor(delays, desired_units="us"):
     if desired_units == "s":
         scale = 1
     elif desired_units == "ms":
@@ -60,7 +60,7 @@ def time_descriptor(times, desired_units="us"):
     axis_descriptor = {
         'name': 'delay',
         'unit': desired_units,
-        'points': list(scale * times),
+        'points': list(scale * delays),
         'partition': 1
     }
     return axis_descriptor
