@@ -99,7 +99,6 @@ class SequenceTestCases(object):
 
     def validate_case(self, caseName):
         # validates each sequences by using numpy assert_allclose for each channel
-
         assert (caseName in self.validWaveforms)
         validWaveform = self.validWaveforms[caseName]
         for channel, waveform in self.waveforms[caseName].items():

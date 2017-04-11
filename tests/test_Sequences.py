@@ -204,7 +204,7 @@ class TestSequences(object):
         self.set_awg_dir()
         seqs = [Ytheta(self.q1, amp=0.5), Z90m(self.q1),
                 Ztheta(self.q1, angle=np.pi / 4),
-                arb_axis_drag(self.q1, 5.0, np.pi / 4, np.pi / 2, np.pi / 8)]
+                arb_axis_drag(self.q1, 10.0e6, np.pi / 4, np.pi / 2, np.pi / 8)]
 
         for ac in range(0, 24):
             seqs.append(AC(self.q1, ac))
@@ -428,17 +428,6 @@ class TestAPS2(unittest.TestCase, APS2Helper, TestSequences):
 
         filenames = compile_to_hardware(seqs, 'CNOT_CR_mux/CNOT_CR_mux')
         self.compare_sequences('CNOT_CR_mux')
-
-
-    @unittest.expectedFailure
-    def test_misc_seqs1(self):
-        """
-		Fails to do nutFreq being set to a very small value (5.0) for the
-		arb_axis_drag pulse causing a large waveform amplitude. Previously this
-		got phase shifted and then clipped so both chA and chB were railed. With
-		onboard modulation it gets clipped and then rotated.
-		"""
-        TestSequences.test_misc_seqs1(self)
 
 
 class TestAPS1(unittest.TestCase, AWGTestHelper, TestSequences):

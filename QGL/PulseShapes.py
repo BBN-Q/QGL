@@ -15,6 +15,9 @@ def gaussian(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
     numPts = int(np.round(length * samplingRate))
     xPts = np.linspace(-cutoff, cutoff, numPts)
     xStep = xPts[1] - xPts[0]
+    nextPoint = np.exp(-0.5 * ((xPts[0] - xStep)**2))
+    #Rescale so that the maximum equals amp
+    amp = (amp / (1 - nextPoint))
     return (amp * (np.exp(-0.5 * (xPts**2)) - np.exp(-0.5 * (
         (xPts[-1] + xStep)**2)))).astype(np.complex)
 
@@ -49,6 +52,9 @@ def drag(amp=1,
     numPts = int(np.round(length * samplingRate))
     xPts = np.linspace(-cutoff, cutoff, numPts)
     xStep = xPts[1] - xPts[0]
+    nextPoint = np.exp(-0.5 * ((xPts[0] - xStep)**2))
+    #Rescale so that the maximum in IQuad equals amp
+    amp = (amp / (1 - nextPoint))
     IQuad = np.exp(-0.5 * (xPts**2)) - np.exp(-0.5 * ((xPts[0] - xStep)**2))
     #The derivative needs to be scaled in terms of AWG points from the normalized xPts units.
     #The pulse length is 2*cutoff xPts
