@@ -599,10 +599,15 @@ def compile_sequence(seq, channels=None, edgesToCompile=None, qubitToCompile=Non
     logger.debug("Sequence before normalizing:")
     for block in normalize(flatten(seq), channels):
         logger.debug(" %s", block)
-        # labels and control flow instructions broadcast to all channels
-        if isinstance(block,
-                      (BlockLabel.BlockLabel, ControlFlow.ControlInstruction)):
+        # labels broadcast to all channels
+        if isinstance(block, BlockLabel.BlockLabel):
             for chan in channels:
+                wires[chan] += [copy(block)]
+            continue
+        # control flow broadcasts to all channels if channel attribute is None
+        if isinstance(block, ControlFlow.ControlInstruction):
+            block_channels = block.channels if block.channels else channels
+            for chan in block_channels:
                 wires[chan] += [copy(block)]
             continue
         # propagate frame change from nodes to edges
@@ -665,7 +670,7 @@ def propagate_node_frame_to_edges(wires, chan, frameChange):
 def find_unique_channels(seq):
     channels = set()
     for step in flatten(seq):
-        if not hasattr(step, 'channel'):
+        if not hasattr(step, 'channel') or step.channel is None:
             continue
         if isinstance(step.channel, Channels.Channel):
             channels.add(step.channel)
