@@ -90,15 +90,21 @@ def Utheta(qubit,
 
 
 # generic pulses around X, Y, and Z axes
-def Xtheta(qubit, amp=0, label='Xtheta', ignoredStrParams=[], **kwargs):
+def Xtheta(qubit, amp=0, label='Xtheta', ignoredStrParams=None, **kwargs):
     '''  A generic X rotation with a variable amplitude  '''
-    ignoredStrParams += ['phase', 'frameChange']
+    if ignoredStrParams is None:
+        ignoredStrParams = ['phase', 'frameChange']
+    else:
+        ignoredStrParams += ['phase', 'frameChange']
     return Utheta(qubit, amp, 0, label, ignoredStrParams, **kwargs)
 
 
-def Ytheta(qubit, amp=0, label='Ytheta', ignoredStrParams=[], **kwargs):
+def Ytheta(qubit, amp=0, label='Ytheta', ignoredStrParams=None, **kwargs):
     ''' A generic Y rotation with a variable amplitude '''
-    ignoredStrParams += ['phase', 'frameChange']
+    if ignoredStrParams is None:
+        ignoredStrParams = ['phase', 'frameChange']
+    else:
+        ignoredStrParams += ['phase', 'frameChange']
     return Utheta(qubit, amp, pi / 2, label, ignoredStrParams, **kwargs)
 
 
