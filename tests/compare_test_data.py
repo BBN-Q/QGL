@@ -18,14 +18,14 @@ def compare_sequences(seq_filter=""):
         for test in testdirs:
             # build up subdirectory name
             _, name = os.path.split(test)
-            testfiles = glob.glob(os.path.join(test, '*'))
+            testfiles = glob.glob(os.path.join(test, '*.h5'))
             # recurse into subdirectories
             while len(testfiles) == 1 and os.path.isdir(testfiles[0]):
                 _, subname = os.path.split(testfiles[0])
                 name = os.path.join(name, subname)
                 testfiles = glob.glob(os.path.join(testfiles[0], '*'))
             newpath = os.path.join(BASE_AWG_DIR, subdir, name)
-            newfiles = glob.glob(os.path.join(newpath, '*'))
+            newfiles = glob.glob(os.path.join(newpath, '*.h5'))
             #filter py27 look for py27 versions
             testfiles = filter_py27(testfiles)
             newfiles = filter_py27(newfiles)
