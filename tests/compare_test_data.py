@@ -11,7 +11,7 @@ BASE_AWG_DIR = QGL.config.AWGDir
 BASE_TEST_DIR = './test_data/awg/'
 
 
-def compare_sequences():
+def compare_sequences(seq_filter=""):
     test_subdirs = ['TestAPS1', 'TestAPS2']
     for subdir in test_subdirs:
         testdirs = glob.glob(os.path.join(BASE_TEST_DIR, subdir, '*'))
@@ -25,15 +25,16 @@ def compare_sequences():
                 name = os.path.join(name, subname)
                 testfiles = glob.glob(os.path.join(testfiles[0], '*'))
             newpath = os.path.join(BASE_AWG_DIR, subdir, name)
-            print("{0} comparing to {1}".format(test, newpath))
             newfiles = glob.glob(os.path.join(newpath, '*'))
             #filter py27 look for py27 versions
             testfiles = filter_py27(testfiles)
             newfiles = filter_py27(newfiles)
-            PulseSequencePlotter.plot_pulse_files_compare(testfiles, newfiles)
-            c = input('Enter to continue (q to quit): ')
-            if c == 'q':
-                break
+            if seq_filter and any(seq_filter in seq_file for seq_file in testfiles):
+                print("{0} comparing to {1}".format(test, newpath))
+                PulseSequencePlotter.plot_pulse_files_compare(testfiles, newfiles)
+                c = input('Enter to continue (q to quit): ')
+                if c == 'q':
+                    break
 
 
 def filter_py27(filenames):
@@ -68,4 +69,4 @@ if __name__ == '__main__':
     # have the 'target hardware' attribute
     # update_test_files()
     output_file()
-    compare_sequences()
+    compare_sequences(seq_filter="Ramsey")
