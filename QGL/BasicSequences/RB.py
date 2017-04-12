@@ -10,10 +10,8 @@ import numpy as np
 from functools import reduce
 
 
-def create_RB_seqs(numQubits, lengths, repeats=32, interleaveGate=None, recovery = True):
-    """
-	Create a list of lists of Clifford gates to implement RB.
-	"""
+def create_RB_seqs(numQubits, lengths, repeats=32, interleaveGate=None, recovery=True):
+    """Create a list of lists of Clifford gates to implement RB. """
     if numQubits == 1:
         cliffGroupSize = 24
     elif numQubits == 2:
@@ -51,20 +49,14 @@ def create_RB_seqs(numQubits, lengths, repeats=32, interleaveGate=None, recovery
 
 
 def SingleQubitRB(qubit, seqs, showPlot=False):
+    """Single qubit randomized benchmarking using 90 and 180 generators.
+
+    Parameters
+    ----------
+    qubit : logical channel to implement sequence (LogicalChannel)
+    seqs : list of lists of Clifford group integers
+    showPlot : whether to plot (boolean)
     """
-
-	Single qubit randomized benchmarking using 90 and 180 generators.
-
-	Parameters
-	----------
-	qubit : logical channel to implement sequence (LogicalChannel)
-	seqs : list of lists of Clifford group integers
-	showPlot : whether to plot (boolean)
-
-	Returns
-	-------
-	plotHandle : handle to plot window to prevent destruction
-	"""
 
     seqsBis = []
     for seq in seqs:
@@ -86,21 +78,15 @@ def SingleQubitRB(qubit, seqs, showPlot=False):
 
 
 def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix=""):
+    """Two qubit randomized benchmarking using 90 and 180 single qubit generators and ZX90
+
+    Parameters
+    ----------
+    qubit : logical channel to implement sequence (LogicalChannel)
+    seqs : list of lists of Clifford group integers
+    showPlot : whether to plot (boolean)
+    suffix : suffix to apply to sequence file names
     """
-
-	Two qubit randomized benchmarking using 90 and 180 single qubit generators and ZX90
-
-	Parameters
-	----------
-	qubit : logical channel to implement sequence (LogicalChannel)
-	seqs : list of lists of Clifford group integers
-	showPlot : whether to plot (boolean)
-
-	Returns
-	-------
-	plotHandle : handle to plot window to prevent destruction
-	"""
-
     seqsBis = []
     for seq in seqs:
         seqsBis.append(reduce(operator.add, [clifford_seq(c, q1, q2)
@@ -121,20 +107,14 @@ def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix=""):
 
 
 def SingleQubitRB_AC(qubit, seqs, showPlot=False):
+    """Single qubit randomized benchmarking using atomic Clifford pulses.
+
+    Parameters
+    ----------
+    qubit : logical channel to implement sequence (LogicalChannel)
+    seqFile : file containing sequence strings
+    showPlot : whether to plot (boolean)
     """
-
-	Single qubit randomized benchmarking using atomic Clifford pulses.
-
-	Parameters
-	----------
-	qubit : logical channel to implement sequence (LogicalChannel)
-	seqFile : file containing sequence strings
-	showPlot : whether to plot (boolean)
-
-	Returns
-	-------
-	plotHandle : handle to plot window to prevent destruction
-	"""
     seqsBis = []
     for seq in seqs:
         seqsBis.append([AC(qubit, c) for c in seq])
@@ -152,22 +132,16 @@ def SingleQubitRB_AC(qubit, seqs, showPlot=False):
     if showPlot:
         plot_pulse_files(fileNames)
 
-def SingleQubitRB_DiAC(qubit, seqs, compiled = True, showPlot = False, purity = False):
-    """
-
-    Single qubit randomized benchmarking using diatomic Clifford pulses.
+def SingleQubitRB_DiAC(qubit, seqs, compiled=True, purity=False, showPlot=False):
+    """Single qubit randomized benchmarking using diatomic Clifford pulses.
 
     Parameters
     ----------
     qubit : logical channel to implement sequence (LogicalChannel)
     seqFile : file containing sequence strings
-    Xonly : if true, exclude Y90(m) pulses
+    compiled : if True, compile Z90(m)-X90-Z90(m) to Y90(m) pulses
+    purity : measure <Z>,<X>,<Y> of final state, to measure purity
     showPlot : whether to plot (boolean)
-    purityRB: measure <Z>,<X>,<Y> of final state, to measure purity
-
-    Returns
-    -------
-    plotHandle : handle to plot window to prevent destruction
     """
     seqsBis = []
     op = [Id(qubit, length=0), Y90m(qubit), X90(qubit)]
@@ -190,20 +164,14 @@ def SingleQubitRB_DiAC(qubit, seqs, compiled = True, showPlot = False, purity = 
         plot_pulse_files(fileNames)
 
 def SingleQubitIRB_AC(qubit, seqFile, showPlot=False):
+    """Single qubit interleaved randomized benchmarking using atomic Clifford pulses.
+
+    Parameters
+    ----------
+    qubit : logical channel to implement sequence (LogicalChannel)
+    seqFile : file containing sequence strings
+    showPlot : whether to plot (boolean)
     """
-
-	Single qubit interleaved randomized benchmarking using atomic Clifford pulses.
-
-	Parameters
-	----------
-	qubit : logical channel to implement sequence (LogicalChannel)
-	seqFile : file containing sequence strings
-	showPlot : whether to plot (boolean)
-
-	Returns
-	-------
-	plotHandle : handle to plot window to prevent destruction
-	"""
     #Setup a pulse library
     pulseLib = [AC(qubit, cliffNum) for cliffNum in range(24)]
     pulseLib.append(pulseLib[0])
@@ -241,20 +209,17 @@ def SingleQubitIRB_AC(qubit, seqFile, showPlot=False):
 
 
 def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False):
+    """	Single qubit randomized benchmarking tomography using atomic Clifford pulses.
+
+    This relies on specific sequence files and is here for historical purposes only.
+
+    Parameters
+    ----------
+    qubit : logical channel to implement sequence (LogicalChannel)
+    seqFile : file containing sequence strings
+    analyzedPulse : specific pulse to analyze
+    showPlot : whether to plot (boolean)
     """
-
-	Single qubit randomized benchmarking using atomic Clifford pulses.
-
-	Parameters
-	----------
-	qubit : logical channel to implement sequence (LogicalChannel)
-	seqFile : file containing sequence strings
-	showPlot : whether to plot (boolean)
-
-	Returns
-	-------
-	plotHandle : handle to plot window to prevent destruction
-	"""
     #Setup a pulse library
     pulseLib = [AC(qubit, cliffNum) for cliffNum in range(24)]
     pulseLib.append(analyzedPulse)
@@ -293,23 +258,22 @@ def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False):
 
 def SimultaneousRB_AC(qubits, seqs, showPlot=False):
     """
+    Simultaneous randomized benchmarking on multiple qubits using atomic Clifford pulses.
 
-	Simultaneous randomized benchmarking on multiple qubits using atomic Clifford pulses.
+    Parameters
+    ----------
+    qubits : iterable of logical channels to implement seqs on (list or tuple)
+    seqs : a tuple of sequences created for each qubit in qubits
+    showPlot : whether to plot (boolean)
 
-	Parameters
-	----------
-	qubits : iterable of logical channels to implement seqs on (list or tuple)
-	seqs : a tuple of sequences created for each qubit in qubits
-	showPlot : whether to plot (boolean)
-
-	Example
-	-------
-	>>> q1 = QubitFactory('q1')
-	>>> q2 = QubitFactory('q2')
-	>>> seqs1 = create_RB_seqs(1, [2, 4, 8, 16])
-	>>> seqs2 = create_RB_seqs(1, [2, 4, 8, 16])
-	>>> SimultaneousRB_AC((q1, q2), (seqs1, seqs2), showPlot=False)
-	"""
+    Example
+    -------
+    >>> q1 = QubitFactory('q1')
+    >>> q2 = QubitFactory('q2')
+    >>> seqs1 = create_RB_seqs(1, [2, 4, 8, 16])
+    >>> seqs2 = create_RB_seqs(1, [2, 4, 8, 16])
+    >>> SimultaneousRB_AC((q1, q2), (seqs1, seqs2), showPlot=False)
+    """
     seqsBis = []
     for seq in zip(*seqs):
         seqsBis.append([reduce(operator.__mul__,
