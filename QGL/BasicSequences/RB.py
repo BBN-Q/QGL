@@ -47,8 +47,7 @@ def create_RB_seqs(numQubits, lengths, repeats=32, interleaveGate=None, recovery
 
     return seqs
 
-
-def SingleQubitRB(qubit, seqs, showPlot=False):
+def SingleQubitRB(qubit, seqs, purity=False, showPlot=False):
     """Single qubit randomized benchmarking using 90 and 180 generators.
 
     Parameters
@@ -59,13 +58,15 @@ def SingleQubitRB(qubit, seqs, showPlot=False):
     """
 
     seqsBis = []
-    for seq in seqs:
-        seqsBis.append(reduce(operator.add, [clifford_seq(c, qubit)
-                                             for c in seq]))
-
-    #Add the measurement to all sequences
-    for seq in seqsBis:
-        seq.append(MEAS(qubit))
+    op = [Id(qubit, length=0), Y90m(qubit), X90(qubit)]
+    for ct in range(3 if purity else 1):
+        for seq in seqs:
+            seqsBis.append(reduce(operator.add, [clifford_seq(c, qubit)
+                                                for c in seq]))
+            #append tomography pulse to measure purity
+            seqsBis[-1].append(op[ct])
+            #append measurement
+            seqsBis[-1].append(MEAS(qubit))
 
     #Tack on the calibration sequences
     seqsBis += create_cal_seqs((qubit, ), 2)
@@ -105,8 +106,7 @@ def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix=""):
     if showPlot:
         plot_pulse_files(fileNames)
 
-
-def SingleQubitRB_AC(qubit, seqs, showPlot=False):
+def SingleQubitRB_AC(qubit, seqs, purity=False, showPlot=False):
     """Single qubit randomized benchmarking using atomic Clifford pulses.
 
     Parameters
@@ -116,12 +116,14 @@ def SingleQubitRB_AC(qubit, seqs, showPlot=False):
     showPlot : whether to plot (boolean)
     """
     seqsBis = []
-    for seq in seqs:
-        seqsBis.append([AC(qubit, c) for c in seq])
-
-    #Add the measurement to all sequences
-    for seq in seqsBis:
-        seq.append(MEAS(qubit))
+    op = [Id(qubit, length=0), Y90m(qubit), X90(qubit)]
+    for ct in range(3 if purity else 1):
+        for seq in seqs:
+            seqsBis.append([AC(qubit, c) for c in seq])
+            #append tomography pulse to measure purity
+            seqsBis[-1].append(op[ct])
+            #append measurement
+            seqsBis[-1].append(MEAS(qubit))
 
     #Tack on the calibration sequences
     seqsBis += create_cal_seqs((qubit, ), 2)
@@ -146,13 +148,12 @@ def SingleQubitRB_DiAC(qubit, seqs, compiled=True, purity=False, showPlot=False)
     """
     seqsBis = []
     op = [Id(qubit, length=0), Y90m(qubit), X90(qubit)]
-    for ct in range(1+2*purity):
+    for ct in range(3 if purity else 1):
         for seq in seqs:
             seqsBis.append([DiAC(qubit, c, compiled) for c in seq])
-            if purity:
-                #append tomography pulse to measure purity
-                seqsBis[-1].append(op[ct])
-            # append measurement
+            #append tomography pulse to measure purity
+            seqsBis[-1].append(op[ct])
+            #append measurement
             seqsBis[-1].append(MEAS(qubit))
 
     #Tack on the calibration sequences (using pi/2 pulses for consistency)
