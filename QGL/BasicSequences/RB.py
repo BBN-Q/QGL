@@ -140,7 +140,8 @@ def SingleQubitRB_DiAC(qubit, seqs, compiled=True, purity=False, showPlot=False)
     qubit : logical channel to implement sequence (LogicalChannel)
     seqFile : file containing sequence strings
     compiled : if True, compile Z90(m)-X90-Z90(m) to Y90(m) pulses
-    purity : measure <Z>,<X>,<Y> of final state, to measure purity
+    purity : measure <Z>,<X>,<Y> of final state, to measure purity. See J.J.
+        Wallman et al., New J. Phys. 17, 113020 (2015)
     showPlot : whether to plot (boolean)
     """
     seqsBis = []
