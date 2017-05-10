@@ -71,11 +71,11 @@ def SingleQubitRB(qubit, seqs, purity=False, showPlot=False):
     #Tack on the calibration sequences
     seqsBis += create_cal_seqs((qubit, ), 2)
 
-    fileNames = compile_to_hardware(seqsBis, 'RB/RB')
-    print(fileNames)
+    metafile = compile_to_hardware(seqsBis, 'RB/RB')
 
     if showPlot:
-        plot_pulse_files(fileNames)
+        plot_pulse_files(metafile)
+    return metafile
 
 
 def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix=""):
@@ -100,11 +100,11 @@ def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix=""):
     #Tack on the calibration sequences
     seqsBis += create_cal_seqs((q1, q2), 2)
 
-    fileNames = compile_to_hardware(seqsBis, 'RB/RB', suffix=suffix)
-    print(fileNames)
+    metafile = compile_to_hardware(seqsBis, 'RB/RB', suffix=suffix)
 
     if showPlot:
-        plot_pulse_files(fileNames)
+        plot_pulse_files(metafile)
+    return metafile
 
 def SingleQubitRB_AC(qubit, seqs, purity=False, showPlot=False):
     """Single qubit randomized benchmarking using atomic Clifford pulses.
@@ -128,11 +128,11 @@ def SingleQubitRB_AC(qubit, seqs, purity=False, showPlot=False):
     #Tack on the calibration sequences
     seqsBis += create_cal_seqs((qubit, ), 2)
 
-    fileNames = compile_to_hardware(seqsBis, 'RB/RB')
-    print(fileNames)
+    metafile = compile_to_hardware(seqsBis, 'RB/RB')
 
     if showPlot:
-        plot_pulse_files(fileNames)
+        plot_pulse_files(metafile)
+    return metafile
 
 def SingleQubitRB_DiAC(qubit, seqs, compiled=True, purity=False, showPlot=False):
     """Single qubit randomized benchmarking using diatomic Clifford pulses.
@@ -159,11 +159,11 @@ def SingleQubitRB_DiAC(qubit, seqs, compiled=True, purity=False, showPlot=False)
     #Tack on the calibration sequences (using pi/2 pulses for consistency)
     seqsBis += [[Id(qubit), MEAS(qubit)], [Id(qubit), MEAS(qubit)], [X90(qubit), X90(qubit), MEAS(qubit)], [X90(qubit), X90(qubit), MEAS(qubit)]]
 
-    fileNames = compile_to_hardware(seqsBis, 'RB_DiAC/RB_DiAC')
-    print(fileNames)
+    metafile = compile_to_hardware(seqsBis, 'RB_DiAC/RB_DiAC')
 
     if showPlot:
-        plot_pulse_files(fileNames)
+        plot_pulse_files(metafile)
+    return metafile
 
 def SingleQubitIRB_AC(qubit, seqFile, showPlot=False):
     """Single qubit interleaved randomized benchmarking using atomic Clifford pulses.
@@ -198,16 +198,17 @@ def SingleQubitIRB_AC(qubit, seqFile, showPlot=False):
         chunk2 = chunk[1::2]
         #Tack on the calibration scalings
         chunk1 += [[Id(qubit), measBlock], [X(qubit), measBlock]]
-        fileNames = compile_to_hardware(chunk1,
+        metafile = compile_to_hardware(chunk1,
                                         'RB/RB',
                                         suffix='_{0}'.format(2 * ct + 1))
         chunk2 += [[Id(qubit), measBlock], [X(qubit), measBlock]]
-        fileNames = compile_to_hardware(chunk2,
+        metafile = compile_to_hardware(chunk2,
                                         'RB/RB',
                                         suffix='_{0}'.format(2 * ct + 2))
 
     if showPlot:
-        plot_pulse_files(fileNames)
+        plot_pulse_files(metafile)
+    return metafile
 
 
 def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False):
@@ -250,12 +251,13 @@ def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False):
         numCals = 4
         chunk += [[Id(qubit), measBlock]] * numCals + [[X(qubit), measBlock]
                                                        ] * numCals
-        fileNames = compile_to_hardware(chunk,
+        metafile = compile_to_hardware(chunk,
                                         'RBT/RBT',
                                         suffix='_{0}'.format(ct + 1))
 
     if showPlot:
-        plot_pulse_files(fileNames)
+        plot_pulse_files(metafile)
+    return metafile
 
 
 def SimultaneousRB_AC(qubits, seqs, showPlot=False):
@@ -289,8 +291,8 @@ def SimultaneousRB_AC(qubits, seqs, showPlot=False):
     #Tack on the calibration sequences
     seqsBis += create_cal_seqs((qubits), 2)
 
-    fileNames = compile_to_hardware(seqsBis, 'RB/RB')
-    print(fileNames)
+    metafile = compile_to_hardware(seqsBis, 'RB/RB')
 
     if showPlot:
-        plot_pulse_files(fileNames)
+        plot_pulse_files(metafile)
+    return metafile
