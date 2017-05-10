@@ -80,7 +80,7 @@ def plot_pulse_files(metafile):
     '''
     #If we only go one filename turn it into a list
     
-    with open(meta_file, 'r') as FID:
+    with open(metafile, 'r') as FID:
         meta_info = json.load(FID)
     fileNames = list(meta_info["instruments"].values())
 
