@@ -129,7 +129,7 @@ class CompositePulse(namedtuple("CompositePulse", ["label", "pulses"])):
 
     def __str__(self):
         if self.label != "":
-            return self.label
+            return '{0}({1})'.format(self.label, self.channel.label)
         else:
             return "+".join([str(p) for p in self.pulses])
 
