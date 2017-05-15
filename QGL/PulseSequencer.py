@@ -46,7 +46,10 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
                 raise NameError("shapeParams must include {0}".format(param))
         isTimeAmp = (shapeParams['shapeFun'] == PulseShapes.constant)
         isZero = (amp == 0)
-        return super(cls, Pulse).__new__(cls, label, channel, shapeParams['length'], amp, phase, frequency, frameChange, shapeParams, isTimeAmp, isZero, ignoredStrParams)
+        return super(cls, Pulse).__new__(cls, label, channel,
+                                         shapeParams['length'], amp, phase,
+                                         frequency, frameChange, shapeParams,
+                                         isTimeAmp, isZero, ignoredStrParams)
 
     def __str__(self):
         kwvals = []

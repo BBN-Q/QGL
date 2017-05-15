@@ -101,7 +101,6 @@ def qsync(channels=None):
 
 ## Sequencer primitives ##
 
-
 class ControlInstruction(object):
     def __init__(self, instruction, channels=None, target=None, value=None):
         self.channels = channels
@@ -207,3 +206,13 @@ def CmpLt(address, value):
 
 def CmpGt(address, value):
     return ComparisonInstruction(">", address, value)
+
+class Barrier(ControlInstruction):
+    def __init__(self, *chanlist):
+        # chanlist is a list of Channel instances
+        super(Barrier, self).__init__("BARRIER")
+        self.chanlist = chanlist
+
+    def __str__(self):
+        base = "BARRIER({0})".format(self.chanlist)
+        return base
