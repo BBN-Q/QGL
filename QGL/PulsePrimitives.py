@@ -21,7 +21,7 @@ import operator
 
 from math import pi, sin, cos, acos, sqrt
 import numpy as np
-from .PulseSequencer import Pulse, TAPulse, align
+from .PulseSequencer import Pulse, TAPulse, CompoundGate, align
 from functools import wraps, reduce
 
 
@@ -651,7 +651,7 @@ def echoCR(controlQ,
                              label="echoCR_second_half")]
     if lastPi:
         seq += [X(controlQ)]
-    return seq
+    return CompoundGate(seq)
 
 
 def ZX90_CR(controlQ, targetQ, **kwargs):
@@ -673,16 +673,17 @@ def CNOT_CR(controlQ, targetQ, **kwargs):
 
     if edge.isforward(controlQ, targetQ):
         # control and target for CNOT and CR match
-        return ZX90_CR(controlQ, targetQ, **kwargs) + \
+        seq = ZX90_CR(controlQ, targetQ, **kwargs).seq + \
             [Z90m(controlQ) * X90m(targetQ)]
     else:
         # control and target for CNOT and CR are inverted
-        return [Y90(controlQ) * Y90(targetQ),
+        seq = [Y90(controlQ) * Y90(targetQ),
                 X(controlQ) * X(targetQ)] + \
-                ZX90_CR(targetQ, controlQ, **kwargs) + \
+                ZX90_CR(targetQ, controlQ, **kwargs).seq + \
                [Z90(targetQ),
                 X90(controlQ) * Y90(targetQ),
                 Y90m(controlQ) * X(targetQ)]
+    return CompoundGate(seq)
 
 def CNOT_simple(source, target, **kwargs):
     # construct (source, target) channel and pull parameters from there

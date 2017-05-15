@@ -333,7 +333,8 @@ def compile_to_hardware(seqs,
 
     # Add gating/blanking pulses
     logger.debug("Adding blanking pulses")
-    PatternUtils.add_gate_pulses(seqs)
+    for seq in seqs:
+        PatternUtils.add_gate_pulses(seq)
 
     if not qgl2 or addQGL2SlaveTrigger:
         # Add the slave trigger
@@ -574,7 +575,7 @@ def normalize(seq, channels=None):
     with uniform channels on each PulseBlock. We inject Id's where necessary.
     '''
     # promote to PulseBlocks
-    seq = [p.promote() for p in seq]
+    seq = [p.promote(PulseBlock) for p in seq]
 
     if not channels:
         channels = find_unique_channels(seq)

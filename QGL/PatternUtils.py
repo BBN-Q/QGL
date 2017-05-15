@@ -20,7 +20,7 @@ import hashlib, collections
 import pickle
 from copy import copy
 
-from .PulseSequencer import Pulse, TAPulse, PulseBlock, CompositePulse
+from .PulseSequencer import Pulse, TAPulse, PulseBlock, CompositePulse, CompoundGate
 from .PulsePrimitives import BLANK
 from . import ControlFlow
 from . import BlockLabel
@@ -76,27 +76,29 @@ def correct_mixers(wfLib, T):
         wfLib[k] = T[0, :].dot(iqWF) + 1j * T[1, :].dot(iqWF)
 
 
-def add_gate_pulses(seqs):
+def add_gate_pulses(seq):
     '''
     add gating pulses to Qubit pulses
     '''
-    for seq in seqs:
-        for ct in range(len(seq)):
-            if isinstance(seq[ct], PulseBlock):
-                pb = None
-                for chan, pulse in seq[ct].pulses.items():
-                    if has_gate(chan) and not pulse.isZero and not (
-                            chan.gateChan in seq[ct].pulses.keys()):
-                        if pb:
-                            pb *= BLANK(chan, pulse.length)
-                        else:
-                            pb = BLANK(chan, pulse.length)
-                if pb:
-                    seq[ct] *= pb
-            elif hasattr(seq[ct], 'channel'):
-                chan = seq[ct].channel
-                if has_gate(chan) and not seq[ct].isZero:
-                    seq[ct] *= BLANK(chan, seq[ct].length)
+
+    for ct in range(len(seq)):
+        if isinstance(seq[ct], CompoundGate):
+            add_gate_pulses(seq[ct].seq)
+        elif isinstance(seq[ct], PulseBlock):
+            pb = None
+            for chan, pulse in seq[ct].pulses.items():
+                if has_gate(chan) and not pulse.isZero and not (
+                        chan.gateChan in seq[ct].pulses.keys()):
+                    if pb:
+                        pb *= BLANK(chan, pulse.length)
+                    else:
+                        pb = BLANK(chan, pulse.length)
+            if pb:
+                seq[ct] *= pb
+        elif hasattr(seq[ct], 'channel'):
+            chan = seq[ct].channel
+            if has_gate(chan) and not seq[ct].isZero:
+                seq[ct] *= BLANK(chan, seq[ct].length)
 
 
 def has_gate(channel):

@@ -35,13 +35,13 @@ class CompileUtils(unittest.TestCase):
     def test_add_gate_pulses(self):
         q1 = self.q1
         seq = [X90(q1), Y90(q1)]
-        PatternUtils.add_gate_pulses([seq])
+        PatternUtils.add_gate_pulses(seq)
         assert ([self.q1gate in entry.pulses.keys() for entry in seq] ==
                 [True, True])
 
         q2 = self.q2
         seq = [X90(q1), X90(q2), X(q1) * Y(q2)]
-        PatternUtils.add_gate_pulses([seq])
+        PatternUtils.add_gate_pulses(seq)
         assert ([self.q1gate in entry.pulses.keys() for entry in seq] ==
                 [True, False, True])
         assert ([self.q2gate in entry.pulses.keys() for entry in seq] ==

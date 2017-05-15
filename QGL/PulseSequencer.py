@@ -88,11 +88,12 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
 
     def __mul__(self, other):
         """ Overload multiplication of Pulses as a "tensor" operator"""
-        return self.promote() * other.promote()
+        ptype = promote_type(self, other)
+        return self.promote(ptype) * other.promote(ptype)
 
-    def promote(self):
+    def promote(self, ptype):
         # promote a Pulse to a PulseBlock
-        return PulseBlock(self)
+        return ptype(self)
 
     @property
     def shape(self):
@@ -146,11 +147,12 @@ class CompositePulse(namedtuple("CompositePulse", ["label", "pulses"])):
             return CompositePulse("", self.pulses + [other])
 
     def __mul__(self, other):
-        return self.promote() * other.promote()
+        ptype = promote_type(self, other)
+        return self.promote(ptype) * other.promote(ptype)
 
-    def promote(self):
+    def promote(self, ptype):
         # promote a CompositePulse to a PulseBlock
-        return PulseBlock(self)
+        return ptype(self)
 
     @property
     def channel(self):
@@ -172,9 +174,9 @@ class CompositePulse(namedtuple("CompositePulse", ["label", "pulses"])):
 
 class PulseBlock(object):
     '''
-    The basic building block for pulse sequences. This is what we can concatenate together to make sequences.
-    We overload the * operator so that we can combine pulse blocks on different channels.
-    We overload the + operator to concatenate pulses on the same channel.
+    The basic building block for pulse sequences. This is what we can concatenate
+    together to make sequences. We overload the * operator so that we can combine
+    pulse blocks on different channels.
     '''
 
     def __init__(self, *pulses):
@@ -201,8 +203,11 @@ class PulseBlock(object):
 
     # Overload the multiplication operator to combine pulse blocks
     def __mul__(self, rhs):
-        # make sure RHS is a PulseBlock
-        rhs = rhs.promote()
+        ptype = promote_type(self, rhs)
+        if ptype == CompoundGate:
+            return rhs * self
+        # otherwise, we are promoting to a PulseBlock
+        rhs = rhs.promote(ptype)
 
         # copy PulseBlock so we don't modify other references
         result = copy(self)
@@ -229,16 +234,89 @@ class PulseBlock(object):
     def __ne__(self, other):
         return not self == other
 
-    # PulseBlocks don't need to be promoted, so just return self
-    def promote(self):
-        return self
-
     @property
     def channel(self):
         return self.pulses.keys()
 
+    def promote(self, ptype):
+        if ptype == CompoundGate:
+            return CompoundGate(self)
+        elif ptype == PulseBlock:
+            # promoting to PulseBlock, so we can just return self
+            return self
+        else:
+            ptype(self)
+
 def align(pulseBlock, mode="center"):
     # make sure we have a PulseBlock
-    pulseBlock = pulseBlock.promote()
+    pulseBlock = pulseBlock.promote(PulseBlock)
     pulseBlock.alignment = mode
     return pulseBlock
+
+class CompoundGate(object):
+    '''
+    A wrapper around a python list to allow us to define '*' on lists.
+    Used by multi-pulse structures like CNOT_CR so that we can retain the
+    "boundaries" of the oepration.
+    '''
+    def __init__(self, seq, label=None):
+        if isinstance(seq, list):
+            self.seq = seq
+        else:
+            self.seq = [seq]
+        self.label = label
+
+    def __str__(self):
+        txt = ', '.join(str(s) for s in self.seq)
+        if self.label:
+            return "{0}([{1}])".format(self.label, txt)
+        else:
+            return "CompoundGate([" + txt + "])"
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
+    def __iter__(self):
+        for n in range(len(self.seq)):
+            yield self.seq[n]
+
+    def __mul__(self, other):
+        if isinstance(other, CompoundGate):
+            other_seq = other.seq
+        else:
+            other_seq = [other]
+        new_seq = []
+        # zip together the sequences
+        for s1, s2 in zip(self.seq, other_seq):
+            new_seq.append(s1 * s2)
+
+        # append any dangling section
+        if len(self.seq) < len(other_seq):
+            new_seq += other_seq[len(self.seq):]
+        elif len(self.seq) > len(other_seq):
+            new_seq += self.seq[len(other_seq):]
+        return CompoundGate(new_seq)
+
+    def __add__(self, other):
+        if isinstance(other, CompoundGate):
+            return CompoundGate(self.seq + other.seq)
+        else:
+            new_seq = copy(self.seq)
+            new_seq.append(other)
+            return CompoundGate(new_seq)
+
+    @property
+    def channel(self):
+        # FIXME, should probably iterate over self.seq to build the effective
+        # channel set
+        return self.seq[0].channel
+
+def promote_type(lhs, rhs):
+    '''
+    Returns the appropriate type for the '*' operator given operands 'lhs' and
+    'rhs'.
+    '''
+    if isinstance(lhs, CompoundGate) or isinstance(rhs, CompoundGate):
+        return CompoundGate
+    else:
+        return PulseBlock

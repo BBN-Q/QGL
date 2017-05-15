@@ -1,27 +1,15 @@
 import unittest
 
 from QGL import *
-from QGL.Scheduler import schedule
+from .helpers import setup_test_lib
 
 class SchedulerTest(unittest.TestCase):
     def setUp(self):
-        self.q1 = Qubit(label='q1')
-        self.q2 = Qubit(label='q2')
-        self.q3 = Qubit(label='q3')
-        self.q4 = Qubit(label='q4')
-        self.q1q2 = Edge(label='q1q2', source=self.q1, target=self.q2)
-        self.q2q3 = Edge(label='q2q3', source=self.q2, target=self.q3)
-        self.q3q4 = Edge(label='q3q4', source=self.q3, target=self.q4)
-
-        ChannelLibrary.channelLib.channelDict = {
-            'q1': self.q1,
-            'q2': self.q2,
-            'q3': self.q3,
-            'q1q2': self.q1q2,
-            'q2q3': self.q2q3,
-            'q3q4': self.q3q4
-        }
-        ChannelLibrary.channelLib.build_connectivity_graph()
+        setup_test_lib()
+        self.q1 = QubitFactory('q1')
+        self.q2 = QubitFactory('q2')
+        self.q3 = QubitFactory('q3')
+        self.q4 = QubitFactory('q4')
 
     def test_1q_ops(self):
         q1, q2, q3 = self.q1, self.q2, self.q3

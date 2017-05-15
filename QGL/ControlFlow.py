@@ -129,7 +129,7 @@ class ControlInstruction(object):
     def __ne__(self, other):
         return not self == other
 
-    def promote(self):
+    def promote(self, ptype):
         return self
 
 class Store(ControlInstruction):
