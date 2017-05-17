@@ -65,17 +65,8 @@ class SchedulerTest(unittest.TestCase):
                X(q1), Y(q2)]
         result = schedule(seq)
 
-        # unroll the CNOT_CR sequence
-        cnotseq = CNOT_CR(q2, q3)
-
-        # FIXME currently fails because it schedules the 2nd X(q1) "inside" the
-        # CNOT(q2, q3)
-        # assert(result == [X(q1)*cnotseq[0],
-        #                   cnotseq[1],
-        #                   cnotseq[2],
-        #                   cnotseq[3],
-        #                   cnotseq[4],
-        #                   X(q1)*Y(q2)] )
+        assert(result == [X(q1)*CNOT_CR(q2, q3),
+                          X(q1)*Y(q2)] )
 
         seq = [CNOT_simple(q1, q2), CNOT_simple(q3, q4), X(q1), X(q2)]
         result = schedule(seq)

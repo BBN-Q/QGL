@@ -17,7 +17,7 @@ def schedule(seq):
     counters = {}
     out_seq = []
 
-    for instr in flatten(seq):
+    for instr in seq:
         if isinstance(instr, Barrier):
             synchronize_counters(counters, instr.chanlist)
             continue
