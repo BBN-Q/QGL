@@ -2,11 +2,13 @@ import unittest
 
 from QGL import *
 from QGL.PulseSequencer import *
+import QGL.config
 from .helpers import setup_test_lib
 
 class PulseTypes(unittest.TestCase):
     def setUp(self):
         setup_test_lib()
+        QGL.config.cnot_implementation = 'CNOT_CR'
         self.q1 = QubitFactory('q1')
         self.q2 = QubitFactory('q2')
         self.q3 = QubitFactory('q3')
