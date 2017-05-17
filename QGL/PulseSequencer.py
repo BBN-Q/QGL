@@ -280,6 +280,11 @@ class CompoundGate(object):
         for n in range(len(self.seq)):
             yield self.seq[n]
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return all(s1 == s2 for s1, s2 in zip(self.seq, other.seq))
+        return False
+
     def __mul__(self, other):
         if isinstance(other, CompoundGate):
             other_seq = other.seq
@@ -310,6 +315,10 @@ class CompoundGate(object):
         # FIXME, should probably iterate over self.seq to build the effective
         # channel set
         return self.seq[0].channel
+
+    def promote(self, ptype):
+        # CompoundGates cannot be promoted
+        return self
 
 def promote_type(lhs, rhs):
     '''

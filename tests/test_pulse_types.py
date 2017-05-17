@@ -23,4 +23,5 @@ class PulseTypes(unittest.TestCase):
         assert( type((X(q1) + Y(q1)) * X(q2)) == PulseBlock )
 
         assert( type(CNOT(q1, q2) * X(q3)) == CompoundGate )
+        assert( type(X(q3) * CNOT(q1, q2)) == CompoundGate )
         assert( type(CNOT(q1, q2) * CNOT(q3, q4)) == CompoundGate )
