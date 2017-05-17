@@ -196,7 +196,8 @@ class ChannelLibrary(Atom):
         print("Change AWG", oldName, newName)
         for chName in self.channelDict:
             if isinstance(self.channelDict[chName],
-                          (PhysicalMarkerChannel, PhysicalQuadratureChannel)):
+                          (Channels.PhysicalMarkerChannel,
+                           Channels.PhysicalQuadratureChannel)):
                 awgName, awgChannel = chName.rsplit('-', 1)
                 if awgName == oldName:
                     newLabel = "{0}-{1}".format(newName, awgChannel)
