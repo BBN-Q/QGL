@@ -77,4 +77,25 @@ class SchedulerTest(unittest.TestCase):
     def test_controlflow(self):
         # TODO to do this properly we need ControlInstructions to be valid operands
         # in tensor products, i.e. we want qif(..) * qif(...) to be valid
-        pass
+        q1, q2, q3, q4 = self.q1, self.q2, self.q3, self.q4
+
+        seq = [X(q1),X(q2),
+               CNOT(q1,q2)] + \
+              qif(1, [Y(q1),Y(q2),X90(q1)], [Z(q1),Z(q2),X90(q1)]) + \
+              [Y90(q1),Y90(q2)]
+
+        result = schedule(seq)
+        assert(result == [X(q1) * X(q2),
+                          CNOT(q1, q2)] + \
+                         qif(1, [Y(q1)*Y(q2), X90(q1)], [Z(q1)*Z(q2), X90(q1)]) + \
+                         [Y90(q1) * Y90(q2)])
+
+        # test that "global" control flow injects barriers
+        seq = [X(q1)] + \
+              qif(1, [Y(q1),Y(q2),X90(q1)], [Z(q1),Z(q2),X90(q1)]) + \
+              [Y90(q1),Y90(q2)]
+
+        result = schedule(seq)
+        assert(result == [X(q1)] + \
+                         qif(1, [Y(q1)*Y(q2), X90(q1)], [Z(q1)*Z(q2), X90(q1)]) + \
+                         [Y90(q1) * Y90(q2)])

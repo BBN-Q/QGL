@@ -2,6 +2,7 @@
 from .Channels import Edge
 from .PulseSequencer import PulseBlock
 from .ControlFlow import Barrier, ControlInstruction
+from .BlockLabel import BlockLabel
 from .PatternUtils import flatten
 from warnings import warn
 
@@ -21,11 +22,15 @@ def schedule(seq):
         if isinstance(instr, Barrier):
             synchronize_counters(counters, instr.chanlist)
             continue
-        channels = get_channels(instr)
-        # find the most advanced counter in the channel set
-        idx = max(counters.get(ch, 0) for ch in channels)
+        if isinstance(instr, (ControlInstruction, BlockLabel)):
+            channels = counters.keys()
+            idx = len(out_seq)
+        else:
+            channels = get_channels(instr)
+            # find the most advanced counter in the channel set
+            idx = max(counters.get(ch, 0) for ch in channels)
 
-        if idx > len(out_seq) - 1:
+        if (idx > len(out_seq) - 1) or isinstance(out_seq[idx], ControlInstruction):
             out_seq.append(instr)
         else:
             out_seq[idx] *= instr
