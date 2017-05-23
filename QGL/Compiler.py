@@ -335,6 +335,9 @@ def compile_to_hardware(seqs,
     # save input code to file
     save_code(seqs, fileName + suffix)
 
+    # add decoupling pulses
+    PatternUtils.decouple_seqs(seqs, meas_qs, meas_decoupled_qs, CR_chs, CR_decoupled_chs)
+
     # all sequences should start with a WAIT for synchronization
     for seq in seqs:
         if not isinstance(seq[0], ControlFlow.Wait):
@@ -364,9 +367,6 @@ def compile_to_hardware(seqs,
     channels = set()
     for seq in seqs:
         channels |= find_unique_channels(seq)
-
-    # Add decoupling pulses
-    seqs = PatternUtils.decouple_seqs(seqs, meas_qs = None, meas_decoupled_qs = None, CR_chs = None, CR_decoupled_chs = None)
 
     # Compile all the pulses/pulseblocks to sequences of pulses and control flow
     logger.info("Compiling sequences.")
