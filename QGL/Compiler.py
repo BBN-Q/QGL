@@ -361,6 +361,9 @@ def compile_to_hardware(seqs,
     for seq in seqs:
         channels |= find_unique_channels(seq)
 
+    # Add decoupling pulses
+    seqs = PatternUtils.decouple_seqs(seqs, meas_qs = None, meas_decoupled_qs = None, CR_chs = None, CR_decoupled_chs = None)
+
     # Compile all the pulses/pulseblocks to sequences of pulses and control flow
     logger.info("Compiling sequences.")
     wireSeqs = compile_sequences(seqs, channels)
