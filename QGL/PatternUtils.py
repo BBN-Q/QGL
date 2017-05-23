@@ -368,13 +368,14 @@ def update_wf_library(pulses, path):
         translators[awg].update_wf_library(path + "-" + awg + ".aps", ps,
                                            offsets)
 
-def decouple_seqs(seq, meas_qs, meas_decoupled_qs, CR_chs, CR_decoupled_chs):
-    if meas_decoupled_qs:
-        seq = decouple_meas_pulses(seq, meas_qs, meas_decoupled_qs)
-    if CR_decoupled_chs:
-        seq = decouple_CR_pulses(seq, CR_qs, CR_decoupled_chs)
+def decouple_seqs(seqs, meas_qs, meas_decoupled_qs, CR_chs, CR_decoupled_chs):
+    for seq in seqs:
+        if meas_decoupled_qs:
+            decouple_meas_pulses(seq, meas_qs, meas_decoupled_qs)
+        if CR_decoupled_chs:
+            decouple_CR_pulses(seq, CR_qs, CR_decoupled_chs)
 
-def decouple_meas_pulses(seq, meas_qs = [], meas_decoupled_qs = []):
+def decouple_meas_pulses(seq, meas_qs, meas_decoupled_qs):
     """
     Add decoupling X pulses to qubits meas_decoupled_qs during measurement on qubits meas_qs
     """
@@ -386,9 +387,8 @@ def decouple_meas_pulses(seq, meas_qs = [], meas_decoupled_qs = []):
                     #TODO: add arbitary shift of X from center
                     seq[k] = align(pulse *\
                         reduce(operator.mul, [X(q) for q in meas_decoupled_qs]))
-    return seq
 
-def decouple_CR_pulses(seq, CR_qs = [], CR_decoupled_qs = []):
+def decouple_CR_pulses(seq, CR_qs, CR_decoupled_qs):
     """
     Add decoupling X pulses to qubits CR_decoupled_qs between CR pulses on qubit pairs CR_qs (list of tuples)
     """
