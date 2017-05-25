@@ -1,9 +1,10 @@
 
-from .Channels import Edge
+from .Channels import Edge, Measurement
 from .PulseSequencer import PulseBlock
 from .ControlFlow import Barrier, ControlInstruction
 from .BlockLabel import BlockLabel
 from .PatternUtils import flatten
+from .ChannelLibrary import QubitFactory
 from warnings import warn
 
 def schedule(seq):
@@ -58,6 +59,11 @@ def get_channels(instr, channel_set=None):
         return None
     elif isinstance(instr.channel, Edge):
         return (instr.channel.source, instr.channel.target)
+    elif isinstance(instr.channel, Measurement):
+        # TODO update Measurement channels to contain a reference back to their
+        # parent Qubit
+        _, qubit_name = instr.channel.label.rsplit('-', 1)
+        return (QubitFactory(qubit_name),)
     else:
         return (instr.channel,)
 

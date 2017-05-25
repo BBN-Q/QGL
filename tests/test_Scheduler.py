@@ -107,3 +107,14 @@ class SchedulerTest(unittest.TestCase):
         assert(result == [X(q1)] + \
                          cond_seq_scheduled + \
                          [Y90(q1) * Y90(q2)])
+
+    def test_measurements(self):
+        # test that measurements on a qubit mark that qubit as busy in a given
+        # time slot
+        q1 = self.q1
+
+        seq = [X(q1), MEAS(q1), Y(q1), MEAS(q1)]
+        result = schedule(seq)
+
+        # should be unchanged
+        assert seq == result
