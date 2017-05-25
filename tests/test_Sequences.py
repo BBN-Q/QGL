@@ -217,7 +217,7 @@ class TestSequences(object):
     def test_misc_seqs2(self):
         """ catch all for sequences not otherwise covered """
         self.set_awg_dir()
-        seqs = [ZX90_CR(self.q1, self.q2)]
+        seqs = [[ZX90_CR(self.q1, self.q2)]]
 
         filenames = compile_to_hardware(seqs, 'MISC2/MISC2')
         self.compare_sequences('MISC2')
@@ -225,7 +225,7 @@ class TestSequences(object):
     def test_misc_seqs3(self):
         """ catch all for sequences not otherwise covered """
         self.set_awg_dir()
-        seqs = [CNOT_CR(self.q1, self.q2)]
+        seqs = [[CNOT_CR(self.q1, self.q2)]]
 
         filenames = compile_to_hardware(seqs, 'MISC3/MISC3')
         self.compare_sequences('MISC3')
@@ -233,7 +233,7 @@ class TestSequences(object):
     def test_misc_seqs4(self):
         """ catch all for sequences not otherwise covered """
         self.set_awg_dir()
-        seqs = [CNOT_CR(self.q2, self.q1)]
+        seqs = [[CNOT_CR(self.q2, self.q1)]]
 
         filenames = compile_to_hardware(seqs, 'MISC4/MISC4')
         self.compare_sequences('MISC4')
@@ -424,7 +424,7 @@ class TestAPS2(unittest.TestCase, APS2Helper, TestSequences):
         self.channels['q1'].frequency = 100e6
         self.channels['cr'].frequency = 200e6
         ChannelLibrary.channelLib.build_connectivity_graph()
-        seqs = [CNOT_CR(self.q1, self.q2)]
+        seqs = [[CNOT_CR(self.q1, self.q2)]]
 
         filenames = compile_to_hardware(seqs, 'CNOT_CR_mux/CNOT_CR_mux')
         self.compare_sequences('CNOT_CR_mux')

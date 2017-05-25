@@ -22,7 +22,7 @@ class BlockLabel(object):
     def __hash__(self):
         return hash(self.label)
 
-    def promote(self):
+    def promote(self, ptype):
         return self
 
     @property

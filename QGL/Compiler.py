@@ -299,9 +299,7 @@ def compile_to_hardware(seqs,
                         suffix='',
                         axis_descriptor=None,
                         qgl2=False,
-                        addQGL2SlaveTrigger=False,
-                        edgesToCompile = None,
-                        qubitToCompile = None):
+                        addQGL2SlaveTrigger=False):
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'.
     Other inputs:
@@ -316,10 +314,6 @@ def compile_to_hardware(seqs,
             the slave trigger
         addQGL2SlaveTrigger (optional): When qgl2=True only add the slave trigger
             when this is also True
-        edgesToCompile (optional): When not None, only compile edges (and their
-            gates) on this list; else compile all edges and their gates (default)
-        qubitToCompile (optional): When not None, only compile the given Qubit
-            (and its gate), else compile all Qubits and their gates (default)
     '''
     logger.debug("Compiling %d sequence(s)", len(seqs))
 
@@ -339,7 +333,8 @@ def compile_to_hardware(seqs,
 
     # Add gating/blanking pulses
     logger.debug("Adding blanking pulses")
-    PatternUtils.add_gate_pulses(seqs)
+    for seq in seqs:
+        PatternUtils.add_gate_pulses(seq)
 
     if not qgl2 or addQGL2SlaveTrigger:
         # Add the slave trigger
@@ -355,7 +350,7 @@ def compile_to_hardware(seqs,
         channels |= find_unique_channels(seq)
 
     # Compile all the pulses/pulseblocks to sequences of pulses and control flow
-    wireSeqs = compile_sequences(seqs, channels, edgesToCompile=edgesToCompile, qubitToCompile=qubitToCompile)
+    wireSeqs = compile_sequences(seqs, channels)
 
     if not validate_linklist_channels(wireSeqs.keys()):
         print("Compile to hardware failed")
@@ -368,16 +363,7 @@ def compile_to_hardware(seqs,
         if isinstance(chan, Channels.LogicalMarkerChannel):
             wireSeqs[chan] = PatternUtils.apply_gating_constraints(
                 chan.physChan, seq)
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug('')
-            logger.debug("Channel '%s':", chan)
-            for elem in seq:
-                if isinstance(elem, list):
-                    for e2 in elem:
-                        logger.debug(" %s", e2)
-                    logger.debug('')
-                else:
-                    logger.debug(" %s", elem)
+    debug_print(wireSeqs, 'Gated sequence')
 
     # save number of measurements for meta info
     num_measurements = count_measurements(wireSeqs)
@@ -392,16 +378,7 @@ def compile_to_hardware(seqs,
     # apply delays
     for chan, wire in physWires.items():
         PatternUtils.delay(wire, delays[chan])
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug('')
-            logger.debug("Delayed wire for chan '%s':", chan)
-            for elem in wire:
-                if isinstance(elem, list):
-                    for e2 in elem:
-                        logger.debug(" %s", e2)
-                    logger.debug('')
-                else:
-                    logger.debug(" %s", elem)
+    debug_print(physWires, 'Delayed wire')
 
     # generate wf library (base shapes)
     wfs = generate_waveforms(physWires)
@@ -454,13 +431,9 @@ def compile_to_hardware(seqs,
     return list(files.values())
 
 
-def compile_sequences(seqs, channels=set(), edgesToCompile=None, qubitToCompile=None):
+def compile_sequences(seqs, channels=set()):
     '''
     Main function to convert sequences to miniLL's and waveform libraries.
-        edgesToCompile : When not None, only compile edges (and their gates) on
-            this list; else compile all edges and their gates (default)
-        qubitToCompile : When not None, only compile the given Qubit (and its
-            gate), else compile all Qubits and their gates (default)
     '''
 
     # turn into a loop, by appending GOTO(0) at end of last sequence
@@ -477,101 +450,26 @@ def compile_sequences(seqs, channels=set(), edgesToCompile=None, qubitToCompile=
         channels |= find_unique_channels(subroutines)
 
     # use seqs[0] as prototype in case we were not given a set of channels
-    wires = compile_sequence(seqs[0], channels, edgesToCompile, qubitToCompile)
+    wires = compile_sequence(seqs[0], channels)
     if not channels:
         channels = set(wires.keys())
     wireSeqs = {chan: [seq] for chan, seq in wires.items()}
     for seq in seqs[1:]:
-        wires = compile_sequence(seq, channels, edgesToCompile, qubitToCompile)
+        wires = compile_sequence(seq, channels)
         for chan in wireSeqs.keys():
             wireSeqs[chan].append(wires[chan])
     #Print a message so for the experiment we know how many sequences there are
     print('Compiled {} sequences.'.format(len(seqs) - len(subroutines)))
 
     # Debugging:
-    if logger.isEnabledFor(logging.DEBUG):
-        logger.debug('')
-        logger.debug("Returning from compile_sequences():")
-        for chan in wireSeqs:
-            logger.debug('')
-            logger.debug("Channel '%s':", chan)
-            seq = wireSeqs[chan]
-            for elem in seq:
-                if isinstance(elem, list):
-                    for e2 in elem:
-                        logger.debug(" %s", e2)
-                else:
-                    logger.debug(" %s", elem)
+    debug_print(wireSeqs, 'Return from compile_sequences()')
 
     return wireSeqs
 
-def channels_to_compile(channels, edgesToCompile=None, qubitToCompile=None):
-    '''
-    Filter input set of channels to exclude those not on given lists
-        edgesToCompile : When not None, only compile edges (and their gates) on
-            this list; else compile all edges and their gates (default)
-        qubitToCompile : When not None, only compile the given Qubit (and its
-            gate), else compile all Qubits and their gates (default)
-    '''
-    # Edited set of channels to return
-    newchans = set()
-
-    # Skip the gates for any Edges/Qubits that we are skipping
-    gatesToSkip = set()
-    for chan in channels:
-        if isinstance(chan, Channels.Edge):
-            if edgesToCompile is not None and chan not in edgesToCompile:
-                if has_gate(chan):
-                    gatesToSkip.add(chan.gateChan)
-                    logger.debug("%s to be excluded so excluding its gate %s", chan, chan.gateChan)
-                else:
-                    logger.debug("%s didn't have a gate", chan)
-        elif isinstance(chan, Channels.Qubit):
-            if qubitToCompile is not None and chan != qubitToCompile:
-                if has_gate(chan):
-                    gatesToSkip.add(chan.gateChan)
-                    logger.debug("%s to be excluded so excluding its gate %s", chan, chan.gateChan)
-                else:
-                    logger.debug("%s didn't have a gate", chan)
-
-    # Now for each channel skip the relevant channels, building
-    # a new set of channels
-    for chan in channels:
-        if chan in gatesToSkip:
-            logger.debug("Compilation skipping gate %s", chan)
-            continue
-        if isinstance(chan, Channels.Edge):
-            if edgesToCompile is None or chan in edgesToCompile:
-                # add chan
-                logger.debug("Compilation including %s", chan)
-                newchans.add(chan)
-                continue
-            else:
-                # skip this edge
-                logger.debug("Compilation skipping %s", chan)
-                continue
-        if isinstance(chan, Channels.Qubit):
-            if qubitToCompile is None or chan == qubitToCompile:
-                # add
-                newchans.add(chan)
-                logger.debug("Compilation including %s", chan)
-                continue
-            else:
-                # skip
-                logger.debug("Compilation skipping %s", chan)
-                continue
-        newchans.add(chan)
-        logger.debug("Compilation including %s", chan)
-    return newchans
-
-def compile_sequence(seq, channels=None, edgesToCompile=None, qubitToCompile=None):
+def compile_sequence(seq, channels=None):
     '''
     Takes a list of control flow and pulses, and returns aligned blocks
     separated into individual abstract channels (wires).
-        edgesToCompile : When not None, only compile edges (and their gates) on
-            this list; else compile all edges and their gates (default)
-        qubitToCompile : When not None, only compile the given Qubit (and its
-            gate), else compile all Qubits and their gates (default)
     '''
     logger.debug('')
     logger.debug("In compile_sequence:")
@@ -579,10 +477,6 @@ def compile_sequence(seq, channels=None, edgesToCompile=None, qubitToCompile=Non
     if not channels:
         logger.debug("<Had no channels>")
         channels = find_unique_channels(seq)
-
-    # Filter list of channels to only include designated edges and Qubit (and their gates)
-    if edgesToCompile is not None or qubitToCompile is not None:
-        channels = channels_to_compile(channels, edgesToCompile, qubitToCompile)
 
     wires = {chan: [] for chan in channels}
 
@@ -640,12 +534,8 @@ def compile_sequence(seq, channels=None, edgesToCompile=None, qubitToCompile=Non
             # add aligned Pulses (if the block contains a composite pulse, may get back multiple pulses)
             wires[chan] += schedule(chan, block.pulses[chan], block.length,
                                     block.alignment)
-    if logger.isEnabledFor(logging.DEBUG):
-        for chan in wires:
-            logger.debug('')
-            logger.debug("compile_sequence() return for channel '%s':", chan)
-            for elem in wires[chan]:
-                logger.debug(" %s", elem)
+    debug_print(wires, 'compile_sequence() return')
+
     return wires
 
 
@@ -685,7 +575,7 @@ def normalize(seq, channels=None):
     with uniform channels on each PulseBlock. We inject Id's where necessary.
     '''
     # promote to PulseBlocks
-    seq = [p.promote() for p in seq]
+    seq = [p.promote(PulseBlock) for p in seq]
 
     if not channels:
         channels = find_unique_channels(seq)
@@ -843,6 +733,18 @@ def set_log_level(loggerName='QGL.Compiler',
     # Without this when running in notebook, console gets log stmts at default format
     logger.propagate = 0
 
+def debug_print(seqs, label):
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug('')
+        for chan, seq in seqs.items():
+            logger.debug("%s for chan '%s':", label, chan)
+            for elem in seq:
+                if isinstance(elem, list):
+                    for e2 in elem:
+                        logger.debug(" %s", e2)
+                    logger.debug('')
+                else:
+                    logger.debug(" %s", elem)
 
 def save_code(seqs, filename):
     from IPython.lib.pretty import pretty
