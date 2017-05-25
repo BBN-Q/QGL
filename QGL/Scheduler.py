@@ -15,22 +15,22 @@ def schedule(seq):
     '''
 
     # dictionary of per-qubit time counters
+    # each value will encode the last filled time bin per channnel (key)
     counters = {}
+
     out_seq = []
+    channel_set = find_all_channels(seq)
 
     for instr in seq:
         if isinstance(instr, Barrier):
             synchronize_counters(counters, instr.chanlist)
             continue
-        if isinstance(instr, (ControlInstruction, BlockLabel)):
-            channels = counters.keys()
-            idx = len(out_seq)
-        else:
-            channels = get_channels(instr)
-            # find the most advanced counter in the channel set
-            idx = max(counters.get(ch, 0) for ch in channels)
 
-        if (idx > len(out_seq) - 1) or isinstance(out_seq[idx], ControlInstruction):
+        channels = get_channels(instr, channel_set)
+        # find the most advanced counter in the channel set
+        idx = max(counters.get(ch, 0) for ch in channels)
+
+        if (idx >= len(out_seq)) or isinstance(out_seq[idx], ControlInstruction):
             out_seq.append(instr)
         else:
             out_seq[idx] *= instr
@@ -40,20 +40,36 @@ def schedule(seq):
 
     return out_seq
 
-def get_channels(instr):
+def get_channels(instr, channel_set=None):
     '''
-    Normalizes the various ways 'channels' can be encoded in instruction into
+    Normalizes the various ways 'channels' can be encoded in instructions into
     a tuple of channels
+    TODO this suggests that we should normalize the names of these properties
     '''
-    if not hasattr(instr, 'channel'):
-        warn("instruction %s does not have a 'channel' property", instr)
-        return None
     if isinstance(instr, PulseBlock):
         return tuple(instr.channel)
+    elif isinstance(instr, (ControlInstruction, BlockLabel)):
+        # these instruction types are assumed to broadcast
+        return channel_set
+    elif isinstance(instr, Barrier):
+        return chanlist
+    elif not hasattr(instr, 'channel'):
+        warn("instruction %s does not have a 'channel' property", instr)
+        return None
     elif isinstance(instr.channel, Edge):
         return (instr.channel.source, instr.channel.target)
     else:
         return (instr.channel,)
+
+def find_all_channels(seq):
+    channels = set()
+    for instr in seq:
+        instr_channels = get_channels(instr)
+        if instr_channels is None:
+            continue
+        for ch in instr_channels:
+            channels.add(ch)
+    return channels
 
 def synchronize_counters(counters, channels):
     '''

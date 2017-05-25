@@ -100,7 +100,7 @@ class SchedulerTest(unittest.TestCase):
 
         # test that "global" control flow injects barriers
         seq = [X(q1)] + \
-              qif(1, [Y(q1),Y(q2),X90(q1)], [Z(q1),Z(q2),X90(q1)]) + \
+              cond_seq + \
               [Y90(q1),Y90(q2)]
 
         result = schedule(seq)
