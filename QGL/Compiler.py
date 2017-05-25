@@ -298,8 +298,7 @@ def compile_to_hardware(seqs,
                         fileName,
                         suffix='',
                         axis_descriptor=None,
-                        qgl2=False,
-                        addQGL2SlaveTrigger=False):
+                        addSlaveTrigger=True):
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'.
     Other inputs:
@@ -309,17 +308,12 @@ def compile_to_hardware(seqs,
             axes of the measurements that the sequence will yield. For instance,
             if `seqs` generates a Ramsey experiment, axis_descriptor would describe
             the time delays between pulses.
-        qgl2 (optional): When True, run QGL2 specific debug code and only
-            selectively add the slaveTrigger; when False (default), always add
-            the slave trigger
-        addQGL2SlaveTrigger (optional): When qgl2=True only add the slave trigger
-            when this is also True
+        addSlaveTrigger (optional): add the slave trigger(s)
     '''
     logger.debug("Compiling %d sequence(s)", len(seqs))
 
     # save input code to file
-    if not qgl2:
-        save_code(seqs, fileName + suffix)
+    save_code(seqs, fileName + suffix)
 
     # all sequences should start with a WAIT for synchronization
     for seq in seqs:
@@ -336,7 +330,7 @@ def compile_to_hardware(seqs,
     for seq in seqs:
         PatternUtils.add_gate_pulses(seq)
 
-    if not qgl2 or addQGL2SlaveTrigger:
+    if addSlaveTrigger:
         # Add the slave trigger
         logger.debug("Adding slave trigger")
         PatternUtils.add_slave_trigger(seqs,
