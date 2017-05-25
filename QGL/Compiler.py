@@ -628,7 +628,7 @@ def compile_sequence(seq, channels=None, edgesToCompile=None, qubitToCompile=Non
                     continue
                 logger.debug("Modifying pulse on %s: %s", chan, wires[chan][-1])
                 # search for last non-TA entry
-                for ct in range(1,len(wires[chan])):
+                for ct in range(1,len(wires[chan])+1):
                     if hasattr(wires[chan][-ct], 'isTimeAmp') and not wires[chan][-ct].isTimeAmp:
                         updated_frameChange = wires[chan][-ct].frameChange + block.pulses[chan].frameChange
                         wires[chan][-ct] = wires[chan][-ct]._replace(frameChange=updated_frameChange)
