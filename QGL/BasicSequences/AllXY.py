@@ -17,8 +17,9 @@ def AllXY(q, showPlot=False):
               secondPulses[int(np.floor(ind / 2))], MEAS(q)]
              for ind in range(42)]
 
-    filenames = compile_to_hardware(seqs, 'AllXY/AllXY')
-    print(filenames)
+    metafile = compile_to_hardware(seqs, 'AllXY/AllXY')
 
     if showPlot:
-        plot_pulse_files(filenames)
+        plot_pulse_files(metafile)
+
+    return metafile

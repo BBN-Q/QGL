@@ -428,7 +428,7 @@ def compile_to_hardware(seqs,
         json.dump(meta, FID, indent=2, sort_keys=True)
 
     # Return the filenames we wrote
-    return list(files.values())
+    return metafilepath
 
 
 def compile_sequences(seqs, channels=set()):

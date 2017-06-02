@@ -42,8 +42,8 @@ def SPAM(qubit, angleSweep, maxSpamBlocks=10, showPlot=False):
     for seq in seqs:
         seq.append(measBlock)
 
-    fileNames = compile_to_hardware(seqs, 'SPAM/SPAM')
-    print(fileNames)
+    metafile = compile_to_hardware(seqs, 'SPAM/SPAM')
 
     if showPlot:
-        plot_pulse_files(fileNames)
+        plot_pulse_files(metafile)
+    return metafile
