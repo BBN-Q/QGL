@@ -494,7 +494,11 @@ def compile_sequence(seq, channels=None):
             continue
         # control flow broadcasts to all channels if channel attribute is None
         if isinstance(block, ControlFlow.ControlInstruction):
-            block_channels = block.channels if block.channels else channels
+            # Need to deal with attaching measurements and edges to control
+            # instruction. Until we have a proper solution for that, we will
+            # always broadcast control instructions to all channels
+            # block_channels = block.channels if block.channels else channels
+            block_channels = channels
             for chan in block_channels:
                 wires[chan] += [copy(block)]
             continue
