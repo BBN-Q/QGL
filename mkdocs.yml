@@ -1,6 +1,8 @@
 site_name: QGL
 pages:
     - Intro: index.md
+    - Configuration: config.md
+    - Examples: examples.md
 theme: readthedocs
 docs_dir: 'doc'
 markdown_extensions:
