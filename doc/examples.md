@@ -57,3 +57,26 @@ different default CNOT implementation by modifying the 'cnot_implementation' key
 in QGL's config.json configuration file.
 
 ## Built-in Basic Sequences
+
+QGL provides many pre-defined methods for sequences commonly used to
+characterize a quantum device. These methods are defined in QGL's
+`BasicSequences` package and include:
+
+* `RabiAmp`
+* `RabiWidth`
+* `PulsedSpec`
+* `InversionRecovery`
+* `Ramsey`
+* `HahnEcho`
+* `CPMG`
+* `SingleQubitRB`
+* `TwoQubitRB`
+
+Usage of each is defined in its respective doc string. For instance, at an
+ipython prompt, you may type
+```shell
+In [1]: ?RabiAmp
+```
+to learn about the `RabiAmp` function. We encourage users to peruse the methods
+defined in `BasicSequences` for templates that may be useful in writing their
+own QGL programs.

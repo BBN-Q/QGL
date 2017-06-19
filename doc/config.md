@@ -40,4 +40,28 @@ single-channel real output is still a TODO.
 
 ## Configuration Options
 
-Lorem ipsum...
+QGL depends on a number of global configuration options defined in `config.json`
+in the QGL package directory. If this file cannot be found when the package is
+loaded, it is created and populated with these default parameters
+```json
+{
+	"AWGDir": "/my/path/to/awg/",
+	"ChannelLibraryFile": "/my/path/to/ChannelParams.json",
+	"PulsePrimitivesLibrary": "standard",
+	"cnot_implementation": "CNOT_CR",
+	"PlotBackground": "#EAEAF2",
+	"GridColor": "white"
+}
+```
+
+These parameters control:
+
+* `AWGDir` - the directory where sequence file outputs of the compiler should be
+    saved.
+* `ChannelLibraryFile` - path to the channel parameters JSON file
+* `PulsePrimitivesLibrary` - `standard` or `all90`; the latter uses only 90 rotations
+    to create all operations (e.g. `X = X90 + X90`)
+* `cnot_implementation` - names another method to delegate implementation of
+    `CNOT`; usually `CNOT_simple` or `CNOT_CR`
+* `PlotBackground` - hex string controlling background color of plots
+* `GridColor` - hex string controlling color of grid lines in plots
