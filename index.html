@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="None">
+  
+  <link rel="shortcut icon" href="./img/favicon.ico">
+  <title>Intro - QGL</title>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="./css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="./css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="./css/highlight.css">
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Intro";
+    var mkdocs_page_input_path = "index.md";
+    var mkdocs_page_url = "/";
+  </script>
+  
+  <script src="./js/jquery-2.1.1.min.js"></script>
+  <script src="./js/modernizr-2.8.3.min.js"></script>
+  <script type="text/javascript" src="./js/highlight.pack.js"></script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href="." class="icon icon-home"> QGL</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+	<ul class="current">
+	  
+          
+            <li class="toctree-l1 current">
+		
+    <a class="current" href=".">Intro</a>
+    <ul class="subnav">
+            
+    <li class="toctree-l2"><a href="#getting-started-with-qgl">Getting Started with QGL</a></li>
+    
+        <ul>
+        
+            <li><a class="toctree-l3" href="#channels">Channels</a></li>
+        
+            <li><a class="toctree-l3" href="#gate-primitives">Gate Primitives</a></li>
+        
+            <li><a class="toctree-l3" href="#sequences-and-simultaneous-operations">Sequences and Simultaneous Operations</a></li>
+        
+            <li><a class="toctree-l3" href="#composite-pulses">Composite Pulses</a></li>
+        
+            <li><a class="toctree-l3" href="#pulse-shapes-and-waveforms">Pulse Shapes and Waveforms</a></li>
+        
+            <li><a class="toctree-l3" href="#compiling-and-plotting">Compiling and Plotting</a></li>
+        
+            <li><a class="toctree-l3" href="#axis-descriptors">Axis Descriptors</a></li>
+        
+        </ul>
+    
+
+    </ul>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="config/">Configuration</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="examples/">Examples</a>
+	    </li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href=".">QGL</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>Intro</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h1 id="getting-started-with-qgl">Getting Started with QGL</h1>
+<p>Quantum Gate Language (QGL) is a domain specific language embedded in python for
+specifying gate sequences on quantum processors. It is a low-level language in
+the sense that users write programs at the level of gates on physical qubits.
+While the QGL developers pay particular attention to the requirements of
+superconducting qubit systems, its structure is generic to any qubit system with
+dipole-coupled qubits in a rotating frame. In such systems, the rotation axis in
+the X-Y plane is determined by the pulse phase, and Z-axis rotations may be
+achieved through <em>frame updates</em>.</p>
+<h2 id="channels">Channels</h2>
+<p>Many early quantum processors require non-uniform control parameters to achieve
+high-fidelity gates across all qubits in the device. To deal with this, QGL
+provides a number of <em>channel</em> objects to store the <em>individual</em> parameters
+needed to control or measure the qubits.</p>
+<p>Gates in QGL operate on resources known as <code>LogicalChannels</code>. For control, these
+channels are either <code>Qubits</code> or <code>Edges</code>. The <code>Qubit</code> channels encode properties
+specific to manipulating individual qubits in quantum processor, while <code>Edges</code>
+encode the connectivity of the device. Since some 2-qubit gates have a preferred
+directionality due to the physical parameters of the device, <code>Edges</code> correspond
+to a <em>directed</em> edge in the qubit connectivity graph. Qubit measurements instead
+act upon a third <code>LogicalChannel</code> type which is the <code>Measurement</code> channel. A
+final logical resource type is the <code>LogicalMarkerChannel</code> which is used to carry
+ancillary pulse information for things such as event triggers.</p>
+<p>All <code>LogicalChannels</code> must be mapped to <code>PhysicalChannels</code> in order for the QGL
+compiler to produce sequence files for the target hardware. The setup of this
+mapping is <a href="config/#channel-library-setup">described later</a>.</p>
+<p>While setup of these channels is important for final sequence compilation, QGL
+programs typically refer only to <code>Qubit</code> channels. Actions on other channel
+types may be implied by the operation. For example, to create a <code>Qubit</code> object
+in QGL, one can write:</p>
+<pre><code class="python">q1 = QubitFactory(&quot;q1&quot;)
+</code></pre>
+
+<p>The <code>QubitFactory</code> method returns a <code>Qubit</code> object with the properties defined
+by the name <code>q1</code> if found in the channel library. If the name is not found, then
+the users gets a <code>Qubit</code> object with the default properties.</p>
+<h2 id="gate-primitives">Gate Primitives</h2>
+<p>The underlying representation of all QGL operations is a <code>Pulse</code> object.
+However, users are not expected to create <code>Pulses</code> directly, but instead
+interact with various pre-defined one- and two-qubit primitives.</p>
+<h3 id="single-qubit-operations">Single-Qubit Operations</h3>
+<p>QGL provides the following single-qubit gates:</p>
+<pre><code class="python"># generic rotation angle and phase
+Utheta(q, angle, phase)
+
+# generic rotations about a specific axis (phase)
+Xtheta(q, angle)
+Ytheta(q, angle)
+Ztheta(q, angle)
+
+# generic rotations of a specific angle
+U(q, phase)
+U90(q, phase)
+
+# rotations of particular angle and phase
+# X (phase = 0)
+X(q)    # rotates by pi (180 degrees)
+X90(q)  # rotates by +pi/2
+X90m(q) # rotates by -pi/2
+
+# Y (phase = pi/2)
+Y(q)
+Y90(q)
+Y90m(q)
+
+# just frame-updates
+Z(q)
+Z90(q)
+Z90m(q)
+
+# identity (delay or no-op)
+Id(q, length) # length parameter is optional
+
+# measurement
+MEAS(q)
+</code></pre>
+
+<p>Due to the utility of Clifford-group operations in characterizing gate
+performance, QGL also directly provides a primitive to implement the 24-element
+single-qubit Clifford group:</p>
+<pre><code class="python"># atomic Clifford operation on 1-qubit
+AC(q, n)
+</code></pre>
+
+<p>This method is &ldquo;atomic&rdquo; because it implements the full 1-qubit Clifford group
+with one pulse per element, as opposed to requiring a sequence of the primitives
+already given above. We known of no canonical way to specify the elements of the
+Clifford group; consequently, <code>AC</code> identifies which Clifford by a numerical
+index (0-23). See the definition of <code>AC</code> in <code>PulsePrimitives.py</code> or the
+definition of <code>C1</code> in <code>Cliffords.py</code> to find our enumeration of the group.</p>
+<h3 id="two-qubit-operations">Two-qubit Operations</h3>
+<p>QGL provides only one high-level two-qubit primitives, <code>CNOT</code>. The implementation
+of CNOT may be chosen by specifying the <code>cnot_implementation</code> key in QGL&rsquo;s
+<a href="config/#configuration-options">config file</a>.</p>
+<pre><code class="python"># high-level primitives
+CNOT(q1, q2)
+
+# mid-level primitives
+CNOT_simple(q1, q2) # a single-pulse gate on Edge(q1, q2)
+CNOT_CR(q1, q2)     # an &quot;echoed&quot; cross-resonance CNOT gate on Edge(q1, q2)
+ZX90_CR(q1, q2)     # a ZX90 on Edge(q1, q2) implemented with &quot;echoed&quot;
+                    # cross-resonance pulses
+
+# lowest-level primitives
+echoCR(q1, q2)  # A &quot;echoed&quot; cross-resonance pulse
+</code></pre>
+
+<h3 id="additional-parameters">Additional Parameters</h3>
+<p>All QGL pulse primitives accept an arbitrary number of additional keyword
+arguments. In particular, any QGL primitive accepts a <code>length</code> keyword to modify
+the length of the resulting operation. These additional parameters are passed to
+the <a href="#pulse-shapes-and-waveforms">shape function</a> when the QGL compiler
+constructs waveforms from <code>Pulse</code> objects.</p>
+<h2 id="sequences-and-simultaneous-operations">Sequences and Simultaneous Operations</h2>
+<p>Programs in QGL are specified using python lists. For example,</p>
+<pre><code class="python">q1 = QubitFactory(&quot;q1&quot;)
+seq = [X90(q1), X(q1), Y(q1), X90(q1), MEAS(q1)]
+</code></pre>
+
+<p>The elements of the list provide a time-ordered sequence of pulses to execute.
+Using the python list to describe sequences allows for the use of python&rsquo;s
+powerful list comprehension syntax to describe sequence variations. For
+instance, you can concisely write a scan over a rotation angle or delay in a
+list comprehension such as:</p>
+<pre><code class="python">seq = [[X90(q1), Id(q1, length=d), X90(q1), MEAS(q1)] for d in np.linspace(0, 10e-6, 11)]
+</code></pre>
+
+<p>QGL&rsquo;s compiler assumes that such lists of lists represent a series of related
+experiments and schedules them to occur sequentially in the AWG output.</p>
+<p>Users express simultaneity in QGL using the <code>*</code> operator. For instance,</p>
+<pre><code class="python">q1 = QubitFactory(&quot;q1&quot;)
+q2 = QubitFactory(&quot;q2&quot;)
+seq = [X90(q1)*X90(q2), MEAS(q1)*MEAS(q2)]
+</code></pre>
+
+<p>would execute the same sequence on <code>Qubit</code>s <code>q1</code> and <code>q2</code>. If the gate durations
+differ between <code>q1</code> and <code>q2</code>, the QGL compiler injects delays to create aligned
+<code>PulseBlock</code>s. By default, simultaneous pulses are &ldquo;left-aligned&rdquo;, meaning that
+the leading pulse edges are aligned and padding delays are injected on the
+trailing edge. However, the user may change this behavior with the <code>align</code>
+method:</p>
+<pre><code class="python">seq = [align(X90(q1)*X90(q2)), align(MEAS(q1)*MEAS(q2), mode=&quot;right&quot;)]
+</code></pre>
+
+<p><code>align</code> takes a <code>mode</code> argument (&ldquo;left&rdquo;, &ldquo;right&rdquo;, or default &ldquo;center&rdquo;) to
+specify a particular pulse alignment within a <code>PulseBlock</code>.</p>
+<h2 id="composite-pulses">Composite Pulses</h2>
+<p>Occasionally one wants to construct a sequence of pulses and treat them as if
+the entire sequence were a single pulse. For this, QGL allows pulses to be
+joined with the <code>+</code> operator. This allows, for example, us to define</p>
+<pre><code class="python">def hadamard(q):
+    return Y90(q) + X(q)
+</code></pre>
+
+<p>and then use <code>hadmard(q)</code> just like any other pulse primitive, even though it is
+composed of a sequence of two pulses.</p>
+<h2 id="pulse-shapes-and-waveforms">Pulse Shapes and Waveforms</h2>
+<p>The QGL compiler constructs waveforms to implement the desired quantum
+operations. To do this, each pulse has a <code>shapeFun</code> (shape function) that is
+called with its <code>shapeParams</code>. A number of commonly used shapes are defined in
+the <code>PulseShapes</code> module including:</p>
+<ul>
+<li><code>constant</code> - i.e. a &ldquo;square&rdquo; pulse with constant amplitude</li>
+<li><code>tanh</code> - essentially a square pulse with rounded edges</li>
+<li><code>gaussian</code> - a truncated Gaussian shape</li>
+<li><code>drag</code> - the DRAG pulse gives a Gaussian shape with its derivative on the opposite quadrature.</li>
+<li><code>gaussOn</code> - the first half of a truncated Gaussian shape</li>
+<li><code>gaussOff</code> - the second half of a truncated Gaussian shape</li>
+</ul>
+<p>The default pulse shape is determined by properties in the <a href="config/#channel-library-setup">channel
+library</a>. However, the QGL programmer may
+override the default shape with a keyword argument. For example, to force the
+use of square pulse shape we may write:</p>
+<pre><code class="python">seq = [X(q1, shapeFun=PulseShapes.constant), MEAS(q1)]
+</code></pre>
+
+<p>One common use case for specifying a shape function is in the construction of
+composite pulses. For instance, you may want a square pulse shape with Gaussian
+edges rather than those given by the <code>tanh</code> function. To do this you might write:</p>
+<pre><code class="python">seq = [X(q1, shapeFun=PulseShapes.gaussOn) +\
+       X(q1, shapeFun=PulseShapes.constant) +\
+       X(q1, shapeFun=PulseShapes.gaussOff),
+       MEAS(q1)]
+</code></pre>
+
+<p>Shape functions can be an arbitrary piece of python code that returns a NumPy
+array of complex values. Shape functions must accept <strong>all</strong> of their arguments
+as keyword arguments. The only arguments that are guaranteed to exist are
+<code>samplingRate</code> and <code>length</code>. The pulse length is always assumed to be units of
+seconds; it is up to the shape function to use the passed sampling rate to
+convert from time into number of points/samples. As an example, we could define
+a ramp shape with</p>
+<pre><code class="python">def ramp(length=0, samplingRate=1e9, **kwargs):
+    numPts = int(np.round(length * samplingRate))
+    return np.linspace(0, 1, numPts)
+</code></pre>
+
+<p>Then use it with any pulse primitive, e.g.:</p>
+<pre><code class="python">seq = [X(q1, shapeFun=ramp)]
+</code></pre>
+
+<p>If your custom shape function requires additional arguments, you must either
+arrange for these parameters to exist in the <code>LogicalChannel</code>&lsquo;s <code>shapeParams</code>
+dictionary, or pass them at the call site. For instance,</p>
+<pre><code class="python">def foo(length=0, samplingRate=1e9, bar=1, **kwargs):
+    numPts = int(np.round(length * samplingRate))
+    # something involving bar...
+
+seq = [X(q1, bar=0.5, shapeFun=foo)] # bar is passed as a keyword arg
+</code></pre>
+
+<p>See the <code>PulseShapes</code> module for further examples.</p>
+<h2 id="compiling-and-plotting">Compiling and Plotting</h2>
+<p>To reduce a pulse sequence to AWG vendor-specific hardware instructions, use the
+<code>compile_to_hardware()</code> method, e.g.:</p>
+<pre><code class="python">seq = [[X90(q1), Id(q1, length=d), X90(q1), MEAS(q1)] for d in np.linspace(0, 10e-6, 11)]
+meta_info = compile_to_hardware(seq, 'test/ramsey')
+</code></pre>
+
+<p>This code snippet will create a folder called <code>test</code> inside
+<a href="config/#configuration-options"><code>AWGDir</code></a> and produce sequence files for each
+AWG targeted by the <code>PhysicalChannels</code> associated with the QGL program. For
+instance, if the <code>q1</code> channel targeted an AWG named <code>APS1</code> and the <code>M-q1</code>
+channel targeted <code>APS2</code>, then the above call to <code>compile_to_hardware</code> would
+produce two files: <code>ramsey-APS1.h5</code> and <code>ramsey-APS2.h5</code> in the <code>test</code> folder.
+It would also produce a <em>meta information</em> file <code>ramsey-meta.json</code> which
+contains data about the QGL program that may be useful for executing the
+program in an instrument control platform such as
+<a href="https://github.com/BBN-Q/Auspex">Auspex</a>. <code>compile_to_hardware</code> returns the
+path to this meta info file.</p>
+<p>The <code>plot_pulse_files()</code> creates a visual representation of the pulse sequence
+created by a QGL program. For example,</p>
+<pre><code class="python">plot_pulse_files(meta_info)
+</code></pre>
+
+<p>will create an interactive plot where each line represents a physical output
+channel of an AWG referenced by the QGL program.</p>
+<p>You may also view a QGL program prior to the logical -&gt; physical mapping with
+<code>show()</code>. For example,</p>
+<pre><code class="python">seq = [X90(q1), Id(q1, length=100e-9), X90(q1), MEAS(q1)]
+show(seq)
+</code></pre>
+
+<p>will create a plot grid where each subplot shows the operations on individual
+<code>LogicalChannels</code>.</p>
+<h2 id="axis-descriptors">Axis Descriptors</h2>
+<p>TODO</p>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="config/" class="btn btn-neutral float-right" title="Configuration">Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+	  
+        </div>
+      </div>
+
+    </section>
+    
+  </div>
+
+  <div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+      
+        <span style="margin-left: 15px"><a href="config/" style="color: #fcfcfc">Next &raquo;</a></span>
+      
+    </span>
+</div>
+    <script src="./js/theme.js"></script>
+
+</body>
+</html>
+
+<!--
+MkDocs version : 0.16.3
+Build Date UTC : 2017-06-19 19:16:03
+-->

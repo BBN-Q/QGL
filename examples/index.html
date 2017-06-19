@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>Examples - QGL</title>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="../css/highlight.css">
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Examples";
+    var mkdocs_page_input_path = "examples.md";
+    var mkdocs_page_url = "/examples/";
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js"></script>
+  <script src="../js/modernizr-2.8.3.min.js"></script>
+  <script type="text/javascript" src="../js/highlight.pack.js"></script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href=".." class="icon icon-home"> QGL</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+	<ul class="current">
+	  
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="..">Intro</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../config/">Configuration</a>
+	    </li>
+          
+            <li class="toctree-l1 current">
+		
+    <a class="current" href="./">Examples</a>
+    <ul class="subnav">
+            
+    <li class="toctree-l2"><a href="#ramsey-sequence">Ramsey Sequence</a></li>
+    
+
+    <li class="toctree-l2"><a href="#multi-qubit-sequence">Multi-qubit Sequence</a></li>
+    
+
+    <li class="toctree-l2"><a href="#built-in-basic-sequences">Built-in Basic Sequences</a></li>
+    
+
+    </ul>
+	    </li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="..">QGL</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>Examples</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h2 id="ramsey-sequence">Ramsey Sequence</h2>
+<p>A simple Ramsey experiment with 51 steps between 0 and 100us:</p>
+<pre><code class="python">from QGL import *
+output_file() # or output_notebook() from a jupyter notebook
+
+q1 = QubitFactory('q1')
+seqs = [[X90(q1), Id(q1, length=d), X90(q1), MEAS(q1)] for d in np.linspace(0,100e-6, 51)]
+# get a view of the 10th sequence grouped by logical channels
+show(seqs[9])
+# compile
+compile_to_hardware(seqs)
+</code></pre>
+
+<p>The <code>QubitFactory</code> method is a convenience method to create a <code>Qubit</code> object
+with parameters read from the pulse parameters file. The string <code>'q1'</code>
+identifies the qubit label to look up in the parameter file. You can also create
+<code>Qubit</code>s on the fly by passing in parameters to the <code>Qubit</code> constructor.</p>
+<p>To define the QGL program, the Ramsey example uses a python list comprehension
+to express a list of sequences in a single line.</p>
+<h2 id="multi-qubit-sequence">Multi-qubit Sequence</h2>
+<p>Multi-qubit sequences are represented with notation similar to a tensor product.
+To get this to work, you must add to your channel library a logical channel
+representing the coupling between qubits. In QGL terminology, this is known as
+an <code>Edge</code>, and is a <em>directed</em> edge in the connectivity graph of your device.
+QGL uses directed edges because certain two-qubit interactions have a preferred
+ordering of the interaction. For instance, a cross resonance gate has a
+preferred sign of the qubit-qubit detuning. By storing directed edges, we can
+write two-qubit primitives that emit different pulses depending on whether the
+(control, target) pair is aligned or anti-aligned with the underlying
+interaction Hamiltonian.</p>
+<p>To see this in action, add two qubits to your channel library and one edge
+<strong>q1-q2</strong> connecting them. Then try the following program:</p>
+<pre><code class="python">from QGL import *
+output_file() # or output_notebook() from a jupyter notebook
+
+q1 = QubitFactory('q1')
+q2 = QubitFactory('q2')
+seq = [X90(q1)*Y(q2), CNOT(q1,q2), Y(q1), CNOT(q1,q2), X90(q1)*Y(q2), MEAS(q1)*MEAS(q2)]
+show(seq)
+compile_to_hardware(seq)
+</code></pre>
+
+<p>In this example you can see the use of the two-qubit primitive <code>CNOT</code>, which by
+default emits a sequence of 1- and 2-qubit gates necessary to compose a CNOT
+operation from single-qubit gates and a ZX90, as is appropriate for a
+cross-resonance interaction. The exact sequence will depend on the (source,
+target) order you selected in creating the <strong>q1-q2</strong> <code>Edge</code>. You can select a
+different default CNOT implementation by modifying the &lsquo;cnot_implementation&rsquo; key
+in QGL&rsquo;s config.json configuration file.</p>
+<h2 id="built-in-basic-sequences">Built-in Basic Sequences</h2>
+<p>QGL provides many pre-defined methods for sequences commonly used to
+characterize a quantum device. These methods are defined in QGL&rsquo;s
+<code>BasicSequences</code> package and include:</p>
+<ul>
+<li><code>RabiAmp</code></li>
+<li><code>RabiWidth</code></li>
+<li><code>PulsedSpec</code></li>
+<li><code>InversionRecovery</code></li>
+<li><code>Ramsey</code></li>
+<li><code>HahnEcho</code></li>
+<li><code>CPMG</code></li>
+<li><code>SingleQubitRB</code></li>
+<li><code>TwoQubitRB</code></li>
+</ul>
+<p>Usage of each is defined in its respective doc string. For instance, at an
+ipython prompt, you may type</p>
+<pre><code class="shell">In [1]: ?RabiAmp
+</code></pre>
+
+<p>to learn about the <code>RabiAmp</code> function. We encourage users to peruse the methods
+defined in <code>BasicSequences</code> for templates that may be useful in writing their
+own QGL programs.</p>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="../config/" class="btn btn-neutral" title="Configuration"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+	  
+        </div>
+      </div>
+
+    </section>
+    
+  </div>
+
+  <div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+        <span><a href="../config/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+    </span>
+</div>
+    <script src="../js/theme.js"></script>
+
+</body>
+</html>
