@@ -1,0 +1,7 @@
+site_name: QGL
+pages:
+    - Intro: index.md
+theme: readthedocs
+docs_dir: 'doc'
+markdown_extensions:
+    - smarty
