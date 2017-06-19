@@ -37,9 +37,9 @@ def qfunction(func):
     target = {}
 
     @wraps(func)
-    def crfunc(*args):
+    def crfunc(*args, **kwargs):
         if args not in target:
-            seq = func(*args) + [Return()]
+            seq = func(*args, **kwargs) + [Return()]
             target[args] = label(seq)
             qfunction_seq[label(seq)] = seq
         return Call(target[args])
