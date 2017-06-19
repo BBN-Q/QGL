@@ -31,7 +31,7 @@ def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False, delay=Non
     #Add optional delay
     full_cal_seqs = [[seq, Id(qubits[0], delay), measBlock] if delay else [seq, measBlock] for seq in cal_seqs]
     if waitcmp:
-        [cal_seq.append(qwait('CMP')) for cal_seq in full_cal_seqs]
+        [cal_seq.append(qwait(kind='CMP')) for cal_seq in full_cal_seqs]
     return full_cal_seqs
 
 def cal_descriptor(qubits, numRepeats):

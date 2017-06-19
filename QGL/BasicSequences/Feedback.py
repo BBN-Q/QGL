@@ -21,7 +21,7 @@ def qreset(qubits, signVec, measDelay, buf):
     FbSeq = [reduce(operator.mul, x) for x in product(*FbGates)]
 
     # load register
-    seq = [Id(qubits[0], measDelay), qwait('CMP'), Id(qubits[0], buf)]
+    seq = [Id(qubits[0], measDelay), qwait(kind='CMP'), Id(qubits[0], buf)]
     # create a branch for each possible comparison value
     for ct in range(2**len(qubits)):
         seq += qif(ct, [FbSeq[ct]])
@@ -72,7 +72,7 @@ def Reset(qubits,
 
     # add final measurement
     for seq in seqs:
-        seq += [measBlock, Id(qubits[0], measDelay), qwait('CMP')]
+        seq += [measBlock, Id(qubits[0], measDelay), qwait(kind='CMP')]
 
     if docals:
         seqs += create_cal_seqs(qubits,
@@ -80,4 +80,8 @@ def Reset(qubits,
                                 measChans=measChans,
                                 waitcmp=True)
 
-    return seqs
+    metafile = compile_to_hardware(seqs, 'Reset/Reset')
+
+    if showPlot:
+        plot_pulse_files(metafile)
+    return metafile
