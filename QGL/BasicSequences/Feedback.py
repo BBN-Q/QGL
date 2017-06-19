@@ -32,7 +32,7 @@ def qreset(qubits, signVec, measDelay, buf, reg_size=None, TDM_map=None):
     # create a branch for each possible comparison value
     for ct in range(2**reg_size):
         # duplicate branches for the irrelevant results if reg_size > len(TDM_map)
-        meas_result = [(ct & TDM_bit)>0 for TDM_bit in 2**(TDM_map-1)]
+        meas_result = [(ct & TDM_bit)>0 for TDM_bit in 2**(np.array(TDM_map)-1)]
         branch_idx = sum([t*2**(len(qubits)-ind-1) for ind,t in enumerate((meas_result))])
         seq += qif(ct, [FbSeq[branch_idx]])
         
