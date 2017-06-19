@@ -80,4 +80,8 @@ def Reset(qubits,
                                 measChans=measChans,
                                 waitcmp=True)
 
-    return seqs
+    metafile = compile_to_hardware(seqs, 'Reset/Reset')
+
+    if showPlot:
+        plot_pulse_files(metafile)
+    return metafile
