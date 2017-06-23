@@ -186,12 +186,13 @@ class ChannelLibrary(Atom):
                         params = {k: v for k,v in marker.items() if k in Channels.PhysicalMarkerChannel.__atom_members__.keys()}
                         params["label"] = instr["name"] + "-" + marker["name"]
                         params["instrument"] = instr["name"]
+                        params["translator"] = instr["type"] + "Pattern"
                         params["__module__"] = "QGL.Channels"
-                        params["__class__"]  = "PhysicaMarkerChannel"
+                        params["__class__"]  = "PhysicalMarkerChannel"
                         channel_dict[params["label"]] = params
                 if "master" in instr.keys():
                     if instr["master"]:
-                        master_awg.append(params["label"])
+                        master_awg.append(instr["name"] + "-" + instr["slaveTrig"])
 
             # Establish the slave trigger
             if len(master_awg) != 1:
@@ -199,7 +200,7 @@ class ChannelLibrary(Atom):
             else:
                 params = {}
                 params["label"]       = "slaveTrig"
-                params["physChan"]    = master_awg[0] + "-m1"
+                params["physChan"]    = master_awg[0]
                 params["pulseParams"] = {"length": 1e-7, "shapeFun": "constant"}
                 params["__module__"]  = "QGL.Channels"
                 params["__class__"]   = "LogicalMarkerChannel"
@@ -215,15 +216,21 @@ class ChannelLibrary(Atom):
 
             for qubit in qubit_dict.values():
                 # Create the Qubits
+                ctrl_instr, ctrl_chan = qubit["measure"]["AWG"].split()
                 params = {k: v for k,v in qubit["control"].items() if k in Channels.Qubit.__atom_members__.keys()}
                 params["label"] = "{}".format(qubit["name"])
+                params["physChan"]   = ctrl_instr + "-" + ctrl_chan
                 params["__module__"] = "QGL.Channels"
                 params["__class__"]  = "Qubit"
                 channel_dict[params["label"]] = params
 
                 # Create the measurements
+                meas_instr, meas_chan = qubit["measure"]["AWG"].split()
+                instr, chan, stream = qubit["measure"]["receiver"].split()
                 params = {k: v for k,v in qubit["measure"].items() if k in Channels.Measurement.__atom_members__.keys()}
                 params["label"]      = "M-{}".format(qubit["name"])
+                params["trigChan"]   = "digTrig-" + instr
+                params["physChan"]   = meas_instr + "-" + meas_chan
                 params["__module__"] = "QGL.Channels"
                 params["__class__"]  = "Measurement"
                 channel_dict[params["label"]] = params
@@ -237,7 +244,7 @@ class ChannelLibrary(Atom):
                 params["__module__"] = "QGL.Channels"
                 params["__class__"]  = "LogicalMarkerChannel"
                 # Don't duplicate triggers to the same digitizer
-                if (params["label"]) not in channel_dict.keys():
+                if params["label"] not in channel_dict.keys():
                     channel_dict[params["label"]] = params
 
                 # Create the measurement gate chan:
@@ -258,7 +265,18 @@ class ChannelLibrary(Atom):
                 params["__class__"]  = "LogicalMarkerChannel"
                 channel_dict[params["label"]] = params
 
-            
+            def instantiate(paramDict):
+                if 'pulseParams' in paramDict:
+                    if 'shapeFun' in paramDict['pulseParams']:
+                        shapeFun = paramDict['pulseParams']['shapeFun']
+                        paramDict['pulseParams']['shapeFun'] = getattr(PulseShapes, shapeFun)
+                if '__class__' in paramDict:
+                    className  = paramDict.pop('__class__')
+                    moduleName = paramDict.pop('__module__')
+                    __import__(moduleName)
+                    return getattr(sys.modules[moduleName], className)(**paramDict)
+
+            channel_dict = {k: instantiate(v) for k,v in channel_dict.items()}
             # connect objects labeled by strings
             for chan in channel_dict.values():
                 for param in self.specialParams:
@@ -267,10 +285,9 @@ class ChannelLibrary(Atom):
                                 channel_dict.get(getattr(chan, param), None)
                                 )
             self.channelDict.update(channel_dict)
-            # grab library version
-            # self.version = tmpLib.version
             self.build_connectivity_graph()
             return filenames
+
         except IOError:
             print('No channel library found.')
         except ValueError:
@@ -295,8 +312,8 @@ class ChannelLibrary(Atom):
                     self.update_from_json(chName, chParams)
                 else:
                     # load class from name and update from json
-                    className = chParams['x__class__']
-                    moduleName = chParams['x__module__']
+                    className = chParams['__class__']
+                    moduleName = chParams['__module__']
 
                     mod = importlib.import_module(moduleName)
                     cls = getattr(mod, className)
@@ -336,7 +353,7 @@ class ChannelLibrary(Atom):
 
         # ignored or specially handled parameters
         ignoreList = self.specialParams + ['pulseParams', 'AWG', 'generator',
-                     'x__class__', 'x__module__']
+                     '__class__', '__module__']
         for paramName in chParams:
             if paramName not in ignoreList:
                 setattr(self.channelDict[chName], paramName,
@@ -353,41 +370,6 @@ class ChannelLibrary(Atom):
                     newLabel = "{0}-{1}".format(newName, awgChannel)
                     print("Changing {0} to {1}".format(chName, newLabel))
                     self.physicalChannelManager.name_changed(chName, newLabel)
-
-
-class ChannelDecoder(json.JSONDecoder):
-    def __init__(self, **kwargs):
-        super(ChannelDecoder, self).__init__(object_hook=self.dict_to_obj,
-                                             **kwargs)
-
-    def dict_to_obj(self, jsonDict):
-        import QGL.PulseShapes
-        if 'x__class__' in jsonDict or '__class__' in jsonDict:
-            #Pop the class and module
-            className = jsonDict.pop('x__class__', None)
-            if not className:
-                className = jsonDict.pop('__class__')
-            moduleName = jsonDict.pop('x__module__', None)
-            if not moduleName:
-                moduleName = jsonDict.pop('__module__')
-
-            __import__(moduleName)
-
-            # #Re-encode the strings as ascii (this should go away in Python 3)
-            # jsonDict = {str(k): v for k, v in jsonDict.items()}
-
-            # instantiate the object
-            inst = getattr(sys.modules[moduleName], className)(**jsonDict)
-
-            return inst
-        else:
-            #Re-encode the strings as ascii (this should go away in Python 3)
-            # jsonDict = {str(k): v for k, v in jsonDict.items()}
-            shapeFun = jsonDict.pop('shapeFun', None)
-            if shapeFun:
-                jsonDict['shapeFun'] = getattr(QGL.PulseShapes, shapeFun)
-            return jsonDict
-
 
 def QubitFactory(label, **kwargs):
     ''' Return a saved qubit channel or create a new one. '''
@@ -417,11 +399,5 @@ def EdgeFactory(source, target):
     else:
         raise ValueError('Edge {0} not found in connectivity graph'.format((
             source, target)))
-
-# global channel library
-# migrator = JSONMigrators.ChannelMigrator(config.channelLibFile)
-# migrationMsg = migrator.migrate()
-# for msg in migrationMsg:
-    # print(msg)
 
 channelLib = ChannelLibrary(libFile=config.configFile)
