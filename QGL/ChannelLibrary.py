@@ -208,17 +208,22 @@ class ChannelLibrary(Atom):
 
             for filt in filter_dict.values():
                 if "StreamSelector" in filt["type"]:
-                    params = {k: v for k,v in marker.items() if k in Channels.ReceiverChannel.__atom_members__.keys()}
-                    params["label"]      = instr_dict[filt["instrument"]]["name"] + "-" + filt["name"]
+                    params = {k: v for k,v in filt.items() if k in Channels.ReceiverChannel.__atom_members__.keys()}
+                    params["label"]      = "RecvChan-" + filt["name"] # instr_dict[filt["instrument"]]["name"] + "-" + filt["name"]
                     params["__module__"] = "QGL.Channels"
                     params["__class__"]  = "ReceiverChannel"
+                    if filt["instrument"] not in instr_dict.keys():
+                        raise ValueError("No instrument specified for Stream Selector")
                     channel_dict[params["label"]] = params
 
             for qubit in qubit_dict.values():
                 # Create the Qubits
+                if len(qubit["control"]["AWG"].split()) != 2:
+                    print("Control AWG specification for {} ({}) must have a device, channel".format(qubit["name"], qubit["control"]["AWG"]))
+                    raise ValueError("Control AWG specification for {} ({}) must have a device, channel".format(qubit["name"], qubit["control"]["AWG"]))
                 ctrl_instr, ctrl_chan = qubit["control"]["AWG"].split()
                 params = {k: v for k,v in qubit["control"].items() if k in Channels.Qubit.__atom_members__.keys()}
-                params["label"] = "{}".format(qubit["name"])
+                params["label"]      = qubit["name"]
                 params["physChan"]   = ctrl_instr + "-" + ctrl_chan
                 params["__module__"] = "QGL.Channels"
                 params["__class__"]  = "Qubit"
@@ -227,48 +232,60 @@ class ChannelLibrary(Atom):
                     channel_dict[params["physChan"]]["generator"] = qubit["control"]["generator"]
 
                 # Create the measurements
+                if len(qubit["measure"]["AWG"].split()) != 2:
+                    print("Measurement AWG specification for {} ({}) must have a device, channel".format(qubit["name"], qubit["measure"]["AWG"]))
+                    raise ValueError("Measurement AWG specification for {} ({}) must have a device, channel".format(qubit["name"], qubit["measure"]["AWG"]))
                 meas_instr, meas_chan = qubit["measure"]["AWG"].split()
-                instr, chan, stream = qubit["measure"]["receiver"].split()
+                # instr, chan, stream = qubit["measure"]["receiver"].split()
                 params = {k: v for k,v in qubit["measure"].items() if k in Channels.Measurement.__atom_members__.keys()}
-                params["label"]      = "M-{}".format(qubit["name"])
-                params["trigChan"]   = "digTrig-" + instr
-                params["physChan"]   = meas_instr + "-" + meas_chan
-                params["measType"]   = "autodyne"
-                params["__module__"] = "QGL.Channels"
-                params["__class__"]  = "Measurement"
+                params["label"]        = "M-{}".format(qubit["name"])
+                params["trigChan"]     = "digTrig-" + meas_instr
+                params["physChan"]     = meas_instr + "-" + meas_chan
+                params["measType"]     = "autodyne"
+                params["receiverChan"] = "RecvChan-" + qubit["measure"]["receiver"]
+                params["__module__"]   = "QGL.Channels"
+                params["__class__"]    = "Measurement"
                 channel_dict[params["label"]] = params
                 if 'generator' in qubit["measure"].keys():
                     channel_dict[params["physChan"]]["generator"] = qubit["measure"]["generator"]
 
                 # Create the receiver channels
-                instr, chan, stream = qubit["measure"]["receiver"].split()
-                phys_instr, phys_marker = qubit["measure"]["trigger"].split()
-                params = {k: v for k,v in marker.items() if k in Channels.LogicalMarkerChannel.__atom_members__.keys()}
-                params["label"]      = "digTrig-" + instr
-                params["physChan"]   = phys_instr + "-" + phys_marker
-                params["__module__"] = "QGL.Channels"
-                params["__class__"]  = "LogicalMarkerChannel"
-                # Don't duplicate triggers to the same digitizer
-                if params["label"] not in channel_dict.keys():
-                    channel_dict[params["label"]] = params
+                if "receiver" in qubit["measure"].keys():
+                    if len(qubit["measure"]["receiver"].split()) != 1:
+                        print("Receiver specification for {} ({}) must have a stream selector".format(qubit["name"], qubit["measure"]["receiver"]))
+                        raise ValueError("Receiver specification for {} ({}) must have a stream selector".format(qubit["name"], qubit["measure"]["receiver"]))
+                    # recv_chan = qubit["measure"]["receiver"]
+                    # instr = instr_dict[filter_dict[recv_chan]["instrument"]]
+                    phys_instr, phys_marker = qubit["measure"]["trigger"].split()
+                    params = {k: v for k,v in marker.items() if k in Channels.LogicalMarkerChannel.__atom_members__.keys()}
+                    params["label"]        = "digTrig-" + phys_instr
+                    params["physChan"]     = phys_instr + "-" + phys_marker
+                    params["pulseParams"]  = {"length": 3e-7, "shapeFun": "constant"}
+                    params["__module__"]   = "QGL.Channels"
+                    params["__class__"]    = "LogicalMarkerChannel"
+                    # Don't duplicate triggers to the same digitizer
+                    if params["label"] not in channel_dict.keys():
+                        channel_dict[params["label"]] = params
 
                 # Create the measurement gate chan:
-                phys_instr, phys_marker = qubit["measure"]["gate"].split()
-                params = {}
-                params["label"]      = "M-{}-gate".format(qubit["name"])
-                params["physChan"]   = phys_instr + "-" + phys_marker
-                params["__module__"] = "QGL.Channels"
-                params["__class__"]  = "LogicalMarkerChannel"
-                channel_dict[params["label"]] = params
+                if "gate" in qubit["measure"].keys():
+                    phys_instr, phys_marker = qubit["measure"]["gate"].split()
+                    params = {}
+                    params["label"]      = "M-{}-gate".format(qubit["name"])
+                    params["physChan"]   = phys_instr + "-" + phys_marker
+                    params["__module__"] = "QGL.Channels"
+                    params["__class__"]  = "LogicalMarkerChannel"
+                    channel_dict[params["label"]] = params
 
                 # Create the control gate chan:
-                phys_instr, phys_marker = qubit["control"]["gate"].split()
-                params = {}
-                params["label"]      = "{}-gate".format(qubit["name"])
-                params["physChan"]   = phys_instr + "-" + phys_marker
-                params["__module__"] = "QGL.Channels"
-                params["__class__"]  = "LogicalMarkerChannel"
-                channel_dict[params["label"]] = params
+                if "gate" in qubit["control"].keys():
+                    phys_instr, phys_marker = qubit["control"]["gate"].split()
+                    params = {}
+                    params["label"]      = "{}-gate".format(qubit["name"])
+                    params["physChan"]   = phys_instr + "-" + phys_marker
+                    params["__module__"] = "QGL.Channels"
+                    params["__class__"]  = "LogicalMarkerChannel"
+                    channel_dict[params["label"]] = params
 
             def instantiate(paramDict):
                 if 'pulseParams' in paramDict:
@@ -280,6 +297,11 @@ class ChannelLibrary(Atom):
                     moduleName = paramDict.pop('__module__')
                     __import__(moduleName)
                     return getattr(sys.modules[moduleName], className)(**paramDict)
+
+            # with open("yaml-channelDict.txt", "w") as f:
+            #     for name, cd in channel_dict.items():
+            #         if cd:
+            #             f.write(name + "-----" + str(cd) + "\n")
 
             channel_dict = {k: instantiate(v) for k,v in channel_dict.items()}
             # connect objects labeled by strings
