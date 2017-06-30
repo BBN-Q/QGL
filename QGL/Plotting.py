@@ -24,14 +24,19 @@ limitations under the License.
 import os.path, uuid, tempfile
 import bokeh.plotting as bk
 from bokeh.layouts import column
+from bokeh.util.warnings import BokehUserWarning
+from bokeh.resources import INLINE
 import numpy as np
-
+import warnings
 from . import config
 
-
-def output_notebook():
-    bk.output_notebook()
-
+def output_notebook(local=True, suppress_warnings=True):
+    if suppress_warnings:
+        warnings.simplefilter("ignore", BokehUserWarning)
+    if local:
+        bk.output_notebook(resources=INLINE)
+    else:
+        bk.output_notebook()
 
 def output_file():
     bk.output_file(os.path.join(tempfile.gettempdir(), str(uuid.uuid4()) +
