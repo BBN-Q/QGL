@@ -216,13 +216,15 @@ class ChannelLibrary(Atom):
 
             for qubit in qubit_dict.values():
                 # Create the Qubits
-                ctrl_instr, ctrl_chan = qubit["measure"]["AWG"].split()
+                ctrl_instr, ctrl_chan = qubit["control"]["AWG"].split()
                 params = {k: v for k,v in qubit["control"].items() if k in Channels.Qubit.__atom_members__.keys()}
                 params["label"] = "{}".format(qubit["name"])
                 params["physChan"]   = ctrl_instr + "-" + ctrl_chan
                 params["__module__"] = "QGL.Channels"
                 params["__class__"]  = "Qubit"
                 channel_dict[params["label"]] = params
+                if 'generator' in qubit["control"].keys():
+                    channel_dict[params["physChan"]]["generator"] = qubit["control"]["generator"]
 
                 # Create the measurements
                 meas_instr, meas_chan = qubit["measure"]["AWG"].split()
@@ -231,9 +233,12 @@ class ChannelLibrary(Atom):
                 params["label"]      = "M-{}".format(qubit["name"])
                 params["trigChan"]   = "digTrig-" + instr
                 params["physChan"]   = meas_instr + "-" + meas_chan
+                params["measType"]   = "autodyne"
                 params["__module__"] = "QGL.Channels"
                 params["__class__"]  = "Measurement"
                 channel_dict[params["label"]] = params
+                if 'generator' in qubit["measure"].keys():
+                    channel_dict[params["physChan"]]["generator"] = qubit["measure"]["generator"]
 
                 # Create the receiver channels
                 instr, chan, stream = qubit["measure"]["receiver"].split()
