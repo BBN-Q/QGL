@@ -95,10 +95,10 @@ class ChannelLibrary(Atom):
     def __init__(self, channelDict={}, **kwargs):
         super(ChannelLibrary, self).__init__(channelDict=channelDict, **kwargs)
         self.connectivityG = nx.DiGraph()
-        self.load_from_library()
-        # if self.libFile:
-        #     self.fileWatcher = FileWatcher.LibraryFileWatcher(
-        #         self.libFile, self.update_from_file)
+        yaml_filenames = self.load_from_library()
+        if self.libFile and yaml_filenames:
+            self.fileWatcher = FileWatcher.LibraryFileWatcher(
+                self.libFile, self.update_from_file)
 
     #Dictionary methods
     def __getitem__(self, key):
@@ -321,38 +321,10 @@ class ChannelLibrary(Atom):
             print('Failed to load channel library.')
 
     def update_from_file(self):
-        """
-        Only update relevant parameters
-        Helps avoid both stale references from replacing whole channel objects (as in load_from_library)
-        and the overhead of recreating everything.
-        """
-
         if not self.libFile:
             return
         try:
-            with open(self.libFile, 'r') as FID:
-                allParams = json.load(FID)['channelDict']
-
-            # update & insert
-            for chName, chParams in allParams.items():
-                if chName in self.channelDict:
-                    self.update_from_json(chName, chParams)
-                else:
-                    # load class from name and update from json
-                    className = chParams['__class__']
-                    moduleName = chParams['__module__']
-
-                    mod = importlib.import_module(moduleName)
-                    cls = getattr(mod, className)
-                    self.channelDict[chName] = cls()
-                    self.update_from_json(chName, chParams)
-
-            # remove
-            for chName in list(self.channelDict.keys()):
-                if chName not in allParams:
-                    del self.channelDict[chName]
-
-            self.build_connectivity_graph()
+            self.load_from_library()
         except:
             print('Failed to update channel library from file. Probably is just half-written.')
             return
