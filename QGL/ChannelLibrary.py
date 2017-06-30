@@ -253,8 +253,8 @@ class ChannelLibrary(Atom):
                     channel_dict[params["label"]] = params
 
                 # Create the measurement gate chan:
-                instr, chan = qubit["measure"]["gate"].split()
                 phys_instr, phys_marker = qubit["measure"]["gate"].split()
+                params = {}
                 params["label"]      = "M-{}-gate".format(qubit["name"])
                 params["physChan"]   = phys_instr + "-" + phys_marker
                 params["__module__"] = "QGL.Channels"
@@ -262,8 +262,8 @@ class ChannelLibrary(Atom):
                 channel_dict[params["label"]] = params
 
                 # Create the control gate chan:
-                instr, chan = qubit["control"]["gate"].split()
                 phys_instr, phys_marker = qubit["control"]["gate"].split()
+                params = {}
                 params["label"]      = "{}-gate".format(qubit["name"])
                 params["physChan"]   = phys_instr + "-" + phys_marker
                 params["__module__"] = "QGL.Channels"
