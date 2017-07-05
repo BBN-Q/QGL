@@ -1,6 +1,6 @@
 {
 	"AWGDir": "/my/path/to/awg/",
-	"ChannelLibraryFile": "/my/path/to/ChannelParams.json",
+	"ConfigurationFile": "/my/path/to/measure.yaml",
 	"PulsePrimitivesLibrary": "standard",
 	"cnot_implementation": "CNOT_CR",
 	"PlotBackground": "#EAEAF2",
