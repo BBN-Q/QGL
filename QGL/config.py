@@ -24,7 +24,6 @@ with open(QGLCfgFile, 'r') as f:
 #pull out the variables
 #abspath allows the use of relative file names in the config file
 AWGDir = os.path.abspath(QGLCfg['AWGDir'])
-channelLibFile = os.path.abspath(QGLCfg['ChannelLibraryFile'])
 configFile = os.path.abspath(QGLCfg['ConfigurationFile'])
 
 # plotting options

@@ -30,7 +30,6 @@ https://stackoverflow.com/questions/30458977/yaml-loads-5e-6-as-string-and-not-a
 import sys
 import os
 import re
-import json
 import importlib
 from atom.api import Atom, Str, Int, Typed
 import networkx as nx
@@ -38,7 +37,7 @@ import yaml
 
 from . import Channels
 from . import PulseShapes
-from JSONLibraryUtils import LibraryCoders, FileWatcher, JSONMigrators
+from JSONLibraryUtils import FileWatcher
 from . import config
 
 class LoaderMeta(type):
@@ -131,23 +130,23 @@ class ChannelLibrary(Atom):
                 self.connectivityG.add_edge(chan.source, chan.target)
                 self.connectivityG[chan.source][chan.target]['channel'] = chan
 
-    def write_to_file(self, fileName=None):
-        libFileName = fileName if fileName != None else self.libFile
-        if libFileName:
-            #Pause the file watcher to stop cicular updating insanity
-            if self.fileWatcher:
-                self.fileWatcher.pause()
-            with open(libFileName, 'w') as FID:
-                json.dump(self,
-                          FID,
-                          cls=LibraryCoders.LibraryEncoder,
-                          indent=2,
-                          sort_keys=True)
-            if self.fileWatcher:
-                self.fileWatcher.resume()
+    # def write_to_file(self, fileName=None):
+    #     libFileName = fileName if fileName != None else self.libFile
+    #     if libFileName:
+    #         #Pause the file watcher to stop cicular updating insanity
+    #         if self.fileWatcher:
+    #             self.fileWatcher.pause()
+    #         with open(libFileName, 'w') as FID:
+    #             json.dump(self,
+    #                       FID,
+    #                       cls=LibraryCoders.LibraryEncoder,
+    #                       indent=2,
+    #                       sort_keys=True)
+    #         if self.fileWatcher:
+    #             self.fileWatcher.resume()
 
-    def json_encode(self, matlabCompatible=False):
-        return {"channelDict": self.channelDict, "version": self.version}
+    # def json_encode(self, matlabCompatible=False):
+    #     return {"channelDict": self.channelDict, "version": self.version}
 
     def load_from_library(self):
         """Loads the YAML library, creates the QGL objects, and returns a list of the visited filenames 
@@ -332,31 +331,6 @@ class ChannelLibrary(Atom):
         # reset pulse cache
         from . import PulsePrimitives
         PulsePrimitives._memoize.cache.clear()
-
-    def update_from_json(self, chName, chParams):
-        # connect objects labeled by strings
-        if 'pulseParams' in chParams.keys():
-            paramDict = {str(k): v for k, v in chParams['pulseParams'].items()}
-            shapeFunName = paramDict.pop('shapeFun', None)
-            if shapeFunName:
-                paramDict['shapeFun'] = getattr(PulseShapes, shapeFunName)
-            self.channelDict[chName].pulseParams = paramDict
-
-        for param in self.specialParams:
-            if param in chParams.keys():
-                setattr(self.channelDict[chName],
-                        param,
-                        self.channelDict.get(chParams[param], None)
-                        )
-        # TODO: how do we follow changes to selected AWG or generator?
-
-        # ignored or specially handled parameters
-        ignoreList = self.specialParams + ['pulseParams', 'AWG', 'generator',
-                     '__class__', '__module__']
-        for paramName in chParams:
-            if paramName not in ignoreList:
-                setattr(self.channelDict[chName], paramName,
-                        chParams[paramName])
 
     def on_awg_change(self, oldName, newName):
         print("Change AWG", oldName, newName)
