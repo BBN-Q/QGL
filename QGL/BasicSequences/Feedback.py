@@ -52,7 +52,7 @@ def Reset(qubits,
           TDM_map=None):
     """
 
-    Variable amplitude Rabi nutation experiment for an arbitrary number of qubits simultaneously
+    Preparation, simultanoeus reset, and measurement of an arbitrary number of qubits
 
     Parameters
     ----------
