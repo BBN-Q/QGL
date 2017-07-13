@@ -30,6 +30,7 @@ https://stackoverflow.com/questions/30458977/yaml-loads-5e-6-as-string-and-not-a
 import sys
 import os
 import re
+import traceback
 import importlib
 from atom.api import Atom, Str, Int, Typed
 import networkx as nx
@@ -154,18 +155,24 @@ class ChannelLibrary(Atom):
 
             for name, instr in instr_dict.items():
                 if "channels" in instr.keys():
-                    for channel in instr["channels"]:
-                        params = {k: v for k,v in channel.items() if k in Channels.PhysicalQuadratureChannel.__atom_members__.keys()}
-                        params["label"] = name + "-" + channel["name"]
+                    for chan_name, channel in instr["channels"].items():
+                        if channel is None:
+                            params = {}
+                        else:
+                            params = {k: v for k,v in channel.items() if k in Channels.PhysicalQuadratureChannel.__atom_members__.keys()}
+                        params["label"] = name + "-" + chan_name
                         params["instrument"] = name
                         params["translator"] = instr["type"] + "Pattern"
                         params["__module__"] = "QGL.Channels"
                         params["__class__"]  = "PhysicalQuadratureChannel"
                         channel_dict[params["label"]] = params
                 if "markers" in instr.keys():
-                    for marker in instr["markers"]:
-                        params = {k: v for k,v in marker.items() if k in Channels.PhysicalMarkerChannel.__atom_members__.keys()}
-                        params["label"] = name + "-" + marker["name"]
+                    for mark_name, marker in instr["markers"].items():
+                        if marker is None:
+                            params = {}
+                        else:
+                            params = {k: v for k,v in marker.items() if k in Channels.PhysicalMarkerChannel.__atom_members__.keys()}
+                        params["label"] = name + "-" + mark_name
                         params["instrument"] = name
                         params["translator"] = instr["type"] + "Pattern"
                         params["__module__"] = "QGL.Channels"
@@ -173,7 +180,8 @@ class ChannelLibrary(Atom):
                         channel_dict[params["label"]] = params
                 if "master" in instr.keys():
                     if instr["master"]:
-                        master_awg.append(name + "-" + instr["slaveTrig"])
+                        slave_chan = instr["slaveTrig"] if "slaveTrig" in instr.keys() else "slave"
+                        master_awg.append(name + "-" + slave_chan)
 
             # Establish the slave trigger
             if len(master_awg) != 1:
@@ -240,7 +248,7 @@ class ChannelLibrary(Atom):
                         print("Receiver specification for {} ({}) must have a stream selector".format(name, qubit["measure"]["receiver"]))
                         raise ValueError("Receiver specification for {} ({}) must have a stream selector".format(name, qubit["measure"]["receiver"]))
                     phys_instr, phys_marker = qubit["measure"]["trigger"].split()
-                    params = {k: v for k,v in marker.items() if k in Channels.LogicalMarkerChannel.__atom_members__.keys()}
+                    params = {}
                     params["label"]        = "digTrig-" + phys_instr
                     params["physChan"]     = phys_instr + "-" + phys_marker
                     params["pulseParams"]  = {"length": 3e-7, "shapeFun": "constant"}
@@ -295,8 +303,10 @@ class ChannelLibrary(Atom):
 
         except IOError:
             print('No channel library found.')
-        except ValueError:
-            print('Failed to load channel library.')
+        except Exception as e:
+            print('Failed to load channel library: received exception', e)
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            traceback.print_tb(exc_traceback, limit=4, file=sys.stdout)
 
     def update_from_file(self):
         if not self.libFile:
