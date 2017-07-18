@@ -89,7 +89,7 @@ class ChannelLibrary(Atom):
     fileWatcher = Typed(FileWatcher.LibraryFileWatcher)
     version = Int(5)
 
-    specialParams = ['physChan', 'gateChan', 'trigChan', 'receiverChan',
+    specialParams = ['phys_chan', 'gate_chan', 'trig_chan', 'receiver_chan',
                      'source', 'target']
 
     def __init__(self, channelDict={}, **kwargs):
@@ -201,19 +201,19 @@ class ChannelLibrary(Atom):
             else:
                 params = {}
                 params["label"]       = "slaveTrig"
-                params["physChan"]    = master_awg[0]
-                params["pulseParams"] = {"length": 1e-7, "shapeFun": "constant"}
+                params["phys_chan"]    = master_awg[0]
+                params["pulse_params"] = {"length": 1e-7, "shapeFun": "constant"}
                 params["__module__"]  = "QGL.Channels"
                 params["__class__"]   = "LogicalMarkerChannel"
                 channel_dict[params["label"]] = params
 
             for name, filt in filter_dict.items():
                 if "StreamSelector" in filt["type"]:
-                    params = {k: v for k,v in filt.items() if k in Channels.ReceiverChannel.__atom_members__.keys()}
+                    params = {k: v for k,v in filt.items() if k in Channels.receiver_channel.__atom_members__.keys()}
                     params["label"]      = "RecvChan-" + name # instr_dict[filt["instrument"]]["name"] + "-" + name
                     params["instrument"] = filt["source"]
                     params["__module__"] = "QGL.Channels"
-                    params["__class__"]  = "ReceiverChannel"
+                    params["__class__"]  = "receiver_channel"
                     if "source" not in filt.keys():
                         raise ValueError("No instrument (source) specified for Stream Selector")
                     if filt["source"] not in instr_dict.keys() and filt["source"] not in channel_dict.keys():
@@ -230,12 +230,12 @@ class ChannelLibrary(Atom):
                 ctrl_instr, ctrl_chan = qubit["control"]["AWG"].split()
                 params = {k: v for k,v in qubit["control"].items() if k in Channels.Qubit.__atom_members__.keys()}
                 params["label"]      = name
-                params["physChan"]   = ctrl_instr + "-" + ctrl_chan
+                params["phys_chan"]   = ctrl_instr + "-" + ctrl_chan
                 params["__module__"] = "QGL.Channels"
                 params["__class__"]  = "Qubit"
                 channel_dict[params["label"]] = params
                 if 'generator' in qubit["control"].keys():
-                    channel_dict[params["physChan"]]["generator"] = qubit["control"]["generator"]
+                    channel_dict[params["phys_chan"]]["generator"] = qubit["control"]["generator"]
 
                 # Create the measurements
                 if len(qubit["measure"]["AWG"].split()) != 2:
@@ -244,15 +244,15 @@ class ChannelLibrary(Atom):
                 meas_instr, meas_chan = qubit["measure"]["AWG"].split()
                 params = {k: v for k,v in qubit["measure"].items() if k in Channels.Measurement.__atom_members__.keys()}
                 params["label"]        = "M-{}".format(name)
-                params["trigChan"]     = "digTrig-" + meas_instr
-                params["physChan"]     = meas_instr + "-" + meas_chan
-                params["measType"]     = "autodyne"
-                params["receiverChan"] = "RecvChan-" + qubit["measure"]["receiver"]
+                params["trig_chan"]     = "digTrig-" + meas_instr
+                params["phys_chan"]     = meas_instr + "-" + meas_chan
+                params["meas_type"]     = "autodyne"
+                params["receiver_chan"] = "RecvChan-" + qubit["measure"]["receiver"]
                 params["__module__"]   = "QGL.Channels"
                 params["__class__"]    = "Measurement"
                 channel_dict[params["label"]] = params
                 if 'generator' in qubit["measure"].keys():
-                    channel_dict[params["physChan"]]["generator"] = qubit["measure"]["generator"]
+                    channel_dict[params["phys_chan"]]["generator"] = qubit["measure"]["generator"]
 
                 # Create the receiver channels
                 if "receiver" in qubit["measure"].keys():
@@ -262,8 +262,8 @@ class ChannelLibrary(Atom):
                     phys_instr, phys_marker = qubit["measure"]["trigger"].split()
                     params = {}
                     params["label"]        = "digTrig-" + phys_instr
-                    params["physChan"]     = phys_instr + "-" + phys_marker
-                    params["pulseParams"]  = {"length": 3e-7, "shapeFun": "constant"}
+                    params["phys_chan"]     = phys_instr + "-" + phys_marker
+                    params["pulse_params"]  = {"length": 3e-7, "shapeFun": "constant"}
                     params["__module__"]   = "QGL.Channels"
                     params["__class__"]    = "LogicalMarkerChannel"
                     # Don't duplicate triggers to the same digitizer
@@ -275,7 +275,7 @@ class ChannelLibrary(Atom):
                     phys_instr, phys_marker = qubit["measure"]["gate"].split()
                     params = {}
                     params["label"]      = "M-{}-gate".format(name)
-                    params["physChan"]   = phys_instr + "-" + phys_marker
+                    params["phys_chan"]   = phys_instr + "-" + phys_marker
                     params["__module__"] = "QGL.Channels"
                     params["__class__"]  = "LogicalMarkerChannel"
                     channel_dict[params["label"]] = params
@@ -285,19 +285,19 @@ class ChannelLibrary(Atom):
                     phys_instr, phys_marker = qubit["control"]["gate"].split()
                     params = {}
                     params["label"]      = "{}-gate".format(name)
-                    params["physChan"]   = phys_instr + "-" + phys_marker
+                    params["phys_chan"]   = phys_instr + "-" + phys_marker
                     params["__module__"] = "QGL.Channels"
                     params["__class__"]  = "LogicalMarkerChannel"
                     channel_dict[params["label"]] = params
 
             # for k, c in channel_dict.items():
-            #     print("Channel {: <30} physChan {: <30} class {: <30} instr {: <30}".format(k, c["physChan"] if "physChan" in c else "None", c["__class__"] if "__class__" in c else "None", c["instrument"] if "instrument" in c else "None"))
+            #     print("Channel {: <30} phys_chan {: <30} class {: <30} instr {: <30}".format(k, c["phys_chan"] if "phys_chan" in c else "None", c["__class__"] if "__class__" in c else "None", c["instrument"] if "instrument" in c else "None"))
 
             def instantiate(paramDict):
-                if 'pulseParams' in paramDict:
-                    if 'shapeFun' in paramDict['pulseParams']:
-                        shapeFun = paramDict['pulseParams']['shapeFun']
-                        paramDict['pulseParams']['shapeFun'] = getattr(PulseShapes, shapeFun)
+                if 'pulse_params' in paramDict:
+                    if 'shapeFun' in paramDict['pulse_params']:
+                        shapeFun = paramDict['pulse_params']['shapeFun']
+                        paramDict['pulse_params']['shapeFun'] = getattr(PulseShapes, shapeFun)
                 if '__class__' in paramDict:
                     className  = paramDict.pop('__class__')
                     moduleName = paramDict.pop('__module__')
@@ -357,13 +357,13 @@ def QubitFactory(label, **kwargs):
         return Channels.Qubit(label=label, **kwargs)
 
 
-def MeasFactory(label, measType='autodyne', **kwargs):
+def MeasFactory(label, meas_type='autodyne', **kwargs):
     ''' Return a saved measurement channel or create a new one. '''
     if channelLib and label in channelLib and isinstance(channelLib[label],
                                                          Channels.Measurement):
         return channelLib[label]
     else:
-        return Channels.Measurement(label=label, measType=measType, **kwargs)
+        return Channels.Measurement(label=label, meas_type=meas_type, **kwargs)
 
 
 def EdgeFactory(source, target):

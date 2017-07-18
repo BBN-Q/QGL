@@ -23,15 +23,15 @@ def FlipFlop(qubit, dragParamSweep, maxNumFFs=10, showPlot=False):
 
     def flipflop_seqs(dragScaling):
         """ Helper function to create a list of sequences with a specified drag parameter. """
-        qubit.pulseParams['dragScaling'] = dragScaling
+        qubit.pulse_params['dragScaling'] = dragScaling
         return [[X90(qubit)] + [X90(qubit), X90m(qubit)] * rep + [Y90(qubit)]
                 for rep in range(maxNumFFs)]
 
     #Insert an identity at the start of every set to mark them off
-    originalScaling = qubit.pulseParams['dragScaling']
+    originalScaling = qubit.pulse_params['dragScaling']
     seqs = list(chain.from_iterable([[[Id(qubit)]] + flipflop_seqs(dragParam)
                                      for dragParam in dragParamSweep]))
-    qubit.pulseParams['dragScaling'] = originalScaling
+    qubit.pulse_params['dragScaling'] = originalScaling
 
     #Add a final pi for reference
     seqs.append([X(qubit)])

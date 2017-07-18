@@ -26,7 +26,7 @@ class AWGTestHelper(object):
 
     def finalize_map(self, mapping):
         for name, value in mapping.items():
-            self.channels[name].physChan = self.channels[value]
+            self.channels[name].phys_chan = self.channels[value]
 
         ChannelLibrary.channelLib = ChannelLibrary.ChannelLibrary()
         ChannelLibrary.channelLib.channelDict = self.channels
@@ -55,13 +55,13 @@ class AWGTestHelper(object):
             qg = LogicalMarkerChannel(label=qgName)
 
             m = Measurement(label=mName,
-                            gateChan=mg,
-                            trigChan=self.channels['digitizerTrig'],
-                            measType='autodyne')
+                            gate_chan=mg,
+                            trig_chan=self.channels['digitizerTrig'],
+                            meas_type='autodyne')
 
-            q = Qubit(label=name, gateChan=qg)
-            q.pulseParams['length'] = 30e-9
-            q.pulseParams['phase'] = pi / 2
+            q = Qubit(label=name, gate_chan=qg)
+            q.pulse_params['length'] = 30e-9
+            q.pulse_params['phase'] = pi / 2
 
             self.channels[name] = q
             self.channels[mName] = m
@@ -75,18 +75,18 @@ class AWGTestHelper(object):
         cr = Edge(label="cr",
                   source=q1,
                   target=q2,
-                  gateChan=self.channels['cr-gate'])
-        cr.pulseParams['length'] = 30e-9
-        cr.pulseParams['phase'] = pi / 4
+                  gate_chan=self.channels['cr-gate'])
+        cr.pulse_params['length'] = 30e-9
+        cr.pulse_params['phase'] = pi / 4
         self.channels["cr"] = cr
 
         mq1q2g = LogicalMarkerChannel(label='M-q1q2-gate')
         self.channels['M-q1q2-gate'] = mq1q2g
         self.channels['M-q1q2'] = Measurement(
             label='M-q1q2',
-            gateChan=mq1q2g,
-            trigChan=self.channels['digitizerTrig'],
-            measType='autodyne')
+            gate_chan=mq1q2g,
+            trig_chan=self.channels['digitizerTrig'],
+            meas_type='autodyne')
 
     def get_qubits(self):
         return [QGL.ChannelLibrary.channelLib[name]
@@ -339,7 +339,7 @@ class TestSequences(object):
     def test_RB_TwoQubitRB(self):
         """  Fails on APS1, APS2, and Tek7000 due to:
 		File "QGL\PatternUtils.py", line 129, in add_gate_pulses
-    	if has_gate(chan) and not pulse.isZero and not (chan.gateChan
+    	if has_gate(chan) and not pulse.isZero and not (chan.gate_chan
 		AttributeError: 'CompositePulse' object has no attribute 'isZero'
 		"""
         self.set_awg_dir('TwoQubitRB')
@@ -381,7 +381,7 @@ class APS2Helper(AWGTestHelper):
         for name in ['APS1', 'APS2', 'APS3', 'APS4', 'APS5', 'APS6']:
             channelName = name + '-12'
             channel = PhysicalQuadratureChannel(label=channelName)
-            channel.samplingRate = 1.2e9
+            channel.sampling_rate = 1.2e9
             channel.instrument = name
             channel.translator = 'APS2Pattern'
             self.channels[channelName] = channel
@@ -389,7 +389,7 @@ class APS2Helper(AWGTestHelper):
             for m in range(1, 5):
                 channelName = "{0}-12m{1}".format(name, m)
                 channel = PhysicalMarkerChannel(label=channelName)
-                channel.samplingRate = 1.2e9
+                channel.sampling_rate = 1.2e9
                 channel.instrument = name
                 channel.translator = 'APS2Pattern'
                 self.channels[channelName] = channel
@@ -420,7 +420,7 @@ class TestAPS2(unittest.TestCase, APS2Helper, TestSequences):
 
     def test_mux_CR(self):
         #control and CR sharing the same chans
-        self.channels['cr'].physChan = self.channels['q1'].physChan
+        self.channels['cr'].phys_chan = self.channels['q1'].phys_chan
         self.channels['q1'].frequency = 100e6
         self.channels['cr'].frequency = 200e6
         ChannelLibrary.channelLib.build_connectivity_graph()
@@ -437,7 +437,7 @@ class TestAPS1(unittest.TestCase, AWGTestHelper, TestSequences):
             for ch in ['12', '34']:
                 channelName = name + '-' + ch
                 channel = PhysicalQuadratureChannel(label=channelName)
-                channel.samplingRate = 1.2e9
+                channel.sampling_rate = 1.2e9
                 channel.instrument = name
                 channel.translator = 'APSPattern'
                 self.channels[channelName] = channel
@@ -445,7 +445,7 @@ class TestAPS1(unittest.TestCase, AWGTestHelper, TestSequences):
             for m in range(1, 5):
                 channelName = "{0}-{1}m1".format(name, m)
                 channel = PhysicalMarkerChannel(label=channelName)
-                channel.samplingRate = 1.2e9
+                channel.sampling_rate = 1.2e9
                 channel.instrument = name
                 channel.translator = 'APSPattern'
                 self.channels[channelName] = channel
@@ -466,8 +466,8 @@ class TestAPS1(unittest.TestCase, AWGTestHelper, TestSequences):
                    'M-q1q2-gate': 'APS3-2m1'}
 
         # override trigger lengths on APS1 to get single blips
-        self.channels['slaveTrig'].pulseParams['length'] = 0.833e-9
-        self.channels['digitizerTrig'].pulseParams['length'] = 0.833e-9
+        self.channels['slaveTrig'].pulse_params['length'] = 0.833e-9
+        self.channels['digitizerTrig'].pulse_params['length'] = 0.833e-9
         self.finalize_map(mapping)
 
     def compare_file_data(self, testFile, truthFile):
@@ -549,7 +549,7 @@ class TestTek5014(unittest.TestCase, AWGTestHelper, TestSequences):
             for ch in ['12', '34']:
                 channelName = name + '-' + ch
                 channel = PhysicalQuadratureChannel(label=channelName)
-                channel.samplingRate = 1.2e9
+                channel.sampling_rate = 1.2e9
                 channel.instrument = name
                 channel.translator = 'TekPattern'
                 self.channels[channelName] = channel
@@ -557,7 +557,7 @@ class TestTek5014(unittest.TestCase, AWGTestHelper, TestSequences):
             for m in ['1m1', '1m2', '2m1', '2m2', '3m1', '3m2', '4m1', '4m2']:
                 channelName = "{0}-{1}".format(name, m)
                 channel = PhysicalMarkerChannel(label=channelName)
-                channel.samplingRate = 1.2e9
+                channel.sampling_rate = 1.2e9
                 channel.instrument = name
                 channel.translator = 'TekPattern'
                 self.channels[channelName] = channel

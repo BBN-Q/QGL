@@ -216,13 +216,13 @@ seq = [X(q1, shapeFun=PulseShapes.gaussOn) +\
 Shape functions can be an arbitrary piece of python code that returns a NumPy
 array of complex values. Shape functions must accept **all** of their arguments
 as keyword arguments. The only arguments that are guaranteed to exist are
-`samplingRate` and `length`. The pulse length is always assumed to be units of
+`sampling_rate` and `length`. The pulse length is always assumed to be units of
 seconds; it is up to the shape function to use the passed sampling rate to
 convert from time into number of points/samples. As an example, we could define
 a ramp shape with
 ```python
-def ramp(length=0, samplingRate=1e9, **kwargs):
-    numPts = int(np.round(length * samplingRate))
+def ramp(length=0, sampling_rate=1e9, **kwargs):
+    numPts = int(np.round(length * sampling_rate))
     return np.linspace(0, 1, numPts)
 ```
 
@@ -235,8 +235,8 @@ If your custom shape function requires additional arguments, you must either
 arrange for these parameters to exist in the `LogicalChannel`'s `shapeParams`
 dictionary, or pass them at the call site. For instance,
 ```python
-def foo(length=0, samplingRate=1e9, bar=1, **kwargs):
-    numPts = int(np.round(length * samplingRate))
+def foo(length=0, sampling_rate=1e9, bar=1, **kwargs):
+    numPts = int(np.round(length * sampling_rate))
     # something involving bar...
 
 seq = [X(q1, bar=0.5, shapeFun=foo)] # bar is passed as a keyword arg

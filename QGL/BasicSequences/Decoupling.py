@@ -57,9 +57,9 @@ def CPMG(qubit, numPulses, pulseSpacing, calRepeats=2, showPlot=False):
 	plotHandle : handle to plot window to prevent destruction
 	"""
     #First setup the t-180-t block
-    CPMGBlock = [Id(qubit, (pulseSpacing - qubit.pulseParams['length']) / 2),
+    CPMGBlock = [Id(qubit, (pulseSpacing - qubit.pulse_params['length']) / 2),
                  Y(qubit),
-                 Id(qubit, (pulseSpacing - qubit.pulseParams['length']) / 2)]
+                 Id(qubit, (pulseSpacing - qubit.pulse_params['length']) / 2)]
 
     seqs = [[X90(qubit)] + CPMGBlock * rep + [X90(qubit), MEAS(qubit)]
             for rep in numPulses]
