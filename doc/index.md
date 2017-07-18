@@ -184,7 +184,7 @@ composed of a sequence of two pulses.
 ## Pulse Shapes and Waveforms
 
 The QGL compiler constructs waveforms to implement the desired quantum
-operations. To do this, each pulse has a `shapeFun` (shape function) that is
+operations. To do this, each pulse has a `shape_fun` (shape function) that is
 called with its `shapeParams`. A number of commonly used shapes are defined in
 the `PulseShapes` module including:
 
@@ -200,16 +200,16 @@ library](config.md#channel-library-setup). However, the QGL programmer may
 override the default shape with a keyword argument. For example, to force the
 use of square pulse shape we may write:
 ```python
-seq = [X(q1, shapeFun=PulseShapes.constant), MEAS(q1)]
+seq = [X(q1, shape_fun=PulseShapes.constant), MEAS(q1)]
 ```
 
 One common use case for specifying a shape function is in the construction of
 composite pulses. For instance, you may want a square pulse shape with Gaussian
 edges rather than those given by the `tanh` function. To do this you might write:
 ```python
-seq = [X(q1, shapeFun=PulseShapes.gaussOn) +\
-       X(q1, shapeFun=PulseShapes.constant) +\
-       X(q1, shapeFun=PulseShapes.gaussOff),
+seq = [X(q1, shape_fun=PulseShapes.gaussOn) +\
+       X(q1, shape_fun=PulseShapes.constant) +\
+       X(q1, shape_fun=PulseShapes.gaussOff),
        MEAS(q1)]
 ```
 
@@ -228,7 +228,7 @@ def ramp(length=0, sampling_rate=1e9, **kwargs):
 
 Then use it with any pulse primitive, e.g.:
 ```python
-seq = [X(q1, shapeFun=ramp)]
+seq = [X(q1, shape_fun=ramp)]
 ```
 
 If your custom shape function requires additional arguments, you must either
@@ -239,7 +239,7 @@ def foo(length=0, sampling_rate=1e9, bar=1, **kwargs):
     numPts = int(np.round(length * sampling_rate))
     # something involving bar...
 
-seq = [X(q1, bar=0.5, shapeFun=foo)] # bar is passed as a keyword arg
+seq = [X(q1, bar=0.5, shape_fun=foo)] # bar is passed as a keyword arg
 ```
 
 See the `PulseShapes` module for further examples.

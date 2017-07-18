@@ -59,8 +59,8 @@ class Channel(Atom):
         #We want the name of shape functions
         if "pulse_params" in jsonDict:
             pulse_params = deepcopy(jsonDict.pop("pulse_params"))
-            if "shapeFun" in pulse_params:
-                pulse_params["shapeFun"] = pulse_params["shapeFun"].__name__
+            if "shape_fun" in pulse_params:
+                pulse_params["shape_fun"] = pulse_params["shape_fun"].__name__
             jsonDict["pulse_params"] = pulse_params
 
         return jsonDict
@@ -126,7 +126,7 @@ class LogicalMarkerChannel(LogicalChannel):
     '''
     A class for digital channels for gating sources or triggering other things.
     '''
-    pulse_params = Dict(default={'shapeFun': PulseShapes.constant,
+    pulse_params = Dict(default={'shape_fun': PulseShapes.constant,
                                 'length': 10e-9})
 
 
@@ -137,7 +137,7 @@ class Qubit(LogicalChannel):
     pulse_params = Dict(default={'length': 20e-9,
                                 'piAmp': 1.0,
                                 'pi2Amp': 0.5,
-                                'shapeFun': PulseShapes.gaussian,
+                                'shape_fun': PulseShapes.gaussian,
                                 'cutoff': 2,
                                 'dragScaling': 0,
                                 'sigma': 5e-9})
@@ -164,7 +164,7 @@ class Measurement(LogicalChannel):
         desc='use frequency to asssociate modulation with the channel')
     pulse_params = Dict(default={'length': 100e-9,
                                 'amp': 1.0,
-                                'shapeFun': PulseShapes.tanh,
+                                'shape_fun': PulseShapes.tanh,
                                 'cutoff': 2,
                                 'sigma': 1e-9})
     gate_chan = Instance((str, LogicalMarkerChannel))
@@ -191,7 +191,7 @@ class Edge(LogicalChannel):
     pulse_params = Dict(default={'length': 20e-9,
                                 'amp': 1.0,
                                 'phase': 0.0,
-                                'shapeFun': PulseShapes.gaussian,
+                                'shape_fun': PulseShapes.gaussian,
                                 'cutoff': 2,
                                 'dragScaling': 0,
                                 'sigma': 5e-9,

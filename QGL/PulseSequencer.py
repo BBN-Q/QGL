@@ -40,11 +40,11 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
             frequency = channel.frequency
         else:
             frequency = 0
-        requiredParams = ['length', 'shapeFun']
+        requiredParams = ['length', 'shape_fun']
         for param in requiredParams:
             if param not in shapeParams.keys():
                 raise NameError("shapeParams must include {0}".format(param))
-        isTimeAmp = (shapeParams['shapeFun'] == PulseShapes.constant)
+        isTimeAmp = (shapeParams['shape_fun'] == PulseShapes.constant)
         isZero = (amp == 0)
         return super(cls, Pulse).__new__(cls, label, channel,
                                          shapeParams['length'], amp, phase,
@@ -99,8 +99,8 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
     def shape(self):
         params = copy(self.shapeParams)
         params['sampling_rate'] = self.channel.phys_chan.sampling_rate
-        params.pop('shapeFun')
-        return self.shapeParams['shapeFun'](**params)
+        params.pop('shape_fun')
+        return self.shapeParams['shape_fun'](**params)
 
 
 def TAPulse(label,
@@ -113,12 +113,12 @@ def TAPulse(label,
     """
     Creates a time/amplitude pulse with the given pulse length and amplitude
     """
-    params = {'length': length, 'shapeFun': PulseShapes.constant}
+    params = {'length': length, 'shape_fun': PulseShapes.constant}
     if ignoredStrParams:
-        if 'shapeFun' not in ignoredStrParams:
-            ignoredStrParams.append('shapeFun')
+        if 'shape_fun' not in ignoredStrParams:
+            ignoredStrParams.append('shape_fun')
     else:
-        ignoredStrParams = ['shapeFun']
+        ignoredStrParams = ['shape_fun']
     return Pulse(label, channel, params, amp, phase, frameChange, ignoredStrParams)
 
 

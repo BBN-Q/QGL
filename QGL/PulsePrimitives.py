@@ -332,7 +332,7 @@ def arb_axis_drag(qubit,
     params['nutFreq'] = nutFreq
     params['rotAngle'] = rotAngle
     params['polarAngle'] = polarAngle
-    params['shapeFun'] = PulseShapes.arb_axis_drag
+    params['shape_fun'] = PulseShapes.arb_axis_drag
     return Pulse(kwargs["label"] if "label" in kwargs else "ArbAxis", qubit,
                  params, 1.0, aziAngle, frameChange)
 
@@ -637,9 +637,9 @@ def flat_top_gaussian(chan,
     """
     A constant pulse with rising and falling gaussian shape
     """
-    p =  Utheta(chan, length=riseFall, amp=amp, phase=phase, shapeFun=PulseShapes.gaussOn, label=label+"_rise") + \
-         Utheta(chan, length=length, amp=amp, phase=phase, shapeFun=PulseShapes.constant, label=label+"_top") + \
-         Utheta(chan, length=riseFall, amp=amp, phase=phase, shapeFun=PulseShapes.gaussOff, label=label+"_fall")
+    p =  Utheta(chan, length=riseFall, amp=amp, phase=phase, shape_fun=PulseShapes.gaussOn, label=label+"_rise") + \
+         Utheta(chan, length=length, amp=amp, phase=phase, shape_fun=PulseShapes.constant, label=label+"_top") + \
+         Utheta(chan, length=riseFall, amp=amp, phase=phase, shape_fun=PulseShapes.gaussOff, label=label+"_fall")
     return p._replace(label=label)
 
 
@@ -736,8 +736,8 @@ def MEAS(qubit, **kwargs):
     params = overrideDefaults(measChan, kwargs)
     if measChan.meas_type == 'autodyne':
         params['frequency'] = measChan.autodyneFreq
-        params['baseShape'] = params.pop('shapeFun')
-        params['shapeFun'] = PulseShapes.autodyne
+        params['baseShape'] = params.pop('shape_fun')
+        params['shape_fun'] = PulseShapes.autodyne
     amp = params.pop('amp')
     ignoredStrParams = ['phase', 'frameChange']
     if 'amp' not in kwargs:

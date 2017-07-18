@@ -9,10 +9,10 @@ example minimal library might include these *logical* channels:
 
 * q1 (Qubit)
 * M-q1 (Measurement)
-* slaveTrig (LogicalMarker)
+* slave_trig (LogicalMarker)
 
 The naming convention for measurement channels of M-**qubitname** *must* be
-followed. The `slaveTrig` channel is used in master-slave AWG configurations
+followed. The `slave_trig` channel is used in master-slave AWG configurations
 where one master AWG is used to trigger the start of the slave AWGs.
 
 To create and manage this library, one can use the `ExpSettingsGUI` from
@@ -22,7 +22,7 @@ to get started is to go to the "Instruments" tab, select the "AWG's" sub-tab,
 and create one or more AWGs of the appropriate type. Then, on the "Physical"
 sub-tab of "Channels", click the "Auto" button to populate a list of physical
 channels.  Finally, create a set of logical channels (e.g. `q1` of type `Qubit`,
-`M-q1` of type `Measurement`, and `slaveTrig` of type `LogicalMarker`) and
+`M-q1` of type `Measurement`, and `slave_trig` of type `LogicalMarker`) and
 select the appropriate physical channel for each.
 
 If you choose to create physical channels manually, note that these channel
