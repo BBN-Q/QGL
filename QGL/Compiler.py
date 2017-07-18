@@ -45,6 +45,8 @@ def map_logical_to_physical(wires):
     physicalChannels = {}
     for logicalChan in wires.keys():
         physChan = logicalChan.physChan
+        if not physChan:
+            raise ValueError("LogicalChannel {} does not have a PhysicalChannel".format(physChan))
         if physChan not in physicalChannels:
             physicalChannels[physChan] = [logicalChan]
         else:
