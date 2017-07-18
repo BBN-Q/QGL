@@ -154,8 +154,8 @@ class ChannelLibrary(Atom):
             channel_dict = {}
 
             for name, instr in instr_dict.items():
-                if "channels" in instr.keys():
-                    for chan_name, channel in instr["channels"].items():
+                if "tx_channels" in instr.keys():
+                    for chan_name, channel in instr["tx_channels"].items():
                         if channel is None:
                             params = {}
                         else:
@@ -165,6 +165,18 @@ class ChannelLibrary(Atom):
                         params["translator"] = instr["type"] + "Pattern"
                         params["__module__"] = "QGL.Channels"
                         params["__class__"]  = "PhysicalQuadratureChannel"
+                        channel_dict[params["label"]] = params
+                if "rx_channels" in instr.keys():
+                    for chan_name, channel in instr["rx_channels"].items():
+                        if channel is None:
+                            params = {}
+                        else:
+                            params = {k: v for k,v in channel.items() if k in Channels.PhysicalMarkerChannel.__atom_members__.keys()}
+                        params["label"] = name + "-" + chan_name
+                        params["instrument"] = name
+                        params["translator"] = instr["type"] + "Pattern"
+                        params["__module__"] = "QGL.Channels"
+                        params["__class__"]  = "PhysicalMarkerChannel"
                         channel_dict[params["label"]] = params
                 if "markers" in instr.keys():
                     for mark_name, marker in instr["markers"].items():
@@ -199,12 +211,12 @@ class ChannelLibrary(Atom):
                 if "StreamSelector" in filt["type"]:
                     params = {k: v for k,v in filt.items() if k in Channels.ReceiverChannel.__atom_members__.keys()}
                     params["label"]      = "RecvChan-" + name # instr_dict[filt["instrument"]]["name"] + "-" + name
+                    params["instrument"] = filt["source"]
                     params["__module__"] = "QGL.Channels"
                     params["__class__"]  = "ReceiverChannel"
-
                     if "source" not in filt.keys():
                         raise ValueError("No instrument (source) specified for Stream Selector")
-                    if filt["source"] not in instr_dict.keys():
+                    if filt["source"] not in instr_dict.keys() and filt["source"] not in channel_dict.keys():
                         raise ValueError("Stream Selector source {} not found among list of instruments.".format(filt["source"]))
                     params["instrument"] = filt["source"]
 
@@ -277,6 +289,9 @@ class ChannelLibrary(Atom):
                     params["__module__"] = "QGL.Channels"
                     params["__class__"]  = "LogicalMarkerChannel"
                     channel_dict[params["label"]] = params
+
+            # for k, c in channel_dict.items():
+            #     print("Channel {: <30} physChan {: <30} class {: <30} instr {: <30}".format(k, c["physChan"] if "physChan" in c else "None", c["__class__"] if "__class__" in c else "None", c["instrument"] if "instrument" in c else "None"))
 
             def instantiate(paramDict):
                 if 'pulseParams' in paramDict:
