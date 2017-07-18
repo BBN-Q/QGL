@@ -60,8 +60,8 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
         # parameters inside shapeParams
         for n, v in self.shapeParams.items():
             if (n not in self.ignoredStrParams and
-                    n in self.channel.pulseParams and
-                    self.channel.pulseParams[n] != v):
+                    n in self.channel.pulse_params and
+                    self.channel.pulse_params[n] != v):
                 kwvals.append("{0}={1}".format(n, v))
         if kwvals:
             kwstr = ", " + ", ".join(kwvals)
@@ -98,7 +98,7 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
     @property
     def shape(self):
         params = copy(self.shapeParams)
-        params['samplingRate'] = self.channel.physChan.samplingRate
+        params['sampling_rate'] = self.channel.phys_chan.sampling_rate
         params.pop('shapeFun')
         return self.shapeParams['shapeFun'](**params)
 

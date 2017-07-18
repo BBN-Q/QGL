@@ -96,7 +96,7 @@ def plot_waveforms(waveforms, figTitle=''):
             fig.xgrid.grid_line_color = config.gridColor
             fig.ygrid.grid_line_color = config.gridColor
         waveformToPlot = waveforms[chan]
-        xpts = np.linspace(0, len(waveformToPlot) / chan.physChan.samplingRate
+        xpts = np.linspace(0, len(waveformToPlot) / chan.phys_chan.sampling_rate
                            / 1e-6, len(waveformToPlot))
         fig.line(xpts, np.real(waveformToPlot), color='red')
         fig.line(xpts, np.imag(waveformToPlot), color='blue')

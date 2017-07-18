@@ -29,7 +29,7 @@ def overrideDefaults(chan, updateParams):
     '''Helper function to update any parameters passed in and fill in the defaults otherwise.'''
     # The default parameter list depends on the channel type so pull out of channel
     # Then update passed values
-    paramDict = chan.pulseParams.copy()
+    paramDict = chan.pulse_params.copy()
     paramDict.update(updateParams)
     return paramDict
 
@@ -99,16 +99,16 @@ def Utheta(qubit,
         # construct an angle -> amplitude lookup table
         # TODO should this live in the Channel object instead?
         angle2amp = {
-            pi    :  qubit.pulseParams['piAmp'],
-            -pi   : -qubit.pulseParams['piAmp'],
-            pi/2  :  qubit.pulseParams['pi2Amp'],
-            -pi/2 : -qubit.pulseParams['pi2Amp'],
+            pi    :  qubit.pulse_params['piAmp'],
+            -pi   : -qubit.pulse_params['piAmp'],
+            pi/2  :  qubit.pulse_params['pi2Amp'],
+            -pi/2 : -qubit.pulse_params['pi2Amp'],
         }
         if angle in angle2amp:
             amp = angle2amp[angle]
         else:
             # linearly scale based upon the 'pi/2' amplitude
-            amp  = (angle / pi/2) * qubit.pulseParams['pi2Amp']
+            amp  = (angle / pi/2) * qubit.pulse_params['pi2Amp']
     return Pulse(label, qubit, params, amp, phase, 0.0, ignoredStrParams)
 
 
@@ -300,11 +300,11 @@ def arb_axis_drag(qubit,
     # TODO: figure out way to reduce code duplication between this and the pulse shape
     if params['length'] > 0:
         #To calculate the phase ramping we'll need the sampling rate
-        sampRate = qubit.physChan.samplingRate
+        sampRate = qubit.phys_chan.sampling_rate
 
         #Start from a gaussian shaped pulse
         gaussPulse = PulseShapes.gaussian(amp=1,
-                                          samplingRate=sampRate,
+                                          sampling_rate=sampRate,
                                           **params).real
 
         #Scale to achieve to the desired rotation
@@ -352,10 +352,10 @@ def AC(qubit, cliffNum):
     pulse object
     """
 
-    #Figure out the approximate nutation frequency calibration from the X180 and the samplingRate
+    #Figure out the approximate nutation frequency calibration from the X180 and the sampling_rate
     Xp = X(qubit)
     xpulse = Xp.amp * Xp.shape
-    nutFreq = 0.5 / (sum(xpulse) / qubit.physChan.samplingRate)
+    nutFreq = 0.5 / (sum(xpulse) / qubit.phys_chan.sampling_rate)
 
     #Now a big else if chain for to get the specific Clifford
     if cliffNum == 0:
@@ -710,9 +710,9 @@ def CNOT_CR(controlQ, targetQ, **kwargs):
 def CNOT_simple(source, target, **kwargs):
     # construct (source, target) channel and pull parameters from there
     channel = ChannelLibrary.EdgeFactory(source, target)
-    channel.pulseParams['piAmp'] = channel.pulseParams['amp']
+    channel.pulse_params['piAmp'] = channel.pulse_params['amp']
     # add "pi2Amp" too so that Utheta can construct its angle2amp lookup table
-    channel.pulseParams['pi2Amp'] = channel.pulseParams['amp'] / 2
+    channel.pulse_params['pi2Amp'] = channel.pulse_params['amp'] / 2
     p = X(channel, **kwargs)
     return p._replace(label="CNOT")
 
@@ -734,7 +734,7 @@ def MEAS(qubit, **kwargs):
     channelName = "M-" + qubit.label
     measChan = ChannelLibrary.MeasFactory(channelName)
     params = overrideDefaults(measChan, kwargs)
-    if measChan.measType == 'autodyne':
+    if measChan.meas_type == 'autodyne':
         params['frequency'] = measChan.autodyneFreq
         params['baseShape'] = params.pop('shapeFun')
         params['shapeFun'] = PulseShapes.autodyne
@@ -777,4 +777,4 @@ def MeasEcho(qM, qD, delay, piShift=None, phase=0):
 
 # Gating/blanking pulse primitives
 def BLANK(chan, length):
-    return TAPulse("BLANK", chan.gateChan, length, 1, 0, 0)
+    return TAPulse("BLANK", chan.gate_chan, length, 1, 0, 0)

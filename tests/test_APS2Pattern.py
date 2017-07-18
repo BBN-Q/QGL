@@ -10,9 +10,9 @@ from QGL.drivers import APS2Pattern
 class APSPatternUtils(unittest.TestCase):
     def setUp(self):
         self.q1gate = Channels.LogicalMarkerChannel(label='q1-gate')
-        self.q1 = Qubit(label='q1', gateChan=self.q1gate)
+        self.q1 = Qubit(label='q1', gate_chan=self.q1gate)
         self.q1 = Qubit(label='q1')
-        self.q1.pulseParams['length'] = 30e-9
+        self.q1.pulse_params['length'] = 30e-9
 
         ChannelLibrary.channelLib.channelDict = {'q1': self.q1,
                                                  'q1-gate': self.q1gate}

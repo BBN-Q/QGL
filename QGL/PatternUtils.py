@@ -88,7 +88,7 @@ def add_gate_pulses(seq):
             pb = None
             for chan, pulse in seq[ct].pulses.items():
                 if has_gate(chan) and not pulse.isZero and not (
-                        chan.gateChan in seq[ct].pulses.keys()):
+                        chan.gate_chan in seq[ct].pulses.keys()):
                     if pb:
                         pb *= BLANK(chan, pulse.length)
                     else:
@@ -102,7 +102,7 @@ def add_gate_pulses(seq):
 
 
 def has_gate(channel):
-    return hasattr(channel, 'gateChan') and channel.gateChan
+    return hasattr(channel, 'gate_chan') and channel.gate_chan
 
 def update_pulse_length(pulse, new_length):
     """Return new Pulse with modified length"""
@@ -114,16 +114,16 @@ def update_pulse_length(pulse, new_length):
 
 def apply_gating_constraints(chan, linkList):
     # get channel parameters in samples
-    if not hasattr(chan, 'gateBuffer'):
-        raise AttributeError("{0} does not have gateBuffer".format(chan.label))
+    if not hasattr(chan, 'gate_buffer'):
+        raise AttributeError("{0} does not have gate_buffer".format(chan.label))
 
-    if not hasattr(chan, 'gateMinWidth'):
-        raise AttributeError("{0} does not have gateMinWidth".format(
+    if not hasattr(chan, 'gate_min_width'):
+        raise AttributeError("{0} does not have gate_min_width".format(
             chan.label))
 
     # get channel parameters
-    gateBuffer = chan.gateBuffer
-    gateMinWidth = chan.gateMinWidth
+    gate_buffer = chan.gate_buffer
+    gate_min_width = chan.gate_min_width
 
     #Initialize list of sequences to return
     gateSeqs = []
@@ -156,21 +156,21 @@ def apply_gating_constraints(chan, linkList):
         if previousEntry:
             gateSeq.append(previousEntry)
 
-        # second pass expands non-zeros by gateBuffer
+        # second pass expands non-zeros by gate_buffer
         for ct in range(len(gateSeq)):
             if isNonZeroWaveform(gateSeq[ct]):
-                gateSeq[ct] = update_pulse_length(gateSeq[ct], gateSeq[ct].length + gateBuffer)
+                gateSeq[ct] = update_pulse_length(gateSeq[ct], gateSeq[ct].length + gate_buffer)
 
                 # contract the next pulse by the same amount
                 if ct + 1 < len(gateSeq) - 1 and isinstance(gateSeq[ct + 1], Pulse):
-                    gateSeq[ct+1] = update_pulse_length(gateSeq[ct+1], gateSeq[ct+1].length - gateBuffer)
+                    gateSeq[ct+1] = update_pulse_length(gateSeq[ct+1], gateSeq[ct+1].length - gate_buffer)
 
-        # third pass ensures gateMinWidth
+        # third pass ensures gate_min_width
         ct = 0
         while ct + 2 < len(gateSeq):
             # look for pulse, delay, pulse pattern and ensure delay is long enough
             if [isNonZeroWaveform(x) for x in gateSeq[ct:ct+3]] == [True, False, True] and \
-                gateSeq[ct+1].length < gateMinWidth and \
+                gateSeq[ct+1].length < gate_min_width and \
                 [isinstance(x, Pulse) for x in gateSeq[ct:ct+3]] == [True, True, True]:
                 gateSeq[ct] = update_pulse_length(gateSeq[ct], gateSeq[ct + 1].length + gateSeq[ct + 2].length)
                 del gateSeq[ct + 1:ct + 3]
@@ -197,12 +197,12 @@ def add_digitizer_trigger(seqs):
             #find corresponding digitizer trigger
             chanlist = list(flatten([seq[ct].channel]))
             for chan in chanlist:
-                if hasattr(chan, 'trigChan'):
-                    trigChan = chan.trigChan
+                if hasattr(chan, 'trig_chan'):
+                    trig_chan = chan.trig_chan
                     if not (hasattr(seq[ct], 'pulses') and
-                            trigChan in seq[ct].pulses.keys()):
-                        seq[ct] *= TAPulse("TRIG", trigChan,
-                                           trigChan.pulseParams['length'], 1.0,
+                            trig_chan in seq[ct].pulses.keys()):
+                        seq[ct] *= TAPulse("TRIG", trig_chan,
+                                           trig_chan.pulse_params['length'], 1.0,
                                            0.0, 0.0)
 
 
@@ -230,11 +230,11 @@ def add_slave_trigger(seqs, slaveChan):
             if isinstance(seq[ct], ControlFlow.Wait):
                 try:
                     seq[ct + 1] *= TAPulse("TRIG", slaveChan,
-                                           slaveChan.pulseParams['length'],
+                                           slaveChan.pulse_params['length'],
                                            1.0, 0.0, 0.0)
                 except TypeError:
                     seq.insert(ct + 1, TAPulse("TRIG", slaveChan,
-                                               slaveChan.pulseParams['length'],
+                                               slaveChan.pulse_params['length'],
                                                1.0, 0.0, 0.0))
                 ct += 2  # can skip over what we just modified
             else:
@@ -268,10 +268,10 @@ def quantize_phase(seqs, precision, wf_type):
     return seqs
 
 
-def convert_lengths_to_samples(instructions, samplingRate, quantization=1, wf_type=None):
+def convert_lengths_to_samples(instructions, sampling_rate, quantization=1, wf_type=None):
     for entry in flatten(instructions):
         if isinstance(entry, wf_type):
-            entry.length = int(round(entry.length * samplingRate))
+            entry.length = int(round(entry.length * sampling_rate))
             # TODO: warn when truncating?
             entry.length -= entry.length % quantization
     return instructions
@@ -316,10 +316,10 @@ def update_wf_library(pulses, path):
 
     pulse_list = list(flatten_pulses())
     for ct, pulse in enumerate(pulse_list):
-        awg = pulse.channel.physChan.instrument
+        awg = pulse.channel.phys_chan.instrument
         if awg not in translators:
             translators[awg] = getattr(QGL.drivers,
-                                       pulse.channel.physChan.translator)
+                                       pulse.channel.phys_chan.translator)
         if pulse.label not in awg_pulses[awg]:
             awg_pulses[awg][pulse.label] = pulse_list[ct]
 

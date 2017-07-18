@@ -44,21 +44,21 @@ def map_logical_to_physical(wires):
     # channels share a physical channel)
     physicalChannels = {}
     for logicalChan in wires.keys():
-        physChan = logicalChan.physChan
-        if not physChan:
-            raise ValueError("LogicalChannel {} does not have a PhysicalChannel".format(physChan))
-        if physChan not in physicalChannels:
-            physicalChannels[physChan] = [logicalChan]
+        phys_chan = logicalChan.phys_chan
+        if not phys_chan:
+            raise ValueError("LogicalChannel {} does not have a PhysicalChannel".format(phys_chan))
+        if phys_chan not in physicalChannels:
+            physicalChannels[phys_chan] = [logicalChan]
         else:
-            physicalChannels[physChan].append(logicalChan)
+            physicalChannels[phys_chan].append(logicalChan)
 
     # loop through the physical channels
     physicalWires = {}
-    for physChan, logicalChan in physicalChannels.items():
+    for phys_chan, logicalChan in physicalChannels.items():
         if len(logicalChan) > 1:
-            physicalWires[physChan] = merge_channels(wires, logicalChan)
+            physicalWires[phys_chan] = merge_channels(wires, logicalChan)
         else:
-            physicalWires[physChan] = wires[logicalChan[0]]
+            physicalWires[phys_chan] = wires[logicalChan[0]]
 
     return physicalWires
 
@@ -358,7 +358,7 @@ def compile_to_hardware(seqs,
     for chan, seq in wireSeqs.items():
         if isinstance(chan, Channels.LogicalMarkerChannel):
             wireSeqs[chan] = PatternUtils.apply_gating_constraints(
-                chan.physChan, seq)
+                chan.phys_chan, seq)
     debug_print(wireSeqs, 'Gated sequence')
 
     # save number of measurements for meta info
@@ -410,8 +410,8 @@ def compile_to_hardware(seqs,
         }]
     receiver_measurements = {}
     for wire, n in wire_measurements.items():
-        if wire.receiverChan:
-            receiver_measurements[wire.receiverChan.label] = n
+        if wire.receiver_chan:
+            receiver_measurements[wire.receiver_chan.label] = n
     meta = {
         'instruments': files,
         'num_sequences': len(seqs),
