@@ -42,7 +42,7 @@ def RabiWidth(qubit,
               widths,
               amp=1,
               phase=0,
-              shapeFun=QGL.PulseShapes.tanh,
+              shape_fun=QGL.PulseShapes.tanh,
               showPlot=False):
     """
 
@@ -53,7 +53,7 @@ def RabiWidth(qubit,
 	qubit : logical channel to implement sequence (LogicalChannel)
 	widths : pulse widths to sweep over (iterable)
 	phase : phase of the pulse (radians, default = 0)
-	shapeFun : shape of pulse (function, default = PulseShapes.tanh)
+	shape_fun : shape of pulse (function, default = PulseShapes.tanh)
 	showPlot : whether to plot (boolean)
 
 	Returns
@@ -64,7 +64,7 @@ def RabiWidth(qubit,
                     length=l,
                     amp=amp,
                     phase=phase,
-                    shapeFun=shapeFun), MEAS(qubit)] for l in widths]
+                    shape_fun=shape_fun), MEAS(qubit)] for l in widths]
 
     metafile = compile_to_hardware(seqs, 'Rabi/Rabi',
         axis_descriptor=[delay_descriptor(widths)])

@@ -192,7 +192,7 @@ class ChannelLibrary(Atom):
                         channel_dict[params["label"]] = params
                 if "master" in instr.keys():
                     if instr["master"]:
-                        slave_chan = instr["slaveTrig"] if "slaveTrig" in instr.keys() else "slave"
+                        slave_chan = instr["slave_trig"] if "slave_trig" in instr.keys() else "slave"
                         master_awg.append(name + "-" + slave_chan)
 
             # Establish the slave trigger
@@ -200,9 +200,9 @@ class ChannelLibrary(Atom):
                 raise ValueError("More (or less) than one AWG is marked as master.")
             else:
                 params = {}
-                params["label"]       = "slaveTrig"
+                params["label"]       = "slave_trig"
                 params["phys_chan"]    = master_awg[0]
-                params["pulse_params"] = {"length": 1e-7, "shapeFun": "constant"}
+                params["pulse_params"] = {"length": 1e-7, "shape_fun": "constant"}
                 params["__module__"]  = "QGL.Channels"
                 params["__class__"]   = "LogicalMarkerChannel"
                 channel_dict[params["label"]] = params
@@ -263,7 +263,7 @@ class ChannelLibrary(Atom):
                     params = {}
                     params["label"]        = "digTrig-" + phys_instr
                     params["phys_chan"]     = phys_instr + "-" + phys_marker
-                    params["pulse_params"]  = {"length": 3e-7, "shapeFun": "constant"}
+                    params["pulse_params"]  = {"length": 3e-7, "shape_fun": "constant"}
                     params["__module__"]   = "QGL.Channels"
                     params["__class__"]    = "LogicalMarkerChannel"
                     # Don't duplicate triggers to the same digitizer
@@ -295,9 +295,9 @@ class ChannelLibrary(Atom):
 
             def instantiate(paramDict):
                 if 'pulse_params' in paramDict:
-                    if 'shapeFun' in paramDict['pulse_params']:
-                        shapeFun = paramDict['pulse_params']['shapeFun']
-                        paramDict['pulse_params']['shapeFun'] = getattr(PulseShapes, shapeFun)
+                    if 'shape_fun' in paramDict['pulse_params']:
+                        shape_fun = paramDict['pulse_params']['shape_fun']
+                        paramDict['pulse_params']['shape_fun'] = getattr(PulseShapes, shape_fun)
                 if '__class__' in paramDict:
                     className  = paramDict.pop('__class__')
                     moduleName = paramDict.pop('__module__')

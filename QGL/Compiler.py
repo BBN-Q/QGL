@@ -66,7 +66,7 @@ def map_logical_to_physical(wires):
 def merge_channels(wires, channels):
     chan = channels[0]
     mergedWire = [[] for _ in range(len(wires[chan]))]
-    shapeFunLib = {}
+    shape_funLib = {}
     for ct, segment in enumerate(mergedWire):
         entry_iterators = [iter(wires[ch][ct]) for ch in channels]
         while True:
@@ -103,25 +103,25 @@ def merge_channels(wires, channels):
             else:
                 frequency = 0.0
 
-            if all([e.shapeParams['shapeFun'] == PulseShapes.constant for e in entries]):
+            if all([e.shapeParams['shape_fun'] == PulseShapes.constant for e in entries]):
                 phasor = np.sum([e.amp * np.exp(1j * e.phase) for e in entries])
                 amp = np.abs(phasor)
                 phase = np.angle(phasor)
-                shapeFun = PulseShapes.constant
+                shape_fun = PulseShapes.constant
             else:
                 amp = 1.0
                 phase = 0.0
                 pulsesHash = tuple([(e.hashshape(), e.amp, e.phase) for e in entries])
-                if pulsesHash not in shapeFunLib:
+                if pulsesHash not in shape_funLib:
                     # create closure to sum waveforms
                     def sum_shapes(entries=entries, **kwargs):
                         return reduce(operator.add,
                             [e.amp * np.exp(1j * e.phase) * e.shape for e in entries])
 
-                    shapeFunLib[pulsesHash] = sum_shapes
-                shapeFun = shapeFunLib[pulsesHash]
+                    shape_funLib[pulsesHash] = sum_shapes
+                shape_fun = shape_funLib[pulsesHash]
 
-            shapeParams = {"shapeFun": shapeFun, "length": block_length}
+            shapeParams = {"shape_fun": shape_fun, "length": block_length}
 
             label = "*".join([e.label for e in entries])
             segment.append(Pulse(label, entries[0].channel, shapeParams, amp, phase))
@@ -203,7 +203,7 @@ def concatenate_entries(entry1, entry2):
                 entry2.amp * np.exp(1j * (entry1.frameChange + entry2.phase)) *
                 entry2.shape))
 
-        shapeParams['shapeFun'] = stack_shapes
+        shapeParams['shape_fun'] = stack_shapes
         label = entry1.label + '+' + entry2.label
         amp = 1.0
         phase = 0.0
@@ -300,7 +300,7 @@ def compile_to_hardware(seqs,
                         fileName,
                         suffix='',
                         axis_descriptor=None,
-                        addSlaveTrigger=True):
+                        add_slave_trigger=True):
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'.
     Other inputs:
@@ -310,7 +310,7 @@ def compile_to_hardware(seqs,
             axes of the measurements that the sequence will yield. For instance,
             if `seqs` generates a Ramsey experiment, axis_descriptor would describe
             the time delays between pulses.
-        addSlaveTrigger (optional): add the slave trigger(s)
+        add_slave_trigger (optional): add the slave trigger(s)
     '''
     logger.debug("Compiling %d sequence(s)", len(seqs))
 
@@ -332,11 +332,11 @@ def compile_to_hardware(seqs,
     for seq in seqs:
         PatternUtils.add_gate_pulses(seq)
 
-    if addSlaveTrigger:
+    if add_slave_trigger:
         # Add the slave trigger
         logger.debug("Adding slave trigger")
         PatternUtils.add_slave_trigger(seqs,
-                                       ChannelLibrary.channelLib['slaveTrig'])
+                                       ChannelLibrary.channelLib['slave_trig'])
     else:
         logger.debug("Not adding slave trigger")
 

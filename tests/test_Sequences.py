@@ -37,7 +37,7 @@ class AWGTestHelper(object):
     def assign_channels(self):
 
         self.qubit_names = ['q1', 'q2']
-        self.logical_names = ['digitizerTrig', 'slaveTrig']
+        self.logical_names = ['digitizerTrig', 'slave_trig']
 
         self.assign_logical_channels()
 
@@ -395,7 +395,7 @@ class APS2Helper(AWGTestHelper):
                 self.channels[channelName] = channel
 
         mapping = {'digitizerTrig': 'APS1-12m1',
-                   'slaveTrig': 'APS1-12m2',
+                   'slave_trig': 'APS1-12m2',
                    'q1': 'APS1-12',
                    'q1-gate': 'APS1-12m3',
                    'M-q1': 'APS2-12',
@@ -451,7 +451,7 @@ class TestAPS1(unittest.TestCase, AWGTestHelper, TestSequences):
                 self.channels[channelName] = channel
 
         mapping = {'digitizerTrig': 'APS1-1m1',
-                   'slaveTrig': 'APS1-2m1',
+                   'slave_trig': 'APS1-2m1',
                    'q1': 'APS1-12',
                    'M-q1': 'APS1-34',
                    'M-q1-gate': 'APS1-3m1',
@@ -466,7 +466,7 @@ class TestAPS1(unittest.TestCase, AWGTestHelper, TestSequences):
                    'M-q1q2-gate': 'APS3-2m1'}
 
         # override trigger lengths on APS1 to get single blips
-        self.channels['slaveTrig'].pulse_params['length'] = 0.833e-9
+        self.channels['slave_trig'].pulse_params['length'] = 0.833e-9
         self.channels['digitizerTrig'].pulse_params['length'] = 0.833e-9
         self.finalize_map(mapping)
 
@@ -563,7 +563,7 @@ class TestTek5014(unittest.TestCase, AWGTestHelper, TestSequences):
                 self.channels[channelName] = channel
 
         mapping = {'digitizerTrig': 'TEK1-1m2',
-                   'slaveTrig': 'TEK1-2m2',
+                   'slave_trig': 'TEK1-2m2',
                    'q1': 'TEK1-12',
                    'M-q1': 'TEK1-12',
                    'M-q1-gate': 'TEK1-1m1',
@@ -709,7 +709,7 @@ class TestTek5014(unittest.TestCase, AWGTestHelper, TestSequences):
 # 				self.channels[channelName] = channel
 
 # 		mapping = { 'digitizerTrig'	:'TEK1-1m2',
-# 					'slaveTrig'   	:'TEK1-2m2',
+# 					'slave_trig'   	:'TEK1-2m2',
 # 					'q1'			:'TEK1-12',
 # 					'M-q1'			:'TEK2-12',
 # 					'M-q1-gate'		:'TEK1-1m1',
