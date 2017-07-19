@@ -337,6 +337,7 @@ def compile_to_hardware(seqs,
 
     # add decoupling pulses
     PatternUtils.decouple_seqs(seqs, meas_qs, meas_decoupled_qs, CR_chs, CR_decoupled_chs)
+    save_code(seqs, fileName + suffix)
 
     # all sequences should start with a WAIT for synchronization
     for seq in seqs:
