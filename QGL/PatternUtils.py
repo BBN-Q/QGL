@@ -373,7 +373,7 @@ def decouple_seqs(seqs, meas_qs, meas_decoupled_qs, CR_chs, CR_decoupled_chs):
         if meas_decoupled_qs:
             decouple_meas_pulses(seq, meas_qs, meas_decoupled_qs)
         if CR_decoupled_chs:
-            decouple_CR_pulses(seq, CR_qs, CR_decoupled_chs)
+            decouple_CR_pulses(seq, CR_chs, CR_decoupled_chs)
 
 def decouple_meas_pulses(seq, meas_qs, meas_decoupled_qs):
     """
