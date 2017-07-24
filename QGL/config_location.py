@@ -43,6 +43,7 @@ the CONFIG_PATH or the _CONFIG_FILE_NAME (and they probably
 SHOULD NOT be modified, because some of the values taken from
 the config file directly change the behavior of the other modules,
 so changing things on fly may result in an inconsistent state).
+
 '''
 
 import os.path
