@@ -17,6 +17,32 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
+HOW TO USE:
+
+The module or file that is serving as the "main" should begin
+with something like the following, BEFORE the importing of
+any of the QGL files:
+
+from . import config_location
+config_location.config(PATH_TO_CONFIG_FILE)
+from . inport config
+
+If you don't wish to set the path to the configuration file
+explicitly, then the first two lines should be omitted.
+The last line may be unnecessary because many of the files in
+this directory begin with something like "from QGL import *",
+which imports config.
+
+NOTE: This file must be imported, and any defaults overridden,
+before config.py is imported.  When config.py is imported, it
+will use the get_config_path method from this module to find the
+location of the JSON config file to use.  After this happens,
+the config variables are set and will not be altered by changing
+the CONFIG_PATH or the _CONFIG_FILE_NAME (and they probably
+SHOULD NOT be modified, because some of the values taken from
+the config file directly change the behavior of the other modules,
+so changing things on fly may result in an inconsistent state).
 '''
 
 import os.path
