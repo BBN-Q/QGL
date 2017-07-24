@@ -4,11 +4,17 @@ import json
 import os.path
 import sys
 
-#Load the configuration from the json file and populate the global configuration dictionary
-rootFolder = os.path.dirname(os.path.abspath(__file__))
-rootFolder = rootFolder.replace('\\', '/')  # use unix-like convention
-QGLCfgFile = os.path.join(rootFolder, 'config.json')
+from . import config_location
+
+# Load the configuration from the json file
+# and populate the global configuration dictionary
+
+QGLCfgFile = config_location.get_config_path()
+
 if not os.path.isfile(QGLCfgFile):
+    rootFolder = os.path.dirname(os.path.abspath(__file__))
+    rootFolder = rootFolder.replace('\\', '/')  # use unix-like convention
+
     # build a config file from the template
     templateFile = os.path.join(rootFolder, 'config.example.json')
     ifid = open(templateFile, 'r')
