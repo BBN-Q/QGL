@@ -332,7 +332,7 @@ def compile_to_hardware(seqs,
     for seq in seqs:
         PatternUtils.add_gate_pulses(seq)
 
-    if add_slave_trigger:
+    if add_slave_trigger and 'slave_trig' in ChannelLibrary.channelLib:
         # Add the slave trigger
         logger.debug("Adding slave trigger")
         PatternUtils.add_slave_trigger(seqs,
@@ -368,6 +368,22 @@ def compile_to_hardware(seqs,
     # map logical to physical channels
     physWires = map_logical_to_physical(wireSeqs)
 
+    # Pave the way for composite instruments
+    files = {}
+    label_to_inst = {}
+    label_to_chan = {}
+    for wire in physWires.keys():
+        pattern_module = import_module('QGL.drivers.' + wire.translator)
+        # if hasattr(pattern_module, 'get_true_inst_name'):
+        # import ipdb; ipdb.set_trace()
+        inst_name = pattern_module.get_true_inst_name(wire.label)
+        chan_name = pattern_module.get_true_chan_name(wire.label)
+        wire.instrument = wire.label
+        label_to_inst[wire.label] = inst_name
+        label_to_chan[wire.label] = chan_name
+        wire.label      = chan_name
+        files[inst_name] = {}
+
     # construct channel delay map
     delays = channel_delay_map(physWires)
 
@@ -386,7 +402,7 @@ def compile_to_hardware(seqs,
     awgData = bundle_wires(physWires, wfs)
 
     # convert to hardware formats
-    files = {}
+    # files = {}
     for awgName, data in awgData.items():
         # create the target folder if it does not exist
         targetFolder = os.path.split(os.path.normpath(os.path.join(
@@ -398,7 +414,7 @@ def compile_to_hardware(seqs,
                 'seqFileExt']))
         data['translator'].write_sequence_file(data, fullFileName)
 
-        files[awgName] = fullFileName
+        files[label_to_inst[awgName]][label_to_chan[awgName]] = fullFileName
 
     # create meta output
     if not axis_descriptor:

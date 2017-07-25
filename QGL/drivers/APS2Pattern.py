@@ -98,6 +98,13 @@ def is_compatible_file(filename):
             return True
     return False
 
+def get_true_inst_name(label):
+    """Give QGL a reasonable name for composite instrument. Label will be, e.g. InstName-Tx1-12"""
+    return label.split("-")[0]
+
+def get_true_chan_name(label):
+    """Give QGL a reasonable name for composite instrument channel. Label will be, e.g. InstName-Tx1-12"""
+    return "-".join(label.split("-")[1:])
 
 def create_wf_vector(wfLib, seqs):
     '''
