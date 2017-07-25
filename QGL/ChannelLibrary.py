@@ -36,9 +36,17 @@ from atom.api import Atom, Str, Int, Typed
 import networkx as nx
 import yaml
 
+# FSEvents observer in watchdog cannot have multiple watchers of the same path
+# use kqueue instead
+if sys.platform == 'darwin':
+    from watchdog.observers.kqueue import KqueueObserver as Observer
+else:
+    from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+import time
+
 from . import Channels
 from . import PulseShapes
-from JSONLibraryUtils import FileWatcher
 from . import config
 
 class LoaderMeta(type):
@@ -81,12 +89,52 @@ class Loader(yaml.Loader, metaclass=LoaderMeta):
             else:
                 return ''.join(f.readlines())
 
+class MyEventHandler(FileSystemEventHandler):
+
+    def __init__(self, filePath, callback):
+        super(MyEventHandler, self).__init__()
+        self.filePath = filePath
+        self.callback = callback
+        self.paused = True
+
+    def on_modified(self, event):
+        if os.path.normpath(event.src_path) == self.filePath:
+            if not self.paused:
+                """
+                Hold off for half a second
+                If the event is from the file being opened to be written this gives
+                time for it to be written.
+                """
+                time.sleep(0.5)
+                self.callback()
+
+class LibraryFileWatcher(object):
+    def __init__(self, filePath, callback):
+        super(LibraryFileWatcher, self).__init__()
+        self.filePath = os.path.normpath(filePath)
+        self.callback = callback
+        self.eventHandler = MyEventHandler(self.filePath, callback)
+        self.observer = Observer()
+        self.watch = self.observer.schedule(self.eventHandler, path=os.path.dirname(os.path.abspath(self.filePath)))
+        self.observer.start()
+        self.resume()
+
+    def __del__(self):
+        self.observer.stop()
+        self.observer.join()
+
+    def pause(self):
+        self.eventHandler.paused = True
+
+    def resume(self):
+        self.eventHandler.paused = False
+
 class ChannelLibrary(Atom):
     # channelDict = Dict(Str, Channel)
     channelDict = Typed(dict)
     connectivityG = Typed(nx.DiGraph)
     libFile = Str()
-    fileWatcher = Typed(FileWatcher.LibraryFileWatcher)
+    fileWatcher = Typed(LibraryFileWatcher)
     version = Int(5)
 
     specialParams = ['phys_chan', 'gate_chan', 'trig_chan', 'receiver_chan',
@@ -97,8 +145,7 @@ class ChannelLibrary(Atom):
         self.connectivityG = nx.DiGraph()
         yaml_filenames = self.load_from_library()
         if self.libFile and yaml_filenames:
-            self.fileWatcher = FileWatcher.LibraryFileWatcher(
-                self.libFile, self.update_from_file)
+            self.fileWatcher = LibraryFileWatcher(self.libFile, self.update_from_file)
 
     #Dictionary methods
     def __getitem__(self, key):
