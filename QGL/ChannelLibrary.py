@@ -356,10 +356,13 @@ class ChannelLibrary(Atom):
             # connect objects labeled by strings
             for chan in channel_dict.values():
                 for param in self.specialParams:
-                    if hasattr(chan, param):
-                        setattr(chan, param,
-                                channel_dict.get(getattr(chan, param), None)
-                                )
+                    if hasattr(chan, param) and getattr(chan, param) is not None:
+                        chan_to_find = channel_dict.get(getattr(chan, param), None)
+                        if not chan_to_find:
+                            print("Couldn't find {} of {} in the channel_dict!".format(param, chan))
+                        # print("Setting {}.{} to {}".format(chan, param, chan_to_find))
+                        setattr(chan, param, chan_to_find)
+
             self.channelDict.update(channel_dict)
             self.build_connectivity_graph()
             return filenames
