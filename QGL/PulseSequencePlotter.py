@@ -154,8 +154,7 @@ def extract_waveforms(dataDict, fileNames, nameDecorator=''):
     for fileName in sorted(fileNames):
 
         # Assume a naming convention path/to/file/SequenceName-AWGName.h5
-        AWGName = (
-            os.path.split(os.path.splitext(fileName)[0])[1]).split('-')[1]
+        AWGName = "-".join((os.path.split(os.path.splitext(fileName)[0])[1]).split('-')[1:])
         # Strip any _ suffix
         if '_' in AWGName:
             AWGName = AWGName[:AWGName.index('_')]
