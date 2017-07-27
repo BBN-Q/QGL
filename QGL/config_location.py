@@ -20,19 +20,26 @@ limitations under the License.
 
 HOW TO USE:
 
-The module or file that is serving as the "main" should begin
-with something like the following, BEFORE the importing of
-any of the QGL files:
+The rule for choosing the config file is if a config file path
+is specified explicitly (using the method shown below) then
+that path is used; otherwise, if the QGLCFGFILE environment
+variable is set, its value is used as the path; otherwise
+the current working directory is checked, and finally the
+"default" directory where the module resides is checked.
 
-from . import config_location
+To set the path explicitly, the module or file that is serving
+as the "main" should begin with something like the following,
+BEFORE the importing of any of the other QGL files:
+
+# The import path may depend on other things and require
+# additional qualification
+import config_location
 config_location.config(PATH_TO_CONFIG_FILE)
-from . inport config
+
+# and then the rest of the imports, as usual
 
 If you don't wish to set the path to the configuration file
-explicitly, then the first two lines should be omitted.
-The last line may be unnecessary because many of the files in
-this directory begin with something like "from QGL import *",
-which imports config.
+explicitly, then these lines should be omitted.
 
 NOTE: This file must be imported, and any defaults overridden,
 before config.py is imported.  When config.py is imported, it
