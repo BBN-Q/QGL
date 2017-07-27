@@ -82,7 +82,14 @@ def plot_pulse_files(metafile):
     
     with open(metafile, 'r') as FID:
         meta_info = json.load(FID)
-    fileNames = list(meta_info["instruments"].values())
+    fileNames = []
+    for el in meta_info["instruments"].values():
+        # Accomodate seq_file per instrument and per channel
+        if isinstance(el, str):
+            fileNames.append(el)
+        elif isinstance(el, dict):
+            for file in el.values():
+                fileNames.append(file)
 
     dataDict = {}
     lineNames, num_seqs = extract_waveforms(dataDict, fileNames)
