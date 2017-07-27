@@ -160,7 +160,7 @@ class Measurement(LogicalChannel):
     meas_type = Enum('autodyne', 'homodyne').tag(
         desc='Type of measurement (autodyne, homodyne)')
 
-    autodyneFreq = Float(0.0).tag(
+    autodyne_freq = Float(0.0).tag(
         desc='use to bake the modulation into the pulse, so that it has constant phase')
     frequency = Float(0.0).tag(
         desc='use frequency to asssociate modulation with the channel')
