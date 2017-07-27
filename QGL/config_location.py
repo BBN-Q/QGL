@@ -45,7 +45,7 @@ the config file directly change the behavior of the other modules,
 so changing things on fly may result in an inconsistent state).
 '''
 
-import os.path
+import os
 
 CONFIG_PATH = None
 
@@ -55,14 +55,21 @@ def _set_default_config_path():
     """
     Set the path for the "default" configuration file:
 
-    1. if there's one in the current working directory, then use it
+    1. if there's a QGLCFGFILE environment variable set, use
+        its value
 
-    2. otherwise, if there's one in dirname(__file__), then use it
+    2. if there's one in the current working directory, then use it
 
-    3. otherwise, leave the path at None and assume that the user will
+    3. otherwise, if there's one in dirname(__file__), then use it
+
+    4. otherwise, leave the path at None and assume that the user will
         set it explicitly instead of relying on a default
+
+    Note that this routine does no error checking about
+    whether or not the return value is usable.
     """
 
+    env_path = os.getenv('QGLCFGFILE')
     cwd_path = os.path.join(os.getcwd(), _CONFIG_FILE_NAME)
     def_path = os.path.join(os.path.dirname(__file__), _CONFIG_FILE_NAME)
     
@@ -71,7 +78,9 @@ def _set_default_config_path():
     # fail later, but I don't know what the users will think is
     # the most intelligible.
 
-    if os.path.isfile(cwd_path):
+    if env_path:
+        return env_path
+    elif os.path.isfile(cwd_path):
         return cwd_path
     elif os.path.isfile(def_path):
         return def_path
