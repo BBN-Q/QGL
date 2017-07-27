@@ -139,7 +139,7 @@ class Qubit(LogicalChannel):
                                 'pi2Amp': 0.5,
                                 'shape_fun': PulseShapes.gaussian,
                                 'cutoff': 2,
-                                'dragScaling': 0,
+                                'drag_scaling': 0,
                                 'sigma': 5e-9})
     gate_chan = Instance((str, LogicalMarkerChannel))
     frequency = Float(0.0).tag(
@@ -193,7 +193,7 @@ class Edge(LogicalChannel):
                                 'phase': 0.0,
                                 'shape_fun': PulseShapes.gaussian,
                                 'cutoff': 2,
-                                'dragScaling': 0,
+                                'drag_scaling': 0,
                                 'sigma': 5e-9,
                                 'riseFall': 20e-9})
     gate_chan = Instance((str, LogicalMarkerChannel))

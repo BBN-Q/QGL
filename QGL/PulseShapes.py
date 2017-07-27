@@ -42,7 +42,7 @@ square = constant
 def drag(amp=1,
          length=0,
          cutoff=2,
-         dragScaling=0.5,
+         drag_scaling=0.5,
          sampling_rate=1e9,
          **params):
     '''
@@ -59,7 +59,7 @@ def drag(amp=1,
     #The derivative needs to be scaled in terms of AWG points from the normalized xPts units.
     #The pulse length is 2*cutoff xPts
     derivScale = 1 / (length / 2 / cutoff * sampling_rate)
-    QQuad = dragScaling * derivScale * xPts * np.exp(-0.5 * (xPts**2))
+    QQuad = drag_scaling * derivScale * xPts * np.exp(-0.5 * (xPts**2))
     return amp * (IQuad + 1j * QQuad)
 
 
@@ -98,7 +98,7 @@ def gaussOff(amp=1, length=0, cutoff=2, sampling_rate=1e9, **params):
 def dragGaussOn(amp=1,
                 length=0,
                 cutoff=2,
-                dragScaling=0.5,
+                drag_scaling=0.5,
                 sampling_rate=1e9,
                 **params):
     '''
@@ -109,14 +109,14 @@ def dragGaussOn(amp=1,
     xStep = xPts[1] - xPts[0]
     IQuad = np.exp(-0.5 * (xPts**2)) - np.exp(-0.5 * ((xPts[0] - xStep)**2))
     derivScale = 1 / (length / 2 / cutoff * sampling_rate)
-    QQuad = dragScaling * derivScale * xPts * IQuad
+    QQuad = drag_scaling * derivScale * xPts * IQuad
     return amp * (IQuad + 1j * QQuad)
 
 
 def dragGaussOff(amp=1,
                  length=0,
                  cutoff=2,
-                 dragScaling=0.5,
+                 drag_scaling=0.5,
                  sampling_rate=1e9,
                  **params):
     '''
@@ -127,7 +127,7 @@ def dragGaussOff(amp=1,
     xStep = xPts[1] - xPts[0]
     IQuad = np.exp(-0.5 * (xPts**2)) - np.exp(-0.5 * ((xPts[-1] + xStep)**2))
     derivScale = 1 / (length / 2 / cutoff * sampling_rate)
-    QQuad = dragScaling * derivScale * xPts * IQuad
+    QQuad = drag_scaling * derivScale * xPts * IQuad
     return amp * (IQuad + 1j * QQuad)
 
 
@@ -186,7 +186,7 @@ def arb_axis_drag(nutFreq=10e6,
                   polarAngle=0,
                   aziAngle=0,
                   length=0,
-                  dragScaling=0.5,
+                  drag_scaling=0.5,
                   sampling_rate=1e9,
                   **params):
     """
@@ -217,7 +217,7 @@ def arb_axis_drag(nutFreq=10e6,
 
         #Calculate Z DRAG correction to phase steps
         #beta is a conversion between XY drag scaling and Z drag scaling
-        beta = dragScaling / sampling_rate
+        beta = drag_scaling / sampling_rate
         instantaneousDetuning = beta * (2 * pi * calScale * sin(polarAngle) *
                                         gaussPulse)**2
         phaseSteps = phaseSteps + instantaneousDetuning * (1.0 / sampling_rate)
