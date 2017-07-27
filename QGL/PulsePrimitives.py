@@ -315,7 +315,7 @@ def arb_axis_drag(qubit,
 
         #Calculate Z DRAG correction to phase steps
         #beta is a conversion between XY drag scaling and Z drag scaling
-        beta = params['dragScaling'] / sampRate
+        beta = params['drag_scaling'] / sampRate
         instantaneousDetuning = beta * (2 * pi * calScale * sin(polarAngle) *
                                         gaussPulse)**2
         phaseSteps = phaseSteps + instantaneousDetuning * (1.0 / sampRate)
