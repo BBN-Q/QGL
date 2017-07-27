@@ -4,12 +4,13 @@ import json
 import os.path
 import sys
 
-from . import config_location
+import config_location
 
 # Load the configuration from the json file
 # and populate the global configuration dictionary
 
 QGLCfgFile = config_location.get_config_path()
+print('Note: using QGLCfgFile [%s]' % QGLCfgFile)
 
 if not os.path.isfile(QGLCfgFile):
     rootFolder = os.path.dirname(os.path.abspath(__file__))
@@ -23,6 +24,8 @@ if not os.path.isfile(QGLCfgFile):
         ofid.write(line.replace('/my/path/to', rootFolder))
     ifid.close()
     ofid.close()
+
+    print('Note: created QGLCfgFile using template [%s]' % templateFile)
 
 with open(QGLCfgFile, 'r') as f:
     QGLCfg = json.load(f)
