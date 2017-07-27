@@ -275,6 +275,7 @@ def bundle_wires(physWires, wfs):
         awgChan = 'ch' + awgChan
         awgData[chan.instrument][awgChan]['linkList'] = physWires[chan]
         awgData[chan.instrument][awgChan]['wfLib'] = wfs[chan]
+        awgData[chan.instrument][awgChan]['has_seq_file'] = chan.has_seq_file
         if hasattr(chan, 'correctionT'):
             awgData[chan.instrument][awgChan]['correctionT'] = chan.correctionT
     return awgData
@@ -365,24 +366,27 @@ def compile_to_hardware(seqs,
     num_measurements = count_measurements(wireSeqs)
     wire_measurements = count_measurements_per_wire(wireSeqs)
 
-    # map logical to physical channels
+    # map logical to physical channels, physWires is a list of 
+    # PhysicalQuadratureChannels and PhysicalMarkerChannels
+    # for the APS, the naming convention is:
+    # ASPName-12, or APSName-12m1
     physWires = map_logical_to_physical(wireSeqs)
 
-    # Pave the way for composite instruments
+    # Pave the way for composite instruments, not useful yet...
     files = {}
     label_to_inst = {}
     label_to_chan = {}
     for wire in physWires.keys():
         pattern_module = import_module('QGL.drivers.' + wire.translator)
-        # if hasattr(pattern_module, 'get_true_inst_name'):
-        # import ipdb; ipdb.set_trace()
-        inst_name = pattern_module.get_true_inst_name(wire.label)
-        chan_name = pattern_module.get_true_chan_name(wire.label)
-        wire.instrument = wire.label
-        label_to_inst[wire.label] = inst_name
-        label_to_chan[wire.label] = chan_name
-        wire.label      = chan_name
-        files[inst_name] = {}
+        if pattern_module.SEQFILE_PER_CHANNEL:
+            wire.has_seq_file = True
+            inst_name = pattern_module.get_true_inst_name(wire.label)
+            chan_name = pattern_module.get_true_chan_name(wire.label)
+            wire.instrument = wire.label
+            label_to_inst[wire.label] = inst_name
+            label_to_chan[wire.label] = chan_name
+            wire.label      = chan_name
+            files[inst_name] = {}
 
     # construct channel delay map
     delays = channel_delay_map(physWires)
@@ -398,7 +402,8 @@ def compile_to_hardware(seqs,
     # replace Pulse objects with Waveforms
     physWires = pulses_to_waveforms(physWires)
 
-    # bundle wires on instruments
+    # bundle wires on instruments, or channels depending
+    # on whether we have one sequence per channel
     awgData = bundle_wires(physWires, wfs)
 
     # convert to hardware formats
@@ -414,7 +419,11 @@ def compile_to_hardware(seqs,
                 'seqFileExt']))
         data['translator'].write_sequence_file(data, fullFileName)
 
-        files[label_to_inst[awgName]][label_to_chan[awgName]] = fullFileName
+        # Allow for per channel and per AWG seq files
+        if awgName in label_to_inst.keys():
+            files[label_to_inst[awgName]][label_to_chan[awgName]] = fullFileName
+        else:
+            files[awgName] = fullFileName
 
     # create meta output
     if not axis_descriptor:

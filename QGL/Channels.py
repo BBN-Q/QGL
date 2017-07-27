@@ -98,6 +98,7 @@ class PhysicalMarkerChannel(PhysicalChannel):
     gate_buffer = Float(0.0).tag(
         desc="How much extra time should be added onto the beginning of a gating pulse")
     gate_min_width = Float(0.0).tag(desc="The minimum marker pulse width")
+    has_seq_file = Bool(False)
 
 
 class PhysicalQuadratureChannel(PhysicalChannel):
@@ -109,6 +110,7 @@ class PhysicalQuadratureChannel(PhysicalChannel):
     #During initilization we may just have a string reference to the channel
     amp_factor = Float(1.0)
     phase_skew = Float(0.0)
+    has_seq_file = Bool(False)
 
     @property
     def correctionT(self):
