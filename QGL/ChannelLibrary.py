@@ -20,7 +20,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-Include modification to yaml loader (MIT License) from 
+Include modification to yaml loader (MIT License) from
 https://gist.github.com/joshbode/569627ced3076931b02f
 
 Scientific notation fix for yaml from
@@ -91,14 +91,14 @@ class Loader(yaml.Loader, metaclass=LoaderMeta):
 
 class MyEventHandler(FileSystemEventHandler):
 
-    def __init__(self, filePath, callback):
+    def __init__(self, file_paths, callback):
         super(MyEventHandler, self).__init__()
-        self.filePath = filePath
+        self.file_paths = [os.path.normpath(fn) for fn in file_paths]
         self.callback = callback
         self.paused = True
 
     def on_modified(self, event):
-        if os.path.normpath(event.src_path) == self.filePath:
+        if any([os.path.samefile(event.src_path, fp) for fp in self.file_paths]):
             if not self.paused:
                 """
                 Hold off for half a second
@@ -113,9 +113,21 @@ class LibraryFileWatcher(object):
         super(LibraryFileWatcher, self).__init__()
         self.filePath = os.path.normpath(filePath)
         self.callback = callback
-        self.eventHandler = MyEventHandler(self.filePath, callback)
+
+        # Perform a preliminary loading to find all of the connected files...
+        # TODO: modularity
+        with open(os.path.abspath(self.filePath), 'r') as FID:
+            loader = Loader(FID)
+            try:
+                tmpLib = loader.get_single_data()
+                self.filenames = loader.filenames
+            finally:
+                loader.dispose()
+
+        self.eventHandler = MyEventHandler(self.filenames, callback)
         self.observer = Observer()
-        self.watch = self.observer.schedule(self.eventHandler, path=os.path.dirname(os.path.abspath(self.filePath)))
+        self.observer.schedule(self.eventHandler, path=os.path.dirname(os.path.abspath(filePath)))
+
         self.observer.start()
         self.resume()
 
@@ -179,7 +191,7 @@ class ChannelLibrary(Atom):
                 self.connectivityG[chan.source][chan.target]['channel'] = chan
 
     def load_from_library(self):
-        """Loads the YAML library, creates the QGL objects, and returns a list of the visited filenames 
+        """Loads the YAML library, creates the QGL objects, and returns a list of the visited filenames
         for the filewatcher."""
         if not self.libFile:
             return
