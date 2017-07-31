@@ -254,18 +254,18 @@ class ChannelLibrary(Atom):
                         slave_chan = instr["slave_trig"] if "slave_trig" in instr.keys() else "slave"
                         master_awg.append(name + "-" + slave_chan)
 
-            # Establish the slave trigger
-            if "slave_trig" in instr.keys():
-                if len(master_awg) != 1:
-                    raise ValueError("More (or less) than one AWG is marked as master.")
-                else:
-                    params = {}
-                    params["label"]       = "slave_trig"
-                    params["phys_chan"]    = master_awg[0]
-                    params["pulse_params"] = {"length": 1e-7, "shape_fun": "constant"}
-                    params["__module__"]  = "QGL.Channels"
-                    params["__class__"]   = "LogicalMarkerChannel"
-                    channel_dict[params["label"]] = params
+            # Establish the slave trigger, assuming for now that we have a single
+            # APS master. This might change later.
+            if len(master_awg) != 1:
+                raise ValueError("More (or less) than one AWG is marked as master.")
+            else:
+                params = {}
+                params["label"]       = "slave_trig"
+                params["phys_chan"]    = master_awg[0]
+                params["pulse_params"] = {"length": 1e-7, "shape_fun": "constant"}
+                params["__module__"]  = "QGL.Channels"
+                params["__class__"]   = "LogicalMarkerChannel"
+                channel_dict[params["label"]] = params
 
             for name, filt in filter_dict.items():
                 if "StreamSelector" in filt["type"]:
