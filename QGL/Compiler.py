@@ -275,7 +275,6 @@ def bundle_wires(physWires, wfs):
         awgChan = 'ch' + awgChan
         awgData[chan.instrument][awgChan]['linkList'] = physWires[chan]
         awgData[chan.instrument][awgChan]['wfLib'] = wfs[chan]
-        awgData[chan.instrument][awgChan]['has_seq_file'] = chan.has_seq_file
         if hasattr(chan, 'correctionT'):
             awgData[chan.instrument][awgChan]['correctionT'] = chan.correctionT
     return awgData
@@ -374,18 +373,22 @@ def compile_to_hardware(seqs,
 
     # Pave the way for composite instruments, not useful yet...
     files = {}
-    label_to_inst = {}
-    label_to_chan = {}
+    label_to_inst   = {}
+    label_to_chan   = {}
+    old_wire_names  = {}
+    old_wire_instrs = {}
     for wire in physWires.keys():
         pattern_module = import_module('QGL.drivers.' + wire.translator)
         if pattern_module.SEQFILE_PER_CHANNEL:
-            wire.has_seq_file = True
             inst_name = pattern_module.get_true_inst_name(wire.label)
             chan_name = pattern_module.get_true_chan_name(wire.label)
-            wire.instrument = wire.label
             label_to_inst[wire.label] = inst_name
             label_to_chan[wire.label] = chan_name
-            wire.label      = chan_name
+            # Change the name/inst for uniqueness, but we must restore this later!
+            old_wire_names[wire] = wire.label
+            old_wire_instrs[wire] = wire.instrument
+            wire.instrument = wire.label
+            wire.label = chan_name 
             files[inst_name] = {}
 
     # construct channel delay map
@@ -447,6 +450,12 @@ def compile_to_hardware(seqs,
     metafilepath = os.path.join(config.AWGDir, fileName + '-meta.json')
     with open(metafilepath, 'w') as FID:
         json.dump(meta, FID, indent=2, sort_keys=True)
+
+    # Restore the wire info
+    for wire in old_wire_names.keys():
+        wire.label = old_wire_names[wire]
+    for wire in old_wire_instrs.keys():
+        wire.instrument = old_wire_instrs[wire]
 
     # Return the filenames we wrote
     return metafilepath

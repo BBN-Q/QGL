@@ -207,7 +207,7 @@ class ChannelLibrary(Atom):
             instr_dict  = tmpLib['instruments']
             qubit_dict  = tmpLib['qubits']
             filter_dict = tmpLib['filters']
-            master_awg  = []
+            master_awgs = []
 
             # Construct the channel library
             channel_dict = {}
@@ -249,19 +249,28 @@ class ChannelLibrary(Atom):
                         params["__module__"] = "QGL.Channels"
                         params["__class__"]  = "PhysicalMarkerChannel"
                         channel_dict[params["label"]] = params
-                if "master" in instr.keys() and "slave_trig" in instr.keys():
-                    if instr["master"]:
-                        slave_chan = instr["slave_trig"] if "slave_trig" in instr.keys() else "slave"
-                        master_awg.append(name + "-" + slave_chan)
+                if "master" in instr.keys() and instr["master"]:
+                    slave_chan = instr["slave_trig"] if "slave_trig" in instr.keys() else "slave"
+                    master_awgs.append(name + "-" + slave_chan)
+                # Eventually we should support multiple masters...
+                # if "slave_trig" in instr.keys():
+                #     params = {}
+                #     params["label"]        = name + "_slave_trig"
+                #     params["phys_chan"]    = name + "-" + instr["slave_trig"]
+                #     params["pulse_params"] = {"length": 1e-7, "shape_fun": "constant"}
+                #     params["__module__"]   = "QGL.Channels"
+                #     params["__class__"]    = "LogicalMarkerChannel"
+                #     print(params["label"], "***")
+                #     channel_dict[params["label"]] = params
 
             # Establish the slave trigger, assuming for now that we have a single
             # APS master. This might change later.
-            if len(master_awg) != 1:
-                raise ValueError("More (or less) than one AWG is marked as master.")
-            else:
+            if len(master_awgs) > 1:
+                raise ValueError("More than one AWG is marked as master.")
+            elif len(master_awgs) == 1:
                 params = {}
                 params["label"]       = "slave_trig"
-                params["phys_chan"]    = master_awg[0]
+                params["phys_chan"]    = master_awgs[0]
                 params["pulse_params"] = {"length": 1e-7, "shape_fun": "constant"}
                 params["__module__"]  = "QGL.Channels"
                 params["__class__"]   = "LogicalMarkerChannel"
