@@ -4,12 +4,12 @@ import json
 import os.path
 import sys
 
-import QGL.config_location
+import qgl_config_loc
 
 # Load the configuration from the json file
 # and populate the global configuration dictionary
 
-QGLCfgFile = QGL.config_location.get_config_path()
+QGLCfgFile = qgl_config_loc.get_config_path()
 print('Note: using QGLCfgFile [%s]' % QGLCfgFile)
 
 if not os.path.isfile(QGLCfgFile):
