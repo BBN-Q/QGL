@@ -62,23 +62,22 @@ def _set_default_config_path():
     """
     Set the path for the "default" configuration file:
 
-    1. if there's a QGLCFGFILE environment variable set, use
-        its value
+    1. if there's a QGLCFGFILE environment variable set, return it
 
-    2. if there's one in the current working directory, then use it
+    2. if there's a _CONFIG_FILE_NAME in the current working directory,
+        then return the path to it
 
-    3. otherwise, if there's one in dirname(__file__), then use it
-
-    4. otherwise, leave the path at None and assume that the user will
-        set it explicitly instead of relying on a default
+    3. otherwise, return dirname(__file__) + '/' + _CONFIG_FILE_NAME
 
     Note that this routine does no error checking about
-    whether or not the return value is usable.
+    whether or not the return value is usable.  If the file doesn't
+    exist (in cases 1 or 3) it will be created from a template later.
     """
 
     env_path = os.getenv('QGLCFGFILE')
     cwd_path = os.path.join(os.getcwd(), _CONFIG_FILE_NAME)
-    def_path = os.path.join(os.path.dirname(__file__), 'QGL', _CONFIG_FILE_NAME)
+    def_path = os.path.join(
+            os.path.dirname(__file__), 'QGL', _CONFIG_FILE_NAME)
 
     # We could also check whether the file is readable, etc.
     # I think the error messages make more sense if we let this
@@ -89,10 +88,8 @@ def _set_default_config_path():
         return env_path
     elif os.path.isfile(cwd_path):
         return cwd_path
-    elif os.path.isfile(def_path):
-        return def_path
     else:
-        return None
+        return def_path
 
 
 def config(path):
