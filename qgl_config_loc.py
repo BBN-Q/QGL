@@ -99,7 +99,7 @@ def config(path):
     """
     Set CONFIG_PATH, the path to the configuration JSON file,
     to the given path, and return the new path.
-    
+
     No error or sanity checking is performed.
     """
 
