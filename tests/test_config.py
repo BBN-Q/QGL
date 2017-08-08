@@ -49,7 +49,6 @@ class ConfigTest(unittest.TestCase):
         """
 
         qgl_dir = os.path.dirname(os.path.dirname(__file__))
-        print('QGLDIR [%s]' % qgl_dir)
 
         os.putenv('PYTHONPATH', qgl_dir)
 
@@ -68,8 +67,8 @@ class ConfigTest(unittest.TestCase):
         out_data, err_data = proc.communicate()
 
         lines = out_data.split('\n')
-        print('LINES %s' % str(lines))
-        assert lines[0] == ('Note: using QGLCfgFile [%s/QGL/config.json]' % qgl_dir)
+        expected = 'Note: using QGLCfgFile [%s/QGL/config.json]' % qgl_dir
+        assert lines[0] == expected
 
     def test_env(self):
         """
@@ -93,7 +92,8 @@ class ConfigTest(unittest.TestCase):
         try:
             proc = subprocess.Popen(
                     ['python', progname],
-                    universal_newlines=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+                    universal_newlines=True,
+                    stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             out_data, err_data = proc.communicate()
         except BaseException as exc:
             assert False
@@ -101,7 +101,6 @@ class ConfigTest(unittest.TestCase):
         os.unsetenv('QGLCFGFILE')
 
         lines = out_data.split('\n')
-        print('LINES %s' % str(lines))
         assert lines[0] == 'Note: using QGLCfgFile [/foo/bar/qux]'
 
     def test_override1(self):
@@ -128,16 +127,14 @@ class ConfigTest(unittest.TestCase):
         try:
             proc = subprocess.Popen(
                     ['python', progname],
-                    universal_newlines=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+                    universal_newlines=True,
+                    stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             out_data, err_data = proc.communicate()
         except BaseException as exc:
             assert False
 
         lines = out_data.split('\n')
-        print('LINES %s' % str(lines))
         assert lines[0] == 'Note: using QGLCfgFile [/a/b/c/d]'
-
-
 
 
 if __name__ == "__main__":
