@@ -106,7 +106,9 @@ class MyEventHandler(FileSystemEventHandler):
                 time for it to be written.
                 """
                 time.sleep(0.5)
-                self.callback()
+                if os.path.splitext(event.src_path)[1] != '.tmp':
+                    #Ignore file event if this is a temporary file
+                    self.callback()
 
 class LibraryFileWatcher(object):
     def __init__(self, filePath, callback):
