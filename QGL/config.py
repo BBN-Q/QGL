@@ -2,7 +2,6 @@
 
 import json
 import os.path
-import sys
 
 import qgl_config_loc
 
