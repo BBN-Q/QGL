@@ -98,17 +98,20 @@ class MyEventHandler(FileSystemEventHandler):
         self.paused = True
 
     def on_modified(self, event):
-        if any([os.path.samefile(event.src_path, fp) for fp in self.file_paths]):
-            if not self.paused:
-                """
-                Hold off for half a second
-                If the event is from the file being opened to be written this gives
-                time for it to be written.
-                """
-                time.sleep(0.5)
-                if os.path.splitext(event.src_path)[1] != '.tmp':
-                    #Ignore file event if this is a temporary file
+        try:
+            if any([os.path.samefile(event.src_path, fp) for fp in self.file_paths]):
+                if not self.paused:
+                    """
+                    Hold off for half a second
+                    If the event is from the file being opened to be written this gives
+                    time for it to be written.
+                    """
+                    time.sleep(0.5)
                     self.callback()
+        except FileNotFoundError:
+            #Temporary settings files generated using yaml_dump get deleted
+            #faster than the above code can catch it.
+            pass
 
 class LibraryFileWatcher(object):
     def __init__(self, filePath, callback):
