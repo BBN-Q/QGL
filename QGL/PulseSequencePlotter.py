@@ -72,7 +72,7 @@ def resolve_translator(filename, translators):
     raise NameError("No translator found to open the given file %s", filename)
 
 
-def plot_pulse_files(metafile):
+def plot_pulse_files(metafile, time=False):
     '''
     plot_pulse_files(metafile)
 
@@ -92,7 +92,7 @@ def plot_pulse_files(metafile):
                 fileNames.append(file)
 
     dataDict = {}
-    lineNames, num_seqs = extract_waveforms(dataDict, fileNames)
+    lineNames, num_seqs = extract_waveforms(dataDict, fileNames, time=time)
 
     localname = os.path.split(fileNames[0])[1]
     sequencename = localname.split('-')[0]
@@ -148,7 +148,7 @@ def plot_pulse_files(metafile):
     show(layout)
 
 
-def extract_waveforms(dataDict, fileNames, nameDecorator=''):
+def extract_waveforms(dataDict, fileNames, nameDecorator='', time=False):
     lineNames = []
     num_seqs = 0
     for fileName in sorted(fileNames):
@@ -161,6 +161,7 @@ def extract_waveforms(dataDict, fileNames, nameDecorator=''):
 
         translator = resolve_translator(fileName, translators)
         wfs = translator.read_sequence_file(fileName)
+        sample_time = 1.0/translator.SAMPLING_RATE if time else 1
 
         for (k, seqs) in sorted(wfs.items()):
             if all_zero_seqs(seqs):
@@ -170,7 +171,7 @@ def extract_waveforms(dataDict, fileNames, nameDecorator=''):
             k_ = lineNames[-1].replace("-", "_")
             for ct, seq in enumerate(seqs):
                 # Convert from time amplitude pairs to x,y lines with points at start and beginnning to prevent interpolation
-                dataDict[k_ + "_x_{:d}".format(ct + 1)] = np.tile(
+                dataDict[k_ + "_x_{:d}".format(ct + 1)] = sample_time * np.tile(
                     np.cumsum([0] + [_[0] for _ in seq]),
                     (2, 1)).flatten(order="F")[1:-1]
                 dataDict[k_ + "_y_{:d}".format(ct + 1)] = np.tile(
