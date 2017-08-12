@@ -28,15 +28,15 @@ def HahnEcho(qubit, pulseSpacings, periods=0, calRepeats=2, showPlot=False):
 #Tack on the calibration scalings
     seqs += create_cal_seqs((qubit, ), calRepeats)
 
-    fileNames = compile_to_hardware(seqs, 'Echo/Echo',
+    metafile = compile_to_hardware(seqs, 'Echo/Echo',
         axis_descriptor=[
             delay_descriptor(2 * pulseSpacings),
             cal_descriptor((qubit,), calRepeats)
         ])
-    print(fileNames)
 
     if showPlot:
-        plot_pulse_files(fileNames)
+        plot_pulse_files(metafile)
+    return metafile
 
 
 def CPMG(qubit, numPulses, pulseSpacing, calRepeats=2, showPlot=False):
@@ -67,12 +67,12 @@ def CPMG(qubit, numPulses, pulseSpacing, calRepeats=2, showPlot=False):
     #Tack on the calibration scalings
     seqs += create_cal_seqs((qubit, ), calRepeats)
 
-    fileNames = compile_to_hardware(seqs, 'CPMG/CPMG',
+    metafile = compile_to_hardware(seqs, 'CPMG/CPMG',
         axis_descriptor=[
             delay_descriptor(pulseSpacing * numPulses),
             cal_descriptor((qubit,), calRepeats)
         ])
-    print(fileNames)
 
     if showPlot:
-        plot_pulse_files(fileNames)
+        plot_pulse_files(metafile)
+    return metafile
