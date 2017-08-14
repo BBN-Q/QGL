@@ -271,7 +271,6 @@ class ChannelLibrary(Atom):
                 #     print(params["label"], "***")
                 #     channel_dict[params["label"]] = params
 
-            print(marker_lens)
             # Establish the slave trigger, assuming for now that we have a single
             # APS master. This might change later.
             if len(master_awgs) > 1:
