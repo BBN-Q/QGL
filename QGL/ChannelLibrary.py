@@ -216,6 +216,7 @@ class ChannelLibrary(Atom):
 
             # Construct the channel library
             channel_dict = {}
+            marker_lens = {}
 
             for name, instr in instr_dict.items():
                 if "tx_channels" in instr.keys():
@@ -253,6 +254,8 @@ class ChannelLibrary(Atom):
                         params["translator"] = instr["type"] + "Pattern"
                         params["__module__"] = "QGL.Channels"
                         params["__class__"]  = "PhysicalMarkerChannel"
+                        if "length" in marker.keys():
+                            marker_lens[params["label"]] = marker["length"]
                         channel_dict[params["label"]] = params
                 if "master" in instr.keys() and instr["master"]:
                     slave_chan = instr["slave_trig"] if "slave_trig" in instr.keys() else "slave"
@@ -268,6 +271,7 @@ class ChannelLibrary(Atom):
                 #     print(params["label"], "***")
                 #     channel_dict[params["label"]] = params
 
+            print(marker_lens)
             # Establish the slave trigger, assuming for now that we have a single
             # APS master. This might change later.
             if len(master_awgs) > 1:
@@ -276,7 +280,11 @@ class ChannelLibrary(Atom):
                 params = {}
                 params["label"]       = "slave_trig"
                 params["phys_chan"]    = master_awgs[0]
-                params["pulse_params"] = {"length": 1e-7, "shape_fun": "constant"}
+                if params["phys_chan"] in marker_lens.keys():
+                    length = marker_lens[params["phys_chan"]]
+                else:
+                    length = 1e-7
+                params["pulse_params"] = {"length": length, "shape_fun": "constant"}
                 params["__module__"]  = "QGL.Channels"
                 params["__class__"]   = "LogicalMarkerChannel"
                 channel_dict[params["label"]] = params
@@ -338,7 +346,11 @@ class ChannelLibrary(Atom):
                     params = {}
                     params["label"]        = "digTrig-" + phys_instr
                     params["phys_chan"]     = phys_instr + "-" + phys_marker
-                    params["pulse_params"]  = {"length": 3e-7, "shape_fun": "constant"}
+                    if params["phys_chan"] in marker_lens.keys():
+                        length = marker_lens[params["phys_chan"]]
+                    else:
+                        length = 3e-7
+                    params["pulse_params"]  = {"length": length, "shape_fun": "constant"}
                     params["__module__"]   = "QGL.Channels"
                     params["__class__"]    = "LogicalMarkerChannel"
                     # Don't duplicate triggers to the same digitizer
