@@ -354,6 +354,7 @@ class ChannelLibrary(Atom):
                     params["__module__"] = "QGL.Channels"
                     params["__class__"]  = "LogicalMarkerChannel"
                     channel_dict[params["label"]] = params
+                    channel_dict["M-{}".format(name)]["gate_chan"] = params["label"]
 
                 # Create the control gate chan:
                 if "gate" in qubit["control"].keys():
@@ -364,6 +365,7 @@ class ChannelLibrary(Atom):
                     params["__module__"] = "QGL.Channels"
                     params["__class__"]  = "LogicalMarkerChannel"
                     channel_dict[params["label"]] = params
+                    channel_dict[params["{}-gate".format(name)]]["gate_chan"] = params["label"]
 
             # for k, c in channel_dict.items():
             #     print("Channel {: <30} phys_chan {: <30} class {: <30} instr {: <30}".format(k, c["phys_chan"] if "phys_chan" in c else "None", c["__class__"] if "__class__" in c else "None", c["instrument"] if "instrument" in c else "None"))
