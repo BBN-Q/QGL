@@ -774,7 +774,9 @@ def MeasEcho(qM, qD, delay, piShift=None, phase=0):
     measEcho.label = 'MEAS'  #to generate the digitizer trigger
     return measEcho
 
-
 # Gating/blanking pulse primitives
 def BLANK(chan, length):
     return TAPulse("BLANK", chan.gate_chan, length, 1, 0, 0)
+
+def TRIG(marker_chan, length):
+    return TAPulse("TRIG", marker_chan, length, 1.0, 0., 0.)
