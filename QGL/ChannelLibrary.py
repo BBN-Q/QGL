@@ -285,7 +285,7 @@ class ChannelLibrary(Atom):
                 if "StreamSelector" in filt["type"]:
                     params = {k: v for k,v in filt.items() if k in Channels.receiver_channel.__atom_members__.keys()}
                     params["label"]      = "RecvChan-" + name # instr_dict[filt["instrument"]]["name"] + "-" + name
-                    params["channel"]    = str(params["channel"]) # Convert to a string
+                    params["channel"]    = params["channel"] # Convert to a string
                     params["instrument"] = filt["source"]
                     params["__module__"] = "QGL.Channels"
                     params["__class__"]  = "receiver_channel"
@@ -365,7 +365,7 @@ class ChannelLibrary(Atom):
                     params["__module__"] = "QGL.Channels"
                     params["__class__"]  = "LogicalMarkerChannel"
                     channel_dict[params["label"]] = params
-                    channel_dict[params["{}-gate".format(name)]]["gate_chan"] = params["label"]
+                    channel_dict[name]["gate_chan"] = params["label"]
 
             # for k, c in channel_dict.items():
             #     print("Channel {: <30} phys_chan {: <30} class {: <30} instr {: <30}".format(k, c["phys_chan"] if "phys_chan" in c else "None", c["__class__"] if "__class__" in c else "None", c["instrument"] if "instrument" in c else "None"))
