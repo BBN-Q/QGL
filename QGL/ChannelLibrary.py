@@ -212,6 +212,7 @@ class ChannelLibrary(Atom):
             instr_dict  = tmpLib['instruments']
             qubit_dict  = tmpLib['qubits']
             filter_dict = tmpLib['filters']
+            trigger_dict = tmpLib['markers']
             master_awgs = []
 
             # Construct the channel library
@@ -378,19 +379,19 @@ class ChannelLibrary(Atom):
                     channel_dict[params["label"]] = params
                     channel_dict[name]["gate_chan"] = params["label"]
 
-                if "triggers" in qubit.keys():
-                    for trig_name, trigger in qubit["triggers"].items():
-                        phys_instr, phys_marker = trigger.split()
-                        params = {}
-                        params["label"]      = trig_name
-                        params["phys_chan"]   = phys_instr + "-" + phys_marker
-                        if params["phys_chan"] in marker_lens.keys():
-                            length = marker_lens[params["phys_chan"]]
-                        else:
-                            length = 1e-7
-                        params["__module__"] = "QGL.Channels"
-                        params["__class__"]  = "LogicalMarkerChannel"
-                        channel_dict[params["label"]] = params
+
+            for trig_name, trigger in trigger_dict.items():
+                phys_instr, phys_marker = trigger.split()
+                params = {}
+                params["label"]      = trig_name
+                params["phys_chan"]   = phys_instr + "-" + phys_marker
+                if params["phys_chan"] in marker_lens.keys():
+                    length = marker_lens[params["phys_chan"]]
+                else:
+                    length = 1e-7
+                params["__module__"] = "QGL.Channels"
+                params["__class__"]  = "LogicalMarkerChannel"
+                channel_dict[params["label"]] = params
 
             # for k, c in channel_dict.items():
             #     print("Channel {: <30} phys_chan {: <30} class {: <30} instr {: <30}".format(k, c["phys_chan"] if "phys_chan" in c else "None", c["__class__"] if "__class__" in c else "None", c["instrument"] if "instrument" in c else "None"))
