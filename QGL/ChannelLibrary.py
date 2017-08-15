@@ -293,7 +293,7 @@ class ChannelLibrary(Atom):
                 if "StreamSelector" in filt["type"]:
                     params = {k: v for k,v in filt.items() if k in Channels.receiver_channel.__atom_members__.keys()}
                     params["label"]      = "RecvChan-" + name # instr_dict[filt["instrument"]]["name"] + "-" + name
-                    params["channel"]    = params["channel"] # Convert to a string
+                    params["channel"]    = str(params["channel"]) # Convert to a string
                     params["instrument"] = filt["source"]
                     params["__module__"] = "QGL.Channels"
                     params["__class__"]  = "receiver_channel"
