@@ -120,7 +120,7 @@ class receiver_channel(PhysicalChannel):
     '''
     A trigger input on a receiver.
     '''
-    channel = Int()
+    channel = Str()
 
 class LogicalMarkerChannel(LogicalChannel):
     '''
