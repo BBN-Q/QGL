@@ -455,6 +455,9 @@ class ChannelLibrary(Atom):
                     self.physicalChannelManager.name_changed(chName, newLabel)
 
 def MarkerFactory(label, **kwargs):
+    '''Return a marker channel by name. Must be defined under top-level `markers`
+    keyword in measurement configuration YAML.
+    '''
     if channelLib and label in channelLib and isinstance(channelLib[label],
                                                         Channels.LogicalMarkerChannel):
         return channelLib[label]

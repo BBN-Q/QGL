@@ -779,4 +779,9 @@ def BLANK(chan, length):
     return TAPulse("BLANK", chan.gate_chan, length, 1, 0, 0)
 
 def TRIG(marker_chan, length):
+    '''TRIG(marker_chan, length) generates a trigger output of amplitude 1 on
+    a LogicalMarkerChannel.
+    '''
+    if not isinstance(marker_chan, Channels.LogicalMarkerChannel):
+        raise ValueError("TRIG pulses can only be generated on LogicalMarkerChannels.")
     return TAPulse("TRIG", marker_chan, length, 1.0, 0., 0.)
