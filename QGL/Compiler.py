@@ -377,13 +377,15 @@ def compile_to_hardware(seqs,
     label_to_chan   = {}
     old_wire_names  = {}
     old_wire_instrs = {}
-    for wire in physWires.keys():
+    for wire, pulses in physWires.items():
         pattern_module = import_module('QGL.drivers.' + wire.translator)
         if pattern_module.SEQFILE_PER_CHANNEL:
             inst_name = pattern_module.get_true_inst_name(wire.label)
             chan_name = pattern_module.get_true_chan_name(wire.label)
+            non_id_pulses = [p for p in pulses[0] if isinstance(p,Pulse) and p.label!="Id"]
             label_to_inst[wire.label] = inst_name
-            label_to_chan[wire.label] = chan_name
+            if len(non_id_pulses) > 0:
+                label_to_chan[wire.label] = chan_name
             # Change the name/inst for uniqueness, but we must restore this later!
             old_wire_names[wire] = wire.label
             old_wire_instrs[wire] = wire.instrument
@@ -423,8 +425,9 @@ def compile_to_hardware(seqs,
         data['translator'].write_sequence_file(data, fullFileName)
 
         # Allow for per channel and per AWG seq files
-        if awgName in label_to_inst.keys():
-            files[label_to_inst[awgName]][label_to_chan[awgName]] = fullFileName
+        if awgName in label_to_inst:
+            if awgName in label_to_chan:
+                files[label_to_inst[awgName]][label_to_chan[awgName]] = fullFileName
         else:
             files[awgName] = fullFileName
 
