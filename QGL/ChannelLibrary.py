@@ -291,12 +291,12 @@ class ChannelLibrary(Atom):
 
             for name, filt in filter_dict.items():
                 if "StreamSelector" in filt["type"]:
-                    params = {k: v for k,v in filt.items() if k in Channels.receiver_channel.__atom_members__.keys()}
+                    params = {k: v for k,v in filt.items() if k in Channels.ReceiverChannel.__atom_members__.keys()}
                     params["label"]      = "RecvChan-" + name # instr_dict[filt["instrument"]]["name"] + "-" + name
                     params["channel"]    = str(params["channel"]) # Convert to a string
                     params["instrument"] = filt["source"]
                     params["__module__"] = "QGL.Channels"
-                    params["__class__"]  = "receiver_channel"
+                    params["__class__"]  = "ReceiverChannel"
                     if "source" not in filt.keys():
                         raise ValueError("No instrument (source) specified for Stream Selector")
                     if filt["source"] not in instr_dict.keys() and filt["source"] not in channel_dict.keys():
