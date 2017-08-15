@@ -116,11 +116,11 @@ class PhysicalQuadratureChannel(PhysicalChannel):
             [[self.amp_factor, self.amp_factor * tan(self.phase_skew * pi / 180)],
              [0, 1 / cos(self.phase_skew * pi / 180)]])
 
-class receiver_channel(PhysicalChannel):
+class ReceiverChannel(PhysicalChannel):
     '''
     A trigger input on a receiver.
     '''
-    channel = Int()
+    channel = Str()
 
 class LogicalMarkerChannel(LogicalChannel):
     '''
@@ -169,7 +169,7 @@ class Measurement(LogicalChannel):
                                 'sigma': 1e-9})
     gate_chan = Instance((str, LogicalMarkerChannel))
     trig_chan = Instance((str, LogicalMarkerChannel))
-    receiver_chan = Instance((str, receiver_channel))
+    receiver_chan = Instance((str, ReceiverChannel))
 
     def __init__(self, **kwargs):
         super(Measurement, self).__init__(**kwargs)
@@ -222,5 +222,5 @@ NewLogicalChannelList = [Qubit, Edge, LogicalMarkerChannel, Measurement]
 NewPhysicalChannelList = [
     PhysicalMarkerChannel,
     PhysicalQuadratureChannel,
-    receiver_channel
+    ReceiverChannel
 ]
