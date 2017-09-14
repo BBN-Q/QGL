@@ -395,7 +395,6 @@ class ChannelLibrary(Atom):
                 channel_dict[params["label"]] = params
 
             for name, edge in edge_dict.items():
-                import pdb; pdb.set_trace()
                 # Create the Edges
                 if len(edge["AWG"].split()) != 2:
                     print("Control AWG specification for {} ({}) must have a device, channel".format(name, edge["AWG"]))

@@ -202,9 +202,6 @@ class Edge(LogicalChannel):
 
     def __init__(self, **kwargs):
         super(Edge, self).__init__(**kwargs)
-        if self.gate_chan is None:
-            self.gate_chan = LogicalMarkerChannel(
-                label=kwargs['label'] + '-gate')
 
     def isforward(self, source, target):
         ''' Test whether (source, target) matches the directionality of the edge. '''
