@@ -209,12 +209,17 @@ class ChannelLibrary(Atom):
                 finally:
                     loader.dispose()
 
-            instr_dict  = tmpLib['instruments']
-            qubit_dict  = tmpLib['qubits']
-            filter_dict = tmpLib['filters']
-            trigger_dict = tmpLib['markers']
-            edge_dict = tmpLib['edges']
-            master_awgs = []
+            # Check to see if we have the mandatory sections
+            for section in ['instruments', 'qubits', 'filters']:
+                if section not in tmpLib.keys():
+                    raise ValueError("{} section not present in config file {}.".format(section, self.libFile))
+
+            instr_dict   = tmpLib['instruments']
+            qubit_dict   = tmpLib['qubits']
+            filter_dict  = tmpLib['filters']
+            trigger_dict = tmpLib.get('markers', {}) # This section is optional
+            edge_dict    = tmpLib.get('markers', {}) # This section is optional
+            master_awgs  = []
 
             # Construct the channel library
             channel_dict = {}
