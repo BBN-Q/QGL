@@ -218,7 +218,7 @@ class ChannelLibrary(Atom):
             qubit_dict   = tmpLib['qubits']
             filter_dict  = tmpLib['filters']
             trigger_dict = tmpLib.get('markers', {}) # This section is optional
-            edge_dict    = tmpLib.get('markers', {}) # This section is optional
+            edge_dict    = tmpLib.get('edges', {}) # This section is optional
             master_awgs  = []
 
             # Construct the channel library
