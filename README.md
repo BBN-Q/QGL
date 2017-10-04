@@ -31,6 +31,11 @@ pip install watchdog
 conda install -c ecpy atom
 ```
 
+For Python 3.6+ you may need to install watchdog from conda forge:
+```
+conda install -c conda-forge watchdog
+```
+
 If the `QGL` module is not installed, the repository path needs to be in the
 `PYTHONPATH`. On Windows machines, you add/modify this environment variable by
 going to System -> Advanced Settings -> Environment variables. On Mac/Linux

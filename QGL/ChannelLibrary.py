@@ -209,11 +209,17 @@ class ChannelLibrary(Atom):
                 finally:
                     loader.dispose()
 
-            instr_dict  = tmpLib['instruments']
-            qubit_dict  = tmpLib['qubits']
-            filter_dict = tmpLib['filters']
-            trigger_dict = tmpLib['markers']
-            master_awgs = []
+            # Check to see if we have the mandatory sections
+            for section in ['instruments', 'qubits', 'filters']:
+                if section not in tmpLib.keys():
+                    raise ValueError("{} section not present in config file {}.".format(section, self.libFile))
+
+            instr_dict   = tmpLib['instruments']
+            qubit_dict   = tmpLib['qubits']
+            filter_dict  = tmpLib['filters']
+            trigger_dict = tmpLib.get('markers', {}) # This section is optional
+            edge_dict    = tmpLib.get('edges', {}) # This section is optional
+            master_awgs  = []
 
             # Construct the channel library
             channel_dict = {}
@@ -392,6 +398,32 @@ class ChannelLibrary(Atom):
                 params["__module__"] = "QGL.Channels"
                 params["__class__"]  = "LogicalMarkerChannel"
                 channel_dict[params["label"]] = params
+
+            for name, edge in edge_dict.items():
+                # Create the Edges
+                if len(edge["AWG"].split()) != 2:
+                    print("Control AWG specification for {} ({}) must have a device, channel".format(name, edge["AWG"]))
+                    raise ValueError("Control AWG specification for {} ({}) must have a device, channel".format(name, edge["AWG"]))
+                ctrl_instr, ctrl_chan = edge["AWG"].split()
+                params = {k: v for k,v in edge.items() if k in Channels.Edge.__atom_members__.keys()}
+                params["label"]      = name
+                params["phys_chan"]   = ctrl_instr + "-" + ctrl_chan
+                params["__module__"] = "QGL.Channels"
+                params["__class__"]  = "Edge"
+                channel_dict[params["label"]] = params
+                if 'generator' in edge.keys():
+                    channel_dict[params["phys_chan"]]["generator"] = edge["generator"]
+
+                # Create the edge gate chan:
+                if "gate" in edge.keys():
+                    phys_instr, phys_marker = edge["gate"].split()
+                    params = {}
+                    params["label"]      = "{}-gate".format(name)
+                    params["phys_chan"]   = phys_instr + "-" + phys_marker
+                    params["__module__"] = "QGL.Channels"
+                    params["__class__"]  = "LogicalMarkerChannel"
+                    channel_dict[params["label"]] = params
+                    channel_dict[name]["gate_chan"] = params["label"]
 
             # for k, c in channel_dict.items():
             #     print("Channel {: <30} phys_chan {: <30} class {: <30} instr {: <30}".format(k, c["phys_chan"] if "phys_chan" in c else "None", c["__class__"] if "__class__" in c else "None", c["instrument"] if "instrument" in c else "None"))
