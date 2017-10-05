@@ -333,7 +333,7 @@ class ChannelLibrary(Atom):
                 meas_instr, meas_chan = qubit["measure"]["AWG"].split()
                 params = {k: v for k,v in qubit["measure"].items() if k in Channels.Measurement.__atom_members__.keys()}
                 params["label"]        = "M-{}".format(name)
-                params["trig_chan"]     = "digTrig-" + meas_instr
+                params["trig_chan"]     = "digTrig-" + qubit["measure"]["trigger"]
                 params["phys_chan"]     = meas_instr + "-" + meas_chan
                 params["meas_type"]     = "autodyne"
                 params["receiver_chan"] = "RecvChan-" + qubit["measure"]["receiver"]
@@ -350,7 +350,7 @@ class ChannelLibrary(Atom):
                         raise ValueError("Receiver specification for {} ({}) must have a stream selector".format(name, qubit["measure"]["receiver"]))
                     phys_instr, phys_marker = qubit["measure"]["trigger"].split()
                     params = {}
-                    params["label"]        = "digTrig-" + phys_instr
+                    params["label"]        = "digTrig-" + qubit["measure"]["trigger"]
                     params["phys_chan"]     = phys_instr + "-" + phys_marker
                     if params["phys_chan"] in marker_lens.keys():
                         length = marker_lens[params["phys_chan"]]
