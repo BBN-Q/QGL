@@ -174,8 +174,8 @@ class ChannelLibrary(Atom):
 
         # Update the global reference
         global channelLib
-        if channelLib:
-            print("Warning: overwriting the QGL ChannelLibrary!")
+        # if channelLib:
+        #     print("Warning: overwriting the QGL ChannelLibrary!")
         channelLib = self
 
     #Dictionary methods
