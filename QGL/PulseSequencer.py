@@ -26,7 +26,7 @@ from collections import OrderedDict
 from functools import reduce
 from builtins import str
 
-from . import ChannelLibrary, PulseShapes
+from . import PulseShapes
 
 from collections import namedtuple
 

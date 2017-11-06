@@ -13,10 +13,11 @@ class APSPatternUtils(unittest.TestCase):
         self.q1 = Qubit(label='q1', gate_chan=self.q1gate)
         self.q1 = Qubit(label='q1')
         self.q1.pulse_params['length'] = 30e-9
-
-        ChannelLibrary.channelLib.channelDict = {'q1': self.q1,
+        
+        ChannelLibrary(library_file=None) # Create a blank ChannelLibrary
+        ChannelLibraries.channelLib.channelDict = {'q1': self.q1,
                                                  'q1-gate': self.q1gate}
-        ChannelLibrary.channelLib.build_connectivity_graph()
+        ChannelLibraries.channelLib.build_connectivity_graph()
 
     def test_synchronize_control_flow(self):
         q1 = self.q1

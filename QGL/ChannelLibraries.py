@@ -162,11 +162,15 @@ class ChannelLibrary(Atom):
     def __init__(self, library_file=config.configFile, channelDict={}, **kwargs):
         """Create the channel library. We assume that the user wants the config file in the 
         usual locations specified in the config files."""
-        super(ChannelLibrary, self).__init__(channelDict=channelDict, library_file=library_file, **kwargs)
-        self.connectivityG = nx.DiGraph()
-        yaml_filenames = self.load_from_library()
-        if self.library_file and yaml_filenames:
-            self.fileWatcher = LibraryFileWatcher(self.library_file, self.update_from_file)
+        if library_file:
+            super(ChannelLibrary, self).__init__(channelDict=channelDict, library_file=library_file, **kwargs)
+            self.connectivityG = nx.DiGraph()
+            yaml_filenames = self.load_from_library()
+            if self.library_file and yaml_filenames:
+                self.fileWatcher = LibraryFileWatcher(self.library_file, self.update_from_file)
+        else: # we want a blank library if library_file is none
+            super(ChannelLibrary, self).__init__(channelDict={})
+            self.connectivityG = nx.DiGraph()
 
         # Update the global reference
         global channelLib
@@ -500,6 +504,7 @@ def MarkerFactory(label, **kwargs):
     '''Return a marker channel by name. Must be defined under top-level `markers`
     keyword in measurement configuration YAML.
     '''
+    global channelLib
     if not channelLib:
         raise ValueError('ChannelLibrary not found, has an instance of ChannelLibrary been created?')
     if label in channelLib and isinstance(channelLib[label], Channels.LogicalMarkerChannel):
@@ -509,6 +514,7 @@ def MarkerFactory(label, **kwargs):
 
 def QubitFactory(label, **kwargs):
     ''' Return a saved qubit channel or create a new one. '''
+    global channelLib
     if not channelLib:
         raise ValueError('ChannelLibrary not found, has an instance of ChannelLibrary been created?')
     if label in channelLib and isinstance(channelLib[label], Channels.Qubit):
@@ -518,6 +524,7 @@ def QubitFactory(label, **kwargs):
 
 def MeasFactory(label, meas_type='autodyne', **kwargs):
     ''' Return a saved measurement channel or create a new one. '''
+    global channelLib
     if not channelLib:
         raise ValueError('ChannelLibrary not found, has an instance of ChannelLibrary been created?')
     if label in channelLib and isinstance(channelLib[label], Channels.Measurement):
@@ -526,6 +533,7 @@ def MeasFactory(label, meas_type='autodyne', **kwargs):
         return Channels.Measurement(label=label, meas_type=meas_type, **kwargs)
 
 def EdgeFactory(source, target):
+    global channelLib
     if not channelLib:
         raise ValueError('Connectivity graph not found. Has a ChannelLibrary has been created?')
     if channelLib.connectivityG.has_edge(source, target):

@@ -15,7 +15,7 @@ limitations under the License.
 '''
 from . import PulseShapes
 from . import Channels
-from . import ChannelLibrary
+from . import ChannelLibraries
 from . import config
 import operator
 
@@ -653,7 +653,7 @@ def echoCR(controlQ,
     """
     An echoed CR pulse.  Used for calibration of CR gate
     """
-    CRchan = ChannelLibrary.EdgeFactory(controlQ, targetQ)
+    CRchan = ChannelLibraries.EdgeFactory(controlQ, targetQ)
     if not CRchan.isforward(controlQ, targetQ):
         raise ValueError(
             'Could not find an edge with control qubit {0}'.format(controlQ))
@@ -680,7 +680,7 @@ def ZX90_CR(controlQ, targetQ, **kwargs):
     """
     A calibrated CR ZX90 pulse.  Uses 'amp' for the pulse amplitude, 'phase' for its phase (in deg).
     """
-    CRchan = ChannelLibrary.EdgeFactory(controlQ, targetQ)
+    CRchan = ChannelLibraries.EdgeFactory(controlQ, targetQ)
     params = overrideDefaults(CRchan, kwargs)
     return echoCR(controlQ,
                   targetQ,
@@ -691,7 +691,7 @@ def ZX90_CR(controlQ, targetQ, **kwargs):
 
 
 def CNOT_CR(controlQ, targetQ, **kwargs):
-    edge = ChannelLibrary.EdgeFactory(controlQ, targetQ)
+    edge = ChannelLibraries.EdgeFactory(controlQ, targetQ)
 
     if edge.isforward(controlQ, targetQ):
         # control and target for CNOT and CR match
@@ -709,7 +709,7 @@ def CNOT_CR(controlQ, targetQ, **kwargs):
 
 def CNOT_simple(source, target, **kwargs):
     # construct (source, target) channel and pull parameters from there
-    channel = ChannelLibrary.EdgeFactory(source, target)
+    channel = ChannelLibraries.EdgeFactory(source, target)
     channel.pulse_params['piAmp'] = channel.pulse_params['amp']
     # add "pi2Amp" too so that Utheta can construct its angle2amp lookup table
     channel.pulse_params['pi2Amp'] = channel.pulse_params['amp'] / 2
@@ -732,7 +732,7 @@ def MEAS(qubit, **kwargs):
     MEAS(q1) measures a qubit. Applies to the pulse with the label M-q1
     '''
     channelName = "M-" + qubit.label
-    measChan = ChannelLibrary.MeasFactory(channelName)
+    measChan = ChannelLibraries.MeasFactory(channelName)
     params = overrideDefaults(measChan, kwargs)
     if measChan.meas_type == 'autodyne':
         params['frequency'] = measChan.autodyne_freq
@@ -756,7 +756,7 @@ def MeasEcho(qM, qD, delay, piShift=None, phase=0):
     '''
     if not isinstance(qD, tuple):
         qD = (qD, )
-    measChan = ChannelLibrary.MeasFactory('M-%s' % qM.label)
+    measChan = ChannelLibraries.MeasFactory('M-%s' % qM.label)
     if piShift:
         if piShift > 0:
             measEcho = align(
