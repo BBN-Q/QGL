@@ -43,6 +43,8 @@ END_MINILL_BIT = 14
 WAIT_TRIG_BIT = 13
 TA_PAIR_BIT = 12
 
+# Do we want a pulse file per instrument or per channel
+SEQFILE_PER_CHANNEL = False
 
 def get_empty_channel_set():
     return {'ch12': {},
