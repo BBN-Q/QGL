@@ -1,7 +1,7 @@
 import unittest
 
 from QGL import *
-from .helpers import setup_test_lib
+from helpers import setup_test_lib
 
 class SchedulerTest(unittest.TestCase):
     def setUp(self):
