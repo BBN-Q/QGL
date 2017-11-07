@@ -29,7 +29,7 @@ from . import config
 from . import PatternUtils
 from .PatternUtils import flatten, has_gate
 from . import Channels
-from . import ChannelLibrary
+from . import ChannelLibraries
 from . import PulseShapes
 from .PulsePrimitives import Id
 from .PulseSequencer import Pulse, PulseBlock, CompositePulse
@@ -332,11 +332,11 @@ def compile_to_hardware(seqs,
     for seq in seqs:
         PatternUtils.add_gate_pulses(seq)
 
-    if add_slave_trigger and 'slave_trig' in ChannelLibrary.channelLib:
+    if add_slave_trigger and 'slave_trig' in ChannelLibraries.channelLib:
         # Add the slave trigger
         logger.debug("Adding slave trigger")
         PatternUtils.add_slave_trigger(seqs,
-                                       ChannelLibrary.channelLib['slave_trig'])
+                                       ChannelLibraries.channelLib['slave_trig'])
     else:
         logger.debug("Not adding slave trigger")
 
@@ -545,7 +545,7 @@ def compile_sequence(seq, channels=None):
         for chan in channels:
             if block.pulses[chan].frameChange == 0:
                 continue
-            if chan in ChannelLibrary.channelLib.connectivityG.nodes():
+            if chan in ChannelLibraries.channelLib.connectivityG.nodes():
                 logger.debug("Doing propagate_node_frame_to_edges()")
                 wires = propagate_node_frame_to_edges(
                     wires, chan, block.pulses[chan].frameChange)
@@ -580,10 +580,9 @@ def propagate_node_frame_to_edges(wires, chan, frameChange):
     '''
     Propagate frame change in node to relevant edges (for CR gates)
     '''
-    for predecessor in ChannelLibrary.channelLib.connectivityG.predecessors(
+    for predecessor in ChannelLibraries.channelLib.connectivityG.predecessors(
             chan):
-        edge = ChannelLibrary.channelLib.connectivityG.edge[predecessor][chan][
-            'channel']
+        edge = ChannelLibraries.channelLib.connectivityG.edges[predecessor, chan]['channel']
         if edge in wires:
             # search for last non-TA entry
             for ct in range(1,len(wires[edge])):
@@ -718,7 +717,7 @@ def schedule(channel, pulse, blockLength, alignment):
 
 def validate_linklist_channels(linklistChannels):
     errors = []
-    channels = ChannelLibrary.channelLib.channelDict
+    channels = ChannelLibraries.channelLib.channelDict
     for channel in linklistChannels:
         if channel.label not in channels.keys(
         ) and channel.label not in errors:

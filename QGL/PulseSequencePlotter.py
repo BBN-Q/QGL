@@ -33,8 +33,6 @@ from jinja2 import Template
 import numpy as np
 
 from . import config
-from . import ChannelLibrary
-
 from . import drivers
 import pkgutil
 

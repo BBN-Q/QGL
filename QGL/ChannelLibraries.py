@@ -31,6 +31,7 @@ import sys
 import os
 import re
 import traceback
+import datetime
 import importlib
 from atom.api import Atom, Str, Int, Typed
 import networkx as nx
@@ -48,6 +49,8 @@ import time
 from . import Channels
 from . import PulseShapes
 from . import config
+
+channelLib = None
 
 class LoaderMeta(type):
     def __new__(metacls, __name__, __bases__, __dict__):
@@ -97,41 +100,52 @@ class MyEventHandler(FileSystemEventHandler):
         self.callback = callback
         self.paused = True
 
+        # The spotlight indexer in MacOSX retriggers events... maybe we should hash the files?
+        self.grace_period = 3.0 if sys.platform == 'darwin' else 1.0 
+        self.last_library_update = datetime.datetime.now()
+
     def on_modified(self, event):
         try:
             if any([os.path.samefile(event.src_path, fp) for fp in self.file_paths]):
                 if not self.paused:
-                    """
-                    Hold off for half a second
-                    If the event is from the file being opened to be written this gives
-                    time for it to be written.
-                    """
-                    time.sleep(0.5)
-                    self.callback()
+                    # Build in some sanity checking since we seem to get multiple
+                    # events firing in a number of situations.
+                    now = datetime.datetime.now()
+                    
+                    if (now-self.last_library_update).total_seconds() > (self.grace_period):
+                        self.last_library_update = now
+                        """
+                        Hold off for half a second
+                        If the event is from the file being opened to be written this gives
+                        time for it to be written.
+                        """
+                        time.sleep(0.5)
+                        self.callback()
         except FileNotFoundError:
             #Temporary settings files generated using yaml_dump get deleted
             #faster than the above code can catch it.
             pass
 
 class LibraryFileWatcher(object):
-    def __init__(self, filePath, callback):
+    def __init__(self, main_path, callback):
         super(LibraryFileWatcher, self).__init__()
-        self.filePath = os.path.normpath(filePath)
+        
+        self.main_path = os.path.normpath(main_path)
         self.callback = callback
 
         # Perform a preliminary loading to find all of the connected files...
         # TODO: modularity
-        with open(os.path.abspath(self.filePath), 'r') as FID:
+        with open(os.path.abspath(self.main_path), 'r') as FID:
             loader = Loader(FID)
             try:
                 tmpLib = loader.get_single_data()
-                self.filenames = loader.filenames
+                self.filenames = [os.path.normpath(lf) for lf in loader.filenames]
             finally:
                 loader.dispose()
 
-        self.eventHandler = MyEventHandler(self.filenames, callback)
+        self.eventHandler = MyEventHandler(self.filenames, self.callback)
         self.observer = Observer()
-        self.observer.schedule(self.eventHandler, path=os.path.dirname(os.path.abspath(filePath)))
+        self.observer.schedule(self.eventHandler, path=os.path.dirname(os.path.abspath(main_path)))
 
         self.observer.start()
         self.resume()
@@ -150,19 +164,35 @@ class ChannelLibrary(Atom):
     # channelDict = Dict(Str, Channel)
     channelDict = Typed(dict)
     connectivityG = Typed(nx.DiGraph)
-    libFile = Str()
+    library_file = Str()
     fileWatcher = Typed(LibraryFileWatcher)
     version = Int(5)
+    last_library_update = Str()
 
     specialParams = ['phys_chan', 'gate_chan', 'trig_chan', 'receiver_chan',
                      'source', 'target']
 
-    def __init__(self, channelDict={}, **kwargs):
-        super(ChannelLibrary, self).__init__(channelDict=channelDict, **kwargs)
-        self.connectivityG = nx.DiGraph()
-        yaml_filenames = self.load_from_library()
-        if self.libFile and yaml_filenames:
-            self.fileWatcher = LibraryFileWatcher(self.libFile, self.update_from_file)
+    def __init__(self, library_file=config.configFile, channelDict={}, **kwargs):
+        """Create the channel library. We assume that the user wants the config file in the 
+        usual locations specified in the config files."""
+        if library_file:
+            super(ChannelLibrary, self).__init__(channelDict=channelDict, library_file=library_file, **kwargs)
+            self.connectivityG = nx.DiGraph()
+            yaml_filenames = self.load_from_library()
+            if self.library_file and yaml_filenames:
+                self.fileWatcher = LibraryFileWatcher(self.library_file, self.update_from_file)
+        else: # we want a blank library if library_file is none
+            super(ChannelLibrary, self).__init__(channelDict={})
+            self.connectivityG = nx.DiGraph()
+
+        # Update the global reference
+        global channelLib
+        if channelLib:
+            # Don't let the 
+            channelLib.fileWatcher = None
+        channelLib = self
+
+        self.last_library_update = str(datetime.datetime.now())
 
     #Dictionary methods
     def __getitem__(self, key):
@@ -195,13 +225,13 @@ class ChannelLibrary(Atom):
                 self.connectivityG.add_edge(chan.source, chan.target)
                 self.connectivityG[chan.source][chan.target]['channel'] = chan
 
-    def load_from_library(self):
+    def load_from_library(self, return_only=False):
         """Loads the YAML library, creates the QGL objects, and returns a list of the visited filenames
         for the filewatcher."""
-        if not self.libFile:
+        if not self.library_file:
             return
         try:
-            with open(self.libFile, 'r') as FID:
+            with open(self.library_file, 'r') as FID:
                 loader = Loader(FID)
                 try:
                     tmpLib = loader.get_single_data()
@@ -212,7 +242,7 @@ class ChannelLibrary(Atom):
             # Check to see if we have the mandatory sections
             for section in ['instruments', 'qubits', 'filters']:
                 if section not in tmpLib.keys():
-                    raise ValueError("{} section not present in config file {}.".format(section, self.libFile))
+                    raise ValueError("{} section not present in config file {}.".format(section, self.library_file))
 
             instr_dict   = tmpLib['instruments']
             qubit_dict   = tmpLib['qubits']
@@ -425,34 +455,22 @@ class ChannelLibrary(Atom):
                     channel_dict[params["label"]] = params
                     channel_dict[name]["gate_chan"] = params["label"]
 
-            # for k, c in channel_dict.items():
-            #     print("Channel {: <30} phys_chan {: <30} class {: <30} instr {: <30}".format(k, c["phys_chan"] if "phys_chan" in c else "None", c["__class__"] if "__class__" in c else "None", c["instrument"] if "instrument" in c else "None"))
+            if return_only:
+                return channel_dict
+            else:
+                channel_dict = {k: self.instantiate(v) for k,v in channel_dict.items()}
+                # connect objects labeled by strings
+                for chan in channel_dict.values():
+                    for param in self.specialParams:
+                        if hasattr(chan, param) and getattr(chan, param) is not None:
+                            chan_to_find = channel_dict.get(getattr(chan, param), None)
+                            if not chan_to_find:
+                                print("Couldn't find {} of {} in the channel_dict!".format(param, chan))
+                            setattr(chan, param, chan_to_find)
 
-            def instantiate(paramDict):
-                if 'pulse_params' in paramDict:
-                    if 'shape_fun' in paramDict['pulse_params']:
-                        shape_fun = paramDict['pulse_params']['shape_fun']
-                        paramDict['pulse_params']['shape_fun'] = getattr(PulseShapes, shape_fun)
-                if '__class__' in paramDict:
-                    className  = paramDict.pop('__class__')
-                    moduleName = paramDict.pop('__module__')
-                    __import__(moduleName)
-                    return getattr(sys.modules[moduleName], className)(**paramDict)
-
-            channel_dict = {k: instantiate(v) for k,v in channel_dict.items()}
-            # connect objects labeled by strings
-            for chan in channel_dict.values():
-                for param in self.specialParams:
-                    if hasattr(chan, param) and getattr(chan, param) is not None:
-                        chan_to_find = channel_dict.get(getattr(chan, param), None)
-                        if not chan_to_find:
-                            print("Couldn't find {} of {} in the channel_dict!".format(param, chan))
-                        # print("Setting {}.{} to {}".format(chan, param, chan_to_find))
-                        setattr(chan, param, chan_to_find)
-
-            self.channelDict.update(channel_dict)
-            self.build_connectivity_graph()
-            return filenames
+                self.channelDict.update(channel_dict)
+                self.build_connectivity_graph()
+                return filenames
 
         except IOError:
             print('No channel library found.')
@@ -461,18 +479,78 @@ class ChannelLibrary(Atom):
             exc_type, exc_value, exc_traceback = sys.exc_info()
             traceback.print_tb(exc_traceback, limit=4, file=sys.stdout)
 
+    def instantiate(self, paramDict):
+        if 'pulse_params' in paramDict:
+            if 'shape_fun' in paramDict['pulse_params']:
+                shape_fun = paramDict['pulse_params']['shape_fun']
+                paramDict['pulse_params']['shape_fun'] = getattr(PulseShapes, shape_fun)
+        if '__class__' in paramDict:
+            className  = paramDict.pop('__class__')
+            moduleName = paramDict.pop('__module__')
+            __import__(moduleName)
+            return getattr(sys.modules[moduleName], className)(**paramDict)
+
+
     def update_from_file(self):
-        if not self.libFile:
+        """
+        Only update relevant parameters
+        Helps avoid both stale references from replacing whole channel objects (as in load_from_library)
+        and the overhead of recreating everything.
+        """
+
+        if not self.library_file:
             return
         try:
-            self.load_from_library()
+            all_params = self.load_from_library(return_only=True)
+
+            # update & insert
+            for chName, chParams in all_params.items():
+                if chName in self.channelDict:
+                    self.update_from_json(chName, chParams)
+                else:
+                    self.channelDict[chName] = self.instantiate(chParams)
+                    self.update_from_json(chName, chParams)
+
+            # remove
+            for chName in list(self.channelDict.keys()):
+                if chName not in all_params:
+                    del self.channelDict[chName]
+
+            self.build_connectivity_graph()
+
+            print("Updated library")
+            self.last_library_update = str(datetime.datetime.now())
         except:
-            print('Failed to update channel library from file. Probably is just half-written.')
+            print('Failed to update channel library from file. Is there a typo?.')
             return
 
         # reset pulse cache
         from . import PulsePrimitives
         PulsePrimitives._memoize.cache.clear()
+
+
+    def update_from_json(self, chName, chParams):
+        # connect objects labeled by strings
+        if 'pulse_params' in chParams.keys():
+            paramDict = {str(k): v for k, v in chParams['pulse_params'].items()}
+            shapeFunName = paramDict.pop('shape_fun', None)
+            if shapeFunName:
+                paramDict['shape_fun'] = getattr(PulseShapes, shapeFunName)
+            self.channelDict[chName].pulse_params = paramDict
+
+        for param in self.specialParams:
+            if param in chParams.keys():
+                setattr(self.channelDict[chName],
+                        param,
+                        self.channelDict.get(chParams[param], None)
+                        )
+        # TODO: how do we follow changes to selected AWG or generator?
+
+        # ignored or specially handled parameters
+        ignoreList = self.specialParams + ['pulse_params', 'AWG', 'generator', '__class__', '__module__']
+        for paramName in chParams:
+            if paramName not in ignoreList:
+                setattr(self.channelDict[chName], paramName, chParams[paramName])
 
     def on_awg_change(self, oldName, newName):
         print("Change AWG", oldName, newName)
@@ -490,33 +568,34 @@ def MarkerFactory(label, **kwargs):
     '''Return a marker channel by name. Must be defined under top-level `markers`
     keyword in measurement configuration YAML.
     '''
-    if channelLib and label in channelLib and isinstance(channelLib[label],
-                                                        Channels.LogicalMarkerChannel):
+    if not channelLib:
+        raise ValueError('ChannelLibrary not found, has an instance of ChannelLibrary been created?')
+    if label in channelLib and isinstance(channelLib[label], Channels.LogicalMarkerChannel):
         return channelLib[label]
     else:
         raise ValueError("Marker channel {} not found in channel library.".format(label))
 
 def QubitFactory(label, **kwargs):
     ''' Return a saved qubit channel or create a new one. '''
-    if channelLib and label in channelLib and isinstance(channelLib[label],
-                                                         Channels.Qubit):
+    if not channelLib:
+        raise ValueError('ChannelLibrary not found, has an instance of ChannelLibrary been created?')
+    if label in channelLib and isinstance(channelLib[label], Channels.Qubit):
         return channelLib[label]
     else:
         return Channels.Qubit(label=label, **kwargs)
 
-
 def MeasFactory(label, meas_type='autodyne', **kwargs):
     ''' Return a saved measurement channel or create a new one. '''
-    if channelLib and label in channelLib and isinstance(channelLib[label],
-                                                         Channels.Measurement):
+    if not channelLib:
+        raise ValueError('ChannelLibrary not found, has an instance of ChannelLibrary been created?')
+    if label in channelLib and isinstance(channelLib[label], Channels.Measurement):
         return channelLib[label]
     else:
         return Channels.Measurement(label=label, meas_type=meas_type, **kwargs)
 
-
 def EdgeFactory(source, target):
     if not channelLib:
-        raise ValueError('Connectivity graph not found')
+        raise ValueError('Connectivity graph not found. Has a ChannelLibrary has been created?')
     if channelLib.connectivityG.has_edge(source, target):
         return channelLib.connectivityG[source][target]['channel']
     elif channelLib.connectivityG.has_edge(target, source):
@@ -524,5 +603,3 @@ def EdgeFactory(source, target):
     else:
         raise ValueError('Edge {0} not found in connectivity graph'.format((
             source, target)))
-
-channelLib = ChannelLibrary(libFile=config.configFile)

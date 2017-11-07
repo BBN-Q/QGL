@@ -4,7 +4,7 @@ from .PulseSequencer import PulseBlock
 from .ControlFlow import Barrier, ControlInstruction
 from .BlockLabel import BlockLabel
 from .PatternUtils import flatten
-from .ChannelLibrary import QubitFactory
+from .ChannelLibraries import QubitFactory
 from warnings import warn
 
 def schedule(seq):

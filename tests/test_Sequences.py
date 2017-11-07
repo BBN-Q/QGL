@@ -28,9 +28,9 @@ class AWGTestHelper(object):
         for name, value in mapping.items():
             self.channels[name].phys_chan = self.channels[value]
 
-        ChannelLibrary.channelLib = ChannelLibrary.ChannelLibrary()
-        ChannelLibrary.channelLib.channelDict = self.channels
-        ChannelLibrary.channelLib.build_connectivity_graph()
+        ChannelLibraries.channelLib = ChannelLibraries.ChannelLibrary(library_file=None)
+        ChannelLibraries.channelLib.channelDict = self.channels
+        ChannelLibraries.channelLib.build_connectivity_graph()
 
         (self.q1, self.q2) = self.get_qubits()
 
@@ -89,7 +89,7 @@ class AWGTestHelper(object):
             meas_type='autodyne')
 
     def get_qubits(self):
-        return [QGL.ChannelLibrary.channelLib[name]
+        return [QGL.ChannelLibraries.channelLib[name]
                 for name in self.qubit_names]
 
     def set_awg_dir(self, footer=""):
@@ -423,7 +423,7 @@ class TestAPS2(unittest.TestCase, APS2Helper, TestSequences):
         self.channels['cr'].phys_chan = self.channels['q1'].phys_chan
         self.channels['q1'].frequency = 100e6
         self.channels['cr'].frequency = 200e6
-        ChannelLibrary.channelLib.build_connectivity_graph()
+        ChannelLibraries.channelLib.build_connectivity_graph()
         seqs = [[CNOT_CR(self.q1, self.q2)]]
 
         filenames = compile_to_hardware(seqs, 'CNOT_CR_mux/CNOT_CR_mux')
