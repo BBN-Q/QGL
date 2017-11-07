@@ -207,10 +207,6 @@ class ChannelLibrary(Atom):
     def __contains__(self, key):
         return key in self.channelDict
 
-    def update(self, new_dict):
-        for k, v in new_dict.items():
-            self.channelDict[k] = v
-
     def keys(self):
         return self.channelDict.keys()
 
@@ -459,9 +455,6 @@ class ChannelLibrary(Atom):
                     channel_dict[params["label"]] = params
                     channel_dict[name]["gate_chan"] = params["label"]
 
-            # for k, c in channel_dict.items():
-            #     print("Channel {: <30} phys_chan {: <30} class {: <30} instr {: <30}".format(k, c["phys_chan"] if "phys_chan" in c else "None", c["__class__"] if "__class__" in c else "None", c["instrument"] if "instrument" in c else "None"))
-
             if return_only:
                 return channel_dict
             else:
@@ -473,12 +466,11 @@ class ChannelLibrary(Atom):
                             chan_to_find = channel_dict.get(getattr(chan, param), None)
                             if not chan_to_find:
                                 print("Couldn't find {} of {} in the channel_dict!".format(param, chan))
-                            # print("Setting {}.{} to {}".format(chan, param, chan_to_find))
                             setattr(chan, param, chan_to_find)
 
-                    self.channelDict.update(channel_dict)
-                    self.build_connectivity_graph()
-                    return filenames
+                self.channelDict.update(channel_dict)
+                self.build_connectivity_graph()
+                return filenames
 
         except IOError:
             print('No channel library found.')
