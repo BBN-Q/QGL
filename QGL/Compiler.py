@@ -582,8 +582,7 @@ def propagate_node_frame_to_edges(wires, chan, frameChange):
     '''
     for predecessor in ChannelLibraries.channelLib.connectivityG.predecessors(
             chan):
-        edge = ChannelLibraries.channelLib.connectivityG.edge[predecessor][chan][
-            'channel']
+        edge = ChannelLibraries.channelLib.connectivityG.edges[predecessor, chan]['channel']
         if edge in wires:
             # search for last non-TA entry
             for ct in range(1,len(wires[edge])):
