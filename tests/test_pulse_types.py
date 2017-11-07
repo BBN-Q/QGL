@@ -3,7 +3,10 @@ import unittest
 from QGL import *
 from QGL.PulseSequencer import *
 import QGL.config
-from helpers import setup_test_lib
+try:
+  from helpers import setup_test_lib
+except:
+  from .helpers import setup_test_lib
 
 class PulseTypes(unittest.TestCase):
     def setUp(self):
