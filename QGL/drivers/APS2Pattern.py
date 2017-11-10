@@ -77,9 +77,11 @@ LESSTHAN = 0x3
 # Default to false as we usually don't have many variants
 USE_PHASE_OFFSET_INSTRUCTION = False
 
-#Whether to save the waveform offsets for partial compilation
+# Whether to save the waveform offsets for partial compilation
 SAVE_WF_OFFSETS = False
 
+# Do we want a pulse file per instrument or per channel
+SEQFILE_PER_CHANNEL = False
 
 def get_empty_channel_set():
     return {'ch12': {}, 'ch12m1': {}, 'ch12m2': {}, 'ch12m3': {}, 'ch12m4': {}}
@@ -97,7 +99,6 @@ def is_compatible_file(filename):
         if target == b'APS2':
             return True
     return False
-
 
 def create_wf_vector(wfLib, seqs):
     '''

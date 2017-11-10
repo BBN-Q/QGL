@@ -15,7 +15,7 @@ limitations under the License.
 '''
 from . import PulseShapes
 from . import Channels
-from . import ChannelLibrary
+from . import ChannelLibraries
 from . import config
 import operator
 
@@ -29,7 +29,7 @@ def overrideDefaults(chan, updateParams):
     '''Helper function to update any parameters passed in and fill in the defaults otherwise.'''
     # The default parameter list depends on the channel type so pull out of channel
     # Then update passed values
-    paramDict = chan.pulseParams.copy()
+    paramDict = chan.pulse_params.copy()
     paramDict.update(updateParams)
     return paramDict
 
@@ -99,16 +99,16 @@ def Utheta(qubit,
         # construct an angle -> amplitude lookup table
         # TODO should this live in the Channel object instead?
         angle2amp = {
-            pi    :  qubit.pulseParams['piAmp'],
-            -pi   : -qubit.pulseParams['piAmp'],
-            pi/2  :  qubit.pulseParams['pi2Amp'],
-            -pi/2 : -qubit.pulseParams['pi2Amp'],
+            pi    :  qubit.pulse_params['piAmp'],
+            -pi   : -qubit.pulse_params['piAmp'],
+            pi/2  :  qubit.pulse_params['pi2Amp'],
+            -pi/2 : -qubit.pulse_params['pi2Amp'],
         }
         if angle in angle2amp:
             amp = angle2amp[angle]
         else:
             # linearly scale based upon the 'pi/2' amplitude
-            amp  = (angle / pi/2) * qubit.pulseParams['pi2Amp']
+            amp  = (angle / pi/2) * qubit.pulse_params['pi2Amp']
     return Pulse(label, qubit, params, amp, phase, 0.0, ignoredStrParams)
 
 
@@ -300,11 +300,11 @@ def arb_axis_drag(qubit,
     # TODO: figure out way to reduce code duplication between this and the pulse shape
     if params['length'] > 0:
         #To calculate the phase ramping we'll need the sampling rate
-        sampRate = qubit.physChan.samplingRate
+        sampRate = qubit.phys_chan.sampling_rate
 
         #Start from a gaussian shaped pulse
         gaussPulse = PulseShapes.gaussian(amp=1,
-                                          samplingRate=sampRate,
+                                          sampling_rate=sampRate,
                                           **params).real
 
         #Scale to achieve to the desired rotation
@@ -315,7 +315,7 @@ def arb_axis_drag(qubit,
 
         #Calculate Z DRAG correction to phase steps
         #beta is a conversion between XY drag scaling and Z drag scaling
-        beta = params['dragScaling'] / sampRate
+        beta = params['drag_scaling'] / sampRate
         instantaneousDetuning = beta * (2 * pi * calScale * sin(polarAngle) *
                                         gaussPulse)**2
         phaseSteps = phaseSteps + instantaneousDetuning * (1.0 / sampRate)
@@ -332,7 +332,7 @@ def arb_axis_drag(qubit,
     params['nutFreq'] = nutFreq
     params['rotAngle'] = rotAngle
     params['polarAngle'] = polarAngle
-    params['shapeFun'] = PulseShapes.arb_axis_drag
+    params['shape_fun'] = PulseShapes.arb_axis_drag
     return Pulse(kwargs["label"] if "label" in kwargs else "ArbAxis", qubit,
                  params, 1.0, aziAngle, frameChange)
 
@@ -352,10 +352,10 @@ def AC(qubit, cliffNum):
     pulse object
     """
 
-    #Figure out the approximate nutation frequency calibration from the X180 and the samplingRate
+    #Figure out the approximate nutation frequency calibration from the X180 and the sampling_rate
     Xp = X(qubit)
     xpulse = Xp.amp * Xp.shape
-    nutFreq = 0.5 / (sum(xpulse) / qubit.physChan.samplingRate)
+    nutFreq = 0.5 / (sum(xpulse) / qubit.phys_chan.sampling_rate)
 
     #Now a big else if chain for to get the specific Clifford
     if cliffNum == 0:
@@ -637,9 +637,9 @@ def flat_top_gaussian(chan,
     """
     A constant pulse with rising and falling gaussian shape
     """
-    p =  Utheta(chan, length=riseFall, amp=amp, phase=phase, shapeFun=PulseShapes.gaussOn, label=label+"_rise") + \
-         Utheta(chan, length=length, amp=amp, phase=phase, shapeFun=PulseShapes.constant, label=label+"_top") + \
-         Utheta(chan, length=riseFall, amp=amp, phase=phase, shapeFun=PulseShapes.gaussOff, label=label+"_fall")
+    p =  Utheta(chan, length=riseFall, amp=amp, phase=phase, shape_fun=PulseShapes.gaussOn, label=label+"_rise") + \
+         Utheta(chan, length=length, amp=amp, phase=phase, shape_fun=PulseShapes.constant, label=label+"_top") + \
+         Utheta(chan, length=riseFall, amp=amp, phase=phase, shape_fun=PulseShapes.gaussOff, label=label+"_fall")
     return p._replace(label=label)
 
 
@@ -653,7 +653,7 @@ def echoCR(controlQ,
     """
     An echoed CR pulse.  Used for calibration of CR gate
     """
-    CRchan = ChannelLibrary.EdgeFactory(controlQ, targetQ)
+    CRchan = ChannelLibraries.EdgeFactory(controlQ, targetQ)
     if not CRchan.isforward(controlQ, targetQ):
         raise ValueError(
             'Could not find an edge with control qubit {0}'.format(controlQ))
@@ -680,7 +680,7 @@ def ZX90_CR(controlQ, targetQ, **kwargs):
     """
     A calibrated CR ZX90 pulse.  Uses 'amp' for the pulse amplitude, 'phase' for its phase (in deg).
     """
-    CRchan = ChannelLibrary.EdgeFactory(controlQ, targetQ)
+    CRchan = ChannelLibraries.EdgeFactory(controlQ, targetQ)
     params = overrideDefaults(CRchan, kwargs)
     return echoCR(controlQ,
                   targetQ,
@@ -691,7 +691,7 @@ def ZX90_CR(controlQ, targetQ, **kwargs):
 
 
 def CNOT_CR(controlQ, targetQ, **kwargs):
-    edge = ChannelLibrary.EdgeFactory(controlQ, targetQ)
+    edge = ChannelLibraries.EdgeFactory(controlQ, targetQ)
 
     if edge.isforward(controlQ, targetQ):
         # control and target for CNOT and CR match
@@ -709,10 +709,10 @@ def CNOT_CR(controlQ, targetQ, **kwargs):
 
 def CNOT_simple(source, target, **kwargs):
     # construct (source, target) channel and pull parameters from there
-    channel = ChannelLibrary.EdgeFactory(source, target)
-    channel.pulseParams['piAmp'] = channel.pulseParams['amp']
+    channel = ChannelLibraries.EdgeFactory(source, target)
+    channel.pulse_params['piAmp'] = channel.pulse_params['amp']
     # add "pi2Amp" too so that Utheta can construct its angle2amp lookup table
-    channel.pulseParams['pi2Amp'] = channel.pulseParams['amp'] / 2
+    channel.pulse_params['pi2Amp'] = channel.pulse_params['amp'] / 2
     p = X(channel, **kwargs)
     return p._replace(label="CNOT")
 
@@ -732,12 +732,12 @@ def MEAS(qubit, **kwargs):
     MEAS(q1) measures a qubit. Applies to the pulse with the label M-q1
     '''
     channelName = "M-" + qubit.label
-    measChan = ChannelLibrary.MeasFactory(channelName)
+    measChan = ChannelLibraries.MeasFactory(channelName)
     params = overrideDefaults(measChan, kwargs)
-    if measChan.measType == 'autodyne':
-        params['frequency'] = measChan.autodyneFreq
-        params['baseShape'] = params.pop('shapeFun')
-        params['shapeFun'] = PulseShapes.autodyne
+    if measChan.meas_type == 'autodyne':
+        params['frequency'] = measChan.autodyne_freq
+        params['baseShape'] = params.pop('shape_fun')
+        params['shape_fun'] = PulseShapes.autodyne
     amp = params.pop('amp')
     ignoredStrParams = ['phase', 'frameChange']
     if 'amp' not in kwargs:
@@ -756,7 +756,7 @@ def MeasEcho(qM, qD, delay, piShift=None, phase=0):
     '''
     if not isinstance(qD, tuple):
         qD = (qD, )
-    measChan = ChannelLibrary.MeasFactory('M-%s' % qM.label)
+    measChan = ChannelLibraries.MeasFactory('M-%s' % qM.label)
     if piShift:
         if piShift > 0:
             measEcho = align(
@@ -774,7 +774,14 @@ def MeasEcho(qM, qD, delay, piShift=None, phase=0):
     measEcho.label = 'MEAS'  #to generate the digitizer trigger
     return measEcho
 
-
 # Gating/blanking pulse primitives
 def BLANK(chan, length):
-    return TAPulse("BLANK", chan.gateChan, length, 1, 0, 0)
+    return TAPulse("BLANK", chan.gate_chan, length, 1, 0, 0)
+
+def TRIG(marker_chan, length):
+    '''TRIG(marker_chan, length) generates a trigger output of amplitude 1 on
+    a LogicalMarkerChannel.
+    '''
+    if not isinstance(marker_chan, Channels.LogicalMarkerChannel):
+        raise ValueError("TRIG pulses can only be generated on LogicalMarkerChannels.")
+    return TAPulse("TRIG", marker_chan, length, 1.0, 0., 0.)

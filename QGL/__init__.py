@@ -1,5 +1,5 @@
 from .Channels import Qubit, Measurement, Edge
-from .ChannelLibrary import QubitFactory, MeasFactory, EdgeFactory
+from .ChannelLibraries import QubitFactory, MeasFactory, EdgeFactory, MarkerFactory, ChannelLibrary, channelLib
 from .PulsePrimitives import *
 from .Compiler import compile_to_hardware, set_log_level
 from .PulseSequencer import align

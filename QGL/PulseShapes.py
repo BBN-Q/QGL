@@ -6,13 +6,13 @@ import numpy as np
 from math import pi, sin, cos, acos, sqrt
 
 
-def gaussian(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
+def gaussian(amp=1, length=0, cutoff=2, sampling_rate=1e9, **params):
     '''
     A simple gaussian shaped pulse.
     cutoff is how many sigma the pulse goes out
     '''
     #Round to how many points we need
-    numPts = int(np.round(length * samplingRate))
+    numPts = int(np.round(length * sampling_rate))
     xPts = np.linspace(-cutoff, cutoff, numPts)
     xStep = xPts[1] - xPts[0]
     nextPoint = np.exp(-0.5 * ((xPts[0] - xStep)**2))
@@ -22,18 +22,18 @@ def gaussian(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
         (xPts[-1] + xStep)**2)))).astype(np.complex)
 
 
-def delay(length=0, samplingRate=1e9, **params):
+def delay(length=0, sampling_rate=1e9, **params):
     '''
     A delay between pulses.
     '''
-    return constant(0, length, samplingRate)
+    return constant(0, length, sampling_rate)
 
 
-def constant(amp=1, length=0, samplingRate=1e9, **params):
+def constant(amp=1, length=0, sampling_rate=1e9, **params):
     '''
     A constant section.
     '''
-    numPts = int(np.round(length * samplingRate))
+    numPts = int(np.round(length * sampling_rate))
     return amp * np.ones(numPts, dtype=np.complex)
 
 # square is deprecated but alias square to constant
@@ -42,14 +42,14 @@ square = constant
 def drag(amp=1,
          length=0,
          cutoff=2,
-         dragScaling=0.5,
-         samplingRate=1e9,
+         drag_scaling=0.5,
+         sampling_rate=1e9,
          **params):
     '''
     A gaussian pulse with a drag correction on the quadrature channel.
     '''
     #Create the gaussian along x and the derivative along y
-    numPts = int(np.round(length * samplingRate))
+    numPts = int(np.round(length * sampling_rate))
     xPts = np.linspace(-cutoff, cutoff, numPts)
     xStep = xPts[1] - xPts[0]
     nextPoint = np.exp(-0.5 * ((xPts[0] - xStep)**2))
@@ -58,17 +58,17 @@ def drag(amp=1,
     IQuad = np.exp(-0.5 * (xPts**2)) - np.exp(-0.5 * ((xPts[0] - xStep)**2))
     #The derivative needs to be scaled in terms of AWG points from the normalized xPts units.
     #The pulse length is 2*cutoff xPts
-    derivScale = 1 / (length / 2 / cutoff * samplingRate)
-    QQuad = dragScaling * derivScale * xPts * np.exp(-0.5 * (xPts**2))
+    derivScale = 1 / (length / 2 / cutoff * sampling_rate)
+    QQuad = drag_scaling * derivScale * xPts * np.exp(-0.5 * (xPts**2))
     return amp * (IQuad + 1j * QQuad)
 
 
-def gaussOn(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
+def gaussOn(amp=1, length=0, cutoff=2, sampling_rate=1e9, **params):
     '''
     A half-gaussian pulse going from zero to full
     '''
     #Round to how many points we need
-    numPts = int(np.round(length * samplingRate))
+    numPts = int(np.round(length * sampling_rate))
     xPts = np.linspace(-cutoff, 0, numPts)
     #Pull the edge down to zero so there is no big step
     #i.e. find the shift such that the next point in the pulse would be zero
@@ -79,12 +79,12 @@ def gaussOn(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
     return (amp * (np.exp(-0.5 * (xPts**2)) - nextPoint)).astype(np.complex)
 
 
-def gaussOff(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
+def gaussOff(amp=1, length=0, cutoff=2, sampling_rate=1e9, **params):
     '''
     A half-gaussian pulse going from full to zero
     '''
     #Round to how many points we need
-    numPts = int(np.round(length * samplingRate))
+    numPts = int(np.round(length * sampling_rate))
     xPts = np.linspace(0, cutoff, numPts)
     #Pull the edge down to zero so there is no big step
     #i.e. find the shift such that the next point in the pulse would be zero
@@ -98,44 +98,44 @@ def gaussOff(amp=1, length=0, cutoff=2, samplingRate=1e9, **params):
 def dragGaussOn(amp=1,
                 length=0,
                 cutoff=2,
-                dragScaling=0.5,
-                samplingRate=1e9,
+                drag_scaling=0.5,
+                sampling_rate=1e9,
                 **params):
     '''
     A half-gaussian pulse with drag correction going from zero to full
     '''
-    numPts = int(np.round(length * samplingRate))
+    numPts = int(np.round(length * sampling_rate))
     xPts = np.linspace(-cutoff, 0, numPts)
     xStep = xPts[1] - xPts[0]
     IQuad = np.exp(-0.5 * (xPts**2)) - np.exp(-0.5 * ((xPts[0] - xStep)**2))
-    derivScale = 1 / (length / 2 / cutoff * samplingRate)
-    QQuad = dragScaling * derivScale * xPts * IQuad
+    derivScale = 1 / (length / 2 / cutoff * sampling_rate)
+    QQuad = drag_scaling * derivScale * xPts * IQuad
     return amp * (IQuad + 1j * QQuad)
 
 
 def dragGaussOff(amp=1,
                  length=0,
                  cutoff=2,
-                 dragScaling=0.5,
-                 samplingRate=1e9,
+                 drag_scaling=0.5,
+                 sampling_rate=1e9,
                  **params):
     '''
     A half-gaussian pulse with drag correction going from full to zero
     '''
-    numPts = int(np.round(length * samplingRate))
+    numPts = int(np.round(length * sampling_rate))
     xPts = np.linspace(0, cutoff, numPts)
     xStep = xPts[1] - xPts[0]
     IQuad = np.exp(-0.5 * (xPts**2)) - np.exp(-0.5 * ((xPts[-1] + xStep)**2))
-    derivScale = 1 / (length / 2 / cutoff * samplingRate)
-    QQuad = dragScaling * derivScale * xPts * IQuad
+    derivScale = 1 / (length / 2 / cutoff * sampling_rate)
+    QQuad = drag_scaling * derivScale * xPts * IQuad
     return amp * (IQuad + 1j * QQuad)
 
 
-def tanh(amp=1, length=0, sigma=0, cutoff=2, samplingRate=1e9, **params):
+def tanh(amp=1, length=0, sigma=0, cutoff=2, sampling_rate=1e9, **params):
     '''
     A rounded constant shape from the sum of two tanh shapes.
     '''
-    numPts = int(np.round(length * samplingRate))
+    numPts = int(np.round(length * sampling_rate))
     xPts = np.linspace(-length / 2, length / 2, numPts)
     x1 = -length / 2 + cutoff * sigma
     x2 = +length / 2 - cutoff * sigma
@@ -143,16 +143,16 @@ def tanh(amp=1, length=0, sigma=0, cutoff=2, samplingRate=1e9, **params):
         (x2 - xPts) / sigma)).astype(np.complex)
 
 
-def exp_decay(amp=1, length=0, sigma=0, samplingRate=1e9, steady_state=0.4, **params):
+def exp_decay(amp=1, length=0, sigma=0, sampling_rate=1e9, steady_state=0.4, **params):
     """
     An exponentially decaying pulse to try and populate the cavity as quickly as possible.
     But then don't overdrive it.
     """
-    numPts = int(np.round(length * samplingRate))
-    timePts = (1.0 / samplingRate) * np.arange(numPts)
+    numPts = int(np.round(length * sampling_rate))
+    timePts = (1.0 / sampling_rate) * np.arange(numPts)
     return amp * ((1-steady_state) * np.exp(-timePts / sigma) + steady_state).astype(np.complex)
 
-def CLEAR(amp=1, length=0, sigma=0, samplingRate=1e9, **params):
+def CLEAR(amp=1, length=0, sigma=0, sampling_rate=1e9, **params):
     """
     Pulse shape to quickly deplete the cavity at the end of a measurement.
     measPulse followed by 2 steps of length step_length and amplitudes amp1, amp2.
@@ -163,9 +163,9 @@ def CLEAR(amp=1, length=0, sigma=0, samplingRate=1e9, **params):
         params['amp2'] = 0
     if 'step_length' not in params:
         params['step_length'] = 100e-9
-    timePts = (1.0 / samplingRate) * np.arange(np.round((length-2*params['step_length']) * samplingRate))
+    timePts = (1.0 / sampling_rate) * np.arange(np.round((length-2*params['step_length']) * sampling_rate))
     flat_step = amp * (0.6 * np.exp(-timePts / sigma) + 0.4).astype(np.complex)
-    numPts_clear_step = int(np.round(params['step_length'] * samplingRate))
+    numPts_clear_step = int(np.round(params['step_length'] * sampling_rate))
     clear_step_one = amp * params['amp1'] * np.ones(numPts_clear_step, dtype=np.complex)
     clear_step_two = amp * params['amp2'] * np.ones(numPts_clear_step, dtype=np.complex)
     return np.append(flat_step, [clear_step_one, clear_step_two])
@@ -186,8 +186,8 @@ def arb_axis_drag(nutFreq=10e6,
                   polarAngle=0,
                   aziAngle=0,
                   length=0,
-                  dragScaling=0.5,
-                  samplingRate=1e9,
+                  drag_scaling=0.5,
+                  sampling_rate=1e9,
                   **params):
     """
     Single-qubit arbitrary axis pulse implemented with phase ramping and frame change.
@@ -205,22 +205,22 @@ def arb_axis_drag(nutFreq=10e6,
         #Start from a gaussian shaped pulse
         gaussPulse = gaussian(amp=1,
                               length=length,
-                              samplingRate=samplingRate,
+                              sampling_rate=sampling_rate,
                               **params)
 
         #Scale to achieve to the desired rotation
-        calScale = (rotAngle / 2 / pi) * samplingRate / sum(gaussPulse)
+        calScale = (rotAngle / 2 / pi) * sampling_rate / sum(gaussPulse)
 
         #Calculate the phase ramp steps to achieve the desired Z component to the rotation axis
         phaseSteps = -2 * pi * cos(
-            polarAngle) * calScale * gaussPulse / samplingRate
+            polarAngle) * calScale * gaussPulse / sampling_rate
 
         #Calculate Z DRAG correction to phase steps
         #beta is a conversion between XY drag scaling and Z drag scaling
-        beta = dragScaling / samplingRate
+        beta = drag_scaling / sampling_rate
         instantaneousDetuning = beta * (2 * pi * calScale * sin(polarAngle) *
                                         gaussPulse)**2
-        phaseSteps = phaseSteps + instantaneousDetuning * (1.0 / samplingRate)
+        phaseSteps = phaseSteps + instantaneousDetuning * (1.0 / sampling_rate)
         #center phase ramp around the middle of the pulse time steps
         phaseRamp = np.cumsum(phaseSteps) - phaseSteps / 2
 

@@ -33,8 +33,6 @@ from jinja2 import Template
 import numpy as np
 
 from . import config
-from . import ChannelLibrary
-
 from . import drivers
 import pkgutil
 
@@ -72,7 +70,7 @@ def resolve_translator(filename, translators):
     raise NameError("No translator found to open the given file %s", filename)
 
 
-def plot_pulse_files(metafile):
+def plot_pulse_files(metafile, time=False):
     '''
     plot_pulse_files(metafile)
 
@@ -82,10 +80,17 @@ def plot_pulse_files(metafile):
     
     with open(metafile, 'r') as FID:
         meta_info = json.load(FID)
-    fileNames = list(meta_info["instruments"].values())
+    fileNames = []
+    for el in meta_info["instruments"].values():
+        # Accomodate seq_file per instrument and per channel
+        if isinstance(el, str):
+            fileNames.append(el)
+        elif isinstance(el, dict):
+            for file in el.values():
+                fileNames.append(file)
 
     dataDict = {}
-    lineNames, num_seqs = extract_waveforms(dataDict, fileNames)
+    lineNames, num_seqs = extract_waveforms(dataDict, fileNames, time=time)
 
     localname = os.path.split(fileNames[0])[1]
     sequencename = localname.split('-')[0]
@@ -141,20 +146,20 @@ def plot_pulse_files(metafile):
     show(layout)
 
 
-def extract_waveforms(dataDict, fileNames, nameDecorator=''):
+def extract_waveforms(dataDict, fileNames, nameDecorator='', time=False):
     lineNames = []
     num_seqs = 0
     for fileName in sorted(fileNames):
 
         # Assume a naming convention path/to/file/SequenceName-AWGName.h5
-        AWGName = (
-            os.path.split(os.path.splitext(fileName)[0])[1]).split('-')[1]
+        AWGName = "-".join((os.path.split(os.path.splitext(fileName)[0])[1]).split('-')[1:])
         # Strip any _ suffix
         if '_' in AWGName:
             AWGName = AWGName[:AWGName.index('_')]
 
         translator = resolve_translator(fileName, translators)
         wfs = translator.read_sequence_file(fileName)
+        sample_time = 1.0/translator.SAMPLING_RATE if time else 1
 
         for (k, seqs) in sorted(wfs.items()):
             if all_zero_seqs(seqs):
@@ -164,7 +169,7 @@ def extract_waveforms(dataDict, fileNames, nameDecorator=''):
             k_ = lineNames[-1].replace("-", "_")
             for ct, seq in enumerate(seqs):
                 # Convert from time amplitude pairs to x,y lines with points at start and beginnning to prevent interpolation
-                dataDict[k_ + "_x_{:d}".format(ct + 1)] = np.tile(
+                dataDict[k_ + "_x_{:d}".format(ct + 1)] = sample_time * np.tile(
                     np.cumsum([0] + [_[0] for _ in seq]),
                     (2, 1)).flatten(order="F")[1:-1]
                 dataDict[k_ + "_y_{:d}".format(ct + 1)] = np.tile(

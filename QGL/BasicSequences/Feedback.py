@@ -35,7 +35,7 @@ def qreset(qubits, signVec, measDelay, buf, reg_size=None, TDM_map=None):
         meas_result = [(ct & TDM_bit)>0 for TDM_bit in 2**(np.array(TDM_map)-1)]
         branch_idx = sum([t*2**(len(qubits)-ind-1) for ind,t in enumerate((meas_result))])
         seq += qif(ct, [FbSeq[branch_idx]])
-        
+
     return seq
 
 
@@ -65,7 +65,7 @@ def Reset(qubits,
     docals, calRepeats: enable calibration sequences, repeated calRepeats times
     reg_size: total number of qubits, including those that are not reset. Default set to len(qubits)
     TDM_map: map each qubit to a TDM digital input. Default: np.array(qN, qN-1, ..., q1) from MSB to LSB.
-    
+
     Returns
     -------
     plotHandle : handle to plot window to prevent destruction

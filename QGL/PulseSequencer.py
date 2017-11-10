@@ -26,7 +26,7 @@ from collections import OrderedDict
 from functools import reduce
 from builtins import str
 
-from . import ChannelLibrary, PulseShapes
+from . import PulseShapes
 
 from collections import namedtuple
 
@@ -40,11 +40,11 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
             frequency = channel.frequency
         else:
             frequency = 0
-        requiredParams = ['length', 'shapeFun']
+        requiredParams = ['length', 'shape_fun']
         for param in requiredParams:
             if param not in shapeParams.keys():
                 raise NameError("shapeParams must include {0}".format(param))
-        isTimeAmp = (shapeParams['shapeFun'] == PulseShapes.constant)
+        isTimeAmp = (shapeParams['shape_fun'] == PulseShapes.constant)
         isZero = (amp == 0)
         return super(cls, Pulse).__new__(cls, label, channel,
                                          shapeParams['length'], amp, phase,
@@ -60,8 +60,8 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
         # parameters inside shapeParams
         for n, v in self.shapeParams.items():
             if (n not in self.ignoredStrParams and
-                    n in self.channel.pulseParams and
-                    self.channel.pulseParams[n] != v):
+                    n in self.channel.pulse_params and
+                    self.channel.pulse_params[n] != v):
                 kwvals.append("{0}={1}".format(n, v))
         if kwvals:
             kwstr = ", " + ", ".join(kwvals)
@@ -98,9 +98,9 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
     @property
     def shape(self):
         params = copy(self.shapeParams)
-        params['samplingRate'] = self.channel.physChan.samplingRate
-        params.pop('shapeFun')
-        return self.shapeParams['shapeFun'](**params)
+        params['sampling_rate'] = self.channel.phys_chan.sampling_rate
+        params.pop('shape_fun')
+        return self.shapeParams['shape_fun'](**params)
 
 
 def TAPulse(label,
@@ -113,12 +113,12 @@ def TAPulse(label,
     """
     Creates a time/amplitude pulse with the given pulse length and amplitude
     """
-    params = {'length': length, 'shapeFun': PulseShapes.constant}
+    params = {'length': length, 'shape_fun': PulseShapes.constant}
     if ignoredStrParams:
-        if 'shapeFun' not in ignoredStrParams:
-            ignoredStrParams.append('shapeFun')
+        if 'shape_fun' not in ignoredStrParams:
+            ignoredStrParams.append('shape_fun')
     else:
-        ignoredStrParams = ['shapeFun']
+        ignoredStrParams = ['shape_fun']
     return Pulse(label, channel, params, amp, phase, frameChange, ignoredStrParams)
 
 

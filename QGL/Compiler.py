@@ -29,7 +29,7 @@ from . import config
 from . import PatternUtils
 from .PatternUtils import flatten, has_gate
 from . import Channels
-from . import ChannelLibrary
+from . import ChannelLibraries
 from . import PulseShapes
 from .PulsePrimitives import Id
 from .PulseSequencer import Pulse, PulseBlock, CompositePulse
@@ -44,19 +44,21 @@ def map_logical_to_physical(wires):
     # channels share a physical channel)
     physicalChannels = {}
     for logicalChan in wires.keys():
-        physChan = logicalChan.physChan
-        if physChan not in physicalChannels:
-            physicalChannels[physChan] = [logicalChan]
+        phys_chan = logicalChan.phys_chan
+        if not phys_chan:
+            raise ValueError("LogicalChannel {} does not have a PhysicalChannel".format(phys_chan))
+        if phys_chan not in physicalChannels:
+            physicalChannels[phys_chan] = [logicalChan]
         else:
-            physicalChannels[physChan].append(logicalChan)
+            physicalChannels[phys_chan].append(logicalChan)
 
     # loop through the physical channels
     physicalWires = {}
-    for physChan, logicalChan in physicalChannels.items():
+    for phys_chan, logicalChan in physicalChannels.items():
         if len(logicalChan) > 1:
-            physicalWires[physChan] = merge_channels(wires, logicalChan)
+            physicalWires[phys_chan] = merge_channels(wires, logicalChan)
         else:
-            physicalWires[physChan] = wires[logicalChan[0]]
+            physicalWires[phys_chan] = wires[logicalChan[0]]
 
     return physicalWires
 
@@ -64,7 +66,7 @@ def map_logical_to_physical(wires):
 def merge_channels(wires, channels):
     chan = channels[0]
     mergedWire = [[] for _ in range(len(wires[chan]))]
-    shapeFunLib = {}
+    shape_funLib = {}
     for ct, segment in enumerate(mergedWire):
         entry_iterators = [iter(wires[ch][ct]) for ch in channels]
         while True:
@@ -101,25 +103,25 @@ def merge_channels(wires, channels):
             else:
                 frequency = 0.0
 
-            if all([e.shapeParams['shapeFun'] == PulseShapes.constant for e in entries]):
+            if all([e.shapeParams['shape_fun'] == PulseShapes.constant for e in entries]):
                 phasor = np.sum([e.amp * np.exp(1j * e.phase) for e in entries])
                 amp = np.abs(phasor)
                 phase = np.angle(phasor)
-                shapeFun = PulseShapes.constant
+                shape_fun = PulseShapes.constant
             else:
                 amp = 1.0
                 phase = 0.0
                 pulsesHash = tuple([(e.hashshape(), e.amp, e.phase) for e in entries])
-                if pulsesHash not in shapeFunLib:
+                if pulsesHash not in shape_funLib:
                     # create closure to sum waveforms
                     def sum_shapes(entries=entries, **kwargs):
                         return reduce(operator.add,
                             [e.amp * np.exp(1j * e.phase) * e.shape for e in entries])
 
-                    shapeFunLib[pulsesHash] = sum_shapes
-                shapeFun = shapeFunLib[pulsesHash]
+                    shape_funLib[pulsesHash] = sum_shapes
+                shape_fun = shape_funLib[pulsesHash]
 
-            shapeParams = {"shapeFun": shapeFun, "length": block_length}
+            shapeParams = {"shape_fun": shape_fun, "length": block_length}
 
             label = "*".join([e.label for e in entries])
             segment.append(Pulse(label, entries[0].channel, shapeParams, amp, phase))
@@ -201,7 +203,7 @@ def concatenate_entries(entry1, entry2):
                 entry2.amp * np.exp(1j * (entry1.frameChange + entry2.phase)) *
                 entry2.shape))
 
-        shapeParams['shapeFun'] = stack_shapes
+        shapeParams['shape_fun'] = stack_shapes
         label = entry1.label + '+' + entry2.label
         amp = 1.0
         phase = 0.0
@@ -298,7 +300,7 @@ def compile_to_hardware(seqs,
                         fileName,
                         suffix='',
                         axis_descriptor=None,
-                        addSlaveTrigger=True):
+                        add_slave_trigger=True):
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'.
     Other inputs:
@@ -308,7 +310,7 @@ def compile_to_hardware(seqs,
             axes of the measurements that the sequence will yield. For instance,
             if `seqs` generates a Ramsey experiment, axis_descriptor would describe
             the time delays between pulses.
-        addSlaveTrigger (optional): add the slave trigger(s)
+        add_slave_trigger (optional): add the slave trigger(s)
     '''
     logger.debug("Compiling %d sequence(s)", len(seqs))
 
@@ -330,11 +332,11 @@ def compile_to_hardware(seqs,
     for seq in seqs:
         PatternUtils.add_gate_pulses(seq)
 
-    if addSlaveTrigger:
+    if add_slave_trigger and 'slave_trig' in ChannelLibraries.channelLib:
         # Add the slave trigger
         logger.debug("Adding slave trigger")
         PatternUtils.add_slave_trigger(seqs,
-                                       ChannelLibrary.channelLib['slaveTrig'])
+                                       ChannelLibraries.channelLib['slave_trig'])
     else:
         logger.debug("Not adding slave trigger")
 
@@ -356,15 +358,40 @@ def compile_to_hardware(seqs,
     for chan, seq in wireSeqs.items():
         if isinstance(chan, Channels.LogicalMarkerChannel):
             wireSeqs[chan] = PatternUtils.apply_gating_constraints(
-                chan.physChan, seq)
+                chan.phys_chan, seq)
     debug_print(wireSeqs, 'Gated sequence')
 
     # save number of measurements for meta info
     num_measurements = count_measurements(wireSeqs)
     wire_measurements = count_measurements_per_wire(wireSeqs)
 
-    # map logical to physical channels
+    # map logical to physical channels, physWires is a list of 
+    # PhysicalQuadratureChannels and PhysicalMarkerChannels
+    # for the APS, the naming convention is:
+    # ASPName-12, or APSName-12m1
     physWires = map_logical_to_physical(wireSeqs)
+
+    # Pave the way for composite instruments, not useful yet...
+    files = {}
+    label_to_inst   = {}
+    label_to_chan   = {}
+    old_wire_names  = {}
+    old_wire_instrs = {}
+    for wire, pulses in physWires.items():
+        pattern_module = import_module('QGL.drivers.' + wire.translator)
+        if pattern_module.SEQFILE_PER_CHANNEL:
+            inst_name = pattern_module.get_true_inst_name(wire.label)
+            chan_name = pattern_module.get_true_chan_name(wire.label)
+            non_id_pulses = [p for p in pulses[0] if isinstance(p,Pulse) and p.label!="Id"]
+            label_to_inst[wire.label] = inst_name
+            if len(non_id_pulses) > 0:
+                label_to_chan[wire.label] = chan_name
+            # Change the name/inst for uniqueness, but we must restore this later!
+            old_wire_names[wire] = wire.label
+            old_wire_instrs[wire] = wire.instrument
+            wire.instrument = wire.label
+            wire.label = chan_name 
+            files[inst_name] = {}
 
     # construct channel delay map
     delays = channel_delay_map(physWires)
@@ -380,11 +407,12 @@ def compile_to_hardware(seqs,
     # replace Pulse objects with Waveforms
     physWires = pulses_to_waveforms(physWires)
 
-    # bundle wires on instruments
+    # bundle wires on instruments, or channels depending
+    # on whether we have one sequence per channel
     awgData = bundle_wires(physWires, wfs)
 
     # convert to hardware formats
-    files = {}
+    # files = {}
     for awgName, data in awgData.items():
         # create the target folder if it does not exist
         targetFolder = os.path.split(os.path.normpath(os.path.join(
@@ -396,7 +424,12 @@ def compile_to_hardware(seqs,
                 'seqFileExt']))
         data['translator'].write_sequence_file(data, fullFileName)
 
-        files[awgName] = fullFileName
+        # Allow for per channel and per AWG seq files
+        if awgName in label_to_inst:
+            if awgName in label_to_chan:
+                files[label_to_inst[awgName]][label_to_chan[awgName]] = fullFileName
+        else:
+            files[awgName] = fullFileName
 
     # create meta output
     if not axis_descriptor:
@@ -408,8 +441,8 @@ def compile_to_hardware(seqs,
         }]
     receiver_measurements = {}
     for wire, n in wire_measurements.items():
-        if wire.receiverChan:
-            receiver_measurements[wire.receiverChan.label] = n
+        if wire.receiver_chan:
+            receiver_measurements[wire.receiver_chan.label] = n
     meta = {
         'instruments': files,
         'num_sequences': len(seqs),
@@ -420,6 +453,12 @@ def compile_to_hardware(seqs,
     metafilepath = os.path.join(config.AWGDir, fileName + '-meta.json')
     with open(metafilepath, 'w') as FID:
         json.dump(meta, FID, indent=2, sort_keys=True)
+
+    # Restore the wire info
+    for wire in old_wire_names.keys():
+        wire.label = old_wire_names[wire]
+    for wire in old_wire_instrs.keys():
+        wire.instrument = old_wire_instrs[wire]
 
     # Return the filenames we wrote
     return metafilepath
@@ -506,7 +545,7 @@ def compile_sequence(seq, channels=None):
         for chan in channels:
             if block.pulses[chan].frameChange == 0:
                 continue
-            if chan in ChannelLibrary.channelLib.connectivityG.nodes():
+            if chan in ChannelLibraries.channelLib.connectivityG.nodes():
                 logger.debug("Doing propagate_node_frame_to_edges()")
                 wires = propagate_node_frame_to_edges(
                     wires, chan, block.pulses[chan].frameChange)
@@ -541,10 +580,9 @@ def propagate_node_frame_to_edges(wires, chan, frameChange):
     '''
     Propagate frame change in node to relevant edges (for CR gates)
     '''
-    for predecessor in ChannelLibrary.channelLib.connectivityG.predecessors(
+    for predecessor in ChannelLibraries.channelLib.connectivityG.predecessors(
             chan):
-        edge = ChannelLibrary.channelLib.connectivityG.edge[predecessor][chan][
-            'channel']
+        edge = ChannelLibraries.channelLib.connectivityG.edges[predecessor, chan]['channel']
         if edge in wires:
             # search for last non-TA entry
             for ct in range(1,len(wires[edge])):
@@ -679,7 +717,7 @@ def schedule(channel, pulse, blockLength, alignment):
 
 def validate_linklist_channels(linklistChannels):
     errors = []
-    channels = ChannelLibrary.channelLib.channelDict
+    channels = ChannelLibraries.channelLib.channelDict
     for channel in linklistChannels:
         if channel.label not in channels.keys(
         ) and channel.label not in errors:

@@ -184,7 +184,7 @@ composed of a sequence of two pulses.
 ## Pulse Shapes and Waveforms
 
 The QGL compiler constructs waveforms to implement the desired quantum
-operations. To do this, each pulse has a `shapeFun` (shape function) that is
+operations. To do this, each pulse has a `shape_fun` (shape function) that is
 called with its `shapeParams`. A number of commonly used shapes are defined in
 the `PulseShapes` module including:
 
@@ -200,46 +200,46 @@ library](config.md#channel-library-setup). However, the QGL programmer may
 override the default shape with a keyword argument. For example, to force the
 use of square pulse shape we may write:
 ```python
-seq = [X(q1, shapeFun=PulseShapes.constant), MEAS(q1)]
+seq = [X(q1, shape_fun=PulseShapes.constant), MEAS(q1)]
 ```
 
 One common use case for specifying a shape function is in the construction of
 composite pulses. For instance, you may want a square pulse shape with Gaussian
 edges rather than those given by the `tanh` function. To do this you might write:
 ```python
-seq = [X(q1, shapeFun=PulseShapes.gaussOn) +\
-       X(q1, shapeFun=PulseShapes.constant) +\
-       X(q1, shapeFun=PulseShapes.gaussOff),
+seq = [X(q1, shape_fun=PulseShapes.gaussOn) +\
+       X(q1, shape_fun=PulseShapes.constant) +\
+       X(q1, shape_fun=PulseShapes.gaussOff),
        MEAS(q1)]
 ```
 
 Shape functions can be an arbitrary piece of python code that returns a NumPy
 array of complex values. Shape functions must accept **all** of their arguments
 as keyword arguments. The only arguments that are guaranteed to exist are
-`samplingRate` and `length`. The pulse length is always assumed to be units of
+`sampling_rate` and `length`. The pulse length is always assumed to be units of
 seconds; it is up to the shape function to use the passed sampling rate to
 convert from time into number of points/samples. As an example, we could define
 a ramp shape with
 ```python
-def ramp(length=0, samplingRate=1e9, **kwargs):
-    numPts = int(np.round(length * samplingRate))
+def ramp(length=0, sampling_rate=1e9, **kwargs):
+    numPts = int(np.round(length * sampling_rate))
     return np.linspace(0, 1, numPts)
 ```
 
 Then use it with any pulse primitive, e.g.:
 ```python
-seq = [X(q1, shapeFun=ramp)]
+seq = [X(q1, shape_fun=ramp)]
 ```
 
 If your custom shape function requires additional arguments, you must either
 arrange for these parameters to exist in the `LogicalChannel`'s `shapeParams`
 dictionary, or pass them at the call site. For instance,
 ```python
-def foo(length=0, samplingRate=1e9, bar=1, **kwargs):
-    numPts = int(np.round(length * samplingRate))
+def foo(length=0, sampling_rate=1e9, bar=1, **kwargs):
+    numPts = int(np.round(length * sampling_rate))
     # something involving bar...
 
-seq = [X(q1, bar=0.5, shapeFun=foo)] # bar is passed as a keyword arg
+seq = [X(q1, bar=0.5, shape_fun=foo)] # bar is passed as a keyword arg
 ```
 
 See the `PulseShapes` module for further examples.

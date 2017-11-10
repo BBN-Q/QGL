@@ -50,18 +50,18 @@ class Channel(Atom):
         jsonDict = self.__getstate__()
 
         #Turn objects into labels
-        for member in ["physChan", "gateChan", "trigChan", "receiverChan", "source", "target"]:
+        for member in ["phys_chan", "gate_chan", "trig_chan", "receiver_chan", "source", "target"]:
             if member in jsonDict and not isinstance(jsonDict[member], str):
                 obj = jsonDict.pop(member)
                 if obj:
                     jsonDict[member] = obj.label
 
         #We want the name of shape functions
-        if "pulseParams" in jsonDict:
-            pulseParams = deepcopy(jsonDict.pop("pulseParams"))
-            if "shapeFun" in pulseParams:
-                pulseParams["shapeFun"] = pulseParams["shapeFun"].__name__
-            jsonDict["pulseParams"] = pulseParams
+        if "pulse_params" in jsonDict:
+            pulse_params = deepcopy(jsonDict.pop("pulse_params"))
+            if "shape_fun" in pulse_params:
+                pulse_params["shape_fun"] = pulse_params["shape_fun"].__name__
+            jsonDict["pulse_params"] = pulse_params
 
         return jsonDict
 
@@ -73,7 +73,7 @@ class PhysicalChannel(Channel):
     instrument = Str() # i.e. the AWG or receiver
     translator = Str()
     generator = Str()
-    samplingRate = Float(default=1.2e9)
+    sampling_rate = Float(default=1.2e9)
     delay = Float()
 
 
@@ -83,38 +83,38 @@ class LogicalChannel(Channel):
     At some point it needs to be assigned to a physical channel.
     '''
     #During initilization we may just have a string reference to the channel
-    physChan = Instance((str, PhysicalChannel))
+    phys_chan = Instance((str, PhysicalChannel))
 
     def __init__(self, **kwargs):
         super(LogicalChannel, self).__init__(**kwargs)
-        if self.physChan is None:
-            self.physChan = PhysicalChannel(label=kwargs['label'] + '-phys')
+        if self.phys_chan is None:
+            self.phys_chan = PhysicalChannel(label=kwargs['label'] + '-phys')
 
 
 class PhysicalMarkerChannel(PhysicalChannel):
     '''
     A digital output channel on an AWG.
     '''
-    gateBuffer = Float(0.0).tag(
+    gate_buffer = Float(0.0).tag(
         desc="How much extra time should be added onto the beginning of a gating pulse")
-    gateMinWidth = Float(0.0).tag(desc="The minimum marker pulse width")
+    gate_min_width = Float(0.0).tag(desc="The minimum marker pulse width")
 
 
 class PhysicalQuadratureChannel(PhysicalChannel):
     '''
     Something used to implement a standard qubit channel with two analog channels and a microwave gating channel.
     '''
-    IChannel = Str()
-    QChannel = Str()
+    I_channel = Str()
+    Q_channel = Str()
     #During initilization we may just have a string reference to the channel
-    ampFactor = Float(1.0)
-    phaseSkew = Float(0.0)
+    amp_factor = Float(1.0)
+    phase_skew = Float(0.0)
 
     @property
     def correctionT(self):
         return np.array(
-            [[self.ampFactor, self.ampFactor * tan(self.phaseSkew * pi / 180)],
-             [0, 1 / cos(self.phaseSkew * pi / 180)]])
+            [[self.amp_factor, self.amp_factor * tan(self.phase_skew * pi / 180)],
+             [0, 1 / cos(self.phase_skew * pi / 180)]])
 
 class ReceiverChannel(PhysicalChannel):
     '''
@@ -126,7 +126,7 @@ class LogicalMarkerChannel(LogicalChannel):
     '''
     A class for digital channels for gating sources or triggering other things.
     '''
-    pulseParams = Dict(default={'shapeFun': PulseShapes.constant,
+    pulse_params = Dict(default={'shape_fun': PulseShapes.constant,
                                 'length': 10e-9})
 
 
@@ -134,14 +134,14 @@ class Qubit(LogicalChannel):
     '''
     The main class for generating qubit pulses.  Effectively a logical "QuadratureChannel".
     '''
-    pulseParams = Dict(default={'length': 20e-9,
+    pulse_params = Dict(default={'length': 20e-9,
                                 'piAmp': 1.0,
                                 'pi2Amp': 0.5,
-                                'shapeFun': PulseShapes.gaussian,
+                                'shape_fun': PulseShapes.gaussian,
                                 'cutoff': 2,
-                                'dragScaling': 0,
+                                'drag_scaling': 0,
                                 'sigma': 5e-9})
-    gateChan = Instance((str, LogicalMarkerChannel))
+    gate_chan = Instance((str, LogicalMarkerChannel))
     frequency = Float(0.0).tag(
         desc='modulation frequency of the channel (can be positive or negative)')
 
@@ -155,26 +155,26 @@ class Measurement(LogicalChannel):
     Measurements are special because they can be different types:
     autodyne which needs an IQ pair or hetero/homodyne which needs just a marker channel.
     '''
-    measType = Enum('autodyne', 'homodyne').tag(
+    meas_type = Enum('autodyne', 'homodyne').tag(
         desc='Type of measurement (autodyne, homodyne)')
 
-    autodyneFreq = Float(0.0).tag(
+    autodyne_freq = Float(0.0).tag(
         desc='use to bake the modulation into the pulse, so that it has constant phase')
     frequency = Float(0.0).tag(
         desc='use frequency to asssociate modulation with the channel')
-    pulseParams = Dict(default={'length': 100e-9,
+    pulse_params = Dict(default={'length': 100e-9,
                                 'amp': 1.0,
-                                'shapeFun': PulseShapes.tanh,
+                                'shape_fun': PulseShapes.tanh,
                                 'cutoff': 2,
                                 'sigma': 1e-9})
-    gateChan = Instance((str, LogicalMarkerChannel))
-    trigChan = Instance((str, LogicalMarkerChannel))
-    receiverChan = Instance((str, ReceiverChannel))
+    gate_chan = Instance((str, LogicalMarkerChannel))
+    trig_chan = Instance((str, LogicalMarkerChannel))
+    receiver_chan = Instance((str, ReceiverChannel))
 
     def __init__(self, **kwargs):
         super(Measurement, self).__init__(**kwargs)
-        if self.trigChan is None:
-            self.trigChan = LogicalMarkerChannel(label='digitizerTrig')
+        if self.trig_chan is None:
+            self.trig_chan = LogicalMarkerChannel(label='digitizerTrig')
 
 
 class Edge(LogicalChannel):
@@ -188,23 +188,20 @@ class Edge(LogicalChannel):
     # allow string in source and target so that we can store a label or an object
     source = Instance((str, Qubit))
     target = Instance((str, Qubit))
-    pulseParams = Dict(default={'length': 20e-9,
+    pulse_params = Dict(default={'length': 20e-9,
                                 'amp': 1.0,
                                 'phase': 0.0,
-                                'shapeFun': PulseShapes.gaussian,
+                                'shape_fun': PulseShapes.gaussian,
                                 'cutoff': 2,
-                                'dragScaling': 0,
+                                'drag_scaling': 0,
                                 'sigma': 5e-9,
                                 'riseFall': 20e-9})
-    gateChan = Instance((str, LogicalMarkerChannel))
+    gate_chan = Instance((str, LogicalMarkerChannel))
     frequency = Float(0.0).tag(
         desc='modulation frequency of the channel (can be positive or negative)')
 
     def __init__(self, **kwargs):
         super(Edge, self).__init__(**kwargs)
-        if self.gateChan is None:
-            self.gateChan = LogicalMarkerChannel(
-                label=kwargs['label'] + '-gate')
 
     def isforward(self, source, target):
         ''' Test whether (source, target) matches the directionality of the edge. '''

@@ -8,21 +8,22 @@ from QGL import *
 class CompileUtils(unittest.TestCase):
     def setUp(self):
         self.q1gate = Channels.LogicalMarkerChannel(label='q1-gate')
-        self.q1 = Qubit(label='q1', gateChan=self.q1gate)
-        self.q1.pulseParams['length'] = 30e-9
+        self.q1 = Qubit(label='q1', gate_chan=self.q1gate)
+        self.q1.pulse_params['length'] = 30e-9
 
         self.q2gate = Channels.LogicalMarkerChannel(label='q2-gate')
-        self.q2 = Qubit(label='q2', gateChan=self.q2gate)
-        self.q2.pulseParams['length'] = 30e-9
+        self.q2 = Qubit(label='q2', gate_chan=self.q2gate)
+        self.q2.pulse_params['length'] = 30e-9
 
         self.trigger = Channels.LogicalMarkerChannel(label='trigger')
-        self.measq1 = Channels.Measurement(label='M-q1', measType='autodyne')
-        self.measq1.trigChan = self.trigger
+        self.measq1 = Channels.Measurement(label='M-q1', meas_type='autodyne')
+        self.measq1.trig_chan = self.trigger
 
-        ChannelLibrary.channelLib.channelDict = {'q1': self.q1,
+        ChannelLibrary(library_file=None) # Create a blank ChannelLibrary
+        ChannelLibraries.channelLib.channelDict = {'q1': self.q1,
                                                  'q2': self.q2,
                                                  'M-q1': self.measq1}
-        ChannelLibrary.channelLib.build_connectivity_graph()
+        ChannelLibraries.channelLib.build_connectivity_graph()
 
     def test_add_digitizer_trigger(self):
         q1 = self.q1
@@ -55,7 +56,7 @@ class CompileUtils(unittest.TestCase):
         seq2 = [qwait(), X90(q1)]
 
         PatternUtils.add_slave_trigger([seq1], trigger)
-        t = TAPulse("TRIG", trigger, trigger.pulseParams['length'], 1.0, 0.0,
+        t = TAPulse("TRIG", trigger, trigger.pulse_params['length'], 1.0, 0.0,
                     0.0)
         assert (seq1 == [qwait(), t, label, X90(q1)])
 
@@ -74,9 +75,9 @@ class CompileUtils(unittest.TestCase):
 
     def test_pull_uniform_entries(self):
         q1 = self.q1
-        q1.pulseParams['length'] = 20e-9
+        q1.pulse_params['length'] = 20e-9
         q2 = self.q2
-        q2.pulseParams['length'] = 60e-9
+        q2.pulse_params['length'] = 60e-9
         seq = [(X90(q1) + Y90(q1) + X90(q1)) * X(q2)]
         ll = Compiler.compile_sequence(seq)
         entryIterators = [iter(ll[q1]), iter(ll[q2])]
@@ -86,7 +87,7 @@ class CompileUtils(unittest.TestCase):
         assert all(e.length == max_length for e in entries)
         self.assertRaises(StopIteration, next, entryIterators[0])
 
-        q2.pulseParams['length'] = 40e-9
+        q2.pulse_params['length'] = 40e-9
         seq = [(X90(q1) + Z90(q1) + X90(q1)) * Y(q2)]
         ll = Compiler.compile_sequence(seq)
         entryIterators = [iter(ll[q1]), iter(ll[q2])]
@@ -97,9 +98,9 @@ class CompileUtils(unittest.TestCase):
 
     def test_pull_uniform_entries2(self):
         q1 = self.q1
-        q1.pulseParams['length'] = 30e-9
+        q1.pulse_params['length'] = 30e-9
         q2 = self.q2
-        q2.pulseParams['length'] = 40e-9
+        q2.pulse_params['length'] = 40e-9
         seq = [(X90(q1) + Y90(q1) + X(q1) + Y(q1)) * (Y(q2) + X(q2) + Y(q2))]
         ll = Compiler.compile_sequence(seq)
         entryIterators = [iter(ll[q1]), iter(ll[q2])]
@@ -110,9 +111,9 @@ class CompileUtils(unittest.TestCase):
 
     def test_merge_channels(self):
         q1 = self.q1
-        q1.pulseParams['length'] = 20e-9
+        q1.pulse_params['length'] = 20e-9
         q2 = self.q2
-        q2.pulseParams['length'] = 60e-9
+        q2.pulse_params['length'] = 60e-9
         seqs = [[(X90(q1) + Y90(q1) + X90(q1)) * X(q2)]]
         ll = Compiler.compile_sequences(seqs)
 

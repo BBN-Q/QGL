@@ -118,8 +118,8 @@ class SingleQubitTestCases(SequenceTestCases):
 
     def newQ1(self):
         q1 = Qubit(label='q1')
-        q1.pulseParams['length'] = 30e-9
-        q1.physChan.samplingRate = 1.2e9
+        q1.pulse_params['length'] = 30e-9
+        q1.phys_chan.sampling_rate = 1.2e9
         return q1
 
     def generate(self):
@@ -137,16 +137,17 @@ class MultiQubitTestCases(SequenceTestCases):
 
     def newQubits(self):
         q1 = Qubit(label='q1')
-        q1.pulseParams['length'] = 30e-9
-        q1.physChan.samplingRate = 1.2e9
+        q1.pulse_params['length'] = 30e-9
+        q1.phys_chan.sampling_rate = 1.2e9
         q2 = Qubit(label='q2')
-        q2.pulseParams['length'] = 30e-9
-        q2.physChan.samplingRate = 1.2e9
+        q2.pulse_params['length'] = 30e-9
+        q2.phys_chan.sampling_rate = 1.2e9
         q1q2 = Edge(label='q1q2', source=q1, target=q2)
-        ChannelLibrary.channelLib.channelDict['q1'] = q1
-        ChannelLibrary.channelLib.channelDict['q2'] = q2
-        ChannelLibrary.channelLib.channelDict['q1q2'] = q1q2
-        ChannelLibrary.channelLib.build_connectivity_graph()
+        ChannelLibrary(library_file=None) # Create a blank ChannelLibrary
+        ChannelLibraries.channelLib.channelDict['q1'] = q1
+        ChannelLibraries.channelLib.channelDict['q2'] = q2
+        ChannelLibraries.channelLib.channelDict['q1q2'] = q1q2
+        ChannelLibraries.channelLib.build_connectivity_graph()
         return (q1, q2)
 
     def generate(self):

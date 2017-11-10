@@ -26,6 +26,8 @@ import re
 
 MAX_WAVEFORM_VALUE = 2**13 - 1  #maximum waveform value i.e. 14bit DAC
 
+# Do we want a pulse file per instrument or per channel
+SEQFILE_PER_CHANNEL = False
 
 def get_empty_channel_set():
     return {'ch12': {},

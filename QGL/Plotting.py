@@ -38,16 +38,12 @@ def output_notebook(local=True, suppress_warnings=True):
     else:
         bk.output_notebook()
 
-def output_file():
+def output_file(suppress_warnings=True):
+    if suppress_warnings:
+        warnings.simplefilter("ignore", BokehUserWarning)
+    
     bk.output_file(os.path.join(tempfile.gettempdir(), str(uuid.uuid4()) +
                                 ".html"))
-
-# Default to output_file
-# Commented out because recent versions of Bokeh remember the state of
-# output_notebook/output_file on a per module basis.
-
-# output_file()
-
 
 def build_waveforms(seq):
     # import here to avoid circular imports
@@ -96,7 +92,7 @@ def plot_waveforms(waveforms, figTitle=''):
             fig.xgrid.grid_line_color = config.gridColor
             fig.ygrid.grid_line_color = config.gridColor
         waveformToPlot = waveforms[chan]
-        xpts = np.linspace(0, len(waveformToPlot) / chan.physChan.samplingRate
+        xpts = np.linspace(0, len(waveformToPlot) / chan.phys_chan.sampling_rate
                            / 1e-6, len(waveformToPlot))
         fig.line(xpts, np.real(waveformToPlot), color='red')
         fig.line(xpts, np.imag(waveformToPlot), color='blue')
