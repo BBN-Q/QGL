@@ -24,7 +24,7 @@ from .PulseSequencer import Pulse, TAPulse, PulseBlock, CompositePulse, Compound
 from .PulsePrimitives import BLANK
 from . import ControlFlow
 from . import BlockLabel
-import QGL.drivers
+from . import driver_manager
 
 def hash_pulse(shape):
     return hashlib.sha1(shape.tostring()).hexdigest()
@@ -314,12 +314,13 @@ def update_wf_library(pulses, path):
             else:
                 yield p
 
+    drivers = driver_manager.get_drivers()
+
     pulse_list = list(flatten_pulses())
     for ct, pulse in enumerate(pulse_list):
         awg = pulse.channel.phys_chan.instrument
         if awg not in translators:
-            translators[awg] = getattr(QGL.drivers,
-                                       pulse.channel.phys_chan.translator)
+            translators[awg] = drivers[pulse.channel.phys_chan.translator]
         if pulse.label not in awg_pulses[awg]:
             awg_pulses[awg][pulse.label] = pulse_list[ct]
 
