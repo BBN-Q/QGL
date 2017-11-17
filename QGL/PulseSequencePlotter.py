@@ -34,30 +34,34 @@ import numpy as np
 
 from . import config
 from . import drivers
+from . import driver_manager
 import pkgutil
 
 
 def all_zero_seqs(seqs):
     return all([np.allclose([_[1] for _ in seq], 0) for seq in seqs])
 
+DRIVERS = dict()
 
 def build_awg_translator_map():
     translators_map = {}
-    translators = [_[1] for _ in pkgutil.walk_packages(drivers.__path__)]
-    for translator in translators:
-        module = import_module('QGL.drivers.' + translator)
+
+    drivers = driver_manager.get_drivers()
+
+    for driver_name in drivers.keys():
+        module = drivers[driver_name]
         ext = module.get_seq_file_extension()
         if ext in translators_map:
             translators_map[ext].append(module)
         else:
             translators_map[ext] = [module]
+
     return translators_map
 
-# static translator map
-translators = build_awg_translator_map()
-
-
 def resolve_translator(filename, translators):
+
+    translators = build_awg_translator_map()
+
     ext = os.path.splitext(filename)[1]
     if ext not in translators:
         raise NameError("No translator found to open the given file %s",
@@ -156,6 +160,8 @@ def extract_waveforms(dataDict, fileNames, nameDecorator='', time=False):
         # Strip any _ suffix
         if '_' in AWGName:
             AWGName = AWGName[:AWGName.index('_')]
+
+        translators = build_awg_translator_map()
 
         translator = resolve_translator(fileName, translators)
         wfs = translator.read_sequence_file(fileName)
