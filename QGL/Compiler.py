@@ -36,6 +36,8 @@ from .PulseSequencer import Pulse, PulseBlock, CompositePulse
 from . import ControlFlow
 from . import BlockLabel
 
+from . import driver_manager
+
 logger = logging.getLogger(__name__)
 
 def map_logical_to_physical(wires):
@@ -251,8 +253,9 @@ def channel_delay_map(physicalWires):
 
 def setup_awg_channels(physicalChannels):
     translators = {}
+    drivers = driver_manager.get_drivers()
     for chan in physicalChannels:
-        translators[chan.instrument] = import_module('QGL.drivers.' + chan.translator)
+        translators[chan.instrument] = drivers[chan.translator]
 
     data = {awg: translator.get_empty_channel_set()
             for awg, translator in translators.items()}
@@ -377,8 +380,10 @@ def compile_to_hardware(seqs,
     label_to_chan   = {}
     old_wire_names  = {}
     old_wire_instrs = {}
+
+    drivers = driver_manager.get_drivers()
     for wire, pulses in physWires.items():
-        pattern_module = import_module('QGL.drivers.' + wire.translator)
+        pattern_module = drivers[wire.translator]
         if pattern_module.SEQFILE_PER_CHANNEL:
             inst_name = pattern_module.get_true_inst_name(wire.label)
             chan_name = pattern_module.get_true_chan_name(wire.label)
