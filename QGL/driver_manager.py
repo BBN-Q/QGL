@@ -17,19 +17,25 @@ limitations under the License.
 from importlib import import_module
 from pkgutil import walk_packages
 
-import QGL.drivers
-
 DRIVERS = dict()
+LOADED = False
 
-for driver in walk_packages(QGL.drivers.__path__):
-    DRIVERS[driver[1]] = import_module('QGL.drivers.' + driver[1])
-
+DEFAULT_DEVICES = [
+        'APS2Pattern', 'APSPattern', 'TekPattern'
+        ]
 
 def get_drivers():
     """
     Returns a name->module dictionary of device drivers known
     available
     """
+
+    global LOADED
+
+    if not LOADED:
+        for dev_name in DEFAULT_DEVICES:
+            DRIVERS[dev_name] = import_module('QGL.drivers.' + dev_name)
+        LOADED = True
 
     return DRIVERS
 
@@ -38,9 +44,8 @@ def add_driver(name, module):
     """
     Adds a new driver to the driver dictionary
 
-    TODO: this may be incomplete; there will probably be more
-    things we need to set up for each driver (for the plotter,
-    if nothing else)
+    TODO: check whether there is already a device loaded with
+    the given name, and at least warn the user
     """
 
     DRIVERS[name] = module
