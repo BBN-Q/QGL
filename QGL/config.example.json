@@ -1,8 +1,0 @@
-{
-	"AWGDir": "/my/path/to/awg/",
-	"ConfigurationFile": "/my/path/to/measure.yaml",
-	"PulsePrimitivesLibrary": "standard",
-	"cnot_implementation": "CNOT_CR",
-	"PlotBackground": "#EAEAF2",
-	"GridColor": "white"
-}

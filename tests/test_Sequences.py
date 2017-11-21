@@ -28,7 +28,7 @@ class AWGTestHelper(object):
         for name, value in mapping.items():
             self.channels[name].phys_chan = self.channels[value]
 
-        ChannelLibraries.channelLib = ChannelLibraries.ChannelLibrary(library_file=None)
+        ChannelLibraries.channelLib = ChannelLibraries.ChannelLibrary(blank=True)
         ChannelLibraries.channelLib.channelDict = self.channels
         ChannelLibraries.channelLib.build_connectivity_graph()
 

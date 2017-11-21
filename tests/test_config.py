@@ -67,18 +67,18 @@ class ConfigTest(unittest.TestCase):
         out_data, err_data = proc.communicate()
 
         lines = out_data.split('\n')
-        expected = 'Note: using QGLCfgFile [%s/QGL/config.json]' % qgl_dir
+        expected = 'Note: using BBN_MEAS_FILE [%s/QGL/config.json]' % qgl_dir
         assert lines[0] == expected
 
     def test_env(self):
         """
-        Test that if the QGLCFGFILE environment variable is set, it is used
+        Test that if the BBN_MEAS_FILE environment variable is set, it is used
         """
 
         qgl_dir = os.path.dirname(os.path.dirname(__file__))
 
         os.putenv('PYTHONPATH', qgl_dir)
-        os.putenv('QGLCFGFILE', '/foo/bar/qux')
+        os.putenv('BBN_MEAS_FILE', '/foo/bar/qux')
 
         progname = '/tmp/config_loc_test.py'
 
@@ -98,10 +98,10 @@ class ConfigTest(unittest.TestCase):
         except BaseException as exc:
             assert False
 
-        os.unsetenv('QGLCFGFILE')
+        os.unsetenv('BBN_MEAS_FILE')
 
         lines = out_data.split('\n')
-        assert lines[0] == 'Note: using QGLCfgFile [/foo/bar/qux]'
+        assert lines[0] == 'Note: using BBN_MEAS_FILE [/foo/bar/qux]'
 
     def test_override1(self):
         """
@@ -134,7 +134,7 @@ class ConfigTest(unittest.TestCase):
             assert False
 
         lines = out_data.split('\n')
-        assert lines[0] == 'Note: using QGLCfgFile [/a/b/c/d]'
+        assert lines[0] == 'Note: using BBN_MEAS_FILE [/a/b/c/d]'
 
 
 if __name__ == "__main__":
