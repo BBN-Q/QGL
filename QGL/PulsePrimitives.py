@@ -191,76 +191,73 @@ def U90(qubit, phase=0, **kwargs):
                   ignoredStrParams=['amp'],
                   **kwargs)
 
-if config.pulse_primitives_lib == 'standard':
-    # pi rotations formed by different choice of pulse amplitude
-    @_memoize
-    def X(qubit, **kwargs):
+@_memoize
+def X(qubit, **kwargs):
+    if config.pulse_primitives_lib == 'standard':
         return Xtheta(qubit,
                       pi,
                       label="X",
                       ignoredStrParams=['amp'],
                       **kwargs)
+    elif config.pulse_primitives_lib == 'all90':
+        return X90(qubit, **kwargs) + X90(qubit, **kwargs)
+    else:
+        raise Exception("Invalid pulse_primitives_lib. Must be standard or all90")
 
-    @_memoize
-    def Xm(qubit, **kwargs):
+@_memoize
+def Xm(qubit, **kwargs):
+    if config.pulse_primitives_lib == 'standard':
         return Xtheta(qubit,
                       -pi,
                       label="Xm",
                       ignoredStrParams=['amp'],
                       **kwargs)
+    elif config.pulse_primitives_lib == 'all90':
+        return X90m(qubit, **kwargs) + X90m(qubit, **kwargs)
+    else:
+        raise Exception("Invalid pulse_primitives_lib. Must be standard or all90")
 
-    @_memoize
-    def Y(qubit, **kwargs):
+@_memoize
+def Y(qubit, **kwargs):
+    if config.pulse_primitives_lib == 'standard':
         return Ytheta(qubit,
                       pi,
                       label="Y",
                       ignoredStrParams=['amp'],
                       **kwargs)
+    elif config.pulse_primitives_lib == 'all90':
+        return Y90(qubit, **kwargs) + Y90(qubit, **kwargs)
+    else:
+        raise Exception("Invalid pulse_primitives_lib. Must be standard or all90")
 
-    @_memoize
-    def Ym(qubit, **kwargs):
+@_memoize
+def Ym(qubit, **kwargs):
+    if config.pulse_primitives_lib == 'standard':
         return Ytheta(qubit,
                       -pi,
                       label="Ym",
                       ignoredStrParams=['amp'],
                       **kwargs)
+    elif config.pulse_primitives_lib == 'all90':
+        return Y90m(qubit, **kwargs) + Y90m(qubit, **kwargs)
+    else:
+        raise Exception("Invalid pulse_primitives_lib. Must be standard or all90")
 
-    @_memoize
-    def U(qubit, phase=0, **kwargs):
-        """ A generic 180 degree rotation with variable phase.  """
-        if "label" not in kwargs:
-            kwargs["label"] = "U"
+@_memoize
+def U(qubit, phase=0, **kwargs):
+    """ A generic 180 degree rotation with variable phase.  """
+    if "label" not in kwargs:
+        kwargs["label"] = "U"
+    if config.pulse_primitives_lib == 'standard':
         return Utheta(qubit,
                       pi,
                       phase,
                       ignoredStrParams=['amp'],
                       **kwargs)
-
-elif config.pulse_primitives_lib == 'all90':
-    # pi rotations formed by two pi/2 rotations
-    @_memoize
-    def X(qubit, **kwargs):
-        return X90(qubit, **kwargs) + X90(qubit, **kwargs)
-
-    @_memoize
-    def Xm(qubit, **kwargs):
-        return X90m(qubit, **kwargs) + X90m(qubit, **kwargs)
-
-    @_memoize
-    def Y(qubit, **kwargs):
-        return Y90(qubit, **kwargs) + Y90(qubit, **kwargs)
-
-    @_memoize
-    def Ym(qubit, **kwargs):
-        return Y90m(qubit, **kwargs) + Y90m(qubit, **kwargs)
-
-    @_memoize
-    def U(qubit, phase=0, **kwargs):
-        """ A generic 180 degree rotation with variable phase.  """
+    elif config.pulse_primitives_lib == 'all90':
         return U90(qubit, phase, *kwargs) + U90(qubit, phase, *kwargs)
-
-else:
-    raise Exception("Invalid pulse library")
+    else:
+        raise Exception("Invalid pulse_primitives_lib. Must be standard or all90")
 
 @_memoize
 def Z(qubit, **kwargs):
@@ -716,15 +713,11 @@ def CNOT_simple(source, target, **kwargs):
     p = X(channel, **kwargs)
     return p._replace(label="CNOT")
 
-try:
-    cnot_impl = globals()[config.cnot_implementation]
-except:
-    raise NameError("A valid CNOT implementation was not defined [{}]".format(config.cnot_implementation))
-
 @_memoize
 def CNOT(source, target, **kwargs):
+    cnot_impl = globals()[config.cnot_implementation]
     return cnot_impl(source, target, **kwargs)
-
+ 
 ## Measurement operators
 @_memoize
 def MEAS(qubit, **kwargs):
