@@ -8,8 +8,6 @@ import QGL
 from QGL.Channels import Edge, Measurement, LogicalChannel, LogicalMarkerChannel, PhysicalMarkerChannel, PhysicalQuadratureChannel
 from QGL.drivers import APSPattern, APS2Pattern, TekPattern
 
-BASE_AWG_DIR = QGL.config.AWGDir
-
 
 class AWGTestHelper(object):
     testFileDirectory = './tests/test_data/awg/'
@@ -95,7 +93,7 @@ class AWGTestHelper(object):
     def set_awg_dir(self, footer=""):
         cn = self.__class__.__name__
 
-        self.awg_dir = os.path.abspath(BASE_AWG_DIR + os.path.sep + cn)
+        self.awg_dir = os.path.abspath(QGL.config.AWGDir + os.path.sep + cn)
         self.truth_dir = os.path.abspath(self.testFileDirectory + os.path.sep +
                                          cn)
 
