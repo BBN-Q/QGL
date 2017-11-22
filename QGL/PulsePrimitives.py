@@ -722,7 +722,7 @@ def CNOT(source, target, **kwargs):
     channel = ChannelLibraries.EdgeFactory(source, target)
     if not channel.cnot_impl:
         print('Warning: CNOT implementation undefined for {}'.format(channel.label))
-        return CNOT_simple(source, target, **kwargs)
+        return CNOT_CR(source, target, **kwargs)
     if channel.cnot_impl == 'simple':
         return CNOT_simple(source, target, **kwargs)
     if channel.cnot_impl == 'CR':
