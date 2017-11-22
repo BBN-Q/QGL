@@ -199,6 +199,7 @@ class Edge(LogicalChannel):
     gate_chan = Instance((str, LogicalMarkerChannel))
     frequency = Float(0.0).tag(
         desc='modulation frequency of the channel (can be positive or negative)')
+    cnot_impl = Instance(str)
 
     def __init__(self, **kwargs):
         super(Edge, self).__init__(**kwargs)

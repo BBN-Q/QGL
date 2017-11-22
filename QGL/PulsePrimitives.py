@@ -629,7 +629,7 @@ def DiAC(qubit, cliffNum, compiled = True):
 
 # helper used by echoCR
 def flat_top_gaussian(chan,
-                      riseFall,
+                      rise_fall,
                       length,
                       amp,
                       phase=0,
@@ -637,9 +637,9 @@ def flat_top_gaussian(chan,
     """
     A constant pulse with rising and falling gaussian shape
     """
-    p =  Utheta(chan, length=riseFall, amp=amp, phase=phase, shape_fun=PulseShapes.gaussOn, label=label+"_rise") + \
+    p =  Utheta(chan, length=rise_fall, amp=amp, phase=phase, shape_fun=PulseShapes.gaussOn, label=label+"_rise") + \
          Utheta(chan, length=length, amp=amp, phase=phase, shape_fun=PulseShapes.constant, label=label+"_top") + \
-         Utheta(chan, length=riseFall, amp=amp, phase=phase, shape_fun=PulseShapes.gaussOff, label=label+"_fall")
+         Utheta(chan, length=rise_fall, amp=amp, phase=phase, shape_fun=PulseShapes.gaussOff, label=label+"_fall")
     return p._replace(label=label)
 
 
@@ -648,7 +648,7 @@ def echoCR(controlQ,
            amp=1,
            phase=0,
            length=200e-9,
-           riseFall=20e-9,
+           rise_fall=20e-9,
            lastPi=True):
     """
     An echoed CR pulse.  Used for calibration of CR gate
@@ -660,14 +660,14 @@ def echoCR(controlQ,
 
     seq = [flat_top_gaussian(CRchan,
                              amp=amp,
-                             riseFall=riseFall,
+                             rise_fall=rise_fall,
                              length=length,
                              phase=phase,
                              label="echoCR_first_half"),
            X(controlQ),
            flat_top_gaussian(CRchan,
                              amp=amp,
-                             riseFall=riseFall,
+                             rise_fall=rise_fall,
                              length=length,
                              phase=phase + np.pi,
                              label="echoCR_second_half")]
@@ -687,7 +687,7 @@ def ZX90_CR(controlQ, targetQ, **kwargs):
                   amp=params['amp'],
                   phase=params['phase'],
                   length=params['length'],
-                  riseFall=params['riseFall'])
+                  rise_fall=params['rise_fall'])
 
 
 def CNOT_CR(controlQ, targetQ, **kwargs):
@@ -716,14 +716,18 @@ def CNOT_simple(source, target, **kwargs):
     p = X(channel, **kwargs)
     return p._replace(label="CNOT")
 
-try:
-    cnot_impl = globals()[config.cnot_implementation]
-except:
-    raise NameError("A valid CNOT implementation was not defined [{}]".format(config.cnot_implementation))
 
 @_memoize
 def CNOT(source, target, **kwargs):
-    return cnot_impl(source, target, **kwargs)
+    channel = ChannelLibraries.EdgeFactory(source, target)
+    if not channel.cnot_impl:
+        print('Warning: CNOT implementation undefined for {}'.format(channel.label))
+        return CNOT_simple(source, target, **kwargs)
+    if channel.cnot_impl == 'simple':
+        return CNOT_simple(source, target, **kwargs)
+    if channel.cnot_impl == 'CR':
+        return CNOT_CR(source, target, **kwargs)
+    raise NameError("A valid CNOT implementation was not defined [{}]".format(channel.cnot_impl))
 
 ## Measurement operators
 @_memoize
