@@ -84,7 +84,7 @@ class SchedulerTest(unittest.TestCase):
 
         cond_seq = qif(1, [Y(q1),Y(q2),X90(q1)], [Z(q1),Z(q2),X90(q1)])
         seq = [X(q1),X(q2),
-               CNOT(q1,q2)] + \
+               CNOT_CR(q1,q2)] + \
               cond_seq + \
               [Y90(q1),Y90(q2)]
 
@@ -97,7 +97,7 @@ class SchedulerTest(unittest.TestCase):
                              [Y(q1) * Y(q2), X90(q1)] + \
                              cond_seq[-1:]
         assert(result == [X(q1) * X(q2),
-                          CNOT(q1, q2)] + \
+                          CNOT_CR(q1, q2)] + \
                          cond_seq_scheduled + \
                          [Y90(q1) * Y90(q2)])
 
