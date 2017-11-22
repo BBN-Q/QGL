@@ -23,6 +23,7 @@ Tests for the changes to config.py and qgl_config_loc.py
 
 import QGL
 import os
+import shutil
 import unittest
 
 class ConfigTest(unittest.TestCase):
@@ -31,7 +32,11 @@ class ConfigTest(unittest.TestCase):
     """
 
     def setUp(self):
-        pass
+        if not os.path.exists('./tmp'):
+            os.mkdir('./tmp')
+
+    def tearDown(self):
+        shutil.rmtree('./tmp')
 
     def test_env(self):
         """
@@ -39,36 +44,39 @@ class ConfigTest(unittest.TestCase):
         """
 
         # Write a bare-bones yml config file
-        meas_name = '/tmp/qgl_test_1.yml'
+        meas_name = './tmp/qgl_test_1.yml'
         meas_txt  = 'config:\n'
-        meas_txt += '    AWGDir: /foo/bar/xyz\n'
-        fout = open(meas_name, 'w')
+        meas_txt += '    AWGDir: ./foo/bar/xyz\n'
+        fout = open(os.path.abspath(meas_name), 'w')
         fout.write(meas_txt)
         fout.close()
 
         orig_env = os.getenv('BBN_MEAS_FILE')
         os.environ['BBN_MEAS_FILE'] = meas_name
-        QGL.config.load_config() 
-        os.environ['BBN_MEAS_FILE'] = orig_env
+        QGL.config.load_config()
+        if orig_env:
+            os.environ['BBN_MEAS_FILE'] = orig_env
         assert QGL.config.meas_file == meas_name
-        assert QGL.config.AWGDir == "/foo/bar/xyz"
+        assert QGL.config.AWGDir == os.path.realpath("./foo/bar/xyz")
+
 
     def test_override1(self):
         """
         Tests manually supplying a different config file when instantiating the channel library.
         """
-
         # Write a bare-bones yml config file
-        meas_name = '/tmp/qgl_test_2.yml'
+        if not os.path.exists('./tmp'):
+            os.mkdir('./tmp')
+        meas_name = './tmp/qgl_test_2.yml'
         meas_txt  = 'config:\n'
-        meas_txt += '    AWGDir: /foo/bar/abc\n'
+        meas_txt += '    AWGDir: ./foo/bar/abc\n'
         fout = open(meas_name, 'w')
         fout.write(meas_txt)
         fout.close()
 
-        cl = QGL.config.load_config(meas_name) 
+        cl = QGL.config.load_config(meas_name)
         assert QGL.config.meas_file == meas_name
-        assert QGL.config.AWGDir == "/foo/bar/abc"
+        assert QGL.config.AWGDir == os.path.realpath("./foo/bar/abc")
 
 if __name__ == "__main__":
     unittest.main()
