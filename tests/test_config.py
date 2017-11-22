@@ -64,9 +64,6 @@ class ConfigTest(unittest.TestCase):
         """
         Tests manually supplying a different config file when instantiating the channel library.
         """
-        # Write a bare-bones yml config file
-        if not os.path.exists('./tmp'):
-            os.mkdir('./tmp')
         meas_name = './tmp/qgl_test_2.yml'
         meas_txt  = 'config:\n'
         meas_txt += '    AWGDir: ./foo/bar/abc\n'
