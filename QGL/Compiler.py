@@ -382,9 +382,9 @@ def compile_to_hardware(seqs,
         if pattern_module.SEQFILE_PER_CHANNEL:
             inst_name = pattern_module.get_true_inst_name(wire.label)
             chan_name = pattern_module.get_true_chan_name(wire.label)
-            non_id_pulses = [p for p in pulses[0] if isinstance(p,Pulse) and p.label!="Id"]
+            has_non_id_pulses = any([len([p for p in ps if isinstance(p,Pulse) and p.label!="Id"]) > 0 for ps in pulses])
             label_to_inst[wire.label] = inst_name
-            if len(non_id_pulses) > 0:
+            if has_non_id_pulses:
                 label_to_chan[wire.label] = chan_name
             # Change the name/inst for uniqueness, but we must restore this later!
             old_wire_names[wire] = wire.label
