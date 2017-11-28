@@ -417,6 +417,7 @@ class TestAPS2(unittest.TestCase, APS2Helper, TestSequences):
         APS2Helper.setUp(self)
 
     def test_mux_CR(self):
+        self.set_awg_dir()
         #control and CR sharing the same chans
         self.channels['cr'].phys_chan = self.channels['q1'].phys_chan
         self.channels['q1'].frequency = 100e6
