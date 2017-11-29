@@ -47,7 +47,7 @@ def create_RB_seqs(numQubits, lengths, repeats=32, interleaveGate=None, recovery
 
     return seqs
 
-def SingleQubitRB(qubit, seqs, purity=False, showPlot=False):
+def SingleQubitRB(qubit, seqs, purity=False, showPlot=False, add_cals=True):
     """Single qubit randomized benchmarking using 90 and 180 generators.
 
     Parameters
@@ -69,7 +69,8 @@ def SingleQubitRB(qubit, seqs, purity=False, showPlot=False):
             seqsBis[-1].append(MEAS(qubit))
 
     #Tack on the calibration sequences
-    seqsBis += create_cal_seqs((qubit, ), 2)
+    if add_cals:
+        seqsBis += create_cal_seqs((qubit, ), 2)
 
     metafile = compile_to_hardware(seqsBis, 'RB/RB')
 
@@ -78,7 +79,7 @@ def SingleQubitRB(qubit, seqs, purity=False, showPlot=False):
     return metafile
 
 
-def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix=""):
+def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix="", add_cals=True):
     """Two qubit randomized benchmarking using 90 and 180 single qubit generators and ZX90
 
     Parameters
@@ -98,7 +99,8 @@ def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix=""):
         seq.append(MEAS(q1) * MEAS(q2))
 
     #Tack on the calibration sequences
-    seqsBis += create_cal_seqs((q1, q2), 2)
+    if add_cals:
+        seqsBis += create_cal_seqs((q1, q2), 2)
 
     metafile = compile_to_hardware(seqsBis, 'RB/RB', suffix=suffix)
 
@@ -106,7 +108,7 @@ def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix=""):
         plot_pulse_files(metafile)
     return metafile
 
-def SingleQubitRB_AC(qubit, seqs, purity=False, showPlot=False):
+def SingleQubitRB_AC(qubit, seqs, purity=False, showPlot=False, add_cals=True):
     """Single qubit randomized benchmarking using atomic Clifford pulses.
 
     Parameters
@@ -126,7 +128,8 @@ def SingleQubitRB_AC(qubit, seqs, purity=False, showPlot=False):
             seqsBis[-1].append(MEAS(qubit))
 
     #Tack on the calibration sequences
-    seqsBis += create_cal_seqs((qubit, ), 2)
+    if add_cals:
+        seqsBis += create_cal_seqs((qubit, ), 2)
 
     metafile = compile_to_hardware(seqsBis, 'RB/RB')
 
@@ -134,7 +137,7 @@ def SingleQubitRB_AC(qubit, seqs, purity=False, showPlot=False):
         plot_pulse_files(metafile)
     return metafile
 
-def SingleQubitRB_DiAC(qubit, seqs, compiled=True, purity=False, showPlot=False):
+def SingleQubitRB_DiAC(qubit, seqs, compiled=True, purity=False, showPlot=False, add_cals=True):
     """Single qubit randomized benchmarking using diatomic Clifford pulses.
 
     Parameters
@@ -157,7 +160,8 @@ def SingleQubitRB_DiAC(qubit, seqs, compiled=True, purity=False, showPlot=False)
             seqsBis[-1].append(MEAS(qubit))
 
     #Tack on the calibration sequences (using pi/2 pulses for consistency)
-    seqsBis += [[Id(qubit), MEAS(qubit)], [Id(qubit), MEAS(qubit)], [X90(qubit), X90(qubit), MEAS(qubit)], [X90(qubit), X90(qubit), MEAS(qubit)]]
+    if add_cals:
+        seqsBis += [[Id(qubit), MEAS(qubit)], [Id(qubit), MEAS(qubit)], [X90(qubit), X90(qubit), MEAS(qubit)], [X90(qubit), X90(qubit), MEAS(qubit)]]
 
     metafile = compile_to_hardware(seqsBis, 'RB_DiAC/RB_DiAC')
 
@@ -211,7 +215,7 @@ def SingleQubitIRB_AC(qubit, seqFile, showPlot=False):
     return metafile
 
 
-def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False):
+def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False, add_cals=True):
     """	Single qubit randomized benchmarking tomography using atomic Clifford pulses.
 
     This relies on specific sequence files and is here for historical purposes only.
@@ -248,9 +252,10 @@ def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False):
     for ct in range(numFiles):
         chunk = seqs[ct * seqsPerFile:(ct + 1) * seqsPerFile]
         #Tack on the calibration scalings
-        numCals = 4
-        chunk += [[Id(qubit), measBlock]] * numCals + [[X(qubit), measBlock]
-                                                       ] * numCals
+        if add_cals:
+            numCals = 4
+            chunk += [[Id(qubit), measBlock]] * numCals + [[X(qubit), measBlock]
+                                                        ] * numCals
         metafile = compile_to_hardware(chunk,
                                         'RBT/RBT',
                                         suffix='_{0}'.format(ct + 1))
@@ -260,7 +265,7 @@ def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False):
     return metafile
 
 
-def SimultaneousRB_AC(qubits, seqs, showPlot=False):
+def SimultaneousRB_AC(qubits, seqs, showPlot=False, add_cals=True):
     """
     Simultaneous randomized benchmarking on multiple qubits using atomic Clifford pulses.
 
@@ -289,7 +294,8 @@ def SimultaneousRB_AC(qubits, seqs, showPlot=False):
         seq.append(reduce(operator.mul, [MEAS(q) for q in qubits]))
 
     #Tack on the calibration sequences
-    seqsBis += create_cal_seqs((qubits), 2)
+    if add_cals:
+        seqsBis += create_cal_seqs((qubits), 2)
 
     metafile = compile_to_hardware(seqsBis, 'RB/RB')
 

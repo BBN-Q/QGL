@@ -143,7 +143,7 @@ class MultiQubitTestCases(SequenceTestCases):
         q2.pulse_params['length'] = 30e-9
         q2.phys_chan.sampling_rate = 1.2e9
         q1q2 = Edge(label='q1q2', source=q1, target=q2)
-        ChannelLibrary(library_file=None) # Create a blank ChannelLibrary
+        ChannelLibrary(blank=True) # Create a blank ChannelLibrary
         ChannelLibraries.channelLib.channelDict['q1'] = q1
         ChannelLibraries.channelLib.channelDict['q2'] = q2
         ChannelLibraries.channelLib.channelDict['q1q2'] = q1q2

@@ -5,4 +5,3 @@ setup(name='QGL',
       url='https://github.com/BBN-Q/QGL',
       packages=find_packages(exclude=["tests"]),
       package_data={'QGL': ['config*.json']},
-      py_modules = ['qgl_config_loc'])

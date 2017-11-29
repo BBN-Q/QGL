@@ -13,7 +13,7 @@ class APSPatternUtils(unittest.TestCase):
         self.q1 = Qubit(label='q1')
         self.q1.pulse_params['length'] = 30e-9
 
-        ChannelLibrary(library_file=None) # Create a blank ChannelLibrary
+        ChannelLibrary(blank=True) # Create a blank ChannelLibrary
         ChannelLibraries.channelLib.channelDict = {'q1': self.q1}
         ChannelLibraries.channelLib.build_connectivity_graph()
 

@@ -10,7 +10,7 @@ class ControlFlowTest(unittest.TestCase):
         self.q1 = Qubit(label='q1')
         self.q2 = Qubit(label='q2')
         
-        ChannelLibrary(library_file=None) # Create a blank ChannelLibrary
+        ChannelLibrary(blank=True) # Create a blank ChannelLibrary
         ChannelLibraries.channelLib.channelDict = {'q1': self.q1, 'q2': self.q2}
         ChannelLibraries.channelLib.build_connectivity_graph()
 

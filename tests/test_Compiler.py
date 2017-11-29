@@ -19,7 +19,7 @@ class CompileUtils(unittest.TestCase):
         self.measq1 = Channels.Measurement(label='M-q1', meas_type='autodyne')
         self.measq1.trig_chan = self.trigger
 
-        ChannelLibrary(library_file=None) # Create a blank ChannelLibrary
+        ChannelLibrary(blank=True) # Create a blank ChannelLibrary
         ChannelLibraries.channelLib.channelDict = {'q1': self.q1,
                                                  'q2': self.q2,
                                                  'M-q1': self.measq1}
