@@ -21,121 +21,59 @@ limitations under the License.
 Tests for the changes to config.py and qgl_config_loc.py
 '''
 
+import QGL
 import os
-import subprocess
+import shutil
 import unittest
 
 class ConfigTest(unittest.TestCase):
     """
-    Tests the config.py and qgl_config_loc.py, focusing on the latter.
-
-    Because the relevant code is executed at import time, the different
-    effects are awkward/impossible to test within a single program.
-    Therefore most of the test cases are short programs that are run
-    in a separate Python process, and the output of these programs is
-    checked against the expected output.
-
-    In order to keep this test self-contained, the programs are
-    embedded in the tests, rather than represented in separate files.
+    Tests the config.py code.
     """
 
     def setUp(self):
-        pass
+        if not os.path.exists('./tmp'):
+            os.mkdir('./tmp')
 
-    def test_default(self):
-        """
-        Test that if config.py is imported in the 'default' manner,
-        the default behavior is observed
-        """
-
-        qgl_dir = os.path.dirname(os.path.dirname(__file__))
-
-        os.putenv('PYTHONPATH', qgl_dir)
-
-        progname = '/tmp/config_loc_test.py'
-
-        progtext = 'import qgl_config_loc\n'
-        progtext += 'import QGL.config\n'
-
-        fout = open(progname, 'w')
-        fout.write(progtext)
-        fout.close()
-
-        proc = subprocess.Popen(
-                ['python', progname],
-                universal_newlines=True, stdout=subprocess.PIPE)
-        out_data, err_data = proc.communicate()
-
-        lines = out_data.split('\n')
-        expected = 'Note: using QGLCfgFile [%s/QGL/config.json]' % qgl_dir
-        assert lines[0] == expected
+    def tearDown(self):
+        shutil.rmtree('./tmp')
 
     def test_env(self):
         """
-        Test that if the QGLCFGFILE environment variable is set, it is used
+        Test that if the BBN_MEAS_FILE environment variable is set, it is used
         """
 
-        qgl_dir = os.path.dirname(os.path.dirname(__file__))
-
-        os.putenv('PYTHONPATH', qgl_dir)
-        os.putenv('QGLCFGFILE', '/foo/bar/qux')
-
-        progname = '/tmp/config_loc_test.py'
-
-        progtext = 'import qgl_config_loc\n'
-        progtext += 'import QGL.config\n'
-
-        fout = open(progname, 'w')
-        fout.write(progtext)
+        # Write a bare-bones yml config file
+        meas_name = './tmp/qgl_test_1.yml'
+        meas_txt  = 'config:\n'
+        meas_txt += '    AWGDir: ./foo/bar/xyz\n'
+        fout = open(os.path.abspath(meas_name), 'w')
+        fout.write(meas_txt)
         fout.close()
 
-        try:
-            proc = subprocess.Popen(
-                    ['python', progname],
-                    universal_newlines=True,
-                    stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            out_data, err_data = proc.communicate()
-        except BaseException as exc:
-            assert False
+        orig_env = os.getenv('BBN_MEAS_FILE')
+        os.environ['BBN_MEAS_FILE'] = meas_name
+        QGL.config.load_config()
+        if orig_env:
+            os.environ['BBN_MEAS_FILE'] = orig_env
+        assert QGL.config.meas_file == meas_name
+        assert QGL.config.AWGDir == os.path.realpath("./foo/bar/xyz")
 
-        os.unsetenv('QGLCFGFILE')
-
-        lines = out_data.split('\n')
-        assert lines[0] == 'Note: using QGLCfgFile [/foo/bar/qux]'
 
     def test_override1(self):
         """
-        Test that if the config path is overridden, the new value is used
-
-        The first test just uses a default environment.
+        Tests manually supplying a different config file when instantiating the channel library.
         """
-
-        qgl_dir = os.path.dirname(os.path.dirname(__file__))
-
-        os.putenv('PYTHONPATH', qgl_dir)
-
-        progname = '/tmp/config_loc_test.py'
-
-        progtext = 'import qgl_config_loc\n'
-        progtext += 'qgl_config_loc.config(\'/a/b/c/d\')\n'
-        progtext += 'import QGL.config\n'
-
-        fout = open(progname, 'w')
-        fout.write(progtext)
+        meas_name = './tmp/qgl_test_2.yml'
+        meas_txt  = 'config:\n'
+        meas_txt += '    AWGDir: ./foo/bar/abc\n'
+        fout = open(meas_name, 'w')
+        fout.write(meas_txt)
         fout.close()
 
-        try:
-            proc = subprocess.Popen(
-                    ['python', progname],
-                    universal_newlines=True,
-                    stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            out_data, err_data = proc.communicate()
-        except BaseException as exc:
-            assert False
-
-        lines = out_data.split('\n')
-        assert lines[0] == 'Note: using QGLCfgFile [/a/b/c/d]'
-
+        cl = QGL.config.load_config(meas_name)
+        assert QGL.config.meas_file == meas_name
+        assert QGL.config.AWGDir == os.path.realpath("./foo/bar/abc")
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,7 +1,7 @@
 from QGL import *
 
 def setup_test_lib():
-    ChannelLibrary(library_file=None)
+    ChannelLibrary(blank=True)
 
     q1 = Qubit(label='q1')
     q2 = Qubit(label='q2')

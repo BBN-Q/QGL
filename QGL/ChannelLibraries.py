@@ -52,46 +52,6 @@ from . import config
 
 channelLib = None
 
-class LoaderMeta(type):
-    def __new__(metacls, __name__, __bases__, __dict__):
-        """Add include constructer to class."""
-        # register the include constructor on the class
-        cls = super().__new__(metacls, __name__, __bases__, __dict__)
-        cls.add_constructor('!include', cls.construct_include)
-        return cls
-class Loader(yaml.Loader, metaclass=LoaderMeta):
-    """YAML Loader with `!include` constructor."""
-    def __init__(self, stream):
-        """Initialise Loader."""
-        try:
-            self._root = os.path.split(stream.name)[0]
-        except AttributeError:
-            self._root = os.path.curdir
-        super().__init__(stream)
-        self.add_implicit_resolver(
-            u'tag:yaml.org,2002:float',
-            re.compile(u'''^(?:
-             [-+]?(?:[0-9][0-9_]*)\\.[0-9_]*(?:[eE][-+]?[0-9]+)?
-            |[-+]?(?:[0-9][0-9_]*)(?:[eE][-+]?[0-9]+)
-            |\\.[0-9_]+(?:[eE][-+][0-9]+)?
-            |[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+\\.[0-9_]*
-            |[-+]?\\.(?:inf|Inf|INF)
-            |\\.(?:nan|NaN|NAN))$''', re.X),
-            list(u'-+0123456789.'))
-        self.filenames = [os.path.abspath(stream.name)]
-    def construct_include(self, node):
-        """Include file referenced at node."""
-        filename = os.path.abspath(os.path.join(
-            self._root, self.construct_scalar(node)
-        ))
-        extension = os.path.splitext(filename)[1].lstrip('.')
-        self.filenames.append(filename)
-        with open(filename, 'r') as f:
-            if extension in ('yaml', 'yml'):
-                return yaml.load(f, Loader)
-            else:
-                return ''.join(f.readlines())
-
 class MyEventHandler(FileSystemEventHandler):
 
     def __init__(self, file_paths, callback):
@@ -136,7 +96,7 @@ class LibraryFileWatcher(object):
         # Perform a preliminary loading to find all of the connected files...
         # TODO: modularity
         with open(os.path.abspath(self.main_path), 'r') as FID:
-            loader = Loader(FID)
+            loader = config.Loader(FID)
             try:
                 tmpLib = loader.get_single_data()
                 self.filenames = [os.path.normpath(lf) for lf in loader.filenames]
@@ -172,18 +132,22 @@ class ChannelLibrary(Atom):
     specialParams = ['phys_chan', 'gate_chan', 'trig_chan', 'receiver_chan',
                      'source', 'target']
 
-    def __init__(self, library_file=config.configFile, channelDict={}, **kwargs):
+    def __init__(self, library_file=None, blank=False, channelDict={}, **kwargs):
         """Create the channel library. We assume that the user wants the config file in the 
         usual locations specified in the config files."""
-        if library_file:
-            super(ChannelLibrary, self).__init__(channelDict=channelDict, library_file=library_file, **kwargs)
+        
+        # Load the basic config options from the yaml
+        self.library_file = config.load_config(library_file)
+
+        if blank: # we want a blank library if library_file is none
+            super(ChannelLibrary, self).__init__(channelDict={})
+            self.connectivityG = nx.DiGraph()
+        else:
+            super(ChannelLibrary, self).__init__(channelDict=channelDict, library_file=self.library_file, **kwargs)
             self.connectivityG = nx.DiGraph()
             yaml_filenames = self.load_from_library()
             if self.library_file and yaml_filenames:
                 self.fileWatcher = LibraryFileWatcher(self.library_file, self.update_from_file)
-        else: # we want a blank library if library_file is none
-            super(ChannelLibrary, self).__init__(channelDict={})
-            self.connectivityG = nx.DiGraph()
 
         # Update the global reference
         global channelLib
@@ -232,7 +196,7 @@ class ChannelLibrary(Atom):
             return
         try:
             with open(self.library_file, 'r') as FID:
-                loader = Loader(FID)
+                loader = config.Loader(FID)
                 try:
                     tmpLib = loader.get_single_data()
                     filenames = loader.filenames

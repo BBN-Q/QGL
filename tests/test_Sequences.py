@@ -8,8 +8,6 @@ import QGL
 from QGL.Channels import Edge, Measurement, LogicalChannel, LogicalMarkerChannel, PhysicalMarkerChannel, PhysicalQuadratureChannel
 from QGL.drivers import APSPattern, APS2Pattern, TekPattern
 
-BASE_AWG_DIR = QGL.config.AWGDir
-
 
 class AWGTestHelper(object):
     testFileDirectory = './tests/test_data/awg/'
@@ -28,7 +26,7 @@ class AWGTestHelper(object):
         for name, value in mapping.items():
             self.channels[name].phys_chan = self.channels[value]
 
-        ChannelLibraries.channelLib = ChannelLibraries.ChannelLibrary(library_file=None)
+        ChannelLibraries.channelLib = ChannelLibraries.ChannelLibrary(blank=True)
         ChannelLibraries.channelLib.channelDict = self.channels
         ChannelLibraries.channelLib.build_connectivity_graph()
 
@@ -95,7 +93,7 @@ class AWGTestHelper(object):
     def set_awg_dir(self, footer=""):
         cn = self.__class__.__name__
 
-        self.awg_dir = os.path.abspath(BASE_AWG_DIR + os.path.sep + cn)
+        self.awg_dir = os.path.abspath(QGL.config.AWGDir + os.path.sep + cn)
         self.truth_dir = os.path.abspath(self.testFileDirectory + os.path.sep +
                                          cn)
 
@@ -419,6 +417,7 @@ class TestAPS2(unittest.TestCase, APS2Helper, TestSequences):
         APS2Helper.setUp(self)
 
     def test_mux_CR(self):
+        self.set_awg_dir()
         #control and CR sharing the same chans
         self.channels['cr'].phys_chan = self.channels['q1'].phys_chan
         self.channels['q1'].frequency = 100e6
