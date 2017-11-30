@@ -36,6 +36,7 @@ install:
   # Create conda environment with dependencies
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy bokeh h5py jupyter scipy networkx future
   - source activate test-environment
+  - export GIT_LFS_SKIP_SMUDGE=0
   - conda install -c ecpy atom;
   - pip install watchdog coveralls
 
