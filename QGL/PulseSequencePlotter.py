@@ -134,16 +134,18 @@ def plot_pulse_files(metafile, time=False):
         code=code_template.render(
             lineNames=[l.replace("-", "_") for l in lineNames]))
 
-    slider = Slider(start=1,
-                    end=num_seqs,
-                    value=1,
-                    step=1,
-                    title="Sequence",
-                    callback=callback)
+    if num_seqs > 1:
+        slider = Slider(start=1,
+                        end=num_seqs,
+                        value=1,
+                        step=1,
+                        title="Sequence",
+                        callback=callback)
 
-    layout = column(slider, plot)
-
-    show(layout)
+        layout = column(slider, plot)
+        show(layout)
+    else:
+        show(plot)
 
 
 def extract_waveforms(dataDict, fileNames, nameDecorator='', time=False):
