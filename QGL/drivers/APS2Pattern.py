@@ -719,6 +719,10 @@ def create_seq_instructions(seqs, offsets):
                     if entry.length < MIN_ENTRY_LENGTH:
                         warn("Dropping Waveform entry of length %s!" % entry.length)
                         continue
+
+                    if entry.label == 'MEAS' and entry.maddr != -1:
+                        print('GOT MEAS WAVEFORM WITH MADDR %d' % entry.maddr)
+
                     instructions.append(Waveform(offsets[wf_sig(entry)],
                                                  entry.length,
                                                  entry.isTimeAmp or
