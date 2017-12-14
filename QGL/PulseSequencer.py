@@ -32,10 +32,10 @@ from collections import namedtuple
 
 class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "frequency",
                                  "frameChange", "shapeParams", "isTimeAmp",
-                                 "isZero", "ignoredStrParams"])):
+                                 "isZero", "ignoredStrParams", "maddr"])):
     __slots__ = ()
 
-    def __new__(cls, label, channel, shapeParams, amp=1.0, phase=0, frameChange=0, ignoredStrParams=[]):
+    def __new__(cls, label, channel, shapeParams, amp=1.0, phase=0, frameChange=0, ignoredStrParams=[], maddr=-1):
         if hasattr(channel, 'frequency'):
             frequency = channel.frequency
         else:
@@ -49,7 +49,7 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
         return super(cls, Pulse).__new__(cls, label, channel,
                                          shapeParams['length'], amp, phase,
                                          frequency, frameChange, shapeParams,
-                                         isTimeAmp, isZero, ignoredStrParams)
+                                         isTimeAmp, isZero, ignoredStrParams, maddr)
 
     def __str__(self):
         kwvals = []
