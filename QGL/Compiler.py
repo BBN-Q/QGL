@@ -640,6 +640,8 @@ class Waveform(object):
             self.frameChange = 0
             self.isTimeAmp = False
             self.frequency = 0
+
+            self.maddr = -1
         else:
             self.label = pulse.label
             self.key = pulse.hashshape()
@@ -649,6 +651,8 @@ class Waveform(object):
             self.frameChange = pulse.frameChange
             self.isTimeAmp = pulse.isTimeAmp
             self.frequency = pulse.frequency
+
+            self.maddr = pulse.maddr
 
     def __repr__(self):
         return self.__str__()
