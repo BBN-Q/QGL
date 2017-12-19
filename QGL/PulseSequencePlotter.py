@@ -286,37 +286,3 @@ def plot_pulse_files_compare(metafile1, metafile2, time=False):
         show(layout)
     else:
         show(plot)
-    # js_sources = data
-    # for ct, k in enumerate(line_names1 + line_names2):
-    #     k_ = k.replace("-", "_")
-    #     line = plot.line(dataDict[k_ + "_x_1"],
-    #                      dataDict[k_ + "_y_1"],
-    #                      color=colours[ct % len(colours)],
-    #                      line_width=2,
-    #                      legend=k)
-    #     js_sources[k_] = line.data_source
-
-    # code_template = Template("""
-    #     var seq_num = cb_obj.get('value');
-    #     //console.log(seq_num)
-    #     var all_data = all_data.get('data');
-    #     {% for line in line_names %}
-    #     {{line}}.set('data', {'x':all_data['{{line}}_x_'.concat(seq_num.toString())], 'y':all_data['{{line}}_y_'.concat(seq_num.toString())]} );
-    #     {% endfor %}
-    # """)
-
-    # callback = CustomJS(
-    #     args=js_sources,
-    #     code=code_template.render(
-    #         line_names=[l.replace("-", "_") for l in line_names1 + line_names2]))
-
-    # slider = Slider(start=1,
-    #                 end=num_seqs,
-    #                 value=1,
-    #                 step=1,
-    #                 title="Sequence",
-    #                 callback=callback)
-
-    # layout = column(slider, plot)
-
-    # show(layout)
