@@ -30,7 +30,7 @@ import numpy as np
 import warnings
 from . import config
 
-def output_notebook(local=True, suppress_warnings=True):
+def output_notebook(local=True, suppress_warnings=False):
     if suppress_warnings:
         warnings.simplefilter("ignore", BokehUserWarning)
     if local:
