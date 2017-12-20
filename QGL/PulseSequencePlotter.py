@@ -109,7 +109,7 @@ def plot_pulse_files(metafile, time=False):
         colors = d3['Category20'][len(line_names)]
     else:
     # 256 palette
-        colors = [Inferno[256][ct] for ct in np.floor(np.linspace((0,256,len(line_names))))]
+        colors = [Inferno[256][np.int(ct-1)] for ct in np.floor(np.linspace(0,256,len(line_names)))]
     js_sources = data
     for ct, k in enumerate(line_names):
         k_ = k.replace("-", "_")
