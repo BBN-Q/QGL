@@ -28,6 +28,7 @@ from importlib import import_module
 from bokeh.layouts import column
 from bokeh.models import CustomJS, ColumnDataSource, Slider
 from bokeh.plotting import Figure, show
+from bokeh.palettes import d3, brewer, Inferno
 
 from jinja2 import Template
 import numpy as np
@@ -100,18 +101,21 @@ def plot_pulse_files(metafile, time=False):
         plot.xgrid.grid_line_color = config.gridColor
         plot.ygrid.grid_line_color = config.gridColor
 
+    if len(line_names) < 10:
     # Colobrewer2 qualitative Set1 (http://colorbrewer2.org)
-    colours = [
-        "#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#ffff33",
-        "#a65628", "#f781bf", "#999999"
-    ]
-
+        colors = brewer['Set1'][len(line_names)]
+    elif 9 < len(line_names) < 19:
+    # d3 Category20 for up to 18 channels
+        colors = d3['Category20'][len(line_names)]
+    else:
+    # 256 palette
+        colors = [Inferno[256][np.int(ct-1)] for ct in np.floor(np.linspace(0,256,len(line_names)))]
     js_sources = data
     for ct, k in enumerate(line_names):
         k_ = k.replace("-", "_")
         line = plot.line(data_dicts[k + "_1"]["x"],
                          data_dicts[k + "_1"]["y"],
-                         color=colours[ct % len(colours)],
+                         color=colors[ct % len(colors)],
                          line_width=2,
                          legend=k.replace("_", "-"))
         js_sources[k_] = line.data_source
