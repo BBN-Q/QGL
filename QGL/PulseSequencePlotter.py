@@ -96,14 +96,15 @@ def plot_pulse_files(metafile, time=False):
 
     data = {line_name: ColumnDataSource(data=dat) for line_name,dat in data_dicts.items()}
     plot = Figure(title=sequencename, plot_width=1000)
-    plot.background_fill_color = config.plotBackground
+    if config.plotBackground:
+        plot.background_fill_color = config.plotBackground
     if config.gridColor:
         plot.xgrid.grid_line_color = config.gridColor
         plot.ygrid.grid_line_color = config.gridColor
 
     if len(line_names) < 10:
     # Colobrewer2 qualitative Set1 (http://colorbrewer2.org)
-        colors = brewer['Set1'][len(line_names)]
+        colors = brewer['Set1'][max(3, len(line_names))]
     elif 9 < len(line_names) < 19:
     # d3 Category20 for up to 18 channels
         colors = d3['Category20'][len(line_names)]
