@@ -38,12 +38,12 @@ def output_notebook(local=True, suppress_warnings=False):
     else:
         bk.output_notebook()
 
-def output_file(suppress_warnings=True):
+def output_file(local=True, suppress_warnings=True):
     if suppress_warnings:
         warnings.simplefilter("ignore", BokehUserWarning)
-    
+    mode = "inline" if local else "cdn"
     bk.output_file(os.path.join(tempfile.gettempdir(), str(uuid.uuid4()) +
-                                ".html"))
+                                ".html"), mode=mode)
 
 def build_waveforms(seq):
     # import here to avoid circular imports
