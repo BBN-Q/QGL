@@ -735,7 +735,8 @@ def MEAS(qubit, **kwargs):
     ignoredStrParams = ['phase', 'frameChange']
     if 'amp' not in kwargs:
         ignoredStrParams.append('amp')
-    return Pulse("MEAS", measChan, params, amp, 0.0, 0.0, ignoredStrParams)
+    meas_label = "MEAS_no_trig" if 'dig_trig' in kwargs and not kwargs['dig_trig'] else "MEAS"
+    return Pulse(meas_label, measChan, params, amp, 0.0, 0.0, ignoredStrParams)
 
 
 #MEAS and ring-down time on one qubit, echo on every other
