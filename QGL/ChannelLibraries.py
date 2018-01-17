@@ -279,7 +279,7 @@ class ChannelLibrary(Atom):
             # APS master. This might change later.
             if len(master_awgs) > 1:
                 raise ValueError("More than one AWG is marked as master.")
-            elif len(master_awgs) == 1 and instr_dict[master_awgs[0]]['type'] != 'TDM':
+            elif len(master_awgs) == 1  and instr_dict[master_awgs[0].split('-')[0]]['type'] != 'TDM':
                 params = {}
                 params["label"]       = "slave_trig"
                 params["phys_chan"]    = master_awgs[0]
