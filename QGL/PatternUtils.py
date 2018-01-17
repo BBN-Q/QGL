@@ -232,6 +232,7 @@ def add_slave_trigger(seqs, slaveChan):
                     seq[ct + 1] *= TAPulse("TRIG", slaveChan,
                                            slaveChan.pulse_params['length'],
                                            1.0, 0.0, 0.0)
+                    seq[ct+1].alignment="right"
                 except TypeError:
                     seq.insert(ct + 1, TAPulse("TRIG", slaveChan,
                                                slaveChan.pulse_params['length'],
