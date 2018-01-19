@@ -216,3 +216,40 @@ class Barrier(ControlInstruction):
     def __str__(self):
         base = "BARRIER({0})".format(self.chanlist)
         return base
+
+class CustomInstruction(ControlInstruction):
+
+    def __init__(self, name, channels=None, **kwargs):
+        super(CustomInstruction, self).__init__(name)
+        self.args = kwargs
+
+def MajorityVote(in_addr, out_addr):
+    return CustomInstruction(
+            'MAJORITY', in_addr=in_addr, out_addr=out_addr)
+
+def MajorityMask(in_addr, out_addr):
+    return CustomInstruction(
+            'MAJORITY', in_addr=in_addr, out_addr=out_addr)
+
+
+def Invalidate(channel, addr, mask):
+    """
+    See comment for WriteAddr
+    """
+
+    return CustomInstruction('INVALIDATE', addr=addr, mask=mask)
+
+def WriteAddr(channel, addr, value):
+    """
+    This isn't a custom instruction, per se, but is similar in
+    the sense that it has unusual behavior.  For convenience,
+    I'm prototyping it as one.
+
+    The channel may be None, in which case it should be run on
+    the TDM instead of an APS.
+    """
+
+    return CustomInstruction(
+            'WRITEADDR', channel=channel, addr=addr, value=value)
+
+# TODO: the rest of the CUSTOM instructions

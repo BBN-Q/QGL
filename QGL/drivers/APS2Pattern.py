@@ -59,6 +59,11 @@ LOADCMP = 0xB
 PREFETCH = 0xC
 NOP = 0XF
 
+# APS3 prototype
+INVALIDATE = 0xE # Invalidate and WriteAddr use the same opcode
+WRITEADDR = 0xE
+CUSTOM = 0xD
+
 # WFM/MARKER op codes
 PLAY = 0x0
 WAIT_TRIG = 0x1
@@ -392,6 +397,29 @@ def Prefetch(addr, label=None):
 def NoOp():
     return Instruction.unflatten(0xffffffffffffffff)
 
+# APS3 prototype instructions
+def Invalidate(addr, mask, label=None):
+    return WriteAddr(addr, mask, set_valid=False, label=label)
+
+def WriteAddr(addr, value, set_valid=True, label=None):
+    header = (WRITEADDR << 4) | 1 if set_valid else 0
+    # TODO: error checking here, to make sure that the value
+    # fits in 32 bits, and the addr fits in 16.
+    # TODO: the results are nonsensical if they don't fit.
+    payload = (value << 16) | addr
+    return Instruction(header, payload, label=label) #
+
+def Custom(in_addr, out_addr, custom_op, label=None):
+    header = CUSTOM << 4
+    payload = (custom_op << 32) | (in_addr << 16) | out_addr
+    return Instruction(header, payload, label=label)
+
+def MajorityVote(in_addr, out_addr, label=None):
+    return Custom(in_addr, out_addr, 0, label=label)
+
+def MajorityVoteMask(in_addr, out_addr, label=None):
+    return Custom(in_addr, out_addr, 1, label=label)
+
 
 def preprocess(seqs, shapeLib):
     seqs = PatternUtils.convert_lengths_to_samples(
@@ -710,6 +738,44 @@ def create_seq_instructions(seqs, offsets):
                     instructions.append(Cmp(cmpTable[entry.operator],
                                             entry.value,
                                             label=label))
+                elif isinstance(entry, ControlFlow.CustomInstruction):
+                    """
+                    Quick and dirty prototype of handling the 'APS3' extensions.
+                    """
+
+                    if entry.instruction == 'MAJORITY':
+                        print('MAJORITY(in_addr=%x, out_addr=%x)' %
+                                (entry.args['in_addr'],
+                                entry.args['out_addr']))
+                        instructions.append(
+                                MajorityVote(entry.args['in_addr'], entry.args['out_addr'],
+                                    label=label))
+
+                    elif entry.instruction == 'MAJORITYMASK':
+                        print('MAJORITYMASK(in_addr=%x, out_addr=%x)' %
+                                (entry.args['in_addr'], entry.args['out_addr']))
+                        instructions.append(
+                                MajorityMask(entry.args['in_addr'], entry.args['out_addr'],
+                                    label=label))
+
+                    elif entry.instruction == 'INVALIDATE':
+                        print('INVALIDATE(addr=%x, mask=%x)' %
+                                (entry.args['addr'], entry.args['mask']))
+                        instructions.append(
+                                Invalidate(entry.args['addr'], entry.args['mask'],
+                                    label=label))
+
+                    elif entry.instruction == 'WRITEADDR':
+                        print('WRITEADDR(channel=%s, addr=%x, value=%x)' %
+                                (str(entry.args['channel']),
+                                entry.args['addr'],
+                                entry.args['value']))
+                        instructions.append(
+                                WriteAddr(entry.args['addr'], entry.args['value'], 1,
+                                    label=label))
+                    else:
+                        print('UNSUPPORTED CUSTOM: %s(%s)' %
+                                (entry.instruction, str(entry.args)))
 
                 continue
 
@@ -720,8 +786,8 @@ def create_seq_instructions(seqs, offsets):
                         warn("Dropping Waveform entry of length %s!" % entry.length)
                         continue
 
-                    if entry.label == 'MEAS' and entry.maddr != -1:
-                        print('GOT MEAS WAVEFORM WITH MADDR %d' % entry.maddr)
+                    if entry.label == 'MEAS' and entry.maddr != (-1, 0):
+                        print('GOT MEAS WAVEFORM WITH MADDR %s' % str(entry.maddr))
 
                     instructions.append(Waveform(offsets[wf_sig(entry)],
                                                  entry.length,

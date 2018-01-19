@@ -748,7 +748,7 @@ def _MEAS(qubit, **kwargs):
     if 'maddr' in kwargs:
         maddr = kwargs['maddr']
     else:
-        maddr = -1
+        maddr = (-1, 0)
 
     return Pulse("MEAS", measChan, params,
             amp, 0.0, 0.0, ignoredStrParams, maddr=maddr)

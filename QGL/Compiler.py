@@ -641,7 +641,7 @@ class Waveform(object):
             self.isTimeAmp = False
             self.frequency = 0
 
-            self.maddr = -1
+            self.maddr = (-1, 0)
         else:
             self.label = pulse.label
             self.key = pulse.hashshape()
