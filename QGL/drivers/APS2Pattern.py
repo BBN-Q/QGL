@@ -60,9 +60,9 @@ PREFETCH = 0xC
 NOP = 0XF
 
 # APS3 prototype
+CUSTOM = 0xD
 INVALIDATE = 0xE # Invalidate and WriteAddr use the same opcode
 WRITEADDR = 0xE
-CUSTOM = 0xD
 
 # WFM/MARKER op codes
 PLAY = 0x0
@@ -211,7 +211,11 @@ class Instruction(object):
 
         opCodes = ["WFM", "MARKER", "WAIT", "LOAD", "REPEAT", "CMP", "GOTO",
                    "CALL", "RET", "SYNC", "MODULATION", "LOADCMP", "PREFETCH",
-                   "NOP", "NOP", "NOP"]
+                   "CUSTOM", "WRITEADDR", "NOP"]
+
+        customOps = [
+                "MajorityVote", "MajoritySetMask", # TODO there are others...
+                ]
 
         out = "{0} ".format(self.label) if self.label else ""
 
@@ -276,6 +280,21 @@ class Instruction(object):
         elif instrOpCode == LOAD:
             out += " | count = {}".format(self.payload)
 
+        elif instrOpCode == WRITEADDR:
+            if self.header & 1:
+                out += ' Invalidate(addr=0x%x, mask=0x%x)' % (
+                        self.payload & 0xffff,
+                        (self.payload >> 16) & 0xffffffff)
+            else:
+                out += ' WriteAddr(addr=0x%x, value=0x%x' % (
+                        self.payload & 0xffff,
+                        (self.payload >> 16) & 0xffffffff)
+
+        elif instrOpCode == CUSTOM:
+            out += ' %s(src=0x%x, dst=0x%x)' % (
+                    customOps[(self.payload >> 32) & 0xff],
+                    (self.payload >> 16) & 0xffff,
+                    self.payload & 0xffff)
         return out
 
     def __eq__(self, other):
@@ -399,15 +418,14 @@ def NoOp():
 
 # APS3 prototype instructions
 def Invalidate(addr, mask, label=None):
-    return WriteAddr(addr, mask, set_valid=False, label=label)
+    header = WRITEADDR << 4
+    payload = (mask << 16) | addr
+    return Instruction(header, payload, label=label)
 
-def WriteAddr(addr, value, set_valid=True, label=None):
-    header = (WRITEADDR << 4) | 1 if set_valid else 0
-    # TODO: error checking here, to make sure that the value
-    # fits in 32 bits, and the addr fits in 16.
-    # TODO: the results are nonsensical if they don't fit.
+def WriteAddr(addr, value, label=None):
+    header = (WRITEADDR << 4) | 1
     payload = (value << 16) | addr
-    return Instruction(header, payload, label=label) #
+    return Instruction(header, payload, label=label)
 
 def Custom(in_addr, out_addr, custom_op, label=None):
     header = CUSTOM << 4
@@ -738,44 +756,40 @@ def create_seq_instructions(seqs, offsets):
                     instructions.append(Cmp(cmpTable[entry.operator],
                                             entry.value,
                                             label=label))
-                elif isinstance(entry, ControlFlow.CustomInstruction):
-                    """
-                    Quick and dirty prototype of handling the 'APS3' extensions.
-                    """
 
+                elif isinstance(entry, ControlFlow.CustomInstruction):
                     if entry.instruction == 'MAJORITY':
                         print('MAJORITY(in_addr=%x, out_addr=%x)' %
-                                (entry.args['in_addr'],
-                                entry.args['out_addr']))
+                                (entry.in_addr, entry.out_addr))
                         instructions.append(
-                                MajorityVote(entry.args['in_addr'], entry.args['out_addr'],
+                                MajorityVote(
+                                    entry.in_addr, entry.out_addr,
                                     label=label))
 
                     elif entry.instruction == 'MAJORITYMASK':
                         print('MAJORITYMASK(in_addr=%x, out_addr=%x)' %
-                                (entry.args['in_addr'], entry.args['out_addr']))
+                                (entry.in_addr, entry.out_addr))
                         instructions.append(
-                                MajorityMask(entry.args['in_addr'], entry.args['out_addr'],
+                                MajorityVoteMask(
+                                    entry.in_addr, entry.out_addr,
                                     label=label))
 
-                    elif entry.instruction == 'INVALIDATE':
-                        print('INVALIDATE(addr=%x, mask=%x)' %
-                                (entry.args['addr'], entry.args['mask']))
+                    else:
+                        print('UNSUPPORTED CUSTOM: %s(in_addr=0x%x, out_addr=0x%x)' %
+                                (entry.instruction, entry.in_addr, entry.out_addr))
+
+                elif isinstance(entry, ControlFlow.WriteAddrInstruction):
+                    if entry.instruction == 'INVALIDATE':
+                        print('INVALIDATE(channel=%s, addr=0x%x, mask=0x%x)' %
+                                (str(entry.xchannel), entry.addr, entry.value))
                         instructions.append(
-                                Invalidate(entry.args['addr'], entry.args['mask'],
-                                    label=label))
+                                Invalidate(entry.addr, entry.value, label=label))
 
                     elif entry.instruction == 'WRITEADDR':
-                        print('WRITEADDR(channel=%s, addr=%x, value=%x)' %
-                                (str(entry.args['channel']),
-                                entry.args['addr'],
-                                entry.args['value']))
+                        print('WRITEADDR(channel=%s, addr=0x%x, value=0x%x)' %
+                                (str(entry.xchannel), entry.addr, entry.value))
                         instructions.append(
-                                WriteAddr(entry.args['addr'], entry.args['value'], 1,
-                                    label=label))
-                    else:
-                        print('UNSUPPORTED CUSTOM: %s(%s)' %
-                                (entry.instruction, str(entry.args)))
+                                WriteAddr(entry.addr, entry.value, label=label))
 
                 continue
 
