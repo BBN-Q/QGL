@@ -431,6 +431,8 @@ def compile_to_hardware(seqs,
         else:
             files[awgName] = fullFileName
     #Kludge for TDM
+    files['TDM'] = os.path.normpath(os.path.join(
+        config.AWGDir, str.replace(fileName, 'aps', 'tdm') + '-' + 'APSII3' + suffix + '.h5'))
     # create meta output
     if not axis_descriptor:
         axis_descriptor = [{
