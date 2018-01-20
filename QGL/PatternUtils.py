@@ -24,6 +24,7 @@ from .PulseSequencer import Pulse, TAPulse, PulseBlock, CompositePulse, Compound
 from .PulsePrimitives import BLANK
 from . import ControlFlow
 from . import BlockLabel
+from . import TdmInstructions
 import QGL.drivers
 
 def hash_pulse(shape):
@@ -133,8 +134,10 @@ def apply_gating_constraints(chan, linkList):
         # first pass consolidates entries
         previousEntry = None
         for ct,entry in enumerate(miniLL):
-            if isinstance(entry, (ControlFlow.ControlInstruction,
-                                  BlockLabel.BlockLabel)):
+            if isinstance(entry,
+                    (ControlFlow.ControlInstruction, BlockLabel.BlockLabel,
+                        TdmInstructions.CustomInstruction,
+                        TdmInstructions.WriteAddrInstruction)):
                 if previousEntry:
                     gateSeq.append(previousEntry)
                     previousEntry = None

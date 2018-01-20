@@ -28,6 +28,7 @@ import numpy as np
 
 from QGL import Compiler, ControlFlow, BlockLabel, PatternUtils
 from QGL.PatternUtils import hash_pulse, flatten
+from QGL import TdmInstructions
 
 # Python 2/3 compatibility: use 'int' that subclasses 'long'
 from builtins import int
@@ -742,7 +743,9 @@ def create_seq_instructions(seqs, offsets):
             #use first non empty sequence for control flow
             if seq_idx == first_non_empty and (
                     isinstance(entry, ControlFlow.ControlInstruction) or
-                    isinstance(entry, BlockLabel.BlockLabel)):
+                    isinstance(entry, BlockLabel.BlockLabel) or
+                    isinstance(entry, TdmInstructions.CustomInstruction) or
+                    isinstance(entry, TdmInstructions.WriteAddrInstruction)):
                 if isinstance(entry, BlockLabel.BlockLabel):
                     # carry label forward to next entry
                     label = entry
@@ -772,7 +775,8 @@ def create_seq_instructions(seqs, offsets):
                                             entry.value,
                                             label=label))
 
-                elif isinstance(entry, ControlFlow.CustomInstruction):
+                elif isinstance(entry, TdmInstructions.CustomInstruction):
+                    print('HEY custom')
                     if entry.instruction == 'MAJORITY':
                         print('MAJORITY(in_addr=%x, out_addr=%x)' %
                                 (entry.in_addr, entry.out_addr))
@@ -793,22 +797,23 @@ def create_seq_instructions(seqs, offsets):
                         print('UNSUPPORTED CUSTOM: %s(in_addr=0x%x, out_addr=0x%x)' %
                                 (entry.instruction, entry.in_addr, entry.out_addr))
 
-                elif isinstance(entry, ControlFlow.WriteAddrInstruction):
+                elif isinstance(entry, TdmInstructions.WriteAddrInstruction):
+                    print('HEY writeAddr')
                     if entry.instruction == 'INVALIDATE':
                         print('INVALIDATE(channel=%s, addr=0x%x, mask=0x%x)' %
-                                (str(entry.xchannel), entry.addr, entry.value))
+                                (str(entry.channel), entry.addr, entry.value))
                         instructions.append(
                                 Invalidate(entry.addr, entry.value, label=label))
 
                     elif entry.instruction == 'WRITEADDR':
                         print('WRITEADDR(channel=%s, addr=0x%x, value=0x%x)' %
-                                (str(entry.xchannel), entry.addr, entry.value))
+                                (str(entry.channel), entry.addr, entry.value))
                         instructions.append(
                                 WriteAddr(entry.addr, entry.value, label=label))
 
                     elif entry.instruction == 'STOREMEAS':
                         print('STOREMEAS(channel=%s, addr=0x%x, mapping=0x%x)' %
-                                (str(entry.xchannel), entry.addr, entry.value))
+                                (str(entry.channel), entry.addr, entry.value))
                         instructions.append(
                                 StoreMeas(entry.addr, entry.value, label=label))
 

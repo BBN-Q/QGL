@@ -35,6 +35,7 @@ from .PulsePrimitives import Id
 from .PulseSequencer import Pulse, PulseBlock, CompositePulse
 from . import ControlFlow
 from . import BlockLabel
+from . import TdmInstructions # only for APS2-TDM
 
 logger = logging.getLogger(__name__)
 
@@ -532,7 +533,9 @@ def compile_sequence(seq, channels=None):
                 wires[chan] += [copy(block)]
             continue
         # control flow broadcasts to all channels if channel attribute is None
-        if isinstance(block, ControlFlow.ControlInstruction):
+        if (isinstance(block, ControlFlow.ControlInstruction) or
+                isinstance(block, TdmInstructions.WriteAddrInstruction) or
+                isinstance(block, TdmInstructions.CustomInstruction)):
             # Need to deal with attaching measurements and edges to control
             # instruction. Until we have a proper solution for that, we will
             # always broadcast control instructions to all channels
@@ -543,6 +546,7 @@ def compile_sequence(seq, channels=None):
             continue
         # propagate frame change from nodes to edges
         for chan in channels:
+            print('chan %s channels %s' % (str(chan), str(channels)))
             if block.pulses[chan].frameChange == 0:
                 continue
             if chan in ChannelLibraries.channelLib.connectivityG.nodes():

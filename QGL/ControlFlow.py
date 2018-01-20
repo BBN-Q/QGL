@@ -233,10 +233,10 @@ def MajorityMask(in_addr, out_addr):
 
 class WriteAddrInstruction(ControlInstruction):
 
-    def __init__(self, name, channel, invalid, addr, value, **kwargs):
+    def __init__(self, name, channel, modifier, addr, value, **kwargs):
         super(WriteAddrInstruction, self).__init__(name)
         self.xchannel = channel
-        self.invalid = invalid
+        self.invalid = modifier
         self.addr = addr
         self.value = value
 
@@ -245,5 +245,8 @@ def Invalidate(addr, mask, channel=None):
 
 def WriteAddr(addr, value, channel=None):
     return WriteAddrInstruction('WRITEADDR', channel, 0, addr, value)
+
+def StoreMeas(addr, value, channel=None):
+    return WriteAddrInstruction('STOREMEAS', channel, 5, addr, value)
 
 # TODO: the rest of the CUSTOM instructions
