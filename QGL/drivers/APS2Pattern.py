@@ -59,11 +59,6 @@ LOADCMP = 0xB
 PREFETCH = 0xC
 NOP = 0XF
 
-# APS3 prototype
-CUSTOM = 0xD
-INVALIDATE = 0xE # Invalidate and WriteAddr use the same opcode
-WRITEADDR = 0xE
-
 # WFM/MARKER op codes
 PLAY = 0x0
 WAIT_TRIG = 0x1
@@ -211,11 +206,7 @@ class Instruction(object):
 
         opCodes = ["WFM", "MARKER", "WAIT", "LOAD", "REPEAT", "CMP", "GOTO",
                    "CALL", "RET", "SYNC", "MODULATION", "LOADCMP", "PREFETCH",
-                   "CUSTOM", "WRITEADDR", "NOP"]
-
-        customOps = [
-                "MajorityVote", "MajoritySetMask", # TODO there are others...
-                ]
+                   "NOP", "NOP", "NOP"]
 
         out = "{0} ".format(self.label) if self.label else ""
 
@@ -243,10 +234,6 @@ class Instruction(object):
             out += "; TA bit={}".format((self.payload >> 45) & 0x1)
             out += ", count = {}".format((self.payload >> 24) & 2**21 - 1)
             out += ", addr = {}".format(self.payload & 2**24 - 1)
-
-            # APS3/TDM modifier to use VRAM output
-            if self.payload & (1 << 48):
-                out += ", use_vram"
 
         elif instrOpCode == MARKER:
             mrkOpCode = (self.payload >> 46) & 0x3
@@ -284,21 +271,6 @@ class Instruction(object):
         elif instrOpCode == LOAD:
             out += " | count = {}".format(self.payload)
 
-        elif instrOpCode == WRITEADDR:
-            if self.header & 1:
-                out += ' Invalidate(addr=0x%x, mask=0x%x)' % (
-                        self.payload & 0xffff,
-                        (self.payload >> 16) & 0xffffffff)
-            else:
-                out += ' WriteAddr(addr=0x%x, value=0x%x' % (
-                        self.payload & 0xffff,
-                        (self.payload >> 16) & 0xffffffff)
-
-        elif instrOpCode == CUSTOM:
-            out += ' %s(src=0x%x, dst=0x%x)' % (
-                    customOps[(self.payload >> 32) & 0xff],
-                    (self.payload >> 16) & 0xffff,
-                    self.payload & 0xffff)
         return out
 
     def __eq__(self, other):
@@ -419,28 +391,6 @@ def Prefetch(addr, label=None):
 
 def NoOp():
     return Instruction.unflatten(0xffffffffffffffff)
-
-# APS3 prototype instructions
-def Invalidate(addr, mask, label=None):
-    header = WRITEADDR << 4
-    payload = (mask << 16) | addr
-    return Instruction(header, payload, label=label)
-
-def WriteAddr(addr, value, label=None):
-    header = (WRITEADDR << 4) | 1
-    payload = (value << 16) | addr
-    return Instruction(header, payload, label=label)
-
-def Custom(in_addr, out_addr, custom_op, label=None):
-    header = CUSTOM << 4
-    payload = (custom_op << 32) | (in_addr << 16) | out_addr
-    return Instruction(header, payload, label=label)
-
-def MajorityVote(in_addr, out_addr, label=None):
-    return Custom(in_addr, out_addr, 0, label=label)
-
-def MajorityVoteMask(in_addr, out_addr, label=None):
-    return Custom(in_addr, out_addr, 1, label=label)
 
 
 def preprocess(seqs, shapeLib):
@@ -761,40 +711,6 @@ def create_seq_instructions(seqs, offsets):
                                             entry.value,
                                             label=label))
 
-                elif isinstance(entry, ControlFlow.CustomInstruction):
-                    if entry.instruction == 'MAJORITY':
-                        print('MAJORITY(in_addr=%x, out_addr=%x)' %
-                                (entry.in_addr, entry.out_addr))
-                        instructions.append(
-                                MajorityVote(
-                                    entry.in_addr, entry.out_addr,
-                                    label=label))
-
-                    elif entry.instruction == 'MAJORITYMASK':
-                        print('MAJORITYMASK(in_addr=%x, out_addr=%x)' %
-                                (entry.in_addr, entry.out_addr))
-                        instructions.append(
-                                MajorityVoteMask(
-                                    entry.in_addr, entry.out_addr,
-                                    label=label))
-
-                    else:
-                        print('UNSUPPORTED CUSTOM: %s(in_addr=0x%x, out_addr=0x%x)' %
-                                (entry.instruction, entry.in_addr, entry.out_addr))
-
-                elif isinstance(entry, ControlFlow.WriteAddrInstruction):
-                    if entry.instruction == 'INVALIDATE':
-                        print('INVALIDATE(channel=%s, addr=0x%x, mask=0x%x)' %
-                                (str(entry.xchannel), entry.addr, entry.value))
-                        instructions.append(
-                                Invalidate(entry.addr, entry.value, label=label))
-
-                    elif entry.instruction == 'WRITEADDR':
-                        print('WRITEADDR(channel=%s, addr=0x%x, value=0x%x)' %
-                                (str(entry.xchannel), entry.addr, entry.value))
-                        instructions.append(
-                                WriteAddr(entry.addr, entry.value, label=label))
-
                 continue
 
             if seq_idx == 0:
@@ -803,10 +719,6 @@ def create_seq_instructions(seqs, offsets):
                     if entry.length < MIN_ENTRY_LENGTH:
                         warn("Dropping Waveform entry of length %s!" % entry.length)
                         continue
-
-                    if entry.label == 'MEAS' and entry.maddr != (-1, 0):
-                        print('GOT MEAS WAVEFORM WITH MADDR %s' % str(entry.maddr))
-
                     instructions.append(Waveform(offsets[wf_sig(entry)],
                                                  entry.length,
                                                  entry.isTimeAmp or
