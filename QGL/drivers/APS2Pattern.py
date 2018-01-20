@@ -244,6 +244,10 @@ class Instruction(object):
             out += ", count = {}".format((self.payload >> 24) & 2**21 - 1)
             out += ", addr = {}".format(self.payload & 2**24 - 1)
 
+            # APS3/TDM modifier to use VRAM output
+            if self.payload & (1 << 48):
+                out += ", use_vram"
+
         elif instrOpCode == MARKER:
             mrkOpCode = (self.payload >> 46) & 0x3
             mrkOpCodes = ["PLAY", "TRIG", "SYNC"]
