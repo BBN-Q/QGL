@@ -430,7 +430,7 @@ def compile_to_hardware(seqs,
                 files[label_to_inst[awgName]][label_to_chan[awgName]] = fullFileName
         else:
             files[awgName] = fullFileName
-
+    #Kludge for TDM
     # create meta output
     if not axis_descriptor:
         axis_descriptor = [{
@@ -443,6 +443,11 @@ def compile_to_hardware(seqs,
     for wire, n in wire_measurements.items():
         if wire.receiver_chan:
             receiver_measurements[wire.receiver_chan.label] = n
+            # kludge for conditional msm't
+            if wire.receiver_chan.label == 'RecvChan-q2-Kernel':
+               receiver_measurements[wire.receiver_chan.label]-=1
+               num_measurements-=1
+               axis_descriptor[0]['points'] = axis_descriptor[0]['points'][:-1]
     meta = {
         'instruments': files,
         'num_sequences': len(seqs),
