@@ -678,6 +678,25 @@ def synchronize_clocks(seqs):
             instr.startTime += instr.length
             instr.length = 0
 
+_TDM_INSTRUCTIONS = None
+
+def pad_with_nops(list1, list2):
+    """
+    Given two lists of instructions, pad the shorter until they
+    are equal length
+    """
+
+    len1 = len(list1)
+    len2 = len(list2)
+
+    if len1 == len2:
+        return
+    elif len1 > len2:
+        for _ in range(len1 - len2):
+            list2.append(NoOp())
+    else:
+        for _ in range(len2 - len1):
+            list1.append(NoOp())
 
 def create_seq_instructions(seqs, offsets):
     '''
@@ -691,7 +710,8 @@ def create_seq_instructions(seqs, offsets):
 	all	waveform and marker channels.
 	'''
 
-    print('SEQ %s' % str(seqs))
+    global _TDM_INSTRUCTIONS
+    _TDM_INSTRUCTIONS = list()
 
     # timestamp all entries before filtering (where we lose time information on control flow)
     for seq in seqs:
@@ -724,6 +744,7 @@ def create_seq_instructions(seqs, offsets):
             timeTuples.pop(0)
             indexes[first_non_empty] += 1
         instructions.append(Sync(label=label))
+        _TDM_INSTRUCTIONS.append(Sync(label=label))
         label = None
 
     while len(timeTuples) > 0:
@@ -740,6 +761,12 @@ def create_seq_instructions(seqs, offsets):
 
         write_flags = [True] * len(entries)
         for ct, (entry, seq_idx) in enumerate(entries):
+
+            # If then instructions list isn't the same length as the
+            # TDM_INSTRUCTIONS list, then append NOP instructions to
+            # the shorter of the two until they are.
+            pad_with_nops(instructions, _TDM_INSTRUCTIONS)
+
             #use first non empty sequence for control flow
             if seq_idx == first_non_empty and (
                     isinstance(entry, ControlFlow.ControlInstruction) or
@@ -753,6 +780,7 @@ def create_seq_instructions(seqs, offsets):
                 # control flow instructions
                 elif isinstance(entry, ControlFlow.Wait):
                     instructions.append(Wait(label=label))
+                    _TDM_INSTRUCTIONS.append(Wait(label=label))
                 elif isinstance(entry, ControlFlow.LoadCmp):
                     instructions.append(LoadCmp(label=label))
                 elif isinstance(entry, ControlFlow.Sync):
@@ -776,46 +804,50 @@ def create_seq_instructions(seqs, offsets):
                                             label=label))
 
                 elif isinstance(entry, TdmInstructions.CustomInstruction):
-                    print('HEY custom')
                     if entry.instruction == 'MAJORITY':
                         print('MAJORITY(in_addr=%x, out_addr=%x)' %
                                 (entry.in_addr, entry.out_addr))
-                        instructions.append(
+                        _TDM_INSTRUCTIONS.append(
                                 MajorityVote(
-                                    entry.in_addr, entry.out_addr,
-                                    label=label))
-
+                                    entry.in_addr, entry.out_addr, label=label))
                     elif entry.instruction == 'MAJORITYMASK':
                         print('MAJORITYMASK(in_addr=%x, out_addr=%x)' %
                                 (entry.in_addr, entry.out_addr))
-                        instructions.append(
+                        _TDM_INSTRUCTIONS.append(
                                 MajorityVoteMask(
-                                    entry.in_addr, entry.out_addr,
-                                    label=label))
-
+                                    entry.in_addr, entry.out_addr, label=label))
                     else:
                         print('UNSUPPORTED CUSTOM: %s(in_addr=0x%x, out_addr=0x%x)' %
                                 (entry.instruction, entry.in_addr, entry.out_addr))
 
                 elif isinstance(entry, TdmInstructions.WriteAddrInstruction):
-                    print('HEY writeAddr')
                     if entry.instruction == 'INVALIDATE':
                         print('INVALIDATE(channel=%s, addr=0x%x, mask=0x%x)' %
                                 (str(entry.channel), entry.addr, entry.value))
-                        instructions.append(
-                                Invalidate(entry.addr, entry.value, label=label))
+                        instr = Invalidate(entry.addr, entry.value, label=label)
+                        if entry.channel:
+                            instructions.append(instr)
+                        else:
+                            _TDM_INSTRUCTIONS.append(instr)
 
                     elif entry.instruction == 'WRITEADDR':
                         print('WRITEADDR(channel=%s, addr=0x%x, value=0x%x)' %
                                 (str(entry.channel), entry.addr, entry.value))
-                        instructions.append(
-                                WriteAddr(entry.addr, entry.value, label=label))
-
+                        instr = WriteAddr(entry.addr, entry.value, label=label)
+                        if entry.channel:
+                            instructions.append(instr)
+                        else:
+                            _TDM_INSTRUCTIONS.append(instr)
                     elif entry.instruction == 'STOREMEAS':
+                        # TODO: STOREMEAS only happens on the TDM, right?
                         print('STOREMEAS(channel=%s, addr=0x%x, mapping=0x%x)' %
                                 (str(entry.channel), entry.addr, entry.value))
-                        instructions.append(
-                                StoreMeas(entry.addr, entry.value, label=label))
+                        _TDM_INSTRUCTIONS.append(StoreMeas(entry.addr, entry.value, label=label))
+                    else:
+                        print('UNSUPPORTED WriteAddr: %s(channel=%s, addr=0x%x, val=0x%x)' %
+                                (entry.instruction, str(entry.channel),
+                                    entry.addr, entry.value))
+                        continue
 
                 continue
 
@@ -826,15 +858,20 @@ def create_seq_instructions(seqs, offsets):
                         warn("Dropping Waveform entry of length %s!" % entry.length)
                         continue
 
+                    wfm_instr = Waveform(
+                            offsets[wf_sig(entry)], entry.length,
+                            entry.isTimeAmp or entry.isZero,
+                            write=write_flags[ct], label=label)
+
+                    # TODO: is this the right thing to do?
                     if entry.label == 'MEAS' and entry.maddr != (-1, 0):
                         print('GOT MEAS WAVEFORM WITH MADDR %s' % str(entry.maddr))
+                        _TDM_INSTRUCTIONS.append(LoadCmp(label=label))
+                        _TDM_INSTRUCTIONS.append(
+                                StoreMeas(entry.maddr[0], 1 << entry.maddr[1]))
+                        wfm_instr.payload |= (1 << 48)
 
-                    instructions.append(Waveform(offsets[wf_sig(entry)],
-                                                 entry.length,
-                                                 entry.isTimeAmp or
-                                                 entry.isZero,
-                                                 write=write_flags[ct],
-                                                 label=label))
+                    instructions.append(wfm_instr)
                 elif isinstance(entry, ModulationCommand):
                     instructions.append(entry.to_instruction(
                         write_flag=write_flags[ct],
@@ -856,8 +893,13 @@ def create_seq_instructions(seqs, offsets):
             #clear label
             label = None
 
+        pad_with_nops(instructions, _TDM_INSTRUCTIONS)
+
+    pad_with_nops(instructions, _TDM_INSTRUCTIONS)
     return instructions
 
+def get_tdm_instructions():
+    return [instr.flatten() for instr in _TDM_INSTRUCTIONS]
 
 def create_instr_data(seqs, offsets, cache_lines):
     '''
