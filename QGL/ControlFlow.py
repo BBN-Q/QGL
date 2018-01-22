@@ -217,36 +217,3 @@ class Barrier(ControlInstruction):
         base = "BARRIER({0})".format(self.chanlist)
         return base
 
-class CustomInstruction(ControlInstruction):
-
-    def __init__(self, name, in_addr, out_addr, **kwargs):
-        super(CustomInstruction, self).__init__(name)
-        self.in_addr = in_addr
-        self.out_addr = out_addr
-        self.args = kwargs
-
-def MajorityVote(in_addr, out_addr):
-    return CustomInstruction('MAJORITY', in_addr, out_addr)
-
-def MajorityMask(in_addr, out_addr):
-    return CustomInstruction('MAJORITYMASK', in_addr, out_addr)
-
-class WriteAddrInstruction(ControlInstruction):
-
-    def __init__(self, name, channel, modifier, addr, value, **kwargs):
-        super(WriteAddrInstruction, self).__init__(name)
-        self.xchannel = channel
-        self.invalid = modifier
-        self.addr = addr
-        self.value = value
-
-def Invalidate(addr, mask, channel=None):
-    return WriteAddrInstruction('INVALIDATE', channel, 1, addr, mask)
-
-def WriteAddr(addr, value, channel=None):
-    return WriteAddrInstruction('WRITEADDR', channel, 0, addr, value)
-
-def StoreMeas(addr, value, channel=None):
-    return WriteAddrInstruction('STOREMEAS', channel, 5, addr, value)
-
-# TODO: the rest of the CUSTOM instructions

@@ -461,6 +461,12 @@ def compile_to_hardware(seqs,
     for wire in old_wire_instrs.keys():
         wire.instrument = old_wire_instrs[wire]
 
+    # FIXME: a one-off hack for the TDM
+    for s in physWires.keys():
+        if s.label == 'BBNAPS1-12':
+            # print('----- %s' % str(s))
+            tdm_i = pattern_module.tdm_instructions(physWires[s][0])
+
     # Return the filenames we wrote
     return metafilepath
 
@@ -546,7 +552,6 @@ def compile_sequence(seq, channels=None):
             continue
         # propagate frame change from nodes to edges
         for chan in channels:
-            print('chan %s channels %s' % (str(chan), str(channels)))
             if block.pulses[chan].frameChange == 0:
                 continue
             if chan in ChannelLibraries.channelLib.connectivityG.nodes():

@@ -55,17 +55,21 @@ setUp()
 
 
 q1 = QubitFactory('q1')
-q2 = QubitFactory('q2')
+# q2 = QubitFactory('q2')
 
 seq = [
-        X90(q1),
-        # X90(q2),
-        MEASA(q1, maddr=(10, 3)),
-        WriteAddr(1, 7, channel=q1),
-        Invalidate(addr=4, mask=0xfff),
+        Id(q1),
+
+        WriteAddr(1, 7),
         MajorityMask(1, 0),
-        MajorityVote(10, 9),
-        WriteAddr(12, 13, channel=q1)
+
+        Invalidate(addr=4, mask=0xfff),
+
+        MEASA(q1, maddr=(10, 0)),
+        MEASA(q1, maddr=(10, 1)),
+        MEASA(q1, maddr=(10, 2)),
+
+        MajorityVote(10, 11),
         ]
 
 aps_metafile = compile_to_hardware([seq], '/tmp/f')
@@ -75,17 +79,18 @@ aps_metadata = json.loads(open(aps_metafile).read())
 print(aps_metadata)
 
 for key in aps_metadata['instruments']:
+    print('')
     print('INSTRUMENT %s' % str(key))
     instructions = aps2_reader.raw_instructions(aps_metadata['instruments'][key])
     # print('TYPE %s' % str(type(instructions)))
     # aps2_reader.display_decompiled_instructions(instructions)
 
-    print('')
     for i in range(len(instructions)):
         instr_bits = instructions[i]
         instr_txt = str(Instruction.unflatten(instr_bits))
         print('%5d: 0x%.16x - %s' % (i, instr_bits, instr_txt))
 
+print('')
 print('INSTRUMENT tdm')
 for i in range(len(tdm_instr)):
     instr_bits = tdm_instr[i]
