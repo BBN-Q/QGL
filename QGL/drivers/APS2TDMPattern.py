@@ -29,7 +29,6 @@ import numpy as np
 from QGL import Compiler, ControlFlow, BlockLabel, PatternUtils
 from QGL.PatternUtils import hash_pulse, flatten
 from QGL import TdmInstructions
-from QGL import PulseSequencer
 
 # Python 2/3 compatibility: use 'int' that subclasses 'long'
 from builtins import int
@@ -288,7 +287,7 @@ class Instruction(object):
 
         elif instrOpCode == WRITEADDR:
             if (self.header & 0xf) == 1:
-                out += ' Invalidate(addr=0x%x, mask=0x%x)' % (
+                out += ' WriteAddr(addr=0x%x, mask=0x%x)' % (
                         self.payload & 0xffff,
                         (self.payload >> 16) & 0xffffffff)
             elif (self.header & 0xf) == 5:
@@ -296,7 +295,7 @@ class Instruction(object):
                         self.payload & 0xffff,
                         (self.payload >> 16) & 0xffffffff)
             else:
-                out += ' WriteAddr(addr=0x%x, value=0x%x)' % (
+                out += ' Invalidate(addr=0x%x, value=0x%x)' % (
                         self.payload & 0xffff,
                         (self.payload >> 16) & 0xffffffff)
 
@@ -305,6 +304,13 @@ class Instruction(object):
                     customOps[(self.payload >> 32) & 0xff],
                     (self.payload >> 16) & 0xffff,
                     self.payload & 0xffff)
+
+        elif (instrOpCode == LOADCMP) and (self.payload != 0):
+            if self.payload & (1 << 48):
+                out += ' LoadCmp vram(addr=0x%x, mask=0x%x)' % (
+                        self.payload & 0xffff,
+                        (self.payload >> 16) & 0xffffffff)
+
         return out
 
     def __eq__(self, other):
@@ -337,7 +343,7 @@ class Instruction(object):
         return self.header >> 4
 
     def flatten(self):
-        return int((self.header << 56) | (self.payload & 0xffffffffffff))
+        return int((self.header << 56) | (self.payload & 0xffffffffffffff))
 
 
 def Waveform(addr, count, isTA, write=False, label=None):
@@ -452,6 +458,11 @@ def MajorityVote(in_addr, out_addr, label=None):
 
 def MajorityVoteMask(in_addr, out_addr, label=None):
     return Custom(in_addr, out_addr, 1, label=label)
+
+def LoadCmpTdm(addr, mask, label=None):
+    header = LOADCMP << 4
+    payload = (1 << 48) | (mask << 16) | addr
+    return Instruction(header, payload, label=label)
 
 
 def preprocess(seqs, shapeLib):
@@ -762,7 +773,8 @@ def create_seq_instructions(seqs, offsets):
                     isinstance(entry, ControlFlow.ControlInstruction) or
                     isinstance(entry, BlockLabel.BlockLabel) or
                     isinstance(entry, TdmInstructions.CustomInstruction) or
-                    isinstance(entry, TdmInstructions.WriteAddrInstruction)):
+                    isinstance(entry, TdmInstructions.WriteAddrInstruction) or
+                    isinstance(entry, TdmInstructions.LoadCmpTdmInstruction)):
                 if isinstance(entry, BlockLabel.BlockLabel):
                     # carry label forward to next entry
                     label = entry
@@ -807,17 +819,10 @@ def create_seq_instructions(seqs, offsets):
                         warn("Dropping Waveform entry of length %s!" % entry.length)
                         continue
 
-                    wfm_instr = Waveform(
+                    instructions.append(Waveform(
                             offsets[wf_sig(entry)], entry.length,
                             entry.isTimeAmp or entry.isZero,
-                            write=write_flags[ct], label=label)
-
-                    # TODO: is this the right thing to do?
-                    if entry.label == 'MEAS' and entry.maddr != (-1, 0):
-                        print('GOT MEAS WAVEFORM WITH MADDR %s' % str(entry.maddr))
-                        wfm_instr.payload |= (1 << 48)
-
-                    instructions.append(wfm_instr)
+                            write=write_flags[ct], label=label))
                 elif isinstance(entry, ModulationCommand):
                     instructions.append(entry.to_instruction(
                         write_flag=write_flags[ct],
@@ -1260,6 +1265,8 @@ def tdm_instructions(seq):
 
         elif isinstance(s, ControlFlow.Wait):
             instructions.append(Wait(label=label))
+        elif isinstance(s, ControlFlow.LoadCmp):
+            instructions.append(LoadCmp(label=label))
 
         elif isinstance(s, TdmInstructions.WriteAddrInstruction):
             if s.instruction == 'INVALIDATE':
@@ -1307,9 +1314,14 @@ def tdm_instructions(seq):
         elif isinstance(s, ControlFlow.Repeat):
             instructions.append(Load(s.value - 1, label=label))
 
+        elif isinstance(s, TdmInstructions.LoadCmpTdmInstruction):
+            if s.instruction == 'LOADCMPTDM':
+                instructions.append(
+                        LoadCmpTdm(s.addr, s.mask, label=label))
+
         elif isinstance(s, Compiler.Waveform):
             if s.label == 'MEAS' and s.maddr != (-1, 0):
-                print('GOT MEAS WAVEFORM WITH MADDR %s' % str(s.maddr))
+                print('TDM GOT MEAS WAVEFORM WITH MADDR %s' % str(s.maddr))
                 instructions.append(LoadCmp(label=label))
                 instructions.append(StoreMeas(s.maddr[0], 1 << s.maddr[1]))
         else:

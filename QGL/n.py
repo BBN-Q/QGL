@@ -55,7 +55,7 @@ setUp()
 
 
 q1 = QubitFactory('q1')
-# q2 = QubitFactory('q2')
+q2 = QubitFactory('q2')
 
 seq = [
         Id(q1),
@@ -63,11 +63,14 @@ seq = [
         WriteAddr(1, 7),
         MajorityMask(1, 0),
 
-        Invalidate(addr=4, mask=0xfff),
+        Invalidate(addr=10, mask=0x7),
 
         MEASA(q1, maddr=(10, 0)),
-        MEASA(q1, maddr=(10, 1)),
-        MEASA(q1, maddr=(10, 2)),
+        # MEASA(q1, maddr=(10, 1)),
+        # MEASA(q1, maddr=(10, 2)),
+        MEASA(q1, maddr=(20, 0)),
+
+        LoadCmpTdm(0xfedc, 0x1234678),
 
         MajorityVote(10, 11),
         ]
@@ -96,6 +99,8 @@ for i in range(len(tdm_instr)):
     instr_bits = tdm_instr[i]
     instr_txt = str(Instruction.unflatten(instr_bits))
     print('%5d: 0x%.16x - %s' % (i, instr_bits, instr_txt))
+
+# TODO: insert TDM instructions into the output file
 
 
 

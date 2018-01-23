@@ -541,7 +541,8 @@ def compile_sequence(seq, channels=None):
         # control flow broadcasts to all channels if channel attribute is None
         if (isinstance(block, ControlFlow.ControlInstruction) or
                 isinstance(block, TdmInstructions.WriteAddrInstruction) or
-                isinstance(block, TdmInstructions.CustomInstruction)):
+                isinstance(block, TdmInstructions.CustomInstruction) or
+                isinstance(block, TdmInstructions.LoadCmpTdmInstruction)):
             # Need to deal with attaching measurements and edges to control
             # instruction. Until we have a proper solution for that, we will
             # always broadcast control instructions to all channels
