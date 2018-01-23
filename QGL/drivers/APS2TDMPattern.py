@@ -690,23 +690,6 @@ def synchronize_clocks(seqs):
             instr.startTime += instr.length
             instr.length = 0
 
-def pad_with_nops(list1, list2):
-    """
-    Given two lists of instructions, pad the shorter until they
-    are equal length
-    """
-
-    len1 = len(list1)
-    len2 = len(list2)
-
-    if len1 == len2:
-        return
-    elif len1 > len2:
-        for _ in range(len1 - len2):
-            list2.append(NoOp())
-    else:
-        for _ in range(len2 - len1):
-            list1.append(NoOp())
 
 def create_seq_instructions(seqs, offsets):
     '''
