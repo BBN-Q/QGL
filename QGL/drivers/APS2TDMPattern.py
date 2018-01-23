@@ -1234,9 +1234,14 @@ def update_wf_library(filename, pulses, offsets):
 def tdm_instructions(seq):
     instructions = list()
 
+    # the backpatch table for labels
+    label2addr = dict()
+
     label = None
     for s in seq:
         if isinstance(s, BlockLabel.BlockLabel):
+            label2addr[s.label] = len(instructions)
+
             # carry label forward to next entry
             label = s
             continue
@@ -1291,10 +1296,9 @@ def tdm_instructions(seq):
 
         elif isinstance(s, ControlFlow.Goto):
             instructions.append(Goto(s.target, label=label))
-
         elif isinstance(s, ControlFlow.Repeat):
             instructions.append(Repeat(s.target, label=label))
-        elif isinstance(s, ControlFlow.Repeat):
+        elif isinstance(s, ControlFlow.LoadRepeat):
             instructions.append(Load(s.value - 1, label=label))
 
         elif isinstance(s, TdmInstructions.LoadCmpTdmInstruction):
@@ -1321,6 +1325,12 @@ def tdm_instructions(seq):
     #     instr_bits = instructions[i].flatten()
     #     # instr_txt = str(Instruction.unflatten(instr_bits))
     #     print('%5d: 0x%.16x - %s' % (i, instr_bits, str(instructions[i])))
+
+    # backpatch any instructions that have target fields
+    #
+    for i in instructions:
+        if i.target:
+            i.payload = label2addr[i.target.label]
 
     global _TDM_INSTRUCTIONS
     _TDM_INSTRUCTIONS = [i.flatten() for i in instructions]
