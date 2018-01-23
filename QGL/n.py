@@ -3,8 +3,6 @@
 import copy
 import json
 import numpy
-import os
-import shutil
 
 import QGL.drivers
 from QGL import *
@@ -22,40 +20,9 @@ def pp_instructions(name, instructions):
         print('%5d: 0x%.16x - %s' % (i, instr_bits, instr_txt))
 
 def setUp():
-    # Copied from the unittests (CompileUtils).
-    # Probably not valid, but OK for placeholders.
-
-    """
-    q1gate = Channels.LogicalMarkerChannel(label='q1-gate')
-    q1 = Qubit(label='q1', gate_chan=q1gate)
-    q1.pulse_params['length'] = 30e-9
-
-    q2gate = Channels.LogicalMarkerChannel(label='q2-gate')
-    q2 = Qubit(label='q2', gate_chan=q2gate)
-    q2.pulse_params['length'] = 30e-9
-
-    trigger = Channels.LogicalMarkerChannel(label='trigger')
-    measq1 = Channels.Measurement(label='M-q1', meas_type='autodyne')
-    measq1.trig_chan = trigger
-
-    measq2 = Channels.Measurement(label='M-q2', meas_type='autodyne')
-    measq2.trig_chan = trigger
-    """
-
     cl = ChannelLibrary(library_file="./meas.yml")
-
-    # ChannelLibrary(blank=True) # Create a blank ChannelLibrary
-    """
-    ChannelLibraries.channelLib.channelDict = {
-            'q1': q1,
-            'q2': q2,
-            'M-q1': measq1,
-            'M-q2': measq2
-    }
-    """
     ChannelLibraries.channelLib.build_connectivity_graph()
 
-ChannelLibrary(blank=True)
 setUp()
 
 q1 = QubitFactory('q1')
@@ -74,7 +41,7 @@ seq = [
         # MEASA(q1, maddr=(10, 2)),
         # MEASA(q2, maddr=(20, 0)),
 
-        # LoadCmpTdm(0xfedc, 0x1234678),
+        LoadCmpTdm(0xfedc, 0x1234678),
 
         MajorityVote(10, 11),
         ]
