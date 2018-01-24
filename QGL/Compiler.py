@@ -461,11 +461,11 @@ def compile_to_hardware(seqs,
     for wire in old_wire_instrs.keys():
         wire.instrument = old_wire_instrs[wire]
 
-    # FIXME: a one-off hack for the TDM
-    for s in physWires.keys():
-        if s.label == 'BBNAPS1-12':
-            # print('----- %s' % str(s))
-            tdm_i = pattern_module.tdm_instructions(physWires[s][0])
+    if hasattr(pattern_module, 'tdm_instructions'):
+        # FIXME: a one-off hack for the TDM
+        for s in physWires.keys():
+            if s.label == 'BBNAPS1-12':
+                pattern_module.tdm_instructions(physWires[s][0])
 
     # Return the filenames we wrote
     return metafilepath
