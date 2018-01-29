@@ -27,11 +27,14 @@ import h5py
 import numpy as np
 
 from QGL import Compiler, ControlFlow, BlockLabel, PatternUtils
+from QGL import PulseSequencer
 from QGL.PatternUtils import hash_pulse, flatten
 from QGL import TdmInstructions
 
 # Python 2/3 compatibility: use 'int' that subclasses 'long'
 from builtins import int
+
+logger = logging.getLogger(__name__)
 
 #Some constants
 SAMPLING_RATE = 1.2e9
@@ -1232,6 +1235,20 @@ def update_wf_library(filename, pulses, offsets):
 
 
 def tdm_instructions(seq):
+    """
+    Generate the TDM instructions for the given sequence.
+
+    This assumes that there is one instruction sequence, not
+    a list of them (as is generally the case elsewhere)
+    """
+
+    seq = list(flatten(copy(seq)))
+
+    # turn into a loop, by appending GOTO(0) at end of the sequence
+    if not isinstance(seq[-1], ControlFlow.Goto):
+        seq.append(ControlFlow.Goto(BlockLabel.label(seq)))
+        logger.debug("Appending a GOTO at end to loop")
+
     instructions = list()
 
     # the backpatch table for labels
@@ -1258,12 +1275,12 @@ def tdm_instructions(seq):
 
         elif isinstance(s, TdmInstructions.WriteAddrInstruction):
             if s.instruction == 'INVALIDATE':
-                print('INVALIDATE(channel=%s, addr=0x%x, mask=0x%x)' %
+                print('o INVALIDATE(channel=%s, addr=0x%x, mask=0x%x)' %
                         (str(s.channel), s.addr, s.value))
                 instructions.append(Invalidate(s.addr, s.value, label=label))
 
             elif s.instruction == 'WRITEADDR':
-                print('WRITEADDR(channel=%s, addr=0x%x, value=0x%x)' %
+                print('o WRITEADDR(channel=%s, addr=0x%x, value=0x%x)' %
                         (str(s.channel), s.addr, s.value))
                 instructions.append(WriteAddr(s.addr, s.value, label=label))
 
@@ -1306,17 +1323,28 @@ def tdm_instructions(seq):
                 instructions.append(
                         LoadCmpTdm(s.addr, s.mask, label=label))
 
-        elif isinstance(s, Compiler.Waveform):
+        elif isinstance(s, PulseSequencer.Pulse):
             if s.label == 'MEAS' and s.maddr != (-1, 0):
-                print('TDM GOT MEAS WAVEFORM WITH MADDR %s' % str(s.maddr))
                 instructions.append(LoadCmp(label=label))
                 instructions.append(StoreMeas(s.maddr[0], 1 << s.maddr[1]))
+
+        elif isinstance(s, PulseSequencer.PulseBlock):
+            # FIXME:
+            # If this happens, we are confused.
+            print('FIXME: TDM GOT MEAS PULSEBLOCK: %s' % str(s))
+
+        elif isinstance(s, list):
+            # FIXME:
+            # If this happens, we are confused.
+            print('FIXME: TDM GOT LIST: %s' % str(s))
+
         else:
             # This isn't necessarily an error, because the TDM ignores a
             # lot of instructions, but until this is debugged it's handy
             # to see what's falling through.
-            #
-            print('OOPS: unhandled [%s]' % str(s))
+
+            # FIXME: We're missing a lot of control-flow instructions
+            print('OOPS: unhandled [%s]' % str(type(s)))
 
         # clear label
         label = None
@@ -1332,11 +1360,4 @@ def tdm_instructions(seq):
         if i.target:
             i.payload = label2addr[i.target.label]
 
-    global _TDM_INSTRUCTIONS
-    _TDM_INSTRUCTIONS = [i.flatten() for i in instructions]
-
-def get_tdm_instructions():
-    return _TDM_INSTRUCTIONS
-
-
-
+    return [i.flatten() for i in instructions]

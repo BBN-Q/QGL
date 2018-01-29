@@ -29,21 +29,24 @@ q1 = QubitFactory('q1')
 q2 = QubitFactory('q2')
 
 seq = [
-        Id(q1),
+        X(q1),
+        X(q2),
 
         WriteAddr(1, 7),
         MajorityMask(1, 0),
 
         Invalidate(addr=10, mask=0x7),
 
-        MEASA(q1, maddr=(10, 0)),
-        # MEASA(q1, maddr=(10, 1)),
+        MEASA(q1, maddr=(10, 4)),
+        MEASA(q1, maddr=(10, 1)),
         # MEASA(q1, maddr=(10, 2)),
-        # MEASA(q2, maddr=(20, 0)),
+        MEASA(q2, maddr=(10, 2)),
 
-        LoadCmpTdm(0xfedc, 0x1234678),
+        LoadCmpTdm(10, 7),
 
         MajorityVote(10, 11),
+        qif(0, [X90(q1), Y(q1), X(q1)], [Y90(q2)]),
+
         ]
 
 # First, compile for the APS units.  As a side effect,
@@ -66,11 +69,13 @@ seq = [
 # So copy the input sequence each time we use it...
 
 aps_metafile = compile_to_hardware([copy.copy(seq)], '/tmp/aps')
-tdm_instr = QGL.drivers.APS2TDMPattern.get_tdm_instructions()
 aps_metadata = json.loads(open(aps_metafile).read())
 
 tdm_metafile = compile_to_hardware([copy.copy(seq)], '/tmp/tdm')
 tdm_metadata = json.loads(open(tdm_metafile).read())
+
+tdm_instr = QGL.drivers.APS2TDMPattern.tdm_instructions(seq)
+
 aps2_reader.replace_instructions(
         tdm_metadata['instruments']['BBNAPS1'],
         numpy.array(tdm_instr, dtype=np.uint64))
@@ -85,4 +90,3 @@ for key in aps_metadata['instruments']:
 tdm_instr_from_file = aps2_reader.raw_instructions(
         tdm_metadata['instruments']['BBNAPS1'])
 pp_instructions('tdm', tdm_instr_from_file)
-
