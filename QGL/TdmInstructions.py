@@ -76,7 +76,7 @@ def Invalidate(addr, mask, channel=None):
 def StoreMeas(addr, value, channel=None):
     return WriteAddrInstruction('STOREMEAS', channel, 5, addr, value)
 
-class LoadCmpTdmInstruction(object):
+class LoadCmpVramInstruction(object):
 
     def __init__(self, name, use_vram, addr, mask):
         # TODO: sanity checks on input values
@@ -98,8 +98,8 @@ class LoadCmpTdmInstruction(object):
         return not self == other
 
 
-def LoadCmpTdm(addr, mask):
-    return LoadCmpTdmInstruction('LOADCMPTDM', 1, addr, mask)
+def LoadCmpVram(addr, mask):
+    return LoadCmpVramInstruction('LOADCMPVRAM', 1, addr, mask)
 
 # TODO: are there other variants of WriteAddr?
 

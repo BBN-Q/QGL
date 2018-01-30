@@ -138,7 +138,7 @@ def apply_gating_constraints(chan, linkList):
                     (ControlFlow.ControlInstruction, BlockLabel.BlockLabel,
                         TdmInstructions.CustomInstruction,
                         TdmInstructions.WriteAddrInstruction,
-                        TdmInstructions.LoadCmpTdmInstruction)):
+                        TdmInstructions.LoadCmpVramInstruction)):
 
                 if previousEntry:
                     gateSeq.append(previousEntry)

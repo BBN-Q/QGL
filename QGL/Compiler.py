@@ -536,7 +536,7 @@ def compile_sequence(seq, channels=None):
         if (isinstance(block, ControlFlow.ControlInstruction) or
                 isinstance(block, TdmInstructions.WriteAddrInstruction) or
                 isinstance(block, TdmInstructions.CustomInstruction) or
-                isinstance(block, TdmInstructions.LoadCmpTdmInstruction)):
+                isinstance(block, TdmInstructions.LoadCmpVramInstruction)):
             # Need to deal with attaching measurements and edges to control
             # instruction. Until we have a proper solution for that, we will
             # always broadcast control instructions to all channels

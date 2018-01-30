@@ -82,6 +82,9 @@ NOTEQUAL = 0x1
 GREATERTHAN = 0x2
 LESSTHAN = 0x3
 
+CMPTABLE = {'==': EQUAL, '!=': NOTEQUAL, '>': GREATERTHAN, '<': LESSTHAN}
+
+
 # Whether we use PHASE_OFFSET modulation commands or bake it into waveform
 # Default to false as we usually don't have many variants
 USE_PHASE_OFFSET_INSTRUCTION = False
@@ -462,7 +465,7 @@ def MajorityVote(in_addr, out_addr, label=None):
 def MajorityVoteMask(in_addr, out_addr, label=None):
     return Custom(in_addr, out_addr, 1, label=label)
 
-def LoadCmpTdm(addr, mask, label=None):
+def LoadCmpVram(addr, mask, label=None):
     header = LOADCMP << 4
     payload = (1 << 48) | (mask << 16) | addr
     return Instruction(header, payload, label=label)
@@ -721,8 +724,6 @@ def create_seq_instructions(seqs, offsets):
     # keep track of where we are in each sequence
     indexes = np.zeros(len(seqs), dtype=np.int64)
 
-    cmpTable = {'==': EQUAL, '!=': NOTEQUAL, '>': GREATERTHAN, '<': LESSTHAN}
-
     # always start with SYNC (stealing label from beginning of sequence)
     # unless it is a subroutine (using last entry as return as tell)
     label = None
@@ -760,7 +761,7 @@ def create_seq_instructions(seqs, offsets):
                     isinstance(entry, BlockLabel.BlockLabel) or
                     isinstance(entry, TdmInstructions.CustomInstruction) or
                     isinstance(entry, TdmInstructions.WriteAddrInstruction) or
-                    isinstance(entry, TdmInstructions.LoadCmpTdmInstruction)):
+                    isinstance(entry, TdmInstructions.LoadCmpVramInstruction)):
                 if isinstance(entry, BlockLabel.BlockLabel):
                     # carry label forward to next entry
                     label = entry
@@ -786,7 +787,7 @@ def create_seq_instructions(seqs, offsets):
                     instructions.append(Load(entry.value - 1, label=label))
                 elif isinstance(entry, ControlFlow.ComparisonInstruction):
                     # TODO modify Cmp operator to load from specified address
-                    instructions.append(Cmp(cmpTable[entry.operator],
+                    instructions.append(Cmp(CMPTABLE[entry.operator],
                                             entry.value,
                                             label=label))
 
@@ -1318,10 +1319,10 @@ def tdm_instructions(seq):
         elif isinstance(s, ControlFlow.LoadRepeat):
             instructions.append(Load(s.value - 1, label=label))
 
-        elif isinstance(s, TdmInstructions.LoadCmpTdmInstruction):
-            if s.instruction == 'LOADCMPTDM':
+        elif isinstance(s, TdmInstructions.LoadCmpVramInstruction):
+            if s.instruction == 'LOADCMPVRAM':
                 instructions.append(
-                        LoadCmpTdm(s.addr, s.mask, label=label))
+                        LoadCmpVram(s.addr, s.mask, label=label))
 
         elif isinstance(s, PulseSequencer.Pulse):
             if s.label == 'MEAS' and s.maddr != (-1, 0):
@@ -1337,6 +1338,10 @@ def tdm_instructions(seq):
             # FIXME:
             # If this happens, we are confused.
             print('FIXME: TDM GOT LIST: %s' % str(s))
+
+        elif isinstance(s, ControlFlow.ComparisonInstruction):
+            instructions.append(
+                    Cmp(CMPTABLE[s.operator], s.value, label=label))
 
         else:
             # This isn't necessarily an error, because the TDM ignores a

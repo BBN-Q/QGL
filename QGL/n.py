@@ -42,10 +42,11 @@ seq = [
         # MEASA(q1, maddr=(10, 2)),
         MEASA(q2, maddr=(10, 2)),
 
-        LoadCmpTdm(10, 7),
+        LoadCmpVram(10, 7),
 
         MajorityVote(10, 11),
-        qif(0, [X90(q1), Y(q1), X(q1)], [Y90(q2)]),
+        LoadCmpVram(11, 1),
+        qif(0, [MEASA(q1, maddr=(12, 0)), X(q1)], [Y90(q2)]),
 
         ]
 
