@@ -12,7 +12,7 @@ meas_file            = None
 
 # plotting options
 plotBackground       = '#EAEAF2'
-gridColor            = []
+gridColor            = None
 
 # select pulse library (standard or all90)
 pulse_primitives_lib = "standard"
