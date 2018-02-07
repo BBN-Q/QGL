@@ -366,7 +366,7 @@ def compile_to_hardware(seqs,
     num_measurements = count_measurements(wireSeqs)
     wire_measurements = count_measurements_per_wire(wireSeqs)
 
-    # map logical to physical channels, physWires is a list of 
+    # map logical to physical channels, physWires is a list of
     # PhysicalQuadratureChannels and PhysicalMarkerChannels
     # for the APS, the naming convention is:
     # ASPName-12, or APSName-12m1
@@ -391,7 +391,7 @@ def compile_to_hardware(seqs,
             old_wire_names[wire] = wire.label
             old_wire_instrs[wire] = wire.instrument
             wire.instrument = wire.label
-            wire.label = chan_name 
+            wire.label = chan_name
             files[inst_name] = {}
 
     # construct channel delay map
@@ -431,7 +431,10 @@ def compile_to_hardware(seqs,
                 files[label_to_inst[awgName]][label_to_chan[awgName]] = fullFileName
         else:
             files[awgName] = fullFileName
-
+    # add TDM sequence, if any
+    for tdm in config.tdm_list:
+        files[tdm] = os.path.normpath(os.path.join(
+        config.AWGDir, str.replace(fileName, 'aps', 'tdm') + '-' + next(iter(awgData)) + suffix + '.h5'))
     # create meta output
     if not axis_descriptor:
         axis_descriptor = [{
