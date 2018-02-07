@@ -22,7 +22,7 @@ pulse_primitives_lib = "standard"
 cnot_implementation  = "CNOT_simple"
 
 # used to add the tdm sequence in the metafile
-tdm_list = None
+tdm_list = []
 
 class LoaderMeta(type):
     def __new__(metacls, __name__, __bases__, __dict__):
