@@ -12,7 +12,7 @@ meas_file            = None
 
 # plotting options
 plotBackground       = '#EAEAF2'
-gridColor            = None
+gridColor            = []
 
 # select pulse library (standard or all90)
 pulse_primitives_lib = "standard"
@@ -96,6 +96,8 @@ def load_config(filename=None):
     gridColor            = cfg['config'].get('GridColor', None)
     pulse_primitives_lib = cfg['config'].get('PulsePrimitivesLibrary', 'standard')
     cnot_implementation  = cfg['config'].get('cnot_implementation', 'CNOT_simple')
-    tdm_list = [k for (k, v) in cfg['instruments'].items() if v['type'] == 'TDM']
+
+    if 'instruments' in cfg:
+        tdm_list = [k for (k, v) in cfg['instruments'].items() if (v['type'] == 'TDM' and v['enabled'] == True)]
 
     return meas_file
