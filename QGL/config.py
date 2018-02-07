@@ -21,6 +21,9 @@ pulse_primitives_lib = "standard"
 # CNOT in your gate set, e.g. CNOT_simple or CNOT_CR)
 cnot_implementation  = "CNOT_simple"
 
+# used to add the tdm sequence in the metafile
+tdm_list = None
+
 class LoaderMeta(type):
     def __new__(metacls, __name__, __bases__, __dict__):
         """Add include constructer to class."""
@@ -67,7 +70,7 @@ def find_meas_file():
     raise Exception("Could not find the measurement file in the environment variables or the auspex globals.")
 
 def load_config(filename=None):
-    global meas_file, AWGDir, plotBackground, gridColor, pulse_primitives_lib, cnot_implementation
+    global meas_file, AWGDir, plotBackground, gridColor, pulse_primitives_lib, cnot_implementation, tdm_list
 
     if filename:
         meas_file = filename
@@ -93,5 +96,6 @@ def load_config(filename=None):
     gridColor            = cfg['config'].get('GridColor', None)
     pulse_primitives_lib = cfg['config'].get('PulsePrimitivesLibrary', 'standard')
     cnot_implementation  = cfg['config'].get('cnot_implementation', 'CNOT_simple')
+    tdm_list = [k for (k, v) in cfg['instruments'].items() if v['type'] == 'TDM']
 
     return meas_file

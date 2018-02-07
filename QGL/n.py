@@ -69,10 +69,10 @@ seq = [
 # same sequence twice can FAIL (or give weird results).
 # So copy the input sequence each time we use it...
 
-aps_metafile = compile_to_hardware([copy.copy(seq)], '/tmp/aps')
+aps_metafile = compile_to_hardware([copy.copy(seq)], 'tmp/aps')
 aps_metadata = json.loads(open(aps_metafile).read())
 
-tdm_metafile = compile_to_hardware([copy.copy(seq)], '/tmp/tdm')
+tdm_metafile = compile_to_hardware([copy.copy(seq)], 'tmp/tdm')
 tdm_metadata = json.loads(open(tdm_metafile).read())
 
 tdm_instr = QGL.drivers.APS2TDMPattern.tdm_instructions(seq)
