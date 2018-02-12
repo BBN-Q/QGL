@@ -1,0 +1,16 @@
+# Minimal QGL configuration for QGL-demo notebook
+# Imports can be made using the !include keyword. e.g.
+# instruments: !include instruments.yml
+config:
+  AWGDir: "./awg/"
+qubits:
+  q1:
+    measure:
+      AWG: BBNAPS1 12
+      trigger: BBNAPS1 12m1
+      receiver: q1-RawSS
+    control:
+      AWG: BBNAPS2 12
+
+instruments: !include instruments.yml
+filters: !include filters.yml
