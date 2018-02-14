@@ -365,7 +365,7 @@ def compile_to_hardware(seqs,
     num_measurements = count_measurements(wireSeqs)
     wire_measurements = count_measurements_per_wire(wireSeqs)
 
-    # map logical to physical channels, physWires is a list of 
+    # map logical to physical channels, physWires is a list of
     # PhysicalQuadratureChannels and PhysicalMarkerChannels
     # for the APS, the naming convention is:
     # ASPName-12, or APSName-12m1
@@ -390,7 +390,7 @@ def compile_to_hardware(seqs,
             old_wire_names[wire] = wire.label
             old_wire_instrs[wire] = wire.instrument
             wire.instrument = wire.label
-            wire.label = chan_name 
+            wire.label = chan_name
             files[inst_name] = {}
 
     # construct channel delay map
@@ -446,10 +446,10 @@ def compile_to_hardware(seqs,
         if wire.receiver_chan:
             receiver_measurements[wire.receiver_chan.label] = n
             # kludge for conditional msm't
-            if wire.receiver_chan.label == 'RecvChan-q2-Kernel':
-               receiver_measurements[wire.receiver_chan.label]-=1
-               num_measurements-=1
-               axis_descriptor[0]['points'] = axis_descriptor[0]['points'][:-1]
+            #if wire.receiver_chan.label == 'RecvChan-q2-Kernel':
+            receiver_measurements[wire.receiver_chan.label]-=1
+    num_measurements-=1
+    axis_descriptor[0]['points'] = axis_descriptor[0]['points'][:-1]
     meta = {
         'instruments': files,
         'num_sequences': len(seqs),
