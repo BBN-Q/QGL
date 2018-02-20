@@ -438,7 +438,6 @@ class ChannelLibrary(Atom):
                 for chan in channel_dict.values():
                     for param in self.specialParams:
                         if hasattr(chan, param) and getattr(chan, param) is not None:
-                            print(chan, param)
                             chan_to_find = channel_dict.get(getattr(chan, param), None)
                             if not chan_to_find:
                                 print("Couldn't find {} of {} in the channel_dict!".format(param, chan))
