@@ -717,9 +717,9 @@ def CNOT_simple(source, target, **kwargs):
 def CNOT(source, target, **kwargs):
     cnot_impl = globals()[config.cnot_implementation]
     return cnot_impl(source, target, **kwargs)
- 
+
 ## Measurement operators
-@_memoize
+#@_memoize
 def MEAS(qubit, **kwargs):
     '''
     MEAS(q1) measures a qubit. Applies to the pulse with the label M-q1
@@ -727,16 +727,22 @@ def MEAS(qubit, **kwargs):
     channelName = "M-" + qubit.label
     measChan = ChannelLibraries.MeasFactory(channelName)
     params = overrideDefaults(measChan, kwargs)
-    if measChan.meas_type == 'autodyne':
+    if measChan.meas_type in ('autodyne', 'heterodyne'):
         params['frequency'] = measChan.autodyne_freq
         params['baseShape'] = params.pop('shape_fun')
         params['shape_fun'] = PulseShapes.autodyne
     amp = params.pop('amp')
-    ignoredStrParams = ['phase', 'frameChange']
+    #ignoredStrParams = ['phase', 'frameChange']
+    ignoredStrParams = ['frameChange']
     if 'amp' not in kwargs:
         ignoredStrParams.append('amp')
+    if 'phase' not in kwargs:
+        phase = 0.0
+        ignoredStrParams.append('phase')
+    else:
+        phase = kwargs['phase']
     meas_label = "MEAS_no_trig" if 'dig_trig' in kwargs and not kwargs['dig_trig'] else "MEAS"
-    return Pulse(meas_label, measChan, params, amp, 0.0, 0.0, ignoredStrParams)
+    return Pulse(meas_label, measChan, params, amp, phase, 0.0, ignoredStrParams)
 
 
 #MEAS and ring-down time on one qubit, echo on every other

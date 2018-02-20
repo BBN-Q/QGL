@@ -31,7 +31,7 @@ from .PatternUtils import flatten, has_gate
 from . import Channels
 from . import ChannelLibraries
 from . import PulseShapes
-from .PulsePrimitives import Id
+from .PulsePrimitives import Id, MEAS
 from .PulseSequencer import Pulse, PulseBlock, CompositePulse
 from . import ControlFlow
 from . import BlockLabel
@@ -365,7 +365,7 @@ def compile_to_hardware(seqs,
     num_measurements = count_measurements(wireSeqs)
     wire_measurements = count_measurements_per_wire(wireSeqs)
 
-    # map logical to physical channels, physWires is a list of 
+    # map logical to physical channels, physWires is a list of
     # PhysicalQuadratureChannels and PhysicalMarkerChannels
     # for the APS, the naming convention is:
     # ASPName-12, or APSName-12m1
@@ -390,7 +390,7 @@ def compile_to_hardware(seqs,
             old_wire_names[wire] = wire.label
             old_wire_instrs[wire] = wire.instrument
             wire.instrument = wire.label
-            wire.label = chan_name 
+            wire.label = chan_name
             files[inst_name] = {}
 
     # construct channel delay map
@@ -463,7 +463,6 @@ def compile_to_hardware(seqs,
     # Return the filenames we wrote
     return metafilepath
 
-
 def compile_sequences(seqs, channels=set()):
     '''
     Main function to convert sequences to miniLL's and waveform libraries.
@@ -491,6 +490,24 @@ def compile_sequences(seqs, channels=set()):
         wires = compile_sequence(seq, channels)
         for chan in wireSeqs.keys():
             wireSeqs[chan].append(wires[chan])
+
+    for chan, seqs in wireSeqs.items():
+        ## If we are using an APS3 with heterodyne readout, sum up the delays before the
+        ## measurement pulse and apply a phase shift to correct for the
+        if isinstance(chan, Channels.Measurement) and chan.meas_type == "heterodyne":
+            qubit_label = chan.label.split('-')[1]
+            qubit = ChannelLibraries.QubitFactory(qubit_label)
+            for seq in seqs:
+                meas_idx = [idx for idx, p in enumerate(seq) if getattr(p, "label", None) == "MEAS"]
+                if len(meas_idx) != 1:
+                    raise NotImplementedError("Unable to handle DDS sequences with more than one measurement.")
+                delay = sum([p.length for p in seq[:meas_idx[0]]])
+                old_meas = seq[meas_idx[0]]
+                phase = old_meas.phase + delay * chan.heterodyne_frequency
+                seq[meas_idx[0]] = MEAS(qubit, amp=old_meas.amp, phase = phase)
+
+
+
     #Print a message so for the experiment we know how many sequences there are
     print('Compiled {} sequences.'.format(len(seqs) - len(subroutines)))
 

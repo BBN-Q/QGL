@@ -61,7 +61,7 @@ class MyEventHandler(FileSystemEventHandler):
         self.paused = True
 
         # The spotlight indexer in MacOSX retriggers events... maybe we should hash the files?
-        self.grace_period = 3.0 if sys.platform == 'darwin' else 1.0 
+        self.grace_period = 3.0 if sys.platform == 'darwin' else 1.0
         self.last_library_update = datetime.datetime.now()
 
     def on_modified(self, event):
@@ -71,7 +71,7 @@ class MyEventHandler(FileSystemEventHandler):
                     # Build in some sanity checking since we seem to get multiple
                     # events firing in a number of situations.
                     now = datetime.datetime.now()
-                    
+
                     if (now-self.last_library_update).total_seconds() > (self.grace_period):
                         self.last_library_update = now
                         """
@@ -89,7 +89,7 @@ class MyEventHandler(FileSystemEventHandler):
 class LibraryFileWatcher(object):
     def __init__(self, main_path, callback):
         super(LibraryFileWatcher, self).__init__()
-        
+
         self.main_path = os.path.normpath(main_path)
         self.callback = callback
 
@@ -133,9 +133,9 @@ class ChannelLibrary(Atom):
                      'source', 'target']
 
     def __init__(self, library_file=None, blank=False, channelDict={}, **kwargs):
-        """Create the channel library. We assume that the user wants the config file in the 
+        """Create the channel library. We assume that the user wants the config file in the
         usual locations specified in the config files."""
-        
+
         # Load the basic config options from the yaml
         self.library_file = config.load_config(library_file)
 
@@ -152,7 +152,7 @@ class ChannelLibrary(Atom):
         # Update the global reference
         global channelLib
         if channelLib:
-            # Don't let the 
+            # Don't let the
             channelLib.fileWatcher = None
         channelLib = self
 
@@ -259,7 +259,7 @@ class ChannelLibrary(Atom):
                             marker_lens[params["label"]] = marker["length"]
                         channel_dict[params["label"]] = params
                 if "master" in instr.keys() and instr["master"]:
-                    if instr['type'] != 'TDM':
+                    if instr['type'] not in ('APS3', 'TDM'):
                         slave_chan = instr["slave_trig"] if "slave_trig" in instr.keys() else "slave"
                         master_awgs.append(name + "-" + slave_chan)
                     else:
@@ -279,7 +279,7 @@ class ChannelLibrary(Atom):
             # APS master. This might change later.
             if len(master_awgs) > 1:
                 raise ValueError("More than one AWG is marked as master.")
-            elif len(master_awgs) == 1  and instr_dict[master_awgs[0].split('-')[0]]['type'] != 'TDM':
+            elif len(master_awgs) == 1  and instr_dict[master_awgs[0].split('-')[0]]['type'] not in ('TDM', 'APS3'):
                 params = {}
                 params["label"]       = "slave_trig"
                 params["phys_chan"]    = master_awgs[0]
@@ -330,15 +330,24 @@ class ChannelLibrary(Atom):
                 meas_instr, meas_chan = qubit["measure"]["AWG"].split()
                 params = {k: v for k,v in qubit["measure"].items() if k in Channels.Measurement.__atom_members__.keys()}
                 params["label"]        = "M-{}".format(name)
-                params["trig_chan"]     = "digTrig-" + qubit["measure"]["trigger"]
+                params["trig_chan"] = "digTrig-" + qubit["measure"]["trigger"]
+                if instr_dict[meas_instr]["type"] != "APS3":
+                    params["meas_type"]     = "autodyne"
+                else:
+                    params["meas_type"]     = "heterodyne"
+                    #frequency difference for DDS phase shift between nco and heterodyne LO
+                    gen_freq = instr_dict[qubit["measure"]["generator"]]["frequency"]
+                    dds_freq = instr_dict[meas_instr]["dac_clock"] + instr_dict[meas_instr]["nco_frequency"]
+                    params["heterodyne_frequency"] = gen_freq - dds_freq
                 params["phys_chan"]     = meas_instr + "-" + meas_chan
-                params["meas_type"]     = "autodyne"
                 params["receiver_chan"] = "RecvChan-" + qubit["measure"]["receiver"]
                 params["__module__"]   = "QGL.Channels"
                 params["__class__"]    = "Measurement"
                 channel_dict[params["label"]] = params
                 if 'generator' in qubit["measure"].keys():
                     channel_dict[params["phys_chan"]]["generator"] = qubit["measure"]["generator"]
+
+
 
                 # Create the receiver channels
                 if "receiver" in qubit["measure"].keys():
@@ -381,7 +390,6 @@ class ChannelLibrary(Atom):
                     params["__class__"]  = "LogicalMarkerChannel"
                     channel_dict[params["label"]] = params
                     channel_dict[name]["gate_chan"] = params["label"]
-
 
             for trig_name, trigger in trigger_dict.items():
                 phys_instr, phys_marker = trigger.split()
@@ -430,6 +438,7 @@ class ChannelLibrary(Atom):
                 for chan in channel_dict.values():
                     for param in self.specialParams:
                         if hasattr(chan, param) and getattr(chan, param) is not None:
+                            print(chan, param)
                             chan_to_find = channel_dict.get(getattr(chan, param), None)
                             if not chan_to_find:
                                 print("Couldn't find {} of {} in the channel_dict!".format(param, chan))
