@@ -176,10 +176,16 @@ def get_marker_delay(markerLL, time=False):
 
     #convert to samples
     if time:
+        print("Returning delay as time...")
         return delays[0]
     else:
-        #round up to nearest mutiple of 16
-        return (int(delays[0] * SAMPLING_RATE)| 15 ) + 1
+        #round down to nearest mutiple of 16
+        #TODO: fix firmware so marker delay = sequence length doesn't kill the sequencer
+        delay = (int(delays[0] * SAMPLING_RATE)| 15 ) - 15
+        if delay < 0:
+            return 0
+        else:
+            return delay
 
 
 
@@ -235,7 +241,7 @@ def write_sequence_file(awgData, fileName, miniLLRepeat=1):
     with h5py.File(fileName, 'w') as FID:
          FID['/'].attrs['target hardware'] = 'APS3'
          FID['/'].attrs['num sequences'] = len(awgData['ch1']['linkList'])
-         FID['/'].attrs['marker delay'] = np.uint32(mdelay)
+         FID['/'].attrs['marker delay'] = mdelay
          FID.create_dataset('seq_lens', shape=seq_lens.shape, data = seq_lens)
 
          for ct in range(len(seq_data)):
