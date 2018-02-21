@@ -239,7 +239,8 @@ def write_sequence_file(awgData, fileName, miniLLRepeat=1):
          FID.create_dataset('seq_lens', shape=seq_lens.shape, data = seq_lens)
 
          for ct in range(len(seq_data)):
-             FID.create_dataset('seq_data_{:d}'.format(ct), shape=seq_data[ct].shape, data=seq_data[ct])
+             FID.create_dataset('seq_data_{:d}'.format(ct), shape=seq_data[ct].shape,
+                data=seq_data[ct], dtype=np.complex)
 
 def read_sequence_file(fileName):
     AWGData = {'ch1I': [], 'ch1Q': [], 'ch1m1': []}
