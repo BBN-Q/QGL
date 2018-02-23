@@ -108,7 +108,7 @@ def Utheta(qubit,
             amp = angle2amp[angle]
         else:
             # linearly scale based upon the 'pi/2' amplitude
-            amp  = (angle / pi/2) * qubit.pulse_params['pi2Amp']
+            amp  = (angle / (pi/2)) * qubit.pulse_params['pi2Amp']
     return Pulse(label, qubit, params, amp, phase, 0.0, ignoredStrParams)
 
 
