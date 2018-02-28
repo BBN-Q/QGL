@@ -338,7 +338,7 @@ class ChannelLibrary(Atom):
                     #frequency difference for DDS phase shift between nco and heterodyne LO
                     gen_freq = instr_dict[qubit["measure"]["generator"]]["frequency"]
                     dds_freq = instr_dict[meas_instr]["dac_clock"] + instr_dict[meas_instr]["nco_frequency"]
-                    params["heterodyne_frequency"] = gen_freq - dds_freq
+                    params["heterodyne_frequency"] = (gen_freq - dds_freq)
                 params["phys_chan"]     = meas_instr + "-" + meas_chan
                 params["receiver_chan"] = "RecvChan-" + qubit["measure"]["receiver"]
                 params["__module__"]   = "QGL.Channels"

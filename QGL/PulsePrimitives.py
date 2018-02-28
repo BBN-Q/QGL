@@ -727,7 +727,13 @@ def MEAS(qubit, **kwargs):
     channelName = "M-" + qubit.label
     measChan = ChannelLibraries.MeasFactory(channelName)
     params = overrideDefaults(measChan, kwargs)
-    if measChan.meas_type in ('autodyne', 'heterodyne'):
+    if measChan.meas_type == 'heterodyne':
+        params['frequency'] = measChan.autodyne_freq
+        params['baseShape'] = params['shape_fun']
+        freq = measChan.autodyne_freq
+        #params['shape_fun'] = PulseShapes.autodyne
+    if measChan.meas_type == 'autodyne':
+        freq = 0.0
         params['frequency'] = measChan.autodyne_freq
         params['baseShape'] = params.pop('shape_fun')
         params['shape_fun'] = PulseShapes.autodyne

@@ -7,7 +7,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-	http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -133,17 +133,18 @@ def build_waveforms(seqs, shapeLib):
     for wf in flatten(seqs):
         if isinstance(wf, APS3Waveform) and wf_sig(wf) not in wfLib:
             shape = np.exp(1j * wf.phase) * wf.amp * shapeLib[wf.key]
+            #print("{}: amp = {}, freq={}, phase={}".format(wf.label, wf.amp, wf.frequency, wf.phase))
             if wf.frequency != 0 and wf.amp != 0:
                 shape *= np.exp(
-                    1j * 2 * np.pi * wf.frequency * np.arange(wf.length) /
+                    1j * 2 * np.pi * wf.frequency * np.arange(1, wf.length+1) /
                     SAMPLING_RATE)  #minus from negative frequency qubits
             wfLib[wf_sig(wf)] = shape
     return wfLib
 
 def compress_sequences(seqs):
     '''
-	Drop zero-length pulses and combine adjacent TA pairs into single entries
-	'''
+    Drop zero-length pulses and combine adjacent TA pairs into single entries
+    '''
     for seq in seqs:
         ct = 1
         while ct < len(seq):
@@ -201,8 +202,8 @@ def preprocess(seqs, shapeLib):
     seqs, miniLLrepeat = unroll_loops(seqs) #unroll_loops
     for seq in seqs:
         PatternUtils.propagate_frame_changes(seq, wf_type=Waveform)
-    PatternUtils.quantize_phase(seqs, 1.0 / 2**15, wf_type=Waveform) #I think this is right...
-    compress_sequences(seqs)
+    #PatternUtils.quantize_phase(seqs, 1.0 / 2**15, wf_type=Waveform) #I think this is right...
+    #compress_sequences(seqs)
     wfLib = build_waveforms(seqs, shapeLib)
     #For now don't build waveforms that are too long :)
     #for ct in range(len(seqs)):
@@ -212,8 +213,8 @@ def preprocess(seqs, shapeLib):
 
 def write_sequence_file(awgData, fileName, miniLLRepeat=1):
     '''
-	Main function to pack channel LLs into an APS h5 file.
-	'''
+    Main function to pack channel LLs into an APS h5 file.
+    '''
     #Preprocess the sequence data to handle APS restrictions
     LL, repeat, wfLib = preprocess(awgData['ch1']['linkList'],
                                           awgData['ch1']['wfLib'])

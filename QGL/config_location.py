@@ -66,7 +66,7 @@ def _set_default_config_path():
 
     cwd_path = os.path.join(os.getcwd(), _CONFIG_FILE_NAME)
     def_path = os.path.join(os.path.dirname(__file__), _CONFIG_FILE_NAME)
-    
+
     # We could also check whether the file is readable, etc.
     # I think the error messages make more sense if we let this
     # fail later, but I don't know what the users will think is
@@ -84,7 +84,7 @@ def config(path):
     """
     Set CONFIG_FILE, the path to the configuration JSON file,
     to the given path, and return the new path.
-    
+
     No error or sanity checking is performed.
     """
 
