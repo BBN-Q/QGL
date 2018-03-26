@@ -88,6 +88,8 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
 
     def __mul__(self, other):
         """ Overload multiplication of Pulses as a "tensor" operator"""
+        if not np.isclose(self.length, other.length):
+            return align_p('center', self, other)
         ptype = promote_type(self, other)
         return self.promote(ptype) * other.promote(ptype)
 
@@ -220,7 +222,7 @@ class PulseBlock(object):
             else:
                 result.pulses[k] = v
         result.length = max(self.length, rhs.length)
-        return align('center', result)
+        return result
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
