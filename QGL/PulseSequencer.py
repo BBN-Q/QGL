@@ -290,7 +290,7 @@ class CompoundGate(object):
     '''
     A wrapper around a python list to allow us to define '*' on lists.
     Used by multi-pulse structures like CNOT_CR so that we can retain the
-    "boundaries" of the oepration.
+    "boundaries" of the operation.
     '''
     def __init__(self, seq, label=None):
         if isinstance(seq, list):
@@ -352,6 +352,10 @@ class CompoundGate(object):
     def promote(self, ptype):
         # CompoundGates cannot be promoted
         return self
+
+    @property
+    def length(self):
+        return sum(p.length for p in self)
 
 def promote_type(lhs, rhs):
     '''
