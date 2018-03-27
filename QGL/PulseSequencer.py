@@ -260,12 +260,8 @@ def align_p(mode="center", *pulses):
     # Align any number of Pulses
     # TODO: First, make everything look like a sequence of pulses
     def flatten_to_pulses(obj):
-        import pdb; pdb.set_trace()
-        if isinstance(obj, Pulse):
+        if isinstance(obj, Pulse) or isinstance(obj, CompositePulse):
             yield obj
-        elif isinstance(obj, CompositePulse):
-            for pulse in obj.pulses:
-                yield from flatten_to_pulses(pulse)
         else:
             for pulse in obj.pulses.values():
                 yield from flatten_to_pulses(pulse)
@@ -275,7 +271,7 @@ def align_p(mode="center", *pulses):
     pulse_list = []
     for k,pulse in enumerate(pulses):
        if isinstance(pulse, PulseBlock):
-           pulse_list.append(list(flatten_to_pulses(pulse))) #TODO: flatten the list
+           pulse_list += list(flatten_to_pulses(pulse))
        else:
            pulse_list.append(pulse)
     if max(pad_lengths) == 0:
