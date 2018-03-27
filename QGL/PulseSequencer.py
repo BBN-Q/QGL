@@ -256,29 +256,37 @@ def align(pulseBlock, mode="center"):
     pulseBlock.alignment = mode
     return pulseBlock
 
-def align_p(mode="center", *pulses): #move it to compiler?
+def align_p(mode="center", *pulses):
     # Align any number of Pulses
     # TODO: First, make everything look like a sequence of pulses
     def flatten_to_pulses(obj):
+        import pdb; pdb.set_trace()
         if isinstance(obj, Pulse):
             yield obj
-        else:
+        elif isinstance(obj, CompositePulse):
             for pulse in obj.pulses:
                 yield from flatten_to_pulses(pulse)
+        else:
+            for pulse in obj.pulses.values():
+                yield from flatten_to_pulses(pulse)
 
-    #if isinstance(pulses, PulseBlock):
-    #pulses = list(flatten_to_pulses(pulses))
     pulse_lengths = np.array([pulse.length for pulse in pulses])
     pad_lengths = max(pulse_lengths) - pulse_lengths
+    pulse_list = []
+    for k,pulse in enumerate(pulses):
+       if isinstance(pulse, PulseBlock):
+           pulse_list.append(list(flatten_to_pulses(pulse))) #TODO: flatten the list
+       else:
+           pulse_list.append(pulse)
     if max(pad_lengths) == 0:
         # no padding element required
         return pulses
     elif mode == 'left':
-        return reduce(operator.mul,[p + TAPulse('Id', p.channel, round(max(pulse_lengths) - p.length,9),0) if p.length < max(pulse_lengths) else p for p in pulses])
+        return reduce(operator.mul,[p + TAPulse('Id', p.channel, round(max(pulse_lengths) - p.length,9),0) if p.length < max(pulse_lengths) else p for p in pulse_list])
     elif mode == 'right':
-        return reduce(operator.mul,[TAPulse('Id', p.channel, round(max(pulse_lengths) - p.length,9),0) + p if p.length < max(pulse_lengths) else p for p in pulses])
+        return reduce(operator.mul,[TAPulse('Id', p.channel, round(max(pulse_lengths) - p.length,9),0) + p if p.length < max(pulse_lengths) else p for p in pulse_list])
     elif mode == 'center':
-        return reduce(operator.mul,[TAPulse('Id', p.channel, round((max(pulse_lengths) - p.length)/2,9),0) + p + TAPulse('Id', p.channel, round((max(pulse_lengths) - p.length)/2,9),0) if p.length < max(pulse_lengths) else p for p in pulses])
+        return reduce(operator.mul,[TAPulse('Id', p.channel, round((max(pulse_lengths) - p.length)/2,9),0) + p + TAPulse('Id', p.channel, round((max(pulse_lengths) - p.length)/2,9),0) if p.length < max(pulse_lengths) else p for p in pulse_list])
     else:
         logger.error('Pulse alignment type must be one of left, right, or center.')
 
