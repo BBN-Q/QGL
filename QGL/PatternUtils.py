@@ -20,7 +20,7 @@ import hashlib, collections
 import pickle
 from copy import copy
 
-from .PulseSequencer import Pulse, TAPulse, PulseBlock, CompositePulse, CompoundGate
+from .PulseSequencer import Pulse, TAPulse, PulseBlock, CompositePulse, CompoundGate, align_p
 from .PulsePrimitives import BLANK
 from . import ControlFlow
 from . import BlockLabel
@@ -201,9 +201,7 @@ def add_digitizer_trigger(seqs):
                     trig_chan = chan.trig_chan
                     if not (hasattr(seq[ct], 'pulses') and
                             trig_chan in seq[ct].pulses.keys()):
-                        seq[ct] *= TAPulse("TRIG", trig_chan,
-                                           trig_chan.pulse_params['length'], 1.0,
-                                           0.0, 0.0)
+                        seq[ct] = align_p('left', seq[ct], TAPulse("TRIG", trig_chan, trig_chan.pulse_params['length'], 1.0, 0.0, 0.0))
 
 
 def contains_measurement(entry):
@@ -229,9 +227,7 @@ def add_slave_trigger(seqs, slaveChan):
         while ct < len(seq) - 1:
             if isinstance(seq[ct], ControlFlow.Wait):
                 try:
-                    seq[ct + 1] *= TAPulse("TRIG", slaveChan,
-                                           slaveChan.pulse_params['length'],
-                                           1.0, 0.0, 0.0)
+                    seq[ct + 1] = align_p('left', seq[ct + 1], TAPulse("TRIG", slaveChan, slaveChan.pulse_params['length'], 1.0, 0.0, 0.0))
                 except TypeError:
                     seq.insert(ct + 1, TAPulse("TRIG", slaveChan,
                                                slaveChan.pulse_params['length'],
