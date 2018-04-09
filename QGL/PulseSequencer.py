@@ -88,7 +88,7 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
 
     def __mul__(self, other):
         """ Overload multiplication of Pulses as a "tensor" operator"""
-        if not np.isclose(self.length, other.length):
+        if not np.isclose(self.length, other.length, atol=1e-10):
             return align_p('center', self, other)
         ptype = promote_type(self, other)
         return self.promote(ptype) * other.promote(ptype)

@@ -154,11 +154,11 @@ def pull_uniform_entries(entries, entry_iterators):
         if all(iterDone):
             raise StopIteration("Unable to find a uniform set of entries")
 
-        if all(x == lengths[0] for x in lengths):
+        if all(np.isclose(x, lengths[0], atol=1e-10) for x in lengths):
             break
 
         #Otherwise try to concatenate on entries to match lengths
-        while lengths[ct] < max(lengths):
+        while not np.isclose(lengths[ct], max(lengths), atol=1e-10):
             # concatenate with following entry to make up the length difference
             try:
                 next_entry = next(entry_iterators[ct])
