@@ -89,7 +89,10 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
     def __mul__(self, other):
         """ Overload multiplication of Pulses as a "tensor" operator"""
         if not np.isclose(self.length, other.length, atol=1e-10):
-            return align_p('center', self, other)
+            if self.length == 0 or other.length == 0:
+                return align_p('left', self, other)
+            else:
+                return align_p('center', self, other)
         ptype = promote_type(self, other)
         return self.promote(ptype) * other.promote(ptype)
 
@@ -355,7 +358,8 @@ class CompoundGate(object):
 
     @property
     def length(self):
-        return sum(p.length for p in self)
+        return self.seq[0].length #hack to support left-alignment e.g. for triggers). General alignment of CompoundGates not yet implemented
+        #sum(p.length for p in self.seq)
 
 def promote_type(lhs, rhs):
     '''
