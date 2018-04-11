@@ -717,7 +717,7 @@ def CNOT_simple(source, target, **kwargs):
 def CNOT(source, target, **kwargs):
     cnot_impl = globals()[config.cnot_implementation]
     return cnot_impl(source, target, **kwargs)
- 
+
 ## Measurement operators
 @_memoize
 def MEAS(qubit, **kwargs):
@@ -753,18 +753,11 @@ def MeasEcho(qM, qD, delay, piShift=None, phase=0):
     measChan = ChannelLibraries.MeasFactory('M-%s' % qM.label)
     if piShift:
         if piShift > 0:
-            measEcho =
-                (MEAS(qM) + TAPulse('Id', measChan, delay, 0)) *
-                reduce(operator.mul,
-                       [Id(q, piShift) + U(q, phase=phase) for q in qD])
+            measEcho = (MEAS(qM) + TAPulse('Id', measChan, delay, 0)) * reduce(operator.mul, [Id(q, piShift) + U(q, phase=phase) for q in qD])
         elif piShift < 0:
-            measEcho =
-                (MEAS(qM) + TAPulse('Id', measChan, delay, 0)) *
-                reduce(operator.mul,
-                       [U(q, phase=phase) + Id(q, -piShift) for q in qD])
+            measEcho = (MEAS(qM) + TAPulse('Id', measChan, delay, 0)) * reduce(operator.mul, [U(q, phase=phase) + Id(q, -piShift) for q in qD])
     else:
-        measEcho = (MEAS(qM) + TAPulse('Id', measChan, delay, 0)) *
-                         reduce(operator.mul, [U(q, phase=phase) for q in qD])
+        measEcho = (MEAS(qM) + TAPulse('Id', measChan, delay, 0)) * reduce(operator.mul, [U(q, phase=phase) for q in qD])
     measEcho.label = 'MEAS'  #to generate the digitizer trigger
     return measEcho
 

@@ -90,9 +90,9 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
         """ Overload multiplication of Pulses as a "tensor" operator"""
         if not np.isclose(self.length, other.length, atol=1e-10):
             if self.length == 0 or other.length == 0:
-                return align_p('left', self, other)
+                return align('left', self, other)
             else:
-                return align_p('center', self, other)
+                return align('center', self, other)
         ptype = promote_type(self, other)
         return self.promote(ptype) * other.promote(ptype)
 
@@ -155,9 +155,9 @@ class CompositePulse(namedtuple("CompositePulse", ["label", "pulses"])):
     def __mul__(self, other):
         if not np.isclose(self.length, other.length, atol=1e-10):
             if self.length == 0 or other.length == 0:
-                return align_p('left', self, other)
+                return align('left', self, other)
             else:
-                return align_p('center', self, other)
+                return align('center', self, other)
         ptype = promote_type(self, other)
         return self.promote(ptype) * other.promote(ptype)
 
@@ -258,13 +258,7 @@ class PulseBlock(object):
         else:
             ptype(self)
 
-def align(pulseBlock, mode="center"):
-    # make sure we have a PulseBlock
-    pulseBlock = pulseBlock.promote(PulseBlock)
-    pulseBlock.alignment = mode
-    return pulseBlock
-
-def align_p(mode="center", *pulses):
+def align(mode="center", *pulses):
     # Align any number of Pulses
     # TODO: First, make everything look like a sequence of pulses
     def flatten_to_pulses(obj):
