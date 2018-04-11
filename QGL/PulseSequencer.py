@@ -281,11 +281,11 @@ def align_p(mode="center", *pulses):
         # no padding element required
         return pulses
     elif mode == 'left':
-        return reduce(operator.mul,[p + TAPulse('Id', p.channel, round(max(pulse_lengths) - p.length,9),0) if p.length < max(pulse_lengths) else p for p in pulse_list])
+        return reduce(operator.mul,[p + TAPulse('Id', p.channel, max(pulse_lengths) - p.length,0) if p.length < max(pulse_lengths) else p for p in pulse_list])
     elif mode == 'right':
-        return reduce(operator.mul,[TAPulse('Id', p.channel, round(max(pulse_lengths) - p.length,9),0) + p if p.length < max(pulse_lengths) else p for p in pulse_list])
+        return reduce(operator.mul,[TAPulse('Id', p.channel, max(pulse_lengths) - p.length,0) + p if p.length < max(pulse_lengths) else p for p in pulse_list])
     elif mode == 'center':
-        return reduce(operator.mul,[TAPulse('Id', p.channel, round((max(pulse_lengths) - p.length)/2,9),0) + p + TAPulse('Id', p.channel, round((max(pulse_lengths) - p.length)/2,9),0) if p.length < max(pulse_lengths) else p for p in pulse_list])
+        return reduce(operator.mul,[TAPulse('Id', p.channel, (max(pulse_lengths) - p.length)/2,0) + p + TAPulse('Id', p.channel, (max(pulse_lengths) - p.length)/2,0) if p.length < max(pulse_lengths) else p for p in pulse_list])
     else:
         logger.error('Pulse alignment type must be one of left, right, or center.')
 
