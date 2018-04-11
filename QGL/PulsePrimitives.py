@@ -753,18 +753,18 @@ def MeasEcho(qM, qD, delay, piShift=None, phase=0):
     measChan = ChannelLibraries.MeasFactory('M-%s' % qM.label)
     if piShift:
         if piShift > 0:
-            measEcho = align(
+            measEcho =
                 (MEAS(qM) + TAPulse('Id', measChan, delay, 0)) *
                 reduce(operator.mul,
-                       [Id(q, piShift) + U(q, phase=phase) for q in qD]))
+                       [Id(q, piShift) + U(q, phase=phase) for q in qD])
         elif piShift < 0:
-            measEcho = align(
+            measEcho =
                 (MEAS(qM) + TAPulse('Id', measChan, delay, 0)) *
                 reduce(operator.mul,
-                       [U(q, phase=phase) + Id(q, -piShift) for q in qD]))
+                       [U(q, phase=phase) + Id(q, -piShift) for q in qD])
     else:
-        measEcho = align((MEAS(qM) + TAPulse('Id', measChan, delay, 0)) *
-                         reduce(operator.mul, [U(q, phase=phase) for q in qD]))
+        measEcho = (MEAS(qM) + TAPulse('Id', measChan, delay, 0)) *
+                         reduce(operator.mul, [U(q, phase=phase) for q in qD])
     measEcho.label = 'MEAS'  #to generate the digitizer trigger
     return measEcho
 

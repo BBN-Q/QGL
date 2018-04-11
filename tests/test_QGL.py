@@ -155,7 +155,7 @@ class MultiQubitTestCases(SequenceTestCases):
         self.sequences['operators'] = [X90(q1), X(q1) * Y(q2), CNOT_simple(q1, q2),
                                        Xm(q2), Y(q1) * X(q2)]
 
-        self.sequences['align'] = [align_p('right',
+        self.sequences['align'] = [align('right',
             X90(q1), Xtheta(q2, amp=0.5, length=100e-9)), Y90(q1) * Y90(q2)]
 
         flipFlop = X(q1) + X(q1)

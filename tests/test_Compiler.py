@@ -60,7 +60,7 @@ class CompileUtils(unittest.TestCase):
         assert (seq1 == [qwait(), t, label, X90(q1)])
 
         PatternUtils.add_slave_trigger([seq2], trigger)
-        assert (seq2 == [qwait(), align_p('left', X90(q1), t)])
+        assert (seq2 == [qwait(), align('left', X90(q1), t)])
 
     def test_concatenate_entries(self):
         q1 = self.q1
