@@ -228,7 +228,7 @@ def add_slave_trigger(seqs, slaveChan):
             if isinstance(seq[ct], ControlFlow.Wait):
                 try:
                     seq[ct + 1] = align_p('left', seq[ct + 1], TAPulse("TRIG", slaveChan, slaveChan.pulse_params['length'], 1.0, 0.0, 0.0))
-                except TypeError:
+                except:
                     seq.insert(ct + 1, TAPulse("TRIG", slaveChan,
                                                slaveChan.pulse_params['length'],
                                                1.0, 0.0, 0.0))
