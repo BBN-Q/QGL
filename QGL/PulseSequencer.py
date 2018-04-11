@@ -153,6 +153,11 @@ class CompositePulse(namedtuple("CompositePulse", ["label", "pulses"])):
             return CompositePulse("", self.pulses + [other])
 
     def __mul__(self, other):
+        if not np.isclose(self.length, other.length, atol=1e-10):
+            if self.length == 0 or other.length == 0:
+                return align_p('left', self, other)
+            else:
+                return align_p('center', self, other)
         ptype = promote_type(self, other)
         return self.promote(ptype) * other.promote(ptype)
 
