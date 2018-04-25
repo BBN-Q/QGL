@@ -300,7 +300,8 @@ def compile_to_hardware(seqs,
                         fileName,
                         suffix='',
                         axis_descriptor=None,
-                        add_slave_trigger=True):
+                        add_slave_trigger=True,
+                        extra_meta=None):
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'.
     Other inputs:
@@ -450,6 +451,8 @@ def compile_to_hardware(seqs,
         'axis_descriptor': axis_descriptor,
         'receivers': receiver_measurements
     }
+    if extra_meta:
+        meta.update(extra_meta)
     metafilepath = os.path.join(config.AWGDir, fileName + '-meta.json')
     with open(metafilepath, 'w') as FID:
         json.dump(meta, FID, indent=2, sort_keys=True)

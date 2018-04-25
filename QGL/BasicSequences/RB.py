@@ -334,8 +334,8 @@ def SimultaneousRB_AC(qubits, seqs, showPlot=False, add_cals=True):
 
     #Tack on the calibration sequences
     if add_cals:
-        seqsBis += create_cal_seqs((qubit, ), 2)
-        axis_descriptor.append(cal_descriptor((qubit,), 2))
+        seqsBis += create_cal_seqs((qubits), 2)
+        axis_descriptor.append(cal_descriptor((qubits), 2))
 
     metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor)
 
