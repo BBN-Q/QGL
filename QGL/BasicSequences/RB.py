@@ -80,7 +80,7 @@ def SingleQubitRB(qubit, seqs, purity=False, showPlot=False, add_cals=True):
         seqsBis += create_cal_seqs((qubit, ), 2)
         axis_descriptor.append(cal_descriptor((qubit,), 2))
 
-    metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor)
+    metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor, extra_meta = {'sequences':seqs})
 
     if showPlot:
         plot_pulse_files(metafile)
@@ -118,7 +118,7 @@ def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix="", add_cals=True):
         seqsBis += create_cal_seqs((q1, q2), 2)
         axis_descriptor.append(cal_descriptor((q1, q2), 2))
 
-    metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor, suffix = suffix)
+    metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor, suffix = suffix, extra_meta = {'sequences':seqs})
 
     if showPlot:
         plot_pulse_files(metafile)
@@ -155,7 +155,7 @@ def SingleQubitRB_AC(qubit, seqs, purity=False, showPlot=False, add_cals=True):
         seqsBis += create_cal_seqs((qubit, ), 2)
         axis_descriptor.append(cal_descriptor((qubit,), 2))
 
-    metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor)
+    metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor, extra_meta = {'sequences':seqs})
 
     if showPlot:
         plot_pulse_files(metafile)
@@ -195,7 +195,7 @@ def SingleQubitRB_DiAC(qubit, seqs, compiled=True, purity=False, showPlot=False,
         seqsBis += [[Id(qubit), MEAS(qubit)], [Id(qubit), MEAS(qubit)], [X90(qubit), X90(qubit), MEAS(qubit)], [X90(qubit), X90(qubit), MEAS(qubit)]]
         axis_descriptor.append(cal_descriptor((qubit,), 2))
 
-    metafile = compile_to_hardware(seqsBis, 'RB_DiAC/RB_DiAC', axis_descriptor = axis_descriptor)
+    metafile = compile_to_hardware(seqsBis, 'RB_DiAC/RB_DiAC', axis_descriptor = axis_descriptor, extra_meta = {'sequences':seqs})
 
     if showPlot:
         plot_pulse_files(metafile)
@@ -337,7 +337,7 @@ def SimultaneousRB_AC(qubits, seqs, showPlot=False, add_cals=True):
         seqsBis += create_cal_seqs((qubits), 2)
         axis_descriptor.append(cal_descriptor((qubits), 2))
 
-    metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor)
+    metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor, extra_meta = {'sequences':seqs})
 
     if showPlot:
         plot_pulse_files(metafile)
