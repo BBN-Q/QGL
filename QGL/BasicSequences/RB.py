@@ -2,7 +2,7 @@ from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
 from ..Cliffords import clifford_seq, clifford_mat, inverse_clifford
-from .helpers import create_cal_seqs
+from .helpers import create_cal_seqs, cal_descriptor
 
 import os
 from csv import reader
@@ -72,7 +72,14 @@ def SingleQubitRB(qubit, seqs, purity=False, showPlot=False, add_cals=True):
     if add_cals:
         seqsBis += create_cal_seqs((qubit, ), 2)
 
-    metafile = compile_to_hardware(seqsBis, 'RB/RB')
+    axis_descriptor = {
+        'name': 'length',
+        'unit': None,
+        'points': list(map(len, seqs)),
+        'partition': 1
+    }
+
+    metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = [axis_descriptor, cal_descriptor((qubit,), 2)])
 
     if showPlot:
         plot_pulse_files(metafile)
