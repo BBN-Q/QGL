@@ -501,9 +501,11 @@ def compile_sequences(seqs, channels=set()):
                 meas_idx = [idx for idx, p in enumerate(seq) if getattr(p, "label", None) == "MEAS"]
                 if len(meas_idx) != 1:
                     raise NotImplementedError("Unable to handle DDS sequences with more than one measurement.")
-                delay = sum([p.length for p in seq[:meas_idx[0]]])
+                pulse_idx = [idx for idx, p in enumerate(seq) if isinstance(p, Pulse)]
+                delay = sum([p.length for p in seq[pulse_idx[1]:meas_idx[0]]])
                 old_meas = seq[meas_idx[0]]
-                phase = old_meas.phase + (delay * chan.heterodyne_frequency) * 2. * np.pi
+                phase = old_meas.phase + round(delay * (chan.heterodyne_frequency), 6) * 2. * np.pi
+                #print(delay)
                 seq[meas_idx[0]] = MEAS(qubit, amp=old_meas.amp, phase = phase)
 
 

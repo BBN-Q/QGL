@@ -86,7 +86,7 @@ class APS3Waveform(object):
         self.label        = waveform.label
         self.key          = waveform.key
         self.amp          = waveform.amp
-        self.length       = PatternUtils.convert_length_to_samples(waveform.length, SAMPLING_RATE, ADDRESS_UNIT)
+        self.length       = int(round(waveform.length * SAMPLING_RATE))#PatternUtils.convert_length_to_samples(waveform.length, SAMPLING_RATE, ADDRESS_UNIT)
         self.phase        = waveform.phase
         self.frameChange  = waveform.frameChange
         self.isTimeAmp    = waveform.isTimeAmp
@@ -202,8 +202,8 @@ def preprocess(seqs, shapeLib):
     seqs, miniLLrepeat = unroll_loops(seqs) #unroll_loops
     for seq in seqs:
         PatternUtils.propagate_frame_changes(seq, wf_type=Waveform)
-    #PatternUtils.quantize_phase(seqs, 1.0 / 2**15, wf_type=Waveform) #I think this is right...
-    #compress_sequences(seqs)
+    PatternUtils.quantize_phase(seqs, 1.0 / 2**15, wf_type=Waveform) #I think this is right...
+    compress_sequences(seqs)
     wfLib = build_waveforms(seqs, shapeLib)
     #For now don't build waveforms that are too long :)
     #for ct in range(len(seqs)):

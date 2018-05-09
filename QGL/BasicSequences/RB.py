@@ -72,6 +72,13 @@ def SingleQubitRB(qubit, seqs, purity=False, showPlot=False, add_cals=True):
     if add_cals:
         seqsBis += create_cal_seqs((qubit, ), 2)
 
+    lens = [sum([p.length for p in seq]) for seq in seqsBis]
+    print(max(lens))
+
+    T = 50e-6
+    #seqsBis += [[Id(qubit), Id(qubit, length=T), Id(qubit), MEAS(qubit)] for _ in range(2)]
+    #seqsBis += [[Id(qubit), Id(qubit, length=T), X(qubit), MEAS(qubit)] for _ in range(2)]
+
     metafile = compile_to_hardware(seqsBis, 'RB/RB')
 
     if showPlot:
@@ -131,6 +138,10 @@ def SingleQubitRB_AC(qubit, seqs, purity=False, showPlot=False, add_cals=True):
     if add_cals:
         seqsBis += create_cal_seqs((qubit, ), 2)
 
+    T = 50e-6
+    seqsBis += [[Id(qubit), Id(qubit, length=T), Id(qubit), MEAS(qubit)] for _ in range(2)]
+    seqsBis += [[Id(qubit), Id(qubit, length=T), X(qubit), MEAS(qubit)] for _ in range(2)]
+
     metafile = compile_to_hardware(seqsBis, 'RB/RB')
 
     if showPlot:
@@ -164,6 +175,10 @@ def SingleQubitRB_DiAC(qubit, seqs, compiled=True, purity=False, showPlot=False,
         seqsBis += [[Id(qubit), MEAS(qubit)], [Id(qubit), MEAS(qubit)], [X90(qubit), X90(qubit), MEAS(qubit)], [X90(qubit), X90(qubit), MEAS(qubit)]]
 
     metafile = compile_to_hardware(seqsBis, 'RB_DiAC/RB_DiAC')
+
+    T = 50e-6
+    seqsBis += [[Id(qubit), Id(qubit, length=T), Id(qubit), MEAS(qubit)] for _ in range(2)]
+    seqsBis += [[Id(qubit), Id(qubit, length=T), X(qubit), MEAS(qubit)] for _ in range(2)]
 
     if showPlot:
         plot_pulse_files(metafile)
