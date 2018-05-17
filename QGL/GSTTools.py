@@ -21,6 +21,7 @@ limitations under the License.
 '''
 from .PulsePrimitives import *
 from .Cliffords import *
+from .helpers import create_cal_seqs
 from pygsti.objects import GateString
 from itertools import chain
 from random import choices
@@ -61,6 +62,18 @@ def create_gst_sequence_from_pygsti(gst_list, qubit, gate_map=gst_gate_map):
     """
     return list(chain(*gst_map_1Q(gst_list, qubit, qgl_map=gate_map, append_meas=True)))
 
+def pygsti_to_cliffords(gst_seq):
+
+    #Map from GST convention to cliffords
+    cliff_map = {"Gi": 0,
+                 "Gx": 2,
+                 "Gy": 5}
+    #convert to dictionary of lambdas for compatibility with gst_map_1Q
+    lambda_map = {k: lambda x, v=v: v for k, v in cliff_map.items()}
+
+    return list(chain(*gst_map_1Q(gst_seq, None, qgl_map=lambda_map,
+                                    append_meas=False)))
+
 def pauli_rand_clifford_circuit(gst_seq):
 
     def seqreduce(s):
@@ -73,15 +86,9 @@ def pauli_rand_clifford_circuit(gst_seq):
         return inverse_clifford(clifford_mat(c, 1))
 
     c_ps = [0, 2, 5, 8]
-    cliff_map = {"Gi": 0,
-                 "Gx": 2,
-                 "Gy": 5}
 
-    #convert to dictionary of lambdas for compatibility with gst_map_1Q
-    lambda_map = {k: lambda x, v=v: v for k, v in cliff_map.items()}
+    c_seqs = pygsti_to_cliffords(gst_seq)
 
-    c_seqs = list(chain(*gst_map_1Q(gst_seq, None, qgl_map=lambda_map,
-                                    append_meas=False)))
     r_seqs = []
     for seq in c_seqs:
         if not seq:
@@ -102,4 +109,33 @@ def pauli_rand_clifford_circuit(gst_seq):
     all_ok = all((r == i for r, i in zip(map(seqreduce, r_seqs), map(seqreduce, c_seqs))))
     assert all_ok, "Something went wrong when Pauli-frame randomizing!"
 
-    return r_seqs, c_seqs
+    return r_seqs
+
+def SingleQubitCliffordGST(qubit, pygsti_seq, pulse_library="Standard", randomize=False, add_cals=True, diac_compiled=True):
+
+    pulse_library = pulse_library.upper()
+
+    if pulse_library == "STANDARD":
+        clifford_pulse = lambda x: clifford_seq(x, qubit)
+    elif pulse_library == "DIAC":
+        clifford_pulse = lambda x: DiAC(qubit, x, diac_compiled)
+    elif pulse_library == "AC":
+        clifford_pulse = lambda x: AC(qubit, x)
+        raise ValueError("Pulse library must be one of 'standard', 'diac', or 'ac'. Got {} instead".format(pulse_library))
+
+    if randomized:
+        seqs = pauli_rand_clifford_circuit(pygsti_seq)
+    else:
+        seqs = pygsti_to_cliffords(pygsti_seq)
+
+    qgl_seqs = []
+
+    for seq in seqs:
+        qgl_seqs.append([clifford_pulse(c) for c in seq])
+        qgl_seqs[-1].append(MEAS(qubit))
+
+    if add_cals:
+        qgl_seqs += create_cal_seqs((qubit, ), 2)
+
+    metafile = compile_to_hardware(qgl_seqs, 'GST/GST')
+    return metafile
