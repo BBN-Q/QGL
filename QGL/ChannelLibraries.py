@@ -204,13 +204,13 @@ class ChannelLibrary(Atom):
                     loader.dispose()
 
             # Check to see if we have the mandatory sections
-            for section in ['instruments', 'qubits', 'filters']:
+            for section in ['instruments', 'qubits']: #, 'filters']:
                 if section not in tmpLib.keys():
                     raise ValueError("{} section not present in config file {}.".format(section, self.library_file))
 
             instr_dict   = tmpLib['instruments']
             qubit_dict   = tmpLib['qubits']
-            filter_dict  = tmpLib['filters']
+            # filter_dict  = tmpLib['filters']
             trigger_dict = tmpLib.get('markers', {}) # This section is optional
             edge_dict    = tmpLib.get('edges', {}) # This section is optional
             master_awgs  = []
@@ -295,23 +295,33 @@ class ChannelLibrary(Atom):
             #     params["__class__"]   = "LogicalMarkerChannel"
             #     channel_dict[params["label"]] = params
 
-            for name, filt in filter_dict.items():
-                if "StreamSelector" in filt["type"]:
-                    params = {k: v for k,v in filt.items() if k in Channels.ReceiverChannel.__atom_members__.keys()}
-                    params["label"]      = "RecvChan-" + name # instr_dict[filt["instrument"]]["name"] + "-" + name
-                    params["channel"]    = str(params["channel"]) # Convert to a string
-                    params["instrument"] = filt["source"]
-                    params["__module__"] = "QGL.Channels"
-                    params["__class__"]  = "ReceiverChannel"
-                    if "source" not in filt.keys():
-                        raise ValueError("No instrument (source) specified for Stream Selector")
-                    if filt["source"] not in instr_dict.keys() and filt["source"] not in channel_dict.keys():
-                        raise ValueError("Stream Selector source {} not found among list of instruments.".format(filt["source"]))
-                    params["instrument"] = filt["source"]
+            # for name, filt in filter_dict.items():
+            #     if "StreamSelector" in filt["type"]:
+            #         params = {k: v for k,v in filt.items() if k in Channels.ReceiverChannel.__atom_members__.keys()}
+            #         params["label"]      = "RecvChan-" + name # instr_dict[filt["instrument"]]["name"] + "-" + name
+            #         params["channel"]    = str(params["channel"]) # Convert to a string
+            #         params["instrument"] = filt["source"]
+            #         params["__module__"] = "QGL.Channels"
+            #         params["__class__"]  = "ReceiverChannel"
+            #         if "source" not in filt.keys():
+            #             raise ValueError("No instrument (source) specified for Stream Selector")
+            #         if filt["source"] not in instr_dict.keys() and filt["source"] not in channel_dict.keys():
+            #             raise ValueError("Stream Selector source {} not found among list of instruments.".format(filt["source"]))
+            #         params["instrument"] = filt["source"]
 
-                    channel_dict[params["label"]] = params
+            #         channel_dict[params["label"]] = params
 
             for name, qubit in qubit_dict.items():
+                # Create a stream selector
+                rcv_inst, rcv_chan, rcv_stream = qubit["measure"]["receiver"].split()
+                rcv_params = {}
+                rcv_params["label"]      = "RecvChan-" + name + "-SS"
+                rcv_params["channel"]    = str(rcv_chan)
+                rcv_params["instrument"] = rcv_inst
+                rcv_params["__module__"] = "QGL.Channels"
+                rcv_params["__class__"]  = "ReceiverChannel"
+                channel_dict[rcv_params["label"]] = rcv_params
+
                 # Create the Qubits
                 if len(qubit["control"]["AWG"].split()) != 2:
                     print("Control AWG specification for {} ({}) must have a device, channel".format(name, qubit["control"]["AWG"]))
@@ -319,7 +329,7 @@ class ChannelLibrary(Atom):
                 ctrl_instr, ctrl_chan = qubit["control"]["AWG"].split()
                 params = {k: v for k,v in qubit["control"].items() if k in Channels.Qubit.__atom_members__.keys()}
                 params["label"]      = name
-                params["phys_chan"]   = ctrl_instr + "-" + ctrl_chan
+                params["phys_chan"]   = ctrl_instr + "-" + ctrl_chan 
                 params["__module__"] = "QGL.Channels"
                 params["__class__"]  = "Qubit"
                 channel_dict[params["label"]] = params
@@ -338,7 +348,7 @@ class ChannelLibrary(Atom):
                 params["trig_chan"]     = "digTrig-" + dig_trig
                 params["phys_chan"]     = meas_instr + "-" + meas_chan
                 params["meas_type"]     = "autodyne"
-                params["receiver_chan"] = "RecvChan-" + qubit["measure"]["receiver"]
+                params["receiver_chan"] = rcv_params["label"]
                 params["__module__"]   = "QGL.Channels"
                 params["__class__"]    = "Measurement"
                 channel_dict[params["label"]] = params
@@ -347,8 +357,8 @@ class ChannelLibrary(Atom):
 
                 # Create the receiver channels
                 if "receiver" in qubit["measure"].keys():
-                    if len(qubit["measure"]["receiver"].split()) != 1:
-                        print("Receiver specification for {} ({}) must have a stream selector".format(name, qubit["measure"]["receiver"]))
+                    if len(qubit["measure"]["receiver"].split()) != 3:
+                        print("Receiver specification for {} ({}) must have an instrument name, physical channel, and stream".format(name, qubit["measure"]["receiver"]))
                         raise ValueError("Receiver specification for {} ({}) must have a stream selector".format(name, qubit["measure"]["receiver"]))
                     phys_instr, phys_marker = dig_trig.split()
                     params = {}
