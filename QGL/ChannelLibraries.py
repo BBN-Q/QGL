@@ -259,8 +259,11 @@ class ChannelLibrary(Atom):
                             marker_lens[params["label"]] = marker["length"]
                         channel_dict[params["label"]] = params
                 if "master" in instr.keys() and instr["master"]:
-                    slave_chan = instr["slave_trig"] if "slave_trig" in instr.keys() else "slave"
-                    master_awgs.append(name + "-" + slave_chan)
+                    if instr['type'] != 'TDM':
+                        slave_chan = instr["slave_trig"] if "slave_trig" in instr.keys() else "slave"
+                        master_awgs.append(name + "-" + slave_chan)
+                    else:
+                        master_awgs.append(name)
                 # Eventually we should support multiple masters...
                 # if "slave_trig" in instr.keys():
                 #     params = {}
@@ -276,7 +279,7 @@ class ChannelLibrary(Atom):
             # APS master. This might change later.
             if len(master_awgs) > 1:
                 raise ValueError("More than one AWG is marked as master.")
-            elif len(master_awgs) == 1:
+            elif len(master_awgs) == 1  and instr_dict[master_awgs[0].split('-')[0]]['type'] != 'TDM':
                 params = {}
                 params["label"]       = "slave_trig"
                 params["phys_chan"]    = master_awgs[0]
@@ -327,7 +330,9 @@ class ChannelLibrary(Atom):
                 meas_instr, meas_chan = qubit["measure"]["AWG"].split()
                 params = {k: v for k,v in qubit["measure"].items() if k in Channels.Measurement.__atom_members__.keys()}
                 params["label"]        = "M-{}".format(name)
-                params["trig_chan"]     = "digTrig-" + qubit["measure"]["trigger"]
+                # parse the digitizer trigger from the marker dictionary, if available. If not, expected in the form Instr Ch
+                dig_trig = trigger_dict.get(qubit["measure"]["trigger"], qubit["measure"]["trigger"]) if trigger_dict else qubit["measure"]["trigger"]
+                params["trig_chan"]     = "digTrig-" + dig_trig
                 params["phys_chan"]     = meas_instr + "-" + meas_chan
                 params["meas_type"]     = "autodyne"
                 params["receiver_chan"] = "RecvChan-" + qubit["measure"]["receiver"]
@@ -342,9 +347,9 @@ class ChannelLibrary(Atom):
                     if len(qubit["measure"]["receiver"].split()) != 1:
                         print("Receiver specification for {} ({}) must have a stream selector".format(name, qubit["measure"]["receiver"]))
                         raise ValueError("Receiver specification for {} ({}) must have a stream selector".format(name, qubit["measure"]["receiver"]))
-                    phys_instr, phys_marker = qubit["measure"]["trigger"].split()
+                    phys_instr, phys_marker = dig_trig.split()
                     params = {}
-                    params["label"]        = "digTrig-" + qubit["measure"]["trigger"]
+                    params["label"]        = "digTrig-" + dig_trig
                     params["phys_chan"]     = phys_instr + "-" + phys_marker
                     if params["phys_chan"] in marker_lens.keys():
                         length = marker_lens[params["phys_chan"]]

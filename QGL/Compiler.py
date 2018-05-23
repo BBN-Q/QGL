@@ -154,11 +154,11 @@ def pull_uniform_entries(entries, entry_iterators):
         if all(iterDone):
             raise StopIteration("Unable to find a uniform set of entries")
 
-        if all(x == lengths[0] for x in lengths):
+        if all(np.isclose(x, lengths[0], atol=1e-10) for x in lengths):
             break
 
         #Otherwise try to concatenate on entries to match lengths
-        while lengths[ct] < max(lengths):
+        while not np.isclose(lengths[ct], max(lengths), atol=1e-10):
             # concatenate with following entry to make up the length difference
             try:
                 next_entry = next(entry_iterators[ct])
@@ -300,7 +300,8 @@ def compile_to_hardware(seqs,
                         fileName,
                         suffix='',
                         axis_descriptor=None,
-                        add_slave_trigger=True):
+                        add_slave_trigger=True,
+                        extra_meta=None):
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'.
     Other inputs:
@@ -365,7 +366,7 @@ def compile_to_hardware(seqs,
     num_measurements = count_measurements(wireSeqs)
     wire_measurements = count_measurements_per_wire(wireSeqs)
 
-    # map logical to physical channels, physWires is a list of 
+    # map logical to physical channels, physWires is a list of
     # PhysicalQuadratureChannels and PhysicalMarkerChannels
     # for the APS, the naming convention is:
     # ASPName-12, or APSName-12m1
@@ -390,7 +391,7 @@ def compile_to_hardware(seqs,
             old_wire_names[wire] = wire.label
             old_wire_instrs[wire] = wire.instrument
             wire.instrument = wire.label
-            wire.label = chan_name 
+            wire.label = chan_name
             files[inst_name] = {}
 
     # construct channel delay map
@@ -450,6 +451,8 @@ def compile_to_hardware(seqs,
         'axis_descriptor': axis_descriptor,
         'receivers': receiver_measurements
     }
+    if extra_meta:
+        meta.update(extra_meta)
     metafilepath = os.path.join(config.AWGDir, fileName + '-meta.json')
     with open(metafilepath, 'w') as FID:
         json.dump(meta, FID, indent=2, sort_keys=True)
@@ -524,6 +527,13 @@ def compile_sequence(seq, channels=None):
 
     logger.debug('')
     logger.debug("Sequence before normalizing:")
+    # make everything look like a sequence of pulses
+    def flatten_to_pulses(obj):
+        if isinstance(obj, Pulse):
+            yield obj
+        else:
+            for pulse in obj.pulses:
+                yield from flatten_to_pulses(pulse)
     for block in normalize(flatten(seq), channels):
         logger.debug(" %s", block)
         # labels broadcast to all channels
@@ -565,12 +575,10 @@ def compile_sequence(seq, channels=None):
                         wires[chan][-ct] = wires[chan][-ct]._replace(frameChange=updated_frameChange)
                         break
             continue
-
-        # schedule the block
+        # add the pulses per channel
         for chan in channels:
-            # add aligned Pulses (if the block contains a composite pulse, may get back multiple pulses)
-            wires[chan] += schedule(chan, block.pulses[chan], block.length,
-                                    block.alignment)
+            wires[chan] += list(flatten_to_pulses(block.pulses[chan]))
+
     debug_print(wires, 'compile_sequence() return')
 
     return wires
@@ -675,45 +683,6 @@ class Waveform(object):
     @property
     def isZero(self):
         return self.amp == 0
-
-
-def schedule(channel, pulse, blockLength, alignment):
-    '''
-    Converts a Pulse or a CompositePulses into an aligned sequence of Pulses
-    by injecting Ids before and/or after such that the resulting sequence
-    duration is `blockLength`.
-        alignment = "left", "right", or "center"
-    '''
-    # make everything look like a sequence of pulses
-    def flatten_to_pulses(obj):
-        if isinstance(obj, Pulse):
-            yield obj
-        else:
-            # TODO: change to yield from once we drop Python 2
-            for pulse in obj.pulses:
-                for p in flatten_to_pulses(pulse):
-                    yield p
-
-    pulses = list(flatten_to_pulses(pulse))
-
-    padLength = blockLength - pulse.length
-    if padLength == 0:
-        # logger.debug("   schedule on chan '%s' made no change", channel)
-        pass
-    else:
-        logger.debug("   schedule on chan '%s' adding Id len %d align %s",
-                     channel, padLength, alignment)
-    if padLength == 0:
-        # no padding element required
-        return pulses
-    elif alignment == "left":
-        return pulses + [Id(channel, padLength)]
-    elif alignment == "right":
-        return [Id(channel, padLength)] + pulses
-    else:  # center
-        return [Id(channel, padLength / 2)] + pulses + [Id(channel, padLength /
-                                                           2)]
-
 
 def validate_linklist_channels(linklistChannels):
     errors = []

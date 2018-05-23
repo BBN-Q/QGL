@@ -48,6 +48,9 @@ def drag(amp=1,
     '''
     A gaussian pulse with a drag correction on the quadrature channel.
     '''
+    if drag_scaling == -1:
+        raise ValueError(
+            'drag_scaling cannot be set equal to -1 (see open issue on GitHub).')
     #Create the gaussian along x and the derivative along y
     numPts = int(np.round(length * sampling_rate))
     xPts = np.linspace(-cutoff, cutoff, numPts)

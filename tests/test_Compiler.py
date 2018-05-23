@@ -54,14 +54,13 @@ class CompileUtils(unittest.TestCase):
         label = BlockLabel.newlabel()
         seq1 = [qwait(), label, X90(q1)]
         seq2 = [qwait(), X90(q1)]
-
         PatternUtils.add_slave_trigger([seq1], trigger)
         t = TAPulse("TRIG", trigger, trigger.pulse_params['length'], 1.0, 0.0,
                     0.0)
         assert (seq1 == [qwait(), t, label, X90(q1)])
 
         PatternUtils.add_slave_trigger([seq2], trigger)
-        assert (seq2 == [qwait(), X90(q1) * t])
+        assert (seq2 == [qwait(), align('left', X90(q1), t)])
 
     def test_concatenate_entries(self):
         q1 = self.q1
@@ -84,7 +83,7 @@ class CompileUtils(unittest.TestCase):
         entries = [next(e) for e in entryIterators]
         entries, max_length = Compiler.pull_uniform_entries(entries, entryIterators)
         self.assertAlmostEqual(max_length, 60e-9)
-        assert all(e.length == max_length for e in entries)
+        assert all(np.isclose(e.length, max_length, atol=1e-10) for e in entries)
         self.assertRaises(StopIteration, next, entryIterators[0])
 
         q2.pulse_params['length'] = 40e-9
@@ -107,7 +106,7 @@ class CompileUtils(unittest.TestCase):
         entries = [next(e) for e in entryIterators]
         entries, max_length = Compiler.pull_uniform_entries(entries, entryIterators)
         self.assertAlmostEqual(max_length, 120e-9)
-        self.assertTrue(all(e.length == max_length for e in entries))
+        self.assertTrue(all(np.isclose(e.length, max_length, atol=1e-10) for e in entries))
 
     def test_merge_channels(self):
         q1 = self.q1
@@ -119,7 +118,7 @@ class CompileUtils(unittest.TestCase):
 
         chLL = Compiler.merge_channels(ll, [q1, q2])
         assert len(chLL[0]) == len(ll[q1][0]) - 2
-        assert len(chLL[0]) == len(ll[q2][0]) - 1
+        assert len(chLL[0]) == len(ll[q2][0])
 
     def test_num_measurements(self):
         q1 = self.q1
