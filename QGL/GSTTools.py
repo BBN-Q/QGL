@@ -21,7 +21,8 @@ limitations under the License.
 '''
 from .PulsePrimitives import *
 from .Cliffords import *
-from .helpers import create_cal_seqs
+from .BasicSequences.helpers import create_cal_seqs
+from .Compiler import compile_to_hardware
 from pygsti.objects import GateString
 from itertools import chain
 from random import choices
@@ -65,14 +66,15 @@ def create_gst_sequence_from_pygsti(gst_list, qubit, gate_map=gst_gate_map):
 def pygsti_to_cliffords(gst_seq):
 
     #Map from GST convention to cliffords
-    cliff_map = {"Gi": 0,
+    cliff_map = {"{}": 0,
+                 "Gi": 1,
                  "Gx": 2,
                  "Gy": 5}
     #convert to dictionary of lambdas for compatibility with gst_map_1Q
     lambda_map = {k: lambda x, v=v: v for k, v in cliff_map.items()}
 
-    return list(chain(*gst_map_1Q(gst_seq, None, qgl_map=lambda_map,
-                                    append_meas=False)))
+    return list(chain(*[gst_map_1Q(gst_seq, None, qgl_map=lambda_map,
+                                    append_meas=False)]))
 
 def pauli_rand_clifford_circuit(gst_seq):
 
@@ -111,16 +113,30 @@ def pauli_rand_clifford_circuit(gst_seq):
 
     return r_seqs
 
-def SingleQubitCliffordGST(qubit, pygsti_seq, pulse_library="Standard", randomize=False, add_cals=True, diac_compiled=True):
+def SingleQubitCliffordGST(qubit, pygsti_seq, pulse_library="Standard", randomized=False, num_cals=100, diac_compiled=True):
 
     pulse_library = pulse_library.upper()
 
+    # QGL pulse libraries handle the Id pulse differently.  In the standard
+    # case, the Id is of finite length equal to all the other one-pulse
+    # elements of the library.  In the Atomic and DiAtomic cases, the ID is
+    # of length 0 by default.  In GST, we need access to both types of the ID
+    # gate with the first experiment in any GST experiment  equal to {} =
+    # Id(length = 0).  All other Id gates in the sequence should be of finite
+    # length.  So we'll modify the Clifford indexing here to make Id(length=0)
+    # the first element in the library and Id(length=length) the second.
     if pulse_library == "STANDARD":
-        clifford_pulse = lambda x: clifford_seq(x, qubit)
+        #clifford_pulse = lambda x: clifford_seq(x, qubit)
+        clifford_pulse = [clifford_seq(i, qubit) for i in range(24)]
+        clifford_pulse.insert(0, Id(qubit, length=0.0))
     elif pulse_library == "DIAC":
-        clifford_pulse = lambda x: DiAC(qubit, x, diac_compiled)
+        #clifford_pulse = lambda x: DiAC(qubit, x, diac_compiled)
+        clifford_pulse = [AC(qubit, i, diac_compiled) for i in range(24)]
+        clifford_pulse.insert(1, Id(qubit))
     elif pulse_library == "AC":
-        clifford_pulse = lambda x: AC(qubit, x)
+        #clifford_pulse = lambda x: AC(qubit, x)
+        clifford_pulse = [AC(qubit, i) for i in range(24)]
+        clifford_pulse.insert(1, Id(qubit))
         raise ValueError("Pulse library must be one of 'standard', 'diac', or 'ac'. Got {} instead".format(pulse_library))
 
     if randomized:
@@ -131,11 +147,11 @@ def SingleQubitCliffordGST(qubit, pygsti_seq, pulse_library="Standard", randomiz
     qgl_seqs = []
 
     for seq in seqs:
-        qgl_seqs.append([clifford_pulse(c) for c in seq])
+        qgl_seqs.append([clifford_pulse[c] for c in seq])
         qgl_seqs[-1].append(MEAS(qubit))
 
-    if add_cals:
-        qgl_seqs += create_cal_seqs((qubit, ), 2)
+    if num_cals != 0:
+        qgl_seqs += create_cal_seqs((qubit, ), abs(num_cals))
 
     metafile = compile_to_hardware(qgl_seqs, 'GST/GST')
     return metafile
