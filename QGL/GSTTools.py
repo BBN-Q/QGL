@@ -61,7 +61,7 @@ def create_gst_sequence_from_pygsti(gst_list, qubit, gate_map=gst_gate_map):
     """ Returns list of QGL sequences from a pyGSTi GateString list. See gst_map_1Q.
         The return value is a list of sequences that can be complied by QGL.
     """
-    return list(chain(*gst_map_1Q(gst_list, qubit, qgl_map=gate_map, append_meas=True)))
+    return list(gst_map_1Q(gst_list, qubit, qgl_map=gate_map, append_meas=True))
 
 def pygsti_to_cliffords(gst_seq):
 
@@ -73,8 +73,8 @@ def pygsti_to_cliffords(gst_seq):
     #convert to dictionary of lambdas for compatibility with gst_map_1Q
     lambda_map = {k: lambda x, v=v: v for k, v in cliff_map.items()}
 
-    return list(chain(*[gst_map_1Q(gst_seq, None, qgl_map=lambda_map,
-                                    append_meas=False)]))
+    return list(gst_map_1Q(gst_seq, None, qgl_map=lambda_map,
+                                    append_meas=False))
 
 def pauli_rand_clifford_circuit(gst_seq):
 
