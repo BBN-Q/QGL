@@ -174,7 +174,10 @@ def autodyne(frequency=10e6, baseShape=constant, **params):
     '''
     A pulse with modulation at a particular frequency baked in.
     '''
-    shape = baseShape(**params)
+    if isinstance(baseShape,str):
+        shape = globals()[baseShape](**params)
+    else:
+        shape = baseShape(**params)
     # Apply the autodyne frequency
     timePts = np.linspace(0, params['length'], len(shape))
     shape *= np.exp(-1j * 2 * np.pi * frequency * timePts)

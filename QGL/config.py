@@ -3,16 +3,20 @@
 import os.path
 import re
 import yaml
+from pony.orm import *
+
+# Here is a placeholder db
+db             = Database()
 
 # Where to store AWG data
-AWGDir               = None
+AWGDir         = None
 
 # The measurement file
-meas_file            = None
+meas_file      = None
 
 # plotting options
-plotBackground       = '#EAEAF2'
-gridColor            = None
+plotBackground = '#EAEAF2'
+gridColor      = None
 
 # select pulse library (standard or all90)
 pulse_primitives_lib = "standard"

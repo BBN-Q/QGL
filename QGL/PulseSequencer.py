@@ -113,7 +113,10 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
         params = copy(self.shapeParams)
         params['sampling_rate'] = self.channel.phys_chan.sampling_rate
         params.pop('shape_fun')
-        return self.shapeParams['shape_fun'](**params)
+        if isinstance(self.shapeParams['shape_fun'],str):
+            return getattr(PulseShapes, self.shapeParams['shape_fun'])(**params)
+        else:
+            return self.shapeParams['shape_fun'](**params)
 
 
 def TAPulse(label,
