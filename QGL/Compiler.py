@@ -318,6 +318,8 @@ def compile_to_hardware(seqs,
         add_slave_trigger (optional): add the slave trigger(s)
         tdm_seq (optional): compile for TDM
     '''
+    ChannelLibraries.channelLib.update_channelDict()
+
     logger.debug("Compiling %d sequence(s)", len(seqs))
 
     # save input code to file
@@ -337,8 +339,6 @@ def compile_to_hardware(seqs,
     logger.info("Adding blanking pulses")
     for seq in seqs:
         PatternUtils.add_gate_pulses(seq)
-
-    # ChannelLibraries.channelLib = {c.label: c for  c in select(c for c in Channel)}
 
     if add_slave_trigger and 'slave_trig' in ChannelLibraries.channelLib:
         # Add the slave trigger

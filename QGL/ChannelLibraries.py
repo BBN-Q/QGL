@@ -3,8 +3,10 @@ Channels is where we store information for mapping virtual (qubit) channel to
 real channels.
 
 Split from Channels.py on Jan 14, 2016.
+Moved to pony ORM from atom June 1, 2018
 
 Original Author: Colm Ryan
+Modified By: Graham Rowlands
 
 Copyright 2016 Raytheon BBN Technologies
 
@@ -33,18 +35,9 @@ import re
 import traceback
 import datetime
 import importlib
+import inspect
 from pony.orm import *
 import networkx as nx
-import yaml
-
-# FSEvents observer in watchdog cannot have multiple watchers of the same path
-# use kqueue instead
-if sys.platform == 'darwin':
-    from watchdog.observers.kqueue import KqueueObserver as Observer
-else:
-    from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-import time
 
 from . import config
 from . import Channels
@@ -62,20 +55,33 @@ def set_from_dict(obj, settings):
 
 class ChannelLibrary(object):
 
-    def __init__(self, library_file=None, blank=False, channelDict={}, **kwargs):
-        """Create the channel library. We assume that the user wants the config file in the 
-        usual locations specified in the config files."""
+    def __init__(self, database_file=":memory:", blank=False, channelDict={}, **kwargs):
+        """Create the channel library."""
 
-        # Load the basic config options from the yaml
-        self.library_file = config.load_config(library_file)
+        db = Database()
+        Channels.define_entities(db)
+        db.bind('sqlite', filename=database_file)
+        db.generate_mapping(create_tables=True)
+
+        config.load_config()
+
+        # Dirty trick: push the correct entity defs to the calling context
+        for var in ["Measurement","Qubit","Edge"]:
+            inspect.stack()[1][0].f_globals[var] = getattr(Channels, var)
+        # print(a)
+        # import ipdb; ipdb.set_trace()
 
         self.connectivityG = nx.DiGraph()
         
-        self.channelDict = {c.label: c for  c in select(c for c in Channels.Channel)}
+        # This is still somewhere legacy QGL behavior. Massage db into dict for lookup.
+        self.channelDict = {}
 
         # Update the global reference
         global channelLib
         channelLib = self
+
+    def update_channelDict(self):
+        self.channelDict = {c.label: c for  c in select(c for c in Channels.Channel)}
 
     #Dictionary methods
     def __getitem__(self, key):
@@ -301,6 +307,44 @@ class ChannelLibrary(object):
             self.connectivityG.add_edge(chan.source, chan.target)
             self.connectivityG[chan.source][chan.target]['channel'] = chan
 >>>>>>> Ditch atom, move to Pony.orm for all channel library objects.
+
+# Convenience functions for generating and linking channels
+class APS2(object):
+    def __init__(self, label):
+        self.chan12 = Channels.PhysicalQuadratureChannel(label=f"{label}-12", instrument=label, translator="APS2Pattern")
+        self.m1     = Channels.PhysicalMarkerChannel(label=f"{label}-12m1", instrument=label, translator="APS2Pattern")
+        self.m2     = Channels.PhysicalMarkerChannel(label=f"{label}-12m2", instrument=label, translator="APS2Pattern")
+        self.m3     = Channels.PhysicalMarkerChannel(label=f"{label}-12m3", instrument=label, translator="APS2Pattern")
+        self.m4     = Channels.PhysicalMarkerChannel(label=f"{label}-12m4", instrument=label, translator="APS2Pattern")
+        
+class X6(object):
+    def __init__(self, label):
+        self.chan1 = Channels.ReceiverChannel(label=f"{label}-1")
+        self.chan2 = Channels.ReceiverChannel(label=f"{label}-2")
+        available_streams = ["raw", "demodulated", "integrated", "averaged"]
+
+def new_qubit(label):
+    return Channels.Qubit(label=label)
+
+def set_control(qubit, awg):
+    qubit.phys_chan = awg.chan12
+    
+def set_measure(qubit, awg, dig, dig_channel=1, trig_channel=1, gate=False, gate_channel=2, trigger_length=1e-7):
+    meas = Channels.Measurement(label=f"M-{qubit.label}")
+    meas.phys_chan     = awg.chan12
+    
+    meas.trig_chan              = Channels.LogicalMarkerChannel(label=f"digTrig-{qubit.label}")
+    meas.trig_chan.phys_chan    = getattr(awg, f"m{trig_channel}")
+    meas.trig_chan.pulse_params = {"length": trigger_length, "shape_fun": "constant"}
+    
+    if gate:
+        meas.gate_chan           = Channels.LogicalMarkerChannel(label=f"M-{qubit.label}-gate")
+        meas.gate_chan.phys_chan = getattr(awg, f"m{gate_channel}")
+        
+def set_master(awg, trig_channel=2, pulse_length=1e-7):
+    st = Channels.LogicalMarkerChannel(label="slave_trig")
+    st.phys_chan = getattr(awg, f"m{trig_channel}")
+    st.pulse_params = {"length": pulse_length, "shape_fun": "constant"}
 
 
 def QubitFactory(label, **kwargs):
