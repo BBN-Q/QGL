@@ -745,14 +745,12 @@ def _MEAS(qubit, **kwargs):
     if 'amp' not in kwargs:
         ignoredStrParams.append('amp')
     meas_label = "MEAS_no_trig" if 'dig_trig' in kwargs and not kwargs['dig_trig'] else "MEAS"
-    return Pulse(meas_label, measChan, params, amp, 0.0, 0.0, ignoredStrParams)
-
     if 'maddr' in kwargs:
         maddr = kwargs['maddr']
     else:
         maddr = (-1, 0)
 
-    return Pulse("MEAS", measChan, params,
+    return Pulse(meas_label, measChan, params,
             amp, 0.0, 0.0, ignoredStrParams, maddr=maddr)
 
 ## Measurement operators
