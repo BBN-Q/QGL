@@ -34,14 +34,14 @@ def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False, delay=Non
         [cal_seq.append(qwait(kind='CMP')) for cal_seq in full_cal_seqs]
     return full_cal_seqs
 
-def cal_descriptor(qubits, numRepeats):
+def cal_descriptor(qubits, numRepeats, partition=2):
     states = ['0', '1']
     # generate state set in same order as we do above in create_cal_seqs()
     state_set = [reduce(operator.add, s) for s in product(states, repeat=len(qubits))]
     descriptor = {
         'name': 'calibration',
         'unit': 'state',
-        'partition': 2,
+        'partition': partition,
         'points': []
     }
     for state in state_set:

@@ -90,6 +90,11 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
 
     def __mul__(self, other):
         """ Overload multiplication of Pulses as a "tensor" operator"""
+        if not np.isclose(self.length, other.length, atol=1e-10):
+            if self.length == 0 or other.length == 0:
+                return align('left', self, other)
+            else:
+                return align('center', self, other)
         ptype = promote_type(self, other)
         return self.promote(ptype) * other.promote(ptype)
 
@@ -124,6 +129,7 @@ def TAPulse(label,
     return Pulse(label, channel, params, amp, phase, frameChange, ignoredStrParams)
 
 
+
 class CompositePulse(namedtuple("CompositePulse", ["label", "pulses"])):
     '''
     A sequential series of pulses that reside within one time bin of a pulse block
@@ -149,6 +155,11 @@ class CompositePulse(namedtuple("CompositePulse", ["label", "pulses"])):
             return CompositePulse("", self.pulses + [other])
 
     def __mul__(self, other):
+        if not np.isclose(self.length, other.length, atol=1e-10):
+            if self.length == 0 or other.length == 0:
+                return align('left', self, other)
+            else:
+                return align('center', self, other)
         ptype = promote_type(self, other)
         return self.promote(ptype) * other.promote(ptype)
 
@@ -249,17 +260,41 @@ class PulseBlock(object):
         else:
             ptype(self)
 
-def align(pulseBlock, mode="center"):
-    # make sure we have a PulseBlock
-    pulseBlock = pulseBlock.promote(PulseBlock)
-    pulseBlock.alignment = mode
-    return pulseBlock
+def align(mode="center", *pulses):
+    # Align any number of Pulses
+    # TODO: First, make everything look like a sequence of pulses
+    def flatten_to_pulses(obj):
+        if isinstance(obj, Pulse) or isinstance(obj, CompositePulse):
+            yield obj
+        else:
+            for pulse in obj.pulses.values():
+                yield from flatten_to_pulses(pulse)
+
+    pulse_lengths = np.array([pulse.length for pulse in pulses])
+    pad_lengths = max(pulse_lengths) - pulse_lengths
+    pulse_list = []
+    for k,pulse in enumerate(pulses):
+       if isinstance(pulse, PulseBlock):
+           pulse_list += list(flatten_to_pulses(pulse))
+       else:
+           pulse_list.append(pulse)
+    if max(pad_lengths) == 0:
+        # no padding element required
+        return pulses
+    elif mode == 'left':
+        return reduce(operator.mul,[p + TAPulse('Id', p.channel, max(pulse_lengths) - p.length,0) if p.length < max(pulse_lengths) else p for p in pulse_list])
+    elif mode == 'right':
+        return reduce(operator.mul,[TAPulse('Id', p.channel, max(pulse_lengths) - p.length,0) + p if p.length < max(pulse_lengths) else p for p in pulse_list])
+    elif mode == 'center':
+        return reduce(operator.mul,[TAPulse('Id', p.channel, (max(pulse_lengths) - p.length)/2,0) + p + TAPulse('Id', p.channel, (max(pulse_lengths) - p.length)/2,0) if p.length < max(pulse_lengths) else p for p in pulse_list])
+    else:
+        logger.error('Pulse alignment type must be one of left, right, or center.')
 
 class CompoundGate(object):
     '''
     A wrapper around a python list to allow us to define '*' on lists.
     Used by multi-pulse structures like CNOT_CR so that we can retain the
-    "boundaries" of the oepration.
+    "boundaries" of the operation.
     '''
     def __init__(self, seq, label=None):
         if isinstance(seq, list):
@@ -321,6 +356,11 @@ class CompoundGate(object):
     def promote(self, ptype):
         # CompoundGates cannot be promoted
         return self
+
+    @property
+    def length(self):
+        return self.seq[0].length #hack to support left-alignment e.g. for triggers). General alignment of CompoundGates not yet implemented
+        #sum(p.length for p in self.seq)
 
 def promote_type(lhs, rhs):
     '''

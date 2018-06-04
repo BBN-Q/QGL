@@ -108,7 +108,7 @@ def Utheta(qubit,
             amp = angle2amp[angle]
         else:
             # linearly scale based upon the 'pi/2' amplitude
-            amp  = (angle / pi/2) * qubit.pulse_params['pi2Amp']
+            amp  = (angle / (pi/2)) * qubit.pulse_params['pi2Amp']
     return Pulse(label, qubit, params, amp, phase, 0.0, ignoredStrParams)
 
 
@@ -717,7 +717,7 @@ def CNOT_simple(source, target, **kwargs):
 def CNOT(source, target, **kwargs):
     cnot_impl = globals()[config.cnot_implementation]
     return cnot_impl(source, target, **kwargs)
- 
+
 # The worker method for MEAS and MEASA
 def _MEAS(qubit, **kwargs):
 
@@ -744,6 +744,8 @@ def _MEAS(qubit, **kwargs):
     ignoredStrParams = ['phase', 'frameChange']
     if 'amp' not in kwargs:
         ignoredStrParams.append('amp')
+    meas_label = "MEAS_no_trig" if 'dig_trig' in kwargs and not kwargs['dig_trig'] else "MEAS"
+    return Pulse(meas_label, measChan, params, amp, 0.0, 0.0, ignoredStrParams)
 
     if 'maddr' in kwargs:
         maddr = kwargs['maddr']
@@ -801,18 +803,11 @@ def MeasEcho(qM, qD, delay, piShift=None, phase=0):
     measChan = ChannelLibraries.MeasFactory('M-%s' % qM.label)
     if piShift:
         if piShift > 0:
-            measEcho = align(
-                (MEAS(qM) + TAPulse('Id', measChan, delay, 0)) *
-                reduce(operator.mul,
-                       [Id(q, piShift) + U(q, phase=phase) for q in qD]))
+            measEcho = (MEAS(qM) + TAPulse('Id', measChan, delay, 0)) * reduce(operator.mul, [Id(q, piShift) + U(q, phase=phase) for q in qD])
         elif piShift < 0:
-            measEcho = align(
-                (MEAS(qM) + TAPulse('Id', measChan, delay, 0)) *
-                reduce(operator.mul,
-                       [U(q, phase=phase) + Id(q, -piShift) for q in qD]))
+            measEcho = (MEAS(qM) + TAPulse('Id', measChan, delay, 0)) * reduce(operator.mul, [U(q, phase=phase) + Id(q, -piShift) for q in qD])
     else:
-        measEcho = align((MEAS(qM) + TAPulse('Id', measChan, delay, 0)) *
-                         reduce(operator.mul, [U(q, phase=phase) for q in qD]))
+        measEcho = (MEAS(qM) + TAPulse('Id', measChan, delay, 0)) * reduce(operator.mul, [U(q, phase=phase) for q in qD])
     measEcho.label = 'MEAS'  #to generate the digitizer trigger
     return measEcho
 

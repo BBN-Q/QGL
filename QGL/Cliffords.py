@@ -180,10 +180,10 @@ def entangling_seq(gate, q1, q2):
     if gate == "CNOT":
         return ZX90_CR(q2, q1)
     elif gate == "iSWAP":
-        return ZX90_CR(q2, q1) + [Y90m(q1) * Y90m(q2)] + ZX90_CR(q2, q1)
+        return [ZX90_CR(q2, q1) , Y90m(q1) * Y90m(q2), ZX90_CR(q2, q1)]
     elif gate == "SWAP":
-        return ZX90_CR(q2, q1) + [Y90m(q1) * Y90m(q2)] + ZX90_CR(
-            q2, q1) + [(X90(q1) + Y90m(q1)) * X90(q2)] + ZX90_CR(q2, q1)
+        return [ZX90_CR(q2, q1), Y90m(q1) * Y90m(q2), ZX90_CR(
+            q2, q1), (X90(q1) + Y90m(q1)) * X90(q2), ZX90_CR(q2, q1)]
 
 
 def entangling_mat(gate):
