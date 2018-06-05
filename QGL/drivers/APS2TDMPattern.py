@@ -63,7 +63,7 @@ LOADCMP = 0xB
 PREFETCH = 0xC
 NOP = 0XF
 
-# APS3 prototype
+# # APS3 prototype
 CUSTOM = 0xD
 INVALIDATE = 0xE # Invalidate and WriteAddr use the same opcode
 WRITEADDR = 0xE
@@ -84,6 +84,13 @@ LESSTHAN = 0x3
 
 CMPTABLE = {'==': EQUAL, '!=': NOTEQUAL, '>': GREATERTHAN, '<': LESSTHAN}
 
+# custom OP_CODES
+TDM_MAJORITY_VOTE = 0
+TDM_MAJORITY_VOTE_SET_MASK = 1
+TDM_TSM_SET_ROUNDS = 2
+TDM_TSM = 3
+
+TDM_CUSTOM_DECODE = ["TDM_MAJORITY_VOTE", "TDM_MAJORITY_VOTE_SET_MASK", "TDM_TSM_SET_ROUNDS", "TDM_TSM"]
 
 # Whether we use PHASE_OFFSET modulation commands or bake it into waveform
 # Default to false as we usually don't have many variants
@@ -220,6 +227,9 @@ class Instruction(object):
 				   "CALL", "RET", "SYNC", "MODULATION", "LOADCMP", "PREFETCH",
 				   "CUSTOM", "WRITEADDR", "NOP"]
 
+		# list of opCodes where the reprenstation will change
+		excludeList = ["WRITEADDR", "LOADCMP"]
+
 		customOps = [
 				"MajorityVote", "MajoritySetMask", # TODO there are others...
 				]
@@ -227,7 +237,11 @@ class Instruction(object):
 		out = "{0} ".format(self.label) if self.label else ""
 
 		instrOpCode = (self.header >> 4) & 0xf
-		out += opCodes[instrOpCode]
+
+		opCodeStr = opCodes[instrOpCode]
+
+		if opCodeStr not in excludeList:
+			out += opCodeStr
 
 		if (instrOpCode == MARKER) or (instrOpCode == WFM) or (
 				instrOpCode == MODULATION):
@@ -251,9 +265,9 @@ class Instruction(object):
 			out += ", count = {}".format((self.payload >> 24) & 2**21 - 1)
 			out += ", addr = {}".format(self.payload & 2**24 - 1)
 
-			# APS3/TDM modifier to use VRAM output
-			if self.payload & (1 << 48):
-				out += ", use_vram"
+			# # APS3/TDM modifier to use VRAM output
+			# if self.payload & (1 << 48):
+			# 	out += ", use_vram"
 
 		elif instrOpCode == MARKER:
 			mrkOpCode = (self.payload >> 46) & 0x3
@@ -291,32 +305,48 @@ class Instruction(object):
 		elif instrOpCode == LOAD:
 			out += " | count = {}".format(self.payload)
 
-		elif instrOpCode == WRITEADDR:
-			if (self.header & 0xf) == 1:
-				out += ' WriteAddr(addr=0x%x, mask=0x%x)' % (
-						self.payload & 0xffff,
-						(self.payload >> 16) & 0xffffffff)
-			elif (self.header & 0xf) == 5:
-				out += ' StoreMeas(addr=0x%x, mapping=0x%x)' % (
-						self.payload & 0xffff,
-						(self.payload >> 16) & 0xffffffff)
-			else:
-				out += ' Invalidate(addr=0x%x, value=0x%x)' % (
-						self.payload & 0xffff,
-						(self.payload >> 16) & 0xffffffff)
-
 		elif instrOpCode == CUSTOM:
-			out += ' %s(src=0x%x, dst=0x%x)' % (
-					customOps[(self.payload >> 32) & 0xff],
-					(self.payload >> 16) & 0xffff,
-					self.payload & 0xffff)
+			store_addr = self.payload & 0xFFFF
+			load_addr = (self.payload >> 16) & 0xFFFF
+			instruction = (self.payload >> 32) & 0xFF
+			instructionAPS = TDM_CUSTOM_DECODE[instruction]
+			out += " | instruction = {0} ({1}), load_addr = 0x{2:0x}, store_addr = 0x{3:0x}".format(instruction, instructionAPS, load_addr, store_addr)
 
-		elif (instrOpCode == LOADCMP) and (self.payload != 0):
-			if self.payload & (1 << 48):
-				out += ' LoadCmp vram(addr=0x%x, mask=0x%x)' % (
-						self.payload & 0xffff,
-						(self.payload >> 16) & 0xffffffff)
+		elif instrOpCode == WRITEADDR:
+			addr = self.payload & 0xFFFF
+			value = (self.payload >> 16) & 0xFFFFFFFF
+			invalidate = not (self.header & 0x1)
+			mapTrigger = (self.header >> 2) & 0x1
+			writeCrossbar = (self.header >> 1) & 0x1
 
+			instrStr = "WRITEADDR "
+			valueType = "value"
+
+			if invalidate:
+				instrStr = "INVALIDATE"
+				valueType = "valid_mask"
+
+			if mapTrigger:
+				instrStr = "STOREMEAS"
+				valueType = "mapping"
+
+			if writeCrossbar:
+				instrStr = "WRITECB"
+				valuetype = "mapping"
+				addr = (self.payload >> 16) & 0xFFFF
+				value = (self.payload >> 32) & 0xFFFF
+
+			out += "{0} | addr = 0x{1:0x}, {2} = 0x{3:0x}".format(instrStr, addr, valueType, value)
+
+		elif instrOpCode == LOADCMP:
+			addr = self.payload & 0xFFFF
+			mask = (self.payload >> 16) & 0xFFFF
+			use_ram = (self.payload >> 48) & 0x1
+			if not use_ram:
+				out += "WAITMEAS"
+			else:
+				src = "RAM"
+				out += "LOADCMP | source = {0}, addr = 0x{1:0x}, read_mask = 0x{2:0x}".format(src, addr, mask)
 		return out
 
 	def __eq__(self, other):
@@ -438,7 +468,7 @@ def Prefetch(addr, label=None):
 def NoOp():
 	return Instruction.unflatten(0xffffffffffffffff)
 
-# APS3 prototype instructions
+# QGL instructions
 def Invalidate(addr, mask, label=None):
 	header = WRITEADDR << 4
 	payload = (mask << 16) | addr
