@@ -1244,7 +1244,10 @@ def tdm_instructions(seq):
 	"""
 
 	seq = list(flatten(copy(seq)))
+	instructions = list()
 
+	# start with sync. FIXME: for now, ignore subroutines. Assume that the first entry is a label
+	instructions.append(Sync(label=seq[0]))
 	# turn into a loop, by appending GOTO(0) at end of the sequence
 	if not isinstance(seq[-1], ControlFlow.Goto):
 		seq.append(ControlFlow.Goto(BlockLabel.label(seq)))
@@ -1254,7 +1257,6 @@ def tdm_instructions(seq):
 		ind_wait = min([ind for ind,s in enumerate(seq) if isinstance(s,PulseSequencer.Pulse) or isinstance(s,PulseSequencer.CompositePulse) or isinstance(s,PulseSequencer.CompoundGate) or isinstance(s,PulseSequencer.PulseBlock)])
 		seq.insert(ind_wait, ControlFlow.Wait())
 
-	instructions = list()
 
 	# the backpatch table for labels
 	label2addr = dict()
@@ -1268,12 +1270,7 @@ def tdm_instructions(seq):
 			label = s
 			continue
 
-		# FIXME: not sure if this is right...
-		# Need to put a SYNC at the beginning
-		if len(instructions) == 0:
-			instructions.append(Sync(label=label))
-
-		elif isinstance(s, ControlFlow.Wait):
+		if isinstance(s, ControlFlow.Wait):
 			instructions.append(Wait(label=label))
 		elif isinstance(s, ControlFlow.LoadCmp):
 			instructions.append(LoadCmp(label=label))
