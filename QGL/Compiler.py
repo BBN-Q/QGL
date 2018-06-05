@@ -318,7 +318,7 @@ def compile_to_hardware(seqs,
         add_slave_trigger (optional): add the slave trigger(s)
         tdm_seq (optional): compile for TDM
     '''
-    ChannelLibraries.channelLib.update_channelDict()
+    # ChannelLibraries.channelLib.update_channelDict()
 
     logger.debug("Compiling %d sequence(s)", len(seqs))
 

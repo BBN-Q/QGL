@@ -24,8 +24,10 @@ cnot_implementation  = "CNOT_simple"
 
 def load_config():
     if os.getenv('BBN_CONFIG_FILE'):
-        cfg = os.getenv("BBN_CONFIG_FILE")
-        sys.path.append(os.path.dirname(cfg))
-        importlib.import_module(os.path.splitext(os.path.basename(cfg))[0])
-    else:
-        raise Exception("Could not find the measurement file in the environment variables or the auspex globals.")
+        try:
+            cfg = os.getenv("BBN_CONFIG_FILE")
+            sys.path.append(os.path.dirname(cfg))
+            importlib.import_module(os.path.splitext(os.path.basename(cfg))[0])
+        except:
+            raise Exception("Could not find the measurement file in the environment variables or the auspex globals.")
+            

@@ -27,6 +27,7 @@ import numpy as np
 from math import tan, cos, pi
 from pony.orm import *
 from copy import deepcopy
+import datetime
 
 # Get these in global scope for module imports
 Channel = None
@@ -39,14 +40,31 @@ ReceiverChannel = None
 Measurement = None
 Qubit = None
 Edge = None
+MicrowaveSource = None
+ChannelDatabase = None
 
 def define_entities(db):
+
+    class ChannelDatabase(db.Entity):
+        label    = Required(str)
+        channels = Set("Channel")
+        sources  = Set("MicrowaveSource")
+        time     = Optional(datetime.datetime)
+
+    class MicrowaveSource(db.Entity):
+        label           = Required(str)
+        source_type     = Required(str)
+        address         = Optional(str)
+        power           = Optional(float)
+        logical_channel = Optional("PhysicalChannel")
+        channel_db      = Optional("ChannelDatabase")
 
     class Channel(db.Entity):
         '''
         Every channel has a label and some printers.
         '''
-        label   = Required(str)
+        label      = Required(str)
+        channel_db = Optional("ChannelDatabase")
 
         def __repr__(self):
             return str(self)
@@ -59,8 +77,8 @@ def define_entities(db):
         '''
         instrument      = Optional(str) # i.e. the AWG or receiver
         translator      = Optional(str)
-        generator       = Optional(str)
-        sampling_rate   = Optional(float, default=1.2e9)
+        generator       = Optional(MicrowaveSource, reverse="logical_channel")
+        sampling_rate   = Required(float, default=1.2e9)
         delay           = Required(float, default=0.0)
 
         # Required reverse connections
@@ -200,5 +218,6 @@ def define_entities(db):
     globals()["Measurement"] = Measurement
     globals()["Qubit"] = Qubit
     globals()["Edge"] = Edge
-
+    globals()["MicrowaveSource"] = MicrowaveSource
+    globals()["ChannelDatabase"] = ChannelDatabase
     

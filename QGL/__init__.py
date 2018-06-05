@@ -1,5 +1,5 @@
-from .Channels import Qubit, Measurement, Edge
-from .ChannelLibraries import QubitFactory, MeasFactory, EdgeFactory, MarkerFactory, ChannelLibrary, channelLib, APS2, X6, new_qubit, set_control, set_measure, set_master
+from .Channels import Qubit, Measurement, Edge, MicrowaveSource, ChannelDatabase
+from .ChannelLibraries import QubitFactory, MeasFactory, EdgeFactory, MarkerFactory, ChannelLibrary, channelLib, APS2, X6, new_qubit, set_control, set_measure, set_master, new_source
 from .PulsePrimitives import *
 from .Compiler import compile_to_hardware, set_log_level
 from .PulseSequencer import align
