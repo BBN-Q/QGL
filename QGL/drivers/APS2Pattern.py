@@ -1291,7 +1291,7 @@ def tdm_instructions(seq):
 	instructions = list()
 
 	# turn into a loop, by appending GOTO(0) at end of the sequence
-	seq.append(ControlFlow.Goto(BlockLabel.label(seq)))
+	seq.append(ControlFlow.Goto(BlockLabel.label(seq)))  # BlockLabel.label adds a label at the beginning of the sequence
 	logger.debug("Appending a GOTO at end to loop")
 
 	# start with sync. FIXME: for now, ignore subroutines. Assume that the first entry is a label
@@ -1309,7 +1309,7 @@ def tdm_instructions(seq):
 	label = None
 	for s in seq:
 		if isinstance(s, BlockLabel.BlockLabel):
-			label2addr[s.label] = len(instructions) - 1 # because of SYNC. FIXME
+			label2addr[s.label] = len(instructions) #FIXME this convert a label (A, B, ...) to the instruction number
 
 			# carry label forward to next entry
 			label = s
@@ -1335,7 +1335,7 @@ def tdm_instructions(seq):
 				print('STOREMEAS(channel=%s, addr=0x%x, mapping=0x%x)' %
 						(str(s.channel), s.addr, s.value))
 				instructions.append(StoreMeas(s.addr, s.value, label=label))
-			else:
+			else: # TODO: add CrossBar (no need for explicit QGL call for TDM)
 				print('UNSUPPORTED WriteAddr: %s(channel=%s, addr=0x%x, val=0x%x)' %
 						(s.instruction, str(s.channel),
 							s.addr, s.value))
@@ -1358,6 +1358,8 @@ def tdm_instructions(seq):
 						(s.instruction, s.in_addr, s.out_addr))
 
 		elif isinstance(s, ControlFlow.Goto):
+			#if s.target == 0:
+			entry = s
 			instructions.append(Goto(s.target, label=label))
 		elif isinstance(s, ControlFlow.Repeat):
 			instructions.append(Repeat(s.target, label=label))
@@ -1376,9 +1378,18 @@ def tdm_instructions(seq):
 				instructions.append(StoreMeas(s.maddr[0], 1 << 16)) #1 << s.maddr[1]))
 
 		elif isinstance(s, PulseSequencer.PulseBlock):
-			# FIXME:
-			# If this happens, we are confused. This could be a block containing multiple measurements, FIXME!
-			print('FIXME: TDM GOT MEAS PULSEBLOCK: %s' % str(s))
+			sim_meas = []
+			for k in s.pulses:
+				if s.pulses[k].label == 'MEAS' and s.pulses[k] != (-1, 0):
+					sim_meas.append(s.pulses[k])
+			if sim_meas:
+				maddr = [m.maddr[0] for m in sim_meas]
+				if len(set(maddr))>1:
+					raise Exception('Storing simultaneous measurements on different addresses not supported.')
+				for n,m in enumerate(sim_meas):
+					instructions.append(CrossBar(2**n, 2**n))
+				instructions.append(LoadCmp(label=label))
+				instructions.append(StoreMeas(maddr[0], 1 << 16))
 
 		elif isinstance(s, list):
 			# FIXME:
@@ -1386,10 +1397,8 @@ def tdm_instructions(seq):
 			print('FIXME: TDM GOT LIST: %s' % str(s))
 
 		elif isinstance(s, ControlFlow.ComparisonInstruction):
-			# branching is currently reserved to APS
-			pass
-			#instructions.append(
-			#		Cmp(CMPTABLE[s.operator], s.value, label=label))
+			instructions.append(
+					Cmp(CMPTABLE[s.operator], s.value, label=label))
 
 		else:
 			# This isn't typically an error, because the TDM ignores a
