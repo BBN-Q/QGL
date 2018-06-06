@@ -37,11 +37,11 @@ class CustomInstruction(object):
         return not self == other
 
 
-def MajorityVote(in_addr, out_addr, mask):
+def MajorityVote(in_addr, out_addr, mask): # alternatively, append the loadcmpvram instruction when compiling (see STOREMEAS)
     return [LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, mask, True), CustomInstruction('MAJORITY', in_addr, out_addr)]
 
 def MajorityMask(in_addr, out_addr):
-    return CustomInstruction('MAJORITYMASK', in_addr, out_addr)
+    return [LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, 0xffff, True), CustomInstruction('MAJORITYMASK', in_addr, out_addr)]
 
 # TODO: the rest of the CUSTOM instructions
 
@@ -73,6 +73,9 @@ def WriteAddr(addr, value, channel=None, tdm=True):
 
 def Invalidate(addr, mask, channel=None, tdm=True):
     return WriteAddrInstruction('INVALIDATE', channel, 1, addr, mask, tdm)
+
+def CrossBar(addr, value, channel=None, tdm=True): # should this be a high-level instruction though?
+    return WriteAddrInstruction('CROSSBAR', channel, 3, addr, value, tdm)
 
 def StoreMeas(addr, value, channel=None, tdm=True):
     return WriteAddrInstruction('STOREMEAS', channel, 5, addr, value, tdm)

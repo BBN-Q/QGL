@@ -480,15 +480,20 @@ def Invalidate(addr, mask, label=None):
 	header = WRITEADDR << 4
 	payload = (mask << 16) | addr
 	return Instruction(header, payload, label=label)
-#
-# def WriteAddr(addr, value, label=None):
-# 	header = (WRITEADDR << 4) | 1
-# 	payload = (value << 16) | addr
-# 	return Instruction(header, payload, label=label)
-#
+
+def WriteAddr(addr, value, label=None):
+	header = (WRITEADDR << 4) | 1
+	payload = (value << 16) | addr
+	return Instruction(header, payload, label=label)
+
 def StoreMeas(addr, mapping, label=None):
 	header = (WRITEADDR << 4) | 5
 	payload = (mapping << 16) | addr
+	return Instruction(header, payload, label=label)
+
+def CrossBar(addr, value, label=None):
+	header = (WRITEADDR << 4) | 3
+	payload = (value << 32) | (addr << 16)
 	return Instruction(header, payload, label=label)
 
 def Custom(in_addr, out_addr, custom_op, label=None):
@@ -1285,12 +1290,13 @@ def tdm_instructions(seq):
 	seq = list(flatten(copy(seq)))
 	instructions = list()
 
+	# turn into a loop, by appending GOTO(0) at end of the sequence
+	seq.append(ControlFlow.Goto(BlockLabel.label(seq)))
+	logger.debug("Appending a GOTO at end to loop")
+
 	# start with sync. FIXME: for now, ignore subroutines. Assume that the first entry is a label
 	instructions.append(Sync(label=seq[0]))
-	# turn into a loop, by appending GOTO(0) at end of the sequence
-	if not isinstance(seq[-1], ControlFlow.Goto):
-		seq.append(ControlFlow.Goto(BlockLabel.label(seq)))
-		logger.debug("Appending a GOTO at end to loop")
+
 	# add a WAIT before the first waveform FIXME: there must be a more efficient way
 	if ControlFlow.Wait not in seq:
 		ind_wait = min([ind for ind,s in enumerate(seq) if isinstance(s,PulseSequencer.Pulse) or isinstance(s,PulseSequencer.CompositePulse) or isinstance(s,PulseSequencer.CompoundGate) or isinstance(s,PulseSequencer.PulseBlock)])
@@ -1303,7 +1309,7 @@ def tdm_instructions(seq):
 	label = None
 	for s in seq:
 		if isinstance(s, BlockLabel.BlockLabel):
-			label2addr[s.label] = len(instructions)
+			label2addr[s.label] = len(instructions) - 1 # because of SYNC. FIXME
 
 			# carry label forward to next entry
 			label = s
@@ -1365,8 +1371,9 @@ def tdm_instructions(seq):
 
 		elif isinstance(s, PulseSequencer.Pulse):
 			if s.label == 'MEAS' and s.maddr != (-1, 0):
+				instructions.append(CrossBar(s.maddr[1], 0x1)) # this has to change for sim. msmt's
 				instructions.append(LoadCmp(label=label))
-				instructions.append(StoreMeas(s.maddr[0], 1 << s.maddr[1]))
+				instructions.append(StoreMeas(s.maddr[0], 1 << 16)) #1 << s.maddr[1]))
 
 		elif isinstance(s, PulseSequencer.PulseBlock):
 			# FIXME:
@@ -1379,8 +1386,10 @@ def tdm_instructions(seq):
 			print('FIXME: TDM GOT LIST: %s' % str(s))
 
 		elif isinstance(s, ControlFlow.ComparisonInstruction):
-			instructions.append(
-					Cmp(CMPTABLE[s.operator], s.value, label=label))
+			# branching is currently reserved to APS
+			pass
+			#instructions.append(
+			#		Cmp(CMPTABLE[s.operator], s.value, label=label))
 
 		else:
 			# This isn't typically an error, because the TDM ignores a
