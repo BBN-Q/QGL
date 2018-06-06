@@ -47,13 +47,14 @@ def MajorityMask(in_addr, out_addr):
 
 class WriteAddrInstruction(object):
 
-    def __init__(self, name, channel, modifier, addr, value, **kwargs):
+    def __init__(self, name, channel, modifier, addr, value, tdm, **kwargs):
         self.instruction = name
         self.channel = channel
         self.invalid = modifier
         self.addr = addr
         self.value = value
         self.kwargs = kwargs
+        self.tdm = tdm
         self.length = 0
 
     def promote(self, ptype):
@@ -67,23 +68,24 @@ class WriteAddrInstruction(object):
     def __ne__(self, other):
         return not self == other
 
-def WriteAddr(addr, value, channel=None):
-    return WriteAddrInstruction('WRITEADDR', channel, 0, addr, value)
+def WriteAddr(addr, value, channel=None, tdm=False):
+    return WriteAddrInstruction('WRITEADDR', channel, 0, addr, value, tdm)
 
-def Invalidate(addr, mask, channel=None):
-    return WriteAddrInstruction('INVALIDATE', channel, 1, addr, mask)
+def Invalidate(addr, mask, channel=None, tdm=False):
+    return WriteAddrInstruction('INVALIDATE', channel, 1, addr, mask, tdm)
 
-def StoreMeas(addr, value, channel=None):
-    return WriteAddrInstruction('STOREMEAS', channel, 5, addr, value)
+def StoreMeas(addr, value, channel=None, tdm=False):
+    return WriteAddrInstruction('STOREMEAS', channel, 5, addr, value, tdm)
 
 class LoadCmpVramInstruction(object):
 
-    def __init__(self, name, use_vram, addr, mask):
+    def __init__(self, name, use_vram, addr, mask, tdm):
         # TODO: sanity checks on input values
         self.instruction = name
         self.use_vram = use_vram
         self.mask = mask
         self.addr = addr
+        self.tdm = tdm
         self.length = 0
 
     def promote(self, ptype):
@@ -98,8 +100,10 @@ class LoadCmpVramInstruction(object):
         return not self == other
 
 
-def LoadCmpVram(addr, mask):
-    return LoadCmpVramInstruction('LOADCMPVRAM', 1, addr, mask)
+# def LoadCmpVram(addr, mask):
+#     return LoadCmpVramInstruction('LOADCMPVRAM', 1, addr, mask)
+
+def LoadCmpVram(addr, mask, channel=None, tdm=False): # this should be for APS2 only
+    return [WriteAddrInstruction('INVALIDATE', channel, 1, addr, mask, tdm), LoadCmpVramInstruction('LOADCMPVRAM', 1, addr, mask, tdm)]
 
 # TODO: are there other variants of WriteAddr?
-
