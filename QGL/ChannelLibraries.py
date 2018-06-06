@@ -54,21 +54,65 @@ def set_from_dict(obj, settings):
             except Exception as e:
                 print(f"{obj.label}: Error loading {prop_name} from config")
 
+def copy_objs(chans, srcs):
+    new_chans       = []
+    new_srcs        = []
+    old_to_new_chan = {}
+    old_to_new_src  = {}
+
+    for chan in chans:
+        c = copy_entity(chan)
+        print("Copied", chan, "to", c)
+        new_chans.append(c)
+        old_to_new_chan[chan] = c
+
+    for src in srcs:
+        c = copy_entity(src)
+        print("Copied", src, "to", c)
+        new_srcs.append(c)
+        old_to_new_src[src] = c
+
+    # # Fix links... pony updates the relationships symmetriacally so we get some for free
+    # for thing in new_chans + new_srcs:
+    #     print(f"Fixing {thing}")
+    #     for attr in thing._attrs_:
+    #         print(f"\t{attr}")
+    #         if attr:
+    #             if isinstance(getattr(thing, attr.name), Channels.Channel):
+    #                 if getattr(thing, attr.name) in old_to_new_chan.keys():
+    #                     print(f"setting {thing} {attr.name} to {old_to_new_chan[getattr(thing, attr.name)]}")
+    #                     setattr(thing, attr.name, old_to_new_chan[getattr(thing, attr.name)])
+    #             elif isinstance(getattr(thing, attr.name), Channels.MicrowaveSource):
+    #                 if getattr(thing, attr.name) in old_to_new_src.keys():
+    #                     print(f"setting {thing} {attr.name} to {old_to_new_src[getattr(thing, attr.name)]}")
+    #                     setattr(thing, attr.name, old_to_new_src[getattr(thing, attr.name)])
+
+    return new_chans, new_srcs
+
 def copy_entity(obj):
     """Copy a pony entity instance"""
     kwargs = {a.name: getattr(obj, a.name) for a in obj._attrs_}
     kwargs.pop("id")
-    kwargs.pop("classtype")
+    # kwargs.pop("classtype")
+    kwargs.pop("channel_db")
     return obj.__class__(**kwargs)
 
 class ChannelLibrary(object):
 
-    def __init__(self, channel_db_name=None, database_file=":memory:", channelDict={}, **kwargs):
+    def __init__(self, channel_db_name=None, database_file=None, channelDict={}, **kwargs):
         """Create the channel library."""
+
+        config.load_db()
+        if database_file:
+            self.database_file = database_file
+        elif config.db_file:
+            self.database_file = config.db_file
+        else:
+            self.database_file = ":memory:"
 
         db = Database()
         Channels.define_entities(db)
-        db.bind('sqlite', filename=database_file, create_db=True)
+        db.bind('sqlite', filename=self.database_file, create_db=True)
         db.generate_mapping(create_tables=True)
 
         # Dirty trick: push the correct entity defs to the calling context
@@ -84,12 +128,20 @@ class ChannelLibrary(object):
         self.channelDatabase = None
         self.channel_db_name = channel_db_name if channel_db_name else "temp"
 
+        config.load_config()
+
         self.load_most_recent()
         # config.load_config()
 
         # Update the global reference
         global channelLib
         channelLib = self
+
+    def get_current_channels(self):
+        return list(select(c for c in Channels.Channel if (c.channel_db == self.channelDatabase) or (c.channel_db is None)))
+
+    def update_channelDict(self):
+        self.channelDict = {c.label: c for c in self.get_current_channels()}
 
     def list(self):
         select((c.label, c.time, c.id) for c in Channels.ChannelDatabase).show()
@@ -128,6 +180,9 @@ class ChannelLibrary(object):
         # Get channels that are part of the currently active db, or find those that aren't yet part of a db
         chans = list(select(c for c in Channels.Channel if (c.channel_db == self.channelDatabase) or (c.channel_db is None)))
         srcs  = list(select(c for c in Channels.MicrowaveSource if (c.channel_db == self.channelDatabase) or (c.channel_db is None)))
+        
+        # chans, src = copy_objs(chans, srcs)
+
         cd = Channels.ChannelDatabase(label=name, time=datetime.datetime.now(), channels=chans, sources=srcs)
         self.channels = chans
         self.sources = srcs
@@ -424,7 +479,9 @@ def set_master(awg, trig_channel=2, pulse_length=1e-7):
 
 def QubitFactory(label, **kwargs):
     ''' Return a saved qubit channel or create a new one. '''
-    thing = select(el for el in Channels.Qubit if el.label==label).first()
+    # TODO: this will just get the first entry in the whole damned DB!
+    # thing = select(el for el in Channels.Qubit if el.label==label).first()
+    thing = {c.label: c for c in channelLib.get_current_channels()}[label]
     if thing:
         return thing
     else:
@@ -432,7 +489,7 @@ def QubitFactory(label, **kwargs):
     
 def MeasFactory(label, **kwargs):
     ''' Return a saved measurement channel or create a new one. '''
-    thing = select(el for el in Channels.Measurement if el.label==label).first()
+    thing = {c.label: c for c in channelLib.get_current_channels()}[label]
     if thing:
         return thing
     else:
@@ -440,7 +497,7 @@ def MeasFactory(label, **kwargs):
 
 def MarkerFactory(label, **kwargs):
     ''' Return a saved Marker channel or create a new one. '''
-    thing = select(el for el in Channels.LogicalMarkerChannel if el.label==label).first()
+    thing = {c.label: c for c in channelLib.get_current_channels()}[label]
     if thing:
         return thing
     else:

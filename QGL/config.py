@@ -8,8 +8,11 @@ import importlib
 # Where to store AWG data
 AWGDir         = None
 
-# The measurement file
-meas_file      = None
+# The db file, where the channel libraries are stored
+db_file        = None
+
+# The config file (executed upon channel library loading)
+config_file    = None
 
 # plotting options
 plotBackground = '#EAEAF2'
@@ -23,11 +26,16 @@ pulse_primitives_lib = "standard"
 cnot_implementation  = "CNOT_simple"
 
 def load_config():
+    global config_file
     if os.getenv('BBN_CONFIG_FILE'):
         try:
-            cfg = os.getenv("BBN_CONFIG_FILE")
-            sys.path.append(os.path.dirname(cfg))
-            importlib.import_module(os.path.splitext(os.path.basename(cfg))[0])
+            config_file = os.getenv("BBN_CONFIG_FILE")
+            sys.path.append(os.path.dirname(config_file))
+            importlib.import_module(os.path.splitext(os.path.basename(config_file))[0])
         except:
-            raise Exception("Could not find the measurement file in the environment variables or the auspex globals.")
+            raise Exception(f"Could not import/execute the BBN_CONFIG_FILE {cfg}")
             
+def load_db():
+    global db_file
+    if os.getenv('BBN_DB'):
+        db_file = os.getenv("BBN_DB")

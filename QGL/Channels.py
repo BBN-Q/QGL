@@ -138,10 +138,10 @@ def define_entities(db):
         meas_channel = Optional(LogicalChannel)
         trig_channel = Optional("Measurement")
 
-        def __init__(self, label="lm", pulse_params=None):
-            if not pulse_params:
-                pulse_params =  {'shape_fun': "constant",'length': 10e-9}
-            super(LogicalMarkerChannel, self).__init__(label=label, pulse_params=pulse_params)
+        def __init__(self, **kwargs):
+            if "pulse_params" not in kwargs.keys():
+                kwargs["pulse_params"] =  {'shape_fun': "constant",'length': 10e-9}
+            super(LogicalMarkerChannel, self).__init__(**kwargs)
 
     class Qubit(LogicalChannel):
         '''
@@ -151,16 +151,16 @@ def define_entities(db):
         edge_source = Optional("Edge", reverse="source")
         edge_target = Optional("Edge", reverse="target")
 
-        def __init__(self, label="q", pulse_params=None):
-            if not pulse_params:
-                pulse_params =  {'length': 20e-9,
+        def __init__(self, **kwargs):
+            if "pulse_params" not in kwargs.keys():
+                kwargs["pulse_params"] =  {'length': 20e-9,
                                 'piAmp': 1.0,
                                 'pi2Amp': 0.5,
                                 'shape_fun': "gaussian",
                                 'cutoff': 2,
                                 'drag_scaling': 0,
                                 'sigma': 5e-9}
-            super(Qubit, self).__init__(label=label, pulse_params=pulse_params)
+            super(Qubit, self).__init__(**kwargs)
 
     class Measurement(LogicalChannel):
         '''
@@ -175,14 +175,14 @@ def define_entities(db):
         autodyne_freq = Required(float, default=0.0)
         trig_chan     = Optional(LogicalMarkerChannel)
 
-        def __init__(self, label="m", pulse_params=None):
-            if not pulse_params:
-                pulse_params =  {'length': 100e-9,
+        def __init__(self, **kwargs):
+            if "pulse_params" not in kwargs.keys():
+                kwargs["pulse_params"] =  {'length': 100e-9,
                                     'amp': 1.0,
                                     'shape_fun': "tanh",
                                     'cutoff': 2,
                                     'sigma': 1e-9}
-            super(Measurement, self).__init__(label=label, pulse_params=pulse_params)
+            super(Measurement, self).__init__(**kwargs)
 
     class Edge(LogicalChannel):
         '''
@@ -196,17 +196,17 @@ def define_entities(db):
         source = Required(Qubit)
         target = Required(Qubit)
         
-        def __init__(self, label="e", pulse_params=None):
-            if not pulse_params:
-                pulse_params =  {'length': 20e-9,
-                                        'amp': 1.0,
-                                        'phase': 0.0,
-                                        'shape_fun': "gaussian",
-                                        'cutoff': 2,
-                                        'drag_scaling': 0,
-                                        'sigma': 5e-9,
-                                        'riseFall': 20e-9}
-            super(Edge, self).__init__(label=label, pulse_params=pulse_params)
+        def __init__(self, **kwargs):
+            if "pulse_params" not in kwargs.keys():
+                kwargs["pulse_params"] =   {'length': 20e-9,
+                                            'amp': 1.0,
+                                            'phase': 0.0,
+                                            'shape_fun': "gaussian",
+                                            'cutoff': 2,
+                                            'drag_scaling': 0,
+                                            'sigma': 5e-9,
+                                            'riseFall': 20e-9}
+            super(Edge, self).__init__(**kwargs)
 
     globals()["Channel"] = Channel
     globals()["PhysicalChannel"] = PhysicalChannel
