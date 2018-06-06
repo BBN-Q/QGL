@@ -1294,9 +1294,6 @@ def tdm_instructions(seq):
 	seq.append(ControlFlow.Goto(BlockLabel.label(seq)))  # BlockLabel.label adds a label at the beginning of the sequence
 	logger.debug("Appending a GOTO at end to loop")
 
-	# start with sync. FIXME: for now, ignore subroutines. Assume that the first entry is a label
-	instructions.append(Sync(label=seq[0]))
-
 	# add a WAIT before the first waveform FIXME: there must be a more efficient way
 	if ControlFlow.Wait not in seq:
 		ind_wait = min([ind for ind,s in enumerate(seq) if isinstance(s,PulseSequencer.Pulse) or isinstance(s,PulseSequencer.CompositePulse) or isinstance(s,PulseSequencer.CompoundGate) or isinstance(s,PulseSequencer.PulseBlock)])
@@ -1411,10 +1408,8 @@ def tdm_instructions(seq):
 		# clear label
 		label = None
 
-	# for i in range(len(instructions)):
-	#     instr_bits = instructions[i].flatten()
-	#     # instr_txt = str(Instruction.unflatten(instr_bits))
-	#     print('%5d: 0x%.16x - %s' % (i, instr_bits, str(instructions[i])))
+	#add sync at the beginning of the sequence. FIXME: for now, ignore subroutines. Assume that the first entry is a label
+	instructions.insert(0,Sync(label=seq[0]))
 
 	# backpatch any instructions that have target fields
 	#
