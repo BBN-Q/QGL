@@ -235,10 +235,6 @@ class Instruction(object):
 		# list of opCodes where the reprenstation will change
 		excludeList = ["WRITEADDR", "LOADCMP"]
 
-		customOps = [
-				"MajorityVote", "MajoritySetMask", # TODO there are others...
-				]
-
 		out = "{0} ".format(self.label) if self.label else ""
 
 		instrOpCode = (self.header >> 4) & 0xf
@@ -506,6 +502,12 @@ def MajorityVote(in_addr, out_addr, label=None):
 
 def MajorityVoteMask(in_addr, out_addr, label=None):
 	return Custom(in_addr, out_addr, 1, label=label)
+
+def DecodeSetRounds(in_addr, out_addr, label=None):
+	return Custom(in_addr, out_addr, 2, label=label)
+
+def Decode(in_addr, out_addr, label=None):
+	return Custom(in_addr, out_addr, 3, label=label)
 
 def LoadCmpVram(addr, mask, label=None):
 	header = LOADCMP << 4
@@ -1356,6 +1358,16 @@ def tdm_instructions(seqs):
 							(s.in_addr, s.out_addr))
 					instructions.append(
 							MajorityVoteMask(s.in_addr, s.out_addr, label=label))
+				elif s.instruction == 'TSM':
+					print('DECODE(in_addr=%x, out_addr=%x)' %
+							(s.in_addr, s.out_addr))
+					instructions.append(
+							Decode(s.in_addr, s.out_addr, label=label))
+				elif s.instruction == 'TSM':
+					print('DECODESETROUNDS(in_addr=%x, out_addr=%x)' %
+							(s.in_addr, s.out_addr))
+					instructions.append(
+							DecodeSetRounds(s.in_addr, s.out_addr, label=label))
 				else: #TODO: add decoder
 					print('UNSUPPORTED CUSTOM: %s(in_addr=0x%x, out_addr=0x%x)' %
 							(s.instruction, s.in_addr, s.out_addr))
