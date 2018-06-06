@@ -986,8 +986,13 @@ def resolve_symbols(seq):
 			symbols[entry.label] = ct
 	# then update
 	for entry in seq:
+	for (ct, entry) in enumerate(seq):
 		if entry.target:
-			entry.address = symbols[entry.target]
+			# find next available label. The TDM may miss some labels if branches only contain waveforms (which are ignored)
+			for k in range(len(seq)-ct):
+				temp = seq[ct+k]
+				if temp.target in symbols:
+			entry.address = symbols[temp.target]
 
 
 def compress_marker(markerLL):
@@ -1279,144 +1284,135 @@ def update_wf_library(filename, pulses, offsets):
 					MAX_WAVEFORM_VALUE * shape.imag)
 
 
-def tdm_instructions(seq):
+def tdm_instructions(seqs):
 	"""
 	Generate the TDM instructions for the given sequence.
 
 	This assumes that there is one instruction sequence, not
 	a list of them (as is generally the case elsewhere). FIXME
 	"""
-
-	seq = list(flatten(copy(seq)))
 	instructions = list()
-
+	label2addr = dict() 	# the backpatch table for labels
 	# turn into a loop, by appending GOTO(0) at end of the sequence
-	seq.append(ControlFlow.Goto(BlockLabel.label(seq)))  # BlockLabel.label adds a label at the beginning of the sequence
+	seqs[-1].append(ControlFlow.Goto(BlockLabel.label(seqs[0])))  # BlockLabel.label adds a label at the beginning of the sequence
 	logger.debug("Appending a GOTO at end to loop")
+	for seq in seqs:
+		seq = list(flatten(copy(seq)))
 
-	# add a WAIT before the first waveform FIXME: there must be a more efficient way
-	if ControlFlow.Wait not in seq:
-		ind_wait = min([ind for ind,s in enumerate(seq) if isinstance(s,PulseSequencer.Pulse) or isinstance(s,PulseSequencer.CompositePulse) or isinstance(s,PulseSequencer.CompoundGate) or isinstance(s,PulseSequencer.PulseBlock)])
-		seq.insert(ind_wait, ControlFlow.Wait())
+		#add sync at the beginning of the sequence. FIXME: for now, ignore subroutines. Assume that the first entry is a label
+		instructions.append(Sync(label=seq[0]))
 
 
-	# the backpatch table for labels
-	label2addr = dict()
+		# add a WAIT before the first waveform FIXME: there must be a more efficient way
+		if ControlFlow.Wait not in seq:
+			ind_wait = min([ind for ind,s in enumerate(seq) if isinstance(s,PulseSequencer.Pulse) or isinstance(s,PulseSequencer.CompositePulse) or isinstance(s,PulseSequencer.CompoundGate) or isinstance(s,PulseSequencer.PulseBlock)])
+			seq.insert(ind_wait, ControlFlow.Wait())
 
-	label = None
-	for s in seq:
-		if isinstance(s, BlockLabel.BlockLabel):
-			label2addr[s.label] = len(instructions) #FIXME this convert a label (A, B, ...) to the instruction number
 
-			# carry label forward to next entry
-			label = s
-			continue
+		label = None
+		for s in seq:
+			if isinstance(s, BlockLabel.BlockLabel):
+				#label2addr[s.label] = len(instructions) #FIXME this convert a label (A, B, ...) to the instruction number, i.e. the address (typically)
 
-		if isinstance(s, ControlFlow.Wait):
-			instructions.append(Wait(label=label))
-		elif isinstance(s, ControlFlow.LoadCmp):
-			instructions.append(LoadCmp(label=label))
-
-		elif isinstance(s, TdmInstructions.WriteAddrInstruction) and s.tdm == True:
-			if s.instruction == 'INVALIDATE':
-				print('o INVALIDATE(channel=%s, addr=0x%x, mask=0x%x)' %
-						(str(s.channel), s.addr, s.value))
-				instructions.append(Invalidate(s.addr, s.value, label=label))
-
-			elif s.instruction == 'WRITEADDR':
-				print('o WRITEADDR(channel=%s, addr=0x%x, value=0x%x)' %
-						(str(s.channel), s.addr, s.value))
-				instructions.append(WriteAddr(s.addr, s.value, label=label))
-
-			elif s.instruction == 'STOREMEAS':
-				print('STOREMEAS(channel=%s, addr=0x%x, mapping=0x%x)' %
-						(str(s.channel), s.addr, s.value))
-				instructions.append(StoreMeas(s.addr, s.value, label=label))
-			else: # TODO: add CrossBar (no need for explicit QGL call for TDM)
-				print('UNSUPPORTED WriteAddr: %s(channel=%s, addr=0x%x, val=0x%x)' %
-						(s.instruction, str(s.channel),
-							s.addr, s.value))
+				# carry label forward to next entry
+				label = s
 				continue
 
-		elif isinstance(s, TdmInstructions.CustomInstruction):
-
-			if s.instruction == 'MAJORITY':
-				print('MAJORITY(in_addr=%x, out_addr=%x)' %
-						(s.in_addr, s.out_addr))
-				instructions.append(
-						MajorityVote(s.in_addr, s.out_addr, label=label))
-			elif s.instruction == 'MAJORITYMASK':
-				print('MAJORITYMASK(in_addr=%x, out_addr=%x)' %
-						(s.in_addr, s.out_addr))
-				instructions.append(
-						MajorityVoteMask(s.in_addr, s.out_addr, label=label))
-			else: #TODO: add decoder
-				print('UNSUPPORTED CUSTOM: %s(in_addr=0x%x, out_addr=0x%x)' %
-						(s.instruction, s.in_addr, s.out_addr))
-
-		elif isinstance(s, ControlFlow.Goto):
-			#if s.target == 0:
-			entry = s
-			instructions.append(Goto(s.target, label=label))
-		elif isinstance(s, ControlFlow.Repeat):
-			instructions.append(Repeat(s.target, label=label))
-		elif isinstance(s, ControlFlow.LoadRepeat):
-			instructions.append(Load(s.value - 1, label=label))
-
-		elif isinstance(s, TdmInstructions.LoadCmpVramInstruction):
-			if s.instruction == 'LOADCMPVRAM' and s.tdm == True:
-				instructions.append(
-						LoadCmpVram(s.addr, s.mask, label=label))
-
-		elif isinstance(s, PulseSequencer.Pulse):
-			if s.label == 'MEAS' and s.maddr != (-1, 0):
-				instructions.append(CrossBar(s.maddr[1], 0x1)) # this has to change for sim. msmt's
+			if isinstance(s, ControlFlow.Wait):
+				instructions.append(Wait(label=label))
+			elif isinstance(s, ControlFlow.LoadCmp):
 				instructions.append(LoadCmp(label=label))
-				instructions.append(StoreMeas(s.maddr[0], 1 << 16)) #1 << s.maddr[1]))
 
-		elif isinstance(s, PulseSequencer.PulseBlock):
-			sim_meas = []
-			for k in s.pulses:
-				if s.pulses[k].label == 'MEAS' and s.pulses[k] != (-1, 0):
-					sim_meas.append(s.pulses[k])
-			if sim_meas:
-				maddr = [m.maddr[0] for m in sim_meas]
-				if len(set(maddr))>1:
-					raise Exception('Storing simultaneous measurements on different addresses not supported.')
-				for n,m in enumerate(sim_meas):
-					instructions.append(CrossBar(2**n, 2**n))
-				instructions.append(LoadCmp(label=label))
-				instructions.append(StoreMeas(maddr[0], 1 << 16))
+			elif isinstance(s, TdmInstructions.WriteAddrInstruction) and s.tdm == True:
+				if s.instruction == 'INVALIDATE':
+					print('o INVALIDATE(channel=%s, addr=0x%x, mask=0x%x)' %
+							(str(s.channel), s.addr, s.value))
+					instructions.append(Invalidate(s.addr, s.value, label=label))
 
-		elif isinstance(s, list):
-			# FIXME:
-			# If this happens, we are confused.
-			print('FIXME: TDM GOT LIST: %s' % str(s))
+				elif s.instruction == 'WRITEADDR':
+					print('o WRITEADDR(channel=%s, addr=0x%x, value=0x%x)' %
+							(str(s.channel), s.addr, s.value))
+					instructions.append(WriteAddr(s.addr, s.value, label=label))
 
-		elif isinstance(s, ControlFlow.ComparisonInstruction):
-			instructions.append(
-					Cmp(CMPTABLE[s.operator], s.value, label=label))
+				elif s.instruction == 'STOREMEAS':
+					print('STOREMEAS(channel=%s, addr=0x%x, mapping=0x%x)' %
+							(str(s.channel), s.addr, s.value))
+					instructions.append(StoreMeas(s.addr, s.value, label=label))
+				else: # TODO: add CrossBar (no need for explicit QGL call for TDM)
+					print('UNSUPPORTED WriteAddr: %s(channel=%s, addr=0x%x, val=0x%x)' %
+							(s.instruction, str(s.channel),
+								s.addr, s.value))
+					continue
 
-		else:
-			# This isn't typically an error, because the TDM ignores a
-			# lot of instructions, but until this is debugged it's handy
-			# to see what's falling through.
+			elif isinstance(s, TdmInstructions.CustomInstruction):
 
-			# FIXME: We're missing a lot of control-flow instructions
-			print('OOPS: unhandled [%s]' % str(type(s)))
+				if s.instruction == 'MAJORITY':
+					print('MAJORITY(in_addr=%x, out_addr=%x)' %
+							(s.in_addr, s.out_addr))
+					instructions.append(
+							MajorityVote(s.in_addr, s.out_addr, label=label))
+				elif s.instruction == 'MAJORITYMASK':
+					print('MAJORITYMASK(in_addr=%x, out_addr=%x)' %
+							(s.in_addr, s.out_addr))
+					instructions.append(
+							MajorityVoteMask(s.in_addr, s.out_addr, label=label))
+				else: #TODO: add decoder
+					print('UNSUPPORTED CUSTOM: %s(in_addr=0x%x, out_addr=0x%x)' %
+							(s.instruction, s.in_addr, s.out_addr))
 
-		# clear label
-		label = None
+			elif isinstance(s, ControlFlow.Goto):
+				instructions.append(Goto(s.target, label=label))
+			elif isinstance(s, ControlFlow.Repeat):
+				instructions.append(Repeat(s.target, label=label))
+			elif isinstance(s, ControlFlow.LoadRepeat):
+				instructions.append(Load(s.value - 1, label=label))
 
-	#add sync at the beginning of the sequence. FIXME: for now, ignore subroutines. Assume that the first entry is a label
-	instructions.insert(0,Sync(label=seq[0]))
+			elif isinstance(s, TdmInstructions.LoadCmpVramInstruction):
+				if s.instruction == 'LOADCMPVRAM' and s.tdm == True:
+					instructions.append(
+							LoadCmpVram(s.addr, s.mask, label=label))
 
-	# backpatch any instructions that have target fields
-	#
-	for i in instructions:
-		if i.target:
-			i.payload = label2addr[i.target.label]
+			elif isinstance(s, PulseSequencer.Pulse):
+				if s.label == 'MEAS' and s.maddr != (-1, 0):
+					instructions.append(CrossBar(s.maddr[1], 0x1)) # this has to change for sim. msmt's
+					instructions.append(LoadCmp(label=label))
+					instructions.append(StoreMeas(s.maddr[0], 1 << 16)) #1 << s.maddr[1]))
 
+			elif isinstance(s, PulseSequencer.PulseBlock):
+				sim_meas = []
+				for k in s.pulses:
+					if s.pulses[k].label == 'MEAS' and s.pulses[k] != (-1, 0):
+						sim_meas.append(s.pulses[k])
+				if sim_meas:
+					maddr = [m.maddr[0] for m in sim_meas]
+					if len(set(maddr))>1:
+						raise Exception('Storing simultaneous measurements on different addresses not supported.')
+					for n,m in enumerate(sim_meas):
+						instructions.append(CrossBar(2**n, 2**n))
+					instructions.append(LoadCmp(label=label))
+					instructions.append(StoreMeas(maddr[0], 1 << 16))
+
+			elif isinstance(s, list):
+				# FIXME:
+				# If this happens, we are confused.
+				print('FIXME: TDM GOT LIST: %s' % str(s))
+
+			elif isinstance(s, ControlFlow.ComparisonInstruction):
+				instructions.append(
+						Cmp(CMPTABLE[s.operator], s.value, label=label))
+
+			else:
+				# This isn't typically an error, because the TDM ignores a
+				# lot of instructions, but until this is debugged it's handy
+				# to see what's falling through.
+
+				# FIXME: We're missing a lot of control-flow instructions
+				print('OOPS: unhandled [%s]' % str(type(s)))
+
+			# clear label
+			label = None
+
+	resolve_symbols(instructions)
 	return [i.flatten() for i in instructions]
 
 # Utility Functions for displaying programs
