@@ -985,13 +985,13 @@ def resolve_symbols(seq):
 		if entry.label and entry.label not in symbols:
 			symbols[entry.label] = ct
 	# then update
-	for entry in seq:
 	for (ct, entry) in enumerate(seq):
 		if entry.target:
 			# find next available label. The TDM may miss some labels if branches only contain waveforms (which are ignored)
 			for k in range(len(seq)-ct):
 				temp = seq[ct+k]
 				if temp.target in symbols:
+					break
 			entry.address = symbols[temp.target]
 
 
