@@ -37,8 +37,8 @@ class CustomInstruction(object):
         return not self == other
 
 
-def MajorityVote(in_addr, out_addr):
-    return CustomInstruction('MAJORITY', in_addr, out_addr)
+def MajorityVote(in_addr, out_addr, mask):
+    return [LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, mask, True), CustomInstruction('MAJORITY', in_addr, out_addr)]
 
 def MajorityMask(in_addr, out_addr):
     return CustomInstruction('MAJORITYMASK', in_addr, out_addr)
@@ -68,13 +68,13 @@ class WriteAddrInstruction(object):
     def __ne__(self, other):
         return not self == other
 
-def WriteAddr(addr, value, channel=None, tdm=False):
+def WriteAddr(addr, value, channel=None, tdm=True):
     return WriteAddrInstruction('WRITEADDR', channel, 0, addr, value, tdm)
 
-def Invalidate(addr, mask, channel=None, tdm=False):
+def Invalidate(addr, mask, channel=None, tdm=True):
     return WriteAddrInstruction('INVALIDATE', channel, 1, addr, mask, tdm)
 
-def StoreMeas(addr, value, channel=None, tdm=False):
+def StoreMeas(addr, value, channel=None, tdm=True):
     return WriteAddrInstruction('STOREMEAS', channel, 5, addr, value, tdm)
 
 class LoadCmpVramInstruction(object):

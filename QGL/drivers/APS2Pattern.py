@@ -490,18 +490,18 @@ def StoreMeas(addr, mapping, label=None):
 	header = (WRITEADDR << 4) | 5
 	payload = (mapping << 16) | addr
 	return Instruction(header, payload, label=label)
-#
-# def Custom(in_addr, out_addr, custom_op, label=None):
-# 	header = CUSTOM << 4
-# 	payload = (custom_op << 32) | (in_addr << 16) | out_addr
-# 	return Instruction(header, payload, label=label)
-#
-# def MajorityVote(in_addr, out_addr, label=None):
-# 	return Custom(in_addr, out_addr, 0, label=label)
-#
-# def MajorityVoteMask(in_addr, out_addr, label=None):
-# 	return Custom(in_addr, out_addr, 1, label=label)
-#
+
+def Custom(in_addr, out_addr, custom_op, label=None):
+	header = CUSTOM << 4
+	payload = (custom_op << 32) | (in_addr << 16) | out_addr
+	return Instruction(header, payload, label=label)
+
+def MajorityVote(in_addr, out_addr, label=None):
+	return Custom(in_addr, out_addr, 0, label=label)
+
+def MajorityVoteMask(in_addr, out_addr, label=None):
+	return Custom(in_addr, out_addr, 1, label=label)
+
 def LoadCmpVram(addr, mask, label=None):
 	header = LOADCMP << 4
 	payload = (1 << 48) | (mask << 16) | addr
