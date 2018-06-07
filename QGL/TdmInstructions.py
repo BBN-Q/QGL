@@ -41,13 +41,13 @@ def MajorityVote(in_addr, out_addr, mask): # alternatively, append the loadcmpvr
     return [LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, mask, True), CustomInstruction('MAJORITY', in_addr, out_addr)]
 
 def MajorityMask(in_addr, out_addr, value):
-    return [WriteAddrInstruction('WRITEADDR', None, 0, in_addr, value, True), LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, 0xffff, True), CustomInstruction('MAJORITYMASK', in_addr, out_addr)]
+    return [WriteAddrInstruction('INVALIDATE', None, 1, in_addr, 0x0, True), WriteAddrInstruction('WRITEADDR', None, 0, in_addr, value, True), LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, 0xffff, True), CustomInstruction('MAJORITYMASK', in_addr, out_addr)]
 
 def Decode(in_addr, out_addr, mask):
     return [LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, mask, True), CustomInstruction('TSM', in_addr, out_addr)]
 
 def DecodeSetRounds(in_addr, out_addr, value):
-    return [WriteAddrInstruction('WRITEADDR', None, 0, in_addr, value, True), LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, 0xffff, True), CustomInstruction('TSM_SET_ROUNDS', in_addr, out_addr)]
+    return [WriteAddrInstruction('INVALIDATE', None, 1, in_addr, 0x0, True), WriteAddrInstruction('WRITEADDR', None, 0, in_addr, value, True), LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, 0xffff, True), CustomInstruction('TSM_SET_ROUNDS', in_addr, out_addr)]
 
 # TODO: the rest of the CUSTOM instructions
 
