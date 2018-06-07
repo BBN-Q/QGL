@@ -1393,7 +1393,7 @@ def tdm_instructions(seqs):
 			elif isinstance(s, PulseSequencer.PulseBlock):
 				sim_meas = []
 				for k in s.pulses:
-					if s.pulses[k].label == 'MEAS' and s.pulses[k] != (-1, 0):
+					if s.pulses[k].label == 'MEAS' and s.pulses[k].maddr != (-1, 0):
 						sim_meas.append(s.pulses[k])
 				if sim_meas:
 					maddr = [m.maddr[0] for m in sim_meas]
