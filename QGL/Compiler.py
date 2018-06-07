@@ -435,6 +435,15 @@ def compile_to_hardware(seqs,
         else:
             files[awgName] = fullFileName
 
+    # generate TDM sequences FIXME: what's the best way to identify the need for a TDM seq.? Support for single TDM
+    if 'APS2Pattern' in [wire.translator for wire in physWires]:
+        aps2tdm_module = import_module('QGL.drivers.APS2Pattern') # this is redundant with above
+        tdm_instr = aps2tdm_module.tdm_instructions(seqs)
+        files['TDM'] = os.path.normpath(os.path.join(
+            config.AWGDir, fileName + '-' + 'TDM' + suffix + data[
+                'seqFileExt']))
+        aps2tdm_module.write_tdm_seq(files['TDM'])
+
     # create meta output
     if not axis_descriptor:
         axis_descriptor = [{
