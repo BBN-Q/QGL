@@ -1421,7 +1421,7 @@ def tdm_instructions(seqs):
     return np.fromiter((instr.flatten() for instr in instructions), np.uint64,
                        len(instructions))
 
-def write_tdm_seq(seq, tdm_filename):
+def write_tdm_seq(seq, tdm_fileName):
     #Open the HDF5 file
     if os.path.isfile(tdm_fileName):
         os.remove(tdm_fileName)
@@ -1434,7 +1434,7 @@ def write_tdm_seq(seq, tdm_filename):
         #Create the groups and datasets
         chanStr = '/chan_{0}'.format(1)
         chanGroup = FID.create_group(chanStr)
-        FID.create_dataset(chanStr + '/instructions', data=tdm_instr)
+        FID.create_dataset(chanStr + '/instructions', data=seq)
 
 # Utility Functions for displaying programs
 

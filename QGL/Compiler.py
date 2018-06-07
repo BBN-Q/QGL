@@ -442,7 +442,7 @@ def compile_to_hardware(seqs,
         files['TDM'] = os.path.normpath(os.path.join(
             config.AWGDir, fileName + '-' + 'TDM' + suffix + data[
                 'seqFileExt']))
-        aps2tdm_module.write_tdm_seq(files['TDM'])
+        aps2tdm_module.write_tdm_seq(tdm_instr, files['TDM'])
 
     # create meta output
     if not axis_descriptor:
