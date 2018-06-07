@@ -77,7 +77,9 @@ def merge_channels(wires, channels):
                 break
             # control flow on any channel should pass thru
             if any(isinstance(e, (ControlFlow.ControlInstruction,
-                                  BlockLabel.BlockLabel)) for e in entries):
+                                  BlockLabel.BlockLabel, TdmInstructions.WriteAddrInstruction,
+                                  TdmInstructions.CustomInstruction,
+                                  TdmInstructions.LoadCmpVramInstruction)) for e in entries):
                 # for the moment require uniform control flow so that we
                 # can pull from the first channel
                 assert all(e == entries[0]

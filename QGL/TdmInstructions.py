@@ -40,14 +40,14 @@ class CustomInstruction(object):
 def MajorityVote(in_addr, out_addr, mask): # alternatively, append the loadcmpvram instruction when compiling (see STOREMEAS)
     return [LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, mask, True), CustomInstruction('MAJORITY', in_addr, out_addr)]
 
-def MajorityMask(in_addr, out_addr):
-    return [LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, 0xffff, True), CustomInstruction('MAJORITYMASK', in_addr, out_addr)]
+def MajorityMask(in_addr, out_addr, value):
+    return [WriteAddrInstruction('WRITEADDR', None, 0, in_addr, value, True), LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, 0xffff, True), CustomInstruction('MAJORITYMASK', in_addr, out_addr)]
 
 def Decode(in_addr, out_addr, mask):
     return [LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, mask, True), CustomInstruction('TSM', in_addr, out_addr)]
 
-def DecodeSetRounds(in_addr, out_addr):
-    return [LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, 0xffff, True), CustomInstruction('TSM_SET_ROUNDS', in_addr, out_addr)]
+def DecodeSetRounds(in_addr, out_addr, value):
+    return [WriteAddrInstruction('WRITEADDR', None, 0, in_addr, value, True), LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, 0xffff, True), CustomInstruction('TSM_SET_ROUNDS', in_addr, out_addr)]
 
 # TODO: the rest of the CUSTOM instructions
 
@@ -114,5 +114,3 @@ class LoadCmpVramInstruction(object):
 
 def LoadCmpVram(addr, mask, channel=None, tdm=False): # this should be for APS2 only
     return [WriteAddrInstruction('INVALIDATE', channel, 1, addr, mask, tdm), LoadCmpVramInstruction('LOADCMPVRAM', 1, addr, mask, tdm)]
-
-# TODO: are there other variants of WriteAddr?
