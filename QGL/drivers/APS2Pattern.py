@@ -1420,9 +1420,6 @@ def tdm_instructions(seqs):
 				# FIXME: We're missing a lot of control-flow instructions
 				print('OOPS: unhandled [%s]' % str(type(s)))
 
-			# clear label
-			label = None
-
 	resolve_symbols(instructions)
 	return [i.flatten() for i in instructions]
 
