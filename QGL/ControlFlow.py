@@ -2,6 +2,7 @@ from .BlockLabel import newlabel, label, endlabel
 from .PulseSequencer import Pulse
 from functools import wraps
 from .mm import multimethod
+from .TdmInstructions import WriteAddrInstruction, LoadCmpVramInstruction
 
 ## QGL control-flow statements ##
 
@@ -83,14 +84,19 @@ def repeatall(n, seqs):
     return seqs
 
 
-def qwait(channels=None, kind="TRIG"):
+def qwait(kind="TRIG", addr=None, mask=None, channels=None):
     '''
     Insert a WAIT or LOADCMP command on the target channels (an iterable, or None)
     '''
     if kind == "TRIG":
         return Wait(channels)
-    else:
+    elif kind == "EXT":
         return LoadCmp(channels)
+    elif kind == "RAM":
+        if not addr or not mask:
+            raise Exception('Please specify address and mask')
+        return [WriteAddrInstruction('INVALIDATE', None, 1, addr, mask, False), LoadCmpVramInstruction('LOADCMPVRAM', 1, addr, mask, False)]
+
 
 
 def qsync(channels=None):
@@ -216,4 +222,3 @@ class Barrier(ControlInstruction):
     def __str__(self):
         base = "BARRIER({0})".format(self.chanlist)
         return base
-

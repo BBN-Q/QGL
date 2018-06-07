@@ -10,4 +10,4 @@ from .PulseSequencePlotter import plot_pulse_files
 from .Tomography import state_tomo, process_tomo
 from .Scheduler import schedule
 
-from .TdmInstructions import MajorityMask, MajorityVote, WriteAddr, Invalidate, LoadCmpVram, Decode, DecodeSetRounds
+from .TdmInstructions import MajorityMask, MajorityVote, WriteAddr, Invalidate, Decode, DecodeSetRounds
