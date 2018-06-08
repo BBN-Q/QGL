@@ -90,7 +90,7 @@ def qwait(kind="TRIG", addr=None, mask=None, channels=None):
     '''
     if kind == "TRIG":
         return Wait(channels)
-    elif kind == "EXT":
+    elif kind == "CMP":
         return LoadCmp(channels)
     elif kind == "RAM":
         if not addr or not mask:
