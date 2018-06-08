@@ -111,6 +111,3 @@ class LoadCmpVramInstruction(object):
 
 # def LoadCmpVram(addr, mask):
 #     return LoadCmpVramInstruction('LOADCMPVRAM', 1, addr, mask)
-
-def LoadCmpVram(addr, mask, channel=None, tdm=False): # this should be for APS2 only
-    return [WriteAddrInstruction('INVALIDATE', channel, 1, addr, mask, tdm), LoadCmpVramInstruction('LOADCMPVRAM', 1, addr, mask, tdm)]
