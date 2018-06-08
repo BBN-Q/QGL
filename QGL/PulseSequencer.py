@@ -221,7 +221,8 @@ class PulseBlock(object):
             return rhs * self
         # otherwise, we are promoting to a PulseBlock
         rhs = rhs.promote(ptype)
-
+        if not np.isclose(self.length, rhs.length, atol=1e-10):
+            return align('center', self, rhs)
         # copy PulseBlock so we don't modify other references
         result = copy(self)
         result.pulses = copy(self.pulses)
