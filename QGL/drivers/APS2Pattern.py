@@ -1427,7 +1427,7 @@ def write_tdm_seq(seq, tdm_fileName):
         os.remove(tdm_fileName)
     with h5py.File(tdm_fileName, 'w') as FID:
         FID['/'].attrs['Version'] = 5.0
-        FID['/'].attrs['target hardware'] = 'TDM'
+        FID['/'].attrs['target hardware'] = 'APS2'
         FID['/'].attrs['minimum firmware version'] = 5.0
         FID['/'].attrs['channelDataFor'] = np.uint16([1, 2])
 
