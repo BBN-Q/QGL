@@ -639,7 +639,7 @@ def inject_modulation_cmds(seqs):
             if isinstance(entry, BlockLabel.BlockLabel):
                 mod_seq.append(copy(entry))
             #mostly copy through control-flow
-            elif isinstance(entry, ControlFlow.ControlInstruction):
+            elif isinstance(entry, ControlFlow.ControlInstruction) or isinstance(entry, TdmInstructions.LoadCmpVramInstruction):
                 #heuristic to insert phase reset before trigger if we have modulation commands
                 if isinstance(entry, ControlFlow.Wait):
                     if not ( no_modulation_cmds and (cur_freq == 0) and (cur_phase == 0)):
