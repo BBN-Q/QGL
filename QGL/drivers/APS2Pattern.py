@@ -1429,12 +1429,16 @@ def write_tdm_seq(seq, tdm_fileName):
         FID['/'].attrs['Version'] = 5.0
         FID['/'].attrs['target hardware'] = 'TDM'
         FID['/'].attrs['minimum firmware version'] = 5.0
-        FID['/'].attrs['channelDataFor'] = np.uint16([1])
+        FID['/'].attrs['channelDataFor'] = np.uint16([1, 2])
 
         #Create the groups and datasets
-        chanStr = '/chan_{0}'.format(1)
-        chanGroup = FID.create_group(chanStr)
-        FID.create_dataset(chanStr + '/instructions', data=seq)
+        for chanct in range(2):
+            chanStr = '/chan_{0}'.format(chanct + 1)
+            chanGroup = FID.create_group(chanStr)
+            FID.create_dataset(chanStr + '/waveforms', data=np.uint16([]))
+            #Write the instructions to channel 1
+            if np.mod(chanct, 2) == 0:
+                FID.create_dataset(chanStr + '/instructions', data=seq)
 
 # Utility Functions for displaying programs
 
