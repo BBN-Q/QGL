@@ -136,7 +136,7 @@ def BitFlip3(data_qs, ancilla_qs, theta=None, phi=None, nrounds=1, meas_delay=1e
         seqs+=[CNOT(data_qs[0],ancilla_qs[0])*CNOT(data_qs[1],ancilla_qs[1])],
         seqs+=[CNOT(data_qs[1], ancilla_qs[0])*CNOT(data_qs[2],ancilla_qs[1])],
         seqs+= [MEASA(ancilla_qs[0], maddr=(10,2*k+1))*MEASA(ancilla_qs[1], maddr=(10,2*k+2)),
-        Id(ancilla_qs[0], meas_delay)*
+        Id(ancilla_qs[0], meas_delay),
         MEAS(data_qs[0],amp=0)*MEAS(data_qs[1],amp=0)*MEAS(data_qs[2],amp=0)] # virtual msmt's just to keep the number of segments uniform across digitizer channels
     seqs+=Decode(10, 11, 2**nrounds-1)
     seqs+=qwait("RAM",11, 1)
