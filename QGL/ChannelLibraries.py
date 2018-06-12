@@ -113,6 +113,10 @@ class ChannelLibrary(object):
     def __init__(self, channel_db_name=None, database_file=None, channelDict={}, **kwargs):
         """Create the channel library."""
 
+        global channelLib
+        if channelLib is not None:
+            channelLib.db.disconnect()
+
         config.load_db()
         if database_file:
             self.database_file = database_file
@@ -121,10 +125,10 @@ class ChannelLibrary(object):
         else:
             self.database_file = ":memory:"
 
-        db = Database()
-        Channels.define_entities(db)
-        db.bind('sqlite', filename=self.database_file, create_db=True)
-        db.generate_mapping(create_tables=True)
+        self.db = Database()
+        Channels.define_entities(self.db)
+        self.db.bind('sqlite', filename=self.database_file, create_db=True)
+        self.db.generate_mapping(create_tables=True)
 
         # Dirty trick: push the correct entity defs to the calling context
         for var in ["Measurement","Qubit","Edge"]:
@@ -145,7 +149,6 @@ class ChannelLibrary(object):
         # config.load_config()
 
         # Update the global reference
-        global channelLib
         channelLib = self
 
     def get_current_channels(self):
