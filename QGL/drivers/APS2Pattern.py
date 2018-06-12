@@ -1304,11 +1304,6 @@ def tdm_instructions(seqs):
 
         #add sync at the beginning of the sequence. FIXME: for now, ignore subroutines. Assume that the first entry is a label
         instructions.append(Sync(label=label))
-        # add a WAIT before the first waveform FIXME: there must be a more efficient way
-        if ControlFlow.Wait not in seq:
-            ind_wait = min([ind for ind,s in enumerate(seq) if isinstance(s,PulseSequencer.Pulse) or isinstance(s,PulseSequencer.CompositePulse) or isinstance(s,PulseSequencer.CompoundGate) or isinstance(s,PulseSequencer.PulseBlock)])
-            seq.insert(ind_wait, ControlFlow.Wait())
-
 
         label = None
         for s in seq:

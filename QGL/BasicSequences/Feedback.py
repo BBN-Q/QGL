@@ -123,8 +123,8 @@ def BitFlip3(data_qs, ancilla_qs, theta=None, phi=None, nrounds=1, meas_delay=1e
     if len(data_qs) != 3 or len(ancilla_qs) != 2:
         raise Exception("Wrong number of qubits")
     seqs =  [
-    DecodeSetRounds(1,0,2**nrounds-1),
-    Invalidate(addr=10, mask=2**nrounds-1),
+    DecodeSetRounds(1,0,nrounds),
+    Invalidate(addr=10, mask=4**nrounds-1),
     Invalidate(addr=11, mask=0x1)]
 
     # encode single-qubit state into 3 qubits
@@ -138,7 +138,7 @@ def BitFlip3(data_qs, ancilla_qs, theta=None, phi=None, nrounds=1, meas_delay=1e
         seqs+= [MEASA(ancilla_qs[0], maddr=(10,2*k+1))*MEASA(ancilla_qs[1], maddr=(10,2*k+2)),
         Id(ancilla_qs[0], meas_delay),
         MEAS(data_qs[0],amp=0)*MEAS(data_qs[1],amp=0)*MEAS(data_qs[2],amp=0)] # virtual msmt's just to keep the number of segments uniform across digitizer channels
-    seqs+=Decode(10, 11, 2**nrounds-1)
+    seqs+=Decode(10, 11, 4**nrounds-1)
     seqs+=qwait("RAM",11, 1)
     seqs+=[MEAS(data_qs[0])*MEAS(data_qs[1])*MEAS(data_qs[2])
     *MEAS(ancilla_qs[0],amp=0)*MEAS(ancilla_qs[1],amp=0)] # virtual msmt's just to keep the number
