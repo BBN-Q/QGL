@@ -47,8 +47,8 @@ def define_entities(db):
 
     class ChannelDatabase(db.Entity):
         label    = Required(str)
-        channels = Set("Channel")
-        sources  = Set("MicrowaveSource")
+        channels = Set("Channel", cascade_delete=True)
+        sources  = Set("MicrowaveSource", cascade_delete=True)
         time     = Optional(datetime.datetime)
 
     class MicrowaveSource(db.Entity):
@@ -57,14 +57,14 @@ def define_entities(db):
         address         = Optional(str)
         power           = Optional(float)
         logical_channel = Optional("PhysicalChannel")
-        channel_db      = Optional("ChannelDatabase")
+        channel_db      = Required("ChannelDatabase")
 
     class Channel(db.Entity):
         '''
         Every channel has a label and some printers.
         '''
         label      = Required(str)
-        channel_db = Optional("ChannelDatabase")
+        channel_db = Required("ChannelDatabase")
 
         def __repr__(self):
             return str(self)
@@ -83,9 +83,9 @@ def define_entities(db):
 
         # Required reverse connections
         logical_channel = Optional("LogicalChannel")
-        quad_channel_I  = Optional("PhysicalQuadratureChannel", reverse="I_channel")
-        quad_channel_Q  = Optional("PhysicalQuadratureChannel", reverse="Q_channel")
-        marker_channel  = Optional("PhysicalMarkerChannel")
+        # quad_channel_I  = Optional("PhysicalQuadratureChannel", reverse="I_channel")
+        # quad_channel_Q  = Optional("PhysicalQuadratureChannel", reverse="Q_channel")
+        # marker_channel  = Optional("PhysicalMarkerChannel")
 
     class LogicalChannel(Channel):
         '''
@@ -108,14 +108,14 @@ def define_entities(db):
         '''
         gate_buffer    = Required(float, default=0.0)
         gate_min_width = Required(float, default=0.0)
-        phys_channel   = Optional(PhysicalChannel)
+        # phys_channel   = Optional(PhysicalChannel)
 
     class PhysicalQuadratureChannel(PhysicalChannel):
         '''
         Something used to implement a standard qubit channel with two analog channels and a microwave gating channel.
         '''
-        I_channel  = Optional(PhysicalChannel)
-        Q_channel  = Optional(PhysicalChannel)
+        # I_channel  = Optional(PhysicalChannel)
+        # Q_channel  = Optional(PhysicalChannel)
         amp_factor = Required(float, default=1.0)
         phase_skew = Required(float, default=0.0)
     #     marker_channel = Optional(PhysicalMarkerChannel)
