@@ -57,60 +57,76 @@ def set_from_dict(obj, settings):
 def copy_objs(chans, srcs, new_channel_db):
     new_chans       = []
     new_srcs        = []
-    old_to_new_chan = {}
-    old_to_new_src  = {}
+    old_to_new      = {}
+    links_to_change = {}
+    # old_to_new_chan = {}
+    # old_to_new_src  = {}
 
     for chan in chans:
-        c = copy_entity(chan, new_channel_db)
+        c, links = copy_entity(chan, new_channel_db)
         new_chans.append(c)
-        old_to_new_chan[chan] = c
+        links_to_change[c] = links
+        #old_to_new[(c.id, c.label)] = c
+        old_to_new[c.label] = c
 
     for src in srcs:
-        c = copy_entity(src, new_channel_db)
+        c, links = copy_entity(src, new_channel_db)
         new_srcs.append(c)
-        old_to_new_src[src] = c
+        links_to_change[c] = links
+        #old_to_new[(c.id, c.label)] = c
+        old_to_new[c.label] = c
 
-    # Fix links... pony updates the relationships symmetriacally so we get some for free
-    for thing in new_chans + new_srcs:
-        for attr in thing._attrs_:
-            if attr:
-                if isinstance(getattr(thing, attr.name), Channels.Channel):
-                    if getattr(thing, attr.name) in old_to_new_chan.keys():
-                        setattr(thing, attr.name, old_to_new_chan[getattr(thing, attr.name)])
-                elif isinstance(getattr(thing, attr.name), Channels.MicrowaveSource):
-                    if getattr(thing, attr.name) in old_to_new_src.keys():
-                        setattr(thing, attr.name, old_to_new_src[getattr(thing, attr.name)])
+    for chan, link_info in links_to_change.items():
+        print(f"Updating links for {chan}")
+        for attr_name, link_name in link_info.items():
+            # link is an (id, label) tuple
+            new = old_to_new[link_name]
+            print(f"\tSetting {attr_name} for {link_name} to {new}")
+            setattr(chan, attr_name, new)
+
+    # # Fix links... pony updates the relationships symmetrically so we get some for free
+    # for thing in new_chans + new_srcs:
+    #     # print(f"Relinking {thing}")
+    #     for attr in thing._attrs_:
+    #         obj = getattr(thing, attr.name)
+    #         if hasattr(obj, "id"):
+    #             # print(f"\tChecking {attr.name}: {getattr(thing, attr.name)} {getattr(thing, attr.name).id}")
+
+    #             # if isinstance(obj, Channels.Channel) or isinstance(obj, Channels.MicrowaveSource):
+    #             if (obj.id, obj.label) in old_to_new.keys():
+    #                 # print(f"setting {thing} {attr.name} to {old_to_new[(obj.id, obj.label)]} (was {obj})")
+    #                 setattr(thing, attr.name, old_to_new[(obj.id, obj.label)])
+    #         # if isinstance(obj, Channels.Channel):
+    #         #     if obj in old_to_new.keys():
+    #         #         setattr(thing, attr.name, old_to_new[obj])
+    #         # elif isinstance(obj, Channels.MicrowaveSource):
+    #         #     if obj in old_to_new.keys():
+    #         #         setattr(thing, attr.name, old_to_new[obj])
 
     return new_chans, new_srcs
 
 def copy_entity(obj, new_channel_db):
     """Copy a pony entity instance"""
-    kwargs = {a.name: getattr(obj, a.name) for a in obj.__class__._attrs_ if a.name not in ["id", "classtype", "pulse_params"]}
-    # if "pulse_params" in kwargs.keys():
-    #     kwargs["pulse_params"] = dict(kwargs["pulse_params"])
-    kwargs["channel_db"] = new_channel_db
-    return obj.__class__(**kwargs)
+    kwargs = {a.name: getattr(obj, a.name) for a in obj._attrs_ if a.name not in ["id", "classtype"]}
 
-# def copy_entity(obj, new_channel_db):
-#     """Copy a pony entity instance"""
-#     attr_names = [a.name for a in obj.__class__._attrs_]
-#     skip = ["id", "classtype", "channel_db"]
-#     print(obj)
-#     kwargs = {"channel_db": new_channel_db}
-#     for a in attr_names: #["label", "source_type"]:
-#         print("\t", a)
-#         if a in dir(obj):
-#             val = getattr(obj, a)
-#             if a == "pulse_params":
-#                 val = dict(val)
-#             if val is not None and a not in skip:
-#                 print("\t\t", getattr(obj, a))
-#                 kwargs[a] = val
-#     return obj.__class__(**kwargs)
+    # Extract any links to other entities
+    links = {}
+    print(f"Copying {obj}")
+    for attr in obj._attrs_:
+        if attr.name not in ["channel_db"]:
+            obj_attr = getattr(obj, attr.name)
+            # print(f"\tChecking out {attr.name}")
+            if hasattr(obj_attr, "id"):
+                kwargs.pop(attr.name)
+                print(f"\tWill relink {attr.name} to {(obj_attr.id, obj_attr.label)}")
+                links[attr.name] = obj_attr.label #(obj_attr.id, obj_attr.label)
+
+    kwargs["channel_db"] = new_channel_db
+    return obj.__class__(**kwargs), links
 
 class ChannelLibrary(object):
 
-    def __init__(self, channel_db_name=None, database_file=None, channelDict={}, **kwargs):
+    def __init__(self, database_file=None, channelDict={}, **kwargs):
         """Create the channel library."""
 
         global channelLib
@@ -140,8 +156,17 @@ class ChannelLibrary(object):
         self.channelDict = {}
         self.channels = []
         self.sources = []
+
+        # Check to see whether there is already a temp database
+        # if "__temp__" in select(c.label for c in Channels.ChannelDatabase):
+        #     for cdb in select(cdb for cdb in Channels.ChannelDatabase if cdb.label == "__temp__"):
+        #         cdb.channels.clear()
+        #         cdb.sources.clear()
+        #         select(c for c in Channels.Channel if c.channel_db.label is None).delete(bulk=True)
+        #         select(c for c in Channels.MicrowaveSource if c.channel_db.label is None).delete(bulk=True)
+                # select(c for c in Channels.ChannelDatabase if c.label=="__temp__").delete()
+
         self.channelDatabase = Channels.ChannelDatabase(label="__temp__", time=datetime.datetime.now())
-        self.channel_db_name = channel_db_name if channel_db_name else "temp"
 
         config.load_config()
 
@@ -152,7 +177,7 @@ class ChannelLibrary(object):
         channelLib = self
 
     def get_current_channels(self):
-        return list(select(c for c in Channels.Channel if c.channel_db is None)) + list(select(c for c in Channels.MicrowaveSource if c.channel_db is None))
+        return list(select(c for c in Channels.Channel if c.channel_db == self.channelDatabase)) + list(select(c for c in Channels.MicrowaveSource if c.channel_db == self.channelDatabase))
 
     def update_channelDict(self):
         self.channelDict = {c.label: c for c in self.get_current_channels()}
@@ -175,57 +200,26 @@ class ChannelLibrary(object):
         chans = list(obj.channels)
         srcs  = list(obj.sources)
 
-        # self.channelDatabase = Channels.ChannelDatabase(label="__temp__", time=datetime.datetime.now())
         new_chans, new_srcs = copy_objs(chans, srcs, self.channelDatabase)
 
         self.channels = new_chans
         self.sources = new_srcs
         self.channel_db_name = obj.label
-        # self.channelDatabase = None
-
-    # def load_most_recent(self, name=None):
-    #     if name is None:
-    #         name = self.channel_db_name
-    #     mrcd = Channels.ChannelDatabase.select(lambda d: d.label==name).order_by(desc(Channels.ChannelDatabase.time)).first()
-    #     if mrcd:
-    #         self.load(mrcd)
-
-    # def new(self, name):
-    #     # self.channelDatabase.delete()
-    #     self.clear()
-    #     commit()
-
-    #     # self.channelDatabase = Channels.ChannelDatabase(label="__temp__", time=datetime.datetime.now())
-
-    #     # self.channelDatabase = None
-    #     self.channel_db_name = name
-    #     self.channels = []
-    #     self.sources = []
 
     def save(self):
         self.save_as(self.channel_db_name)
 
     def save_as(self, name):
-        # self.channelDatabase.label = name
-        # self.channelDatabase.time  = datetime.datetime.now()
-        # cd = self.channelDatabase
-        # self.channelDatabase = None
-        # commit()
-        # self.load(cd, delete=False)
-        
-        # Get channels that are part of the currently active db
-        # chans = list(select(c for c in Channels.Channel if c.channel_db is None))
-        # srcs  = list(select(c for c in Channels.MicrowaveSource if c.channel_db is None))
         chans = list(self.channelDatabase.channels)
         srcs  = list(self.channelDatabase.sources)
-        cd    = Channels.ChannelDatabase(label=name, time=datetime.datetime.now(), channels=chans, sources=srcs)
-        new_chans, new_srcs = copy_objs(chans, srcs, cd)
-
-        # self.channels = new_chans
-        # self.sources = new_srcs
-        # self.channelDatabase = None
         commit()
-        # self.channel_db_name = name
+
+        cd = Channels.ChannelDatabase(label=name, time=datetime.datetime.now())
+        new_chans, new_srcs = copy_objs(chans, srcs, cd)
+        cd.channels = new_chans
+        cd.sources  = new_srcs
+        commit()
+        
 
     #Dictionary methods
     def __getitem__(self, key):

@@ -27,13 +27,13 @@ cnot_implementation  = "CNOT_simple"
 
 def load_config():
     global config_file
-    if os.getenv('BBN_CONFIG_FILE'):
+    if os.getenv('BBN_CONFIG'):
         try:
-            config_file = os.getenv("BBN_CONFIG_FILE")
+            config_file = os.getenv("BBN_CONFIG")
             sys.path.append(os.path.dirname(config_file))
             importlib.import_module(os.path.splitext(os.path.basename(config_file))[0])
         except:
-            raise Exception(f"Could not import/execute the BBN_CONFIG_FILE {cfg}")
+            raise Exception(f"Could not import/execute the BBN_CONFIG {os.getenv('BBN_CONFIG')}")
             
 def load_db():
     global db_file

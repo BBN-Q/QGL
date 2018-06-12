@@ -57,14 +57,14 @@ def define_entities(db):
         address         = Optional(str)
         power           = Optional(float)
         logical_channel = Optional("PhysicalChannel")
-        channel_db      = Required("ChannelDatabase")
+        channel_db      = Optional("ChannelDatabase")
 
     class Channel(db.Entity):
         '''
         Every channel has a label and some printers.
         '''
         label      = Required(str)
-        channel_db = Required("ChannelDatabase")
+        channel_db = Optional("ChannelDatabase")
 
         def __repr__(self):
             return str(self)
