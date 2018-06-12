@@ -77,11 +77,11 @@ def copy_objs(chans, srcs, new_channel_db):
         old_to_new[c.label] = c
 
     for chan, link_info in links_to_change.items():
-        print(f"Updating links for {chan}")
+        # print(f"Updating links for {chan}")
         for attr_name, link_name in link_info.items():
             # link is an (id, label) tuple
             new = old_to_new[link_name]
-            print(f"\tSetting {attr_name} for {link_name} to {new}")
+            # print(f"\tSetting {attr_name} for {link_name} to {new}")
             setattr(chan, attr_name, new)
 
     # # Fix links... pony updates the relationships symmetrically so we get some for free
@@ -111,14 +111,14 @@ def copy_entity(obj, new_channel_db):
 
     # Extract any links to other entities
     links = {}
-    print(f"Copying {obj}")
+    # print(f"Copying {obj}")
     for attr in obj._attrs_:
         if attr.name not in ["channel_db"]:
             obj_attr = getattr(obj, attr.name)
             # print(f"\tChecking out {attr.name}")
             if hasattr(obj_attr, "id"):
                 kwargs.pop(attr.name)
-                print(f"\tWill relink {attr.name} to {(obj_attr.id, obj_attr.label)}")
+                # print(f"\tWill relink {attr.name} to {(obj_attr.id, obj_attr.label)}")
                 links[attr.name] = obj_attr.label #(obj_attr.id, obj_attr.label)
 
     kwargs["channel_db"] = new_channel_db
@@ -154,30 +154,22 @@ class ChannelLibrary(object):
         
         # This is still somewhere legacy QGL behavior. Massage db into dict for lookup.
         self.channelDict = {}
-        self.channels = []
-        self.sources = []
 
-        # Check to see whether there is already a temp database
-        # if "__temp__" in select(c.label for c in Channels.ChannelDatabase):
-        #     for cdb in select(cdb for cdb in Channels.ChannelDatabase if cdb.label == "__temp__"):
-        #         cdb.channels.clear()
-        #         cdb.sources.clear()
-        #         select(c for c in Channels.Channel if c.channel_db.label is None).delete(bulk=True)
-        #         select(c for c in Channels.MicrowaveSource if c.channel_db.label is None).delete(bulk=True)
-                # select(c for c in Channels.ChannelDatabase if c.label=="__temp__").delete()
-
-        self.channelDatabase = Channels.ChannelDatabase(label="__temp__", time=datetime.datetime.now())
+        Check to see whether there is already a temp database
+        if "__temp__" in select(c.label for c in Channels.ChannelDatabase):
+            self.channelDatabase = select(c.label for c in Channels.ChannelDatabase).first()
+            self.clear()
+        else:
+            self.channelDatabase = Channels.ChannelDatabase(label="__temp__", time=datetime.datetime.now())
 
         config.load_config()
-
-        # self.load_most_recent()
-        # config.load_config()
-
+        
         # Update the global reference
         channelLib = self
 
     def get_current_channels(self):
-        return list(select(c for c in Channels.Channel if c.channel_db == self.channelDatabase)) + list(select(c for c in Channels.MicrowaveSource if c.channel_db == self.channelDatabase))
+        return list(self.channelDatabase.channels) + list(self.channelDatabase.sources)
+        # return list(select(c for c in Channels.Channel if c.channel_db == self.channelDatabase)) + list(select(c for c in Channels.MicrowaveSource if c.channel_db == self.channelDatabase))
 
     def update_channelDict(self):
         self.channelDict = {c.label: c for c in self.get_current_channels()}
@@ -190,9 +182,14 @@ class ChannelLibrary(object):
         self.load(obj)
 
     def clear(self):
-        select(c for c in Channels.Channel if c.channel_db == self.channelDatabase).delete(bulk=True)
         select(c for c in Channels.MicrowaveSource if c.channel_db == self.channelDatabase).delete(bulk=True)
+        select(c for c in Channels.Channel if c.channel_db == self.channelDatabase).delete(bulk=True)
+        
         self.channelDatabase.time  = datetime.datetime.now()
+        commit()
+        # select(c for c in Channels.Channel if c.channel_db == self.channelDatabase).delete(bulk=True)
+        # select(c for c in Channels.MicrowaveSource if c.channel_db == self.channelDatabase).delete(bulk=True)
+        # self.channelDatabase.time  = datetime.datetime.now()
 
     def load(self, obj): #, delete=True):
         self.clear()
@@ -202,12 +199,12 @@ class ChannelLibrary(object):
 
         new_chans, new_srcs = copy_objs(chans, srcs, self.channelDatabase)
 
-        self.channels = new_chans
-        self.sources = new_srcs
-        self.channel_db_name = obj.label
 
-    def save(self):
-        self.save_as(self.channel_db_name)
+        # self.channelDatabase.label = obj.label
+        # self.channel_db_name = obj.label
+
+    # def save(self):
+    #     self.save_as(self.channel_db_name)
 
     def save_as(self, name):
         chans = list(self.channelDatabase.channels)
@@ -487,19 +484,21 @@ def set_control(qubit, awg, generator=None):
     
 def set_measure(qubit, awg, dig, generator=None, dig_channel=1, trig_channel=1, gate=False, gate_channel=2, trigger_length=1e-7):
     meas = Channels.Measurement(label=f"M-{qubit.label}", channel_db=channelLib.channelDatabase)
+    if generator:
+        awg.chan12.generator = generator
     meas.phys_chan     = awg.chan12
     
-    meas.trig_chan              = Channels.LogicalMarkerChannel(label=f"digTrig-{qubit.label}", channel_db=channelLib.channelDatabase)
-    meas.trig_chan.phys_chan    = getattr(awg, f"m{trig_channel}")
-    meas.trig_chan.pulse_params = {"length": trigger_length, "shape_fun": "constant"}
-    meas.receiver_chan          = getattr(dig, f"chan{dig_channel}")
-
-    if generator:
-        meas.phys_chan.generator = generator
+    trig_chan              = Channels.LogicalMarkerChannel(label=f"digTrig-{qubit.label}", channel_db=channelLib.channelDatabase)
+    trig_chan.phys_chan    = getattr(awg, f"m{trig_channel}")
+    trig_chan.pulse_params = {"length": trigger_length, "shape_fun": "constant"}
+    meas.trig_chan         = trig_chan
+    
+    meas.receiver_chan     = getattr(dig, f"chan{dig_channel}")
 
     if gate:
-        meas.gate_chan           = Channels.LogicalMarkerChannel(label=f"M-{qubit.label}-gate", channel_db=channelLib.channelDatabase)
-        meas.gate_chan.phys_chan = getattr(awg, f"m{gate_channel}")
+        gate_chan           = Channels.LogicalMarkerChannel(label=f"M-{qubit.label}-gate", channel_db=channelLib.channelDatabase)
+        gate_chan.phys_chan = getattr(awg, f"m{gate_channel}")
+        meas.gate_chan      = gate_chan
         
 def set_master(awg, trig_channel=2, pulse_length=1e-7):
     st = Channels.LogicalMarkerChannel(label="slave_trig", channel_db=channelLib.channelDatabase)
