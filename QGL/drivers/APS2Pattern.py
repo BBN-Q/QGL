@@ -1399,7 +1399,7 @@ def tdm_instructions(seqs):
                     if len(set(maddr))>1:
                         raise Exception('Storing simultaneous measurements on different addresses not supported.')
                     for n,m in enumerate(sim_meas):
-                        instructions.append(CrossBar(2**n, 2**n))
+                        instructions.append(CrossBar(m.maddr[1], 2**n))
                     instructions.append(LoadCmp(label=label))
                     instructions.append(StoreMeas(maddr[0], 1 << 16))
 
