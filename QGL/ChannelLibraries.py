@@ -155,15 +155,15 @@ class ChannelLibrary(object):
         # This is still somewhere legacy QGL behavior. Massage db into dict for lookup.
         self.channelDict = {}
 
-        Check to see whether there is already a temp database
+        # Check to see whether there is already a temp database
         if "__temp__" in select(c.label for c in Channels.ChannelDatabase):
-            self.channelDatabase = select(c.label for c in Channels.ChannelDatabase).first()
+            self.channelDatabase = select(c for c in Channels.ChannelDatabase if c.label == "__temp__").first()
             self.clear()
         else:
             self.channelDatabase = Channels.ChannelDatabase(label="__temp__", time=datetime.datetime.now())
 
         config.load_config()
-        
+
         # Update the global reference
         channelLib = self
 
