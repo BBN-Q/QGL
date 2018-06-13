@@ -97,7 +97,7 @@ def copy_entity(obj, new_channel_db):
 
 class ChannelLibrary(object):
 
-    def __init__(self, database_file=None, channelDict={}, **kwargs):
+    def __init__(self, database_file=None, channelDict={}, auto_update=True, **kwargs):
         """Create the channel library."""
 
         global channelLib
@@ -128,10 +128,21 @@ class ChannelLibrary(object):
 
         # Check to see whether there is already a temp database
         if "__temp__" in select(c.label for c in Channels.ChannelDatabase):
-            select(d for d in Channels.ChannelDatabase if d.label == "__temp__").delete(bulk=True)
+            for cdb in select(d for d in Channels.ChannelDatabase if d.label == "__temp__"):
+                print("Trying to clear", cdb.label)
+                select(c for c in Channels.MicrowaveSource if c.channel_db == cdb).delete(bulk=True)
+                select(c for c in Channels.Channel if c.channel_db == cdb).delete(bulk=True)
+                commit()
+                select(d for d in Channels.ChannelDatabase if d == cdb).delete(bulk=True)
+                commit()
+
         self.channelDatabase = Channels.ChannelDatabase(label="__temp__", time=datetime.datetime.now())
 
         config.load_config()
+
+        # Whether or not we try to keep qubitfactories up to date
+        self.auto_update = auto_update
+        self.blub = {}
 
         # Update the global reference
         channelLib = self
@@ -143,11 +154,16 @@ class ChannelLibrary(object):
         self.channelDict = {c.label: c for c in self.get_current_channels()}
 
     def list(self):
-        select((c.label, c.time, c.id) for c in Channels.ChannelDatabase).show()
+        select((c.label, c.time, c.id) for c in Channels.ChannelDatabase if c.label != "__temp__").sort_by(1, 2).show()
+
+    def load(self, name, index=1):
+        """Load the latest instance for a particular name. Specifying index = 2 will select the second most recent instance """
+        obj = list(select(c for c in Channels.ChannelDatabase if c.label==name).sort_by(desc(Channels.ChannelDatabase.time)))
+        self.load_obj(obj[-index])
 
     def load_by_id(self, id_num):
         obj = select(c for c in Channels.ChannelDatabase if c.id==id_num).first()
-        self.load(obj)
+        self.load_obj(obj)
 
     def clear(self):
         select(c for c in Channels.MicrowaveSource if c.channel_db == self.channelDatabase).delete(bulk=True)
@@ -158,11 +174,22 @@ class ChannelLibrary(object):
         commit()
         self.channelDatabase = Channels.ChannelDatabase(label="__temp__", time=datetime.datetime.now())
 
-    def load(self, obj):
+    def load_obj(self, obj):
+        commit()
         self.clear()
         chans = list(obj.channels)
         srcs  = list(obj.sources)
         new_chans, new_srcs = copy_objs(chans, srcs, self.channelDatabase)
+
+        self.update_channelDict()
+
+        # # Try to fix factories
+        if self.auto_update:
+            for k in list(self.blub.keys()):
+                self.blub[k] = self.channelDict[k]
+        #     for k,v in globals().items():
+        #         if isinstance(v, Channels.Qubit):
+        #             globals()[k] = self.channelDict[k]
 
     def save_as(self, name):
         chans = list(self.channelDatabase.channels)
@@ -468,8 +495,10 @@ def QubitFactory(label, **kwargs):
     # TODO: this will just get the first entry in the whole damned DB!
     # thing = select(el for el in Channels.Qubit if el.label==label).first()
     thing = {c.label: c for c in channelLib.get_current_channels()}[label]
+
     if thing:
-        return thing
+        channelLib.blub[label] = thing
+        return channelLib.blub[label]
     else:
         return Channels.Qubit(label=label, **kwargs)
     
