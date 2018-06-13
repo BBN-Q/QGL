@@ -84,7 +84,7 @@ def repeatall(n, seqs):
     return seqs
 
 
-def qwait(kind="TRIG", addr=None, mask=None, channels=None):
+def qwait(kind="TRIG", addr=None, channels=None):
     '''
     Insert a WAIT or LOADCMP command on the target channels (an iterable, or None)
     '''
@@ -93,9 +93,9 @@ def qwait(kind="TRIG", addr=None, mask=None, channels=None):
     elif kind == "CMP":
         return LoadCmp(channels)
     elif kind == "RAM":
-        if not addr or not mask:
-            raise Exception('Please specify address and mask')
-        return [WriteAddrInstruction('INVALIDATE', None, 1, addr, mask, False), LoadCmpVramInstruction('LOADCMPVRAM', 1, addr, mask, False)]
+        if not addr:
+            raise Exception('Please specify address')
+        return [WriteAddrInstruction('INVALIDATE', None, 1, addr, 0xffffffff, False), LoadCmpVramInstruction('LOADCMPVRAM', 1, addr, 0xff, False)]
 
 
 
