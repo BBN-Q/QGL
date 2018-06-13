@@ -1295,9 +1295,7 @@ def tdm_instructions(seqs):
     """
     instructions = list()
     label2addr = dict()     # the backpatch table for labels
-    # turn into a loop, by appending GOTO(0) at end of the sequence
-    seqs[-1].append(ControlFlow.Goto(BlockLabel.label(seqs[0])))  # BlockLabel.label adds a label at the beginning of the sequence
-    logger.debug("Appending a GOTO at end to loop")
+    
     label = seqs[0][0]
     for seq in seqs:
         seq = list(flatten(copy(seq)))
