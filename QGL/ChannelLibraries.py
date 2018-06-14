@@ -97,7 +97,7 @@ def copy_entity(obj, new_channel_db):
 
 class ChannelLibrary(object):
 
-    def __init__(self, database_file=None, channelDict={}, auto_update=True, **kwargs):
+    def __init__(self, database_file=None, channelDict={}, **kwargs):
         """Create the channel library."""
 
         global channelLib
@@ -140,10 +140,6 @@ class ChannelLibrary(object):
 
         config.load_config()
 
-        # Whether or not we try to keep qubitfactories up to date
-        self.auto_update = auto_update
-        self.blub = {}
-
         # Update the global reference
         channelLib = self
 
@@ -182,14 +178,6 @@ class ChannelLibrary(object):
         new_chans, new_srcs = copy_objs(chans, srcs, self.channelDatabase)
 
         self.update_channelDict()
-
-        # # Try to fix factories
-        if self.auto_update:
-            for k in list(self.blub.keys()):
-                self.blub[k] = self.channelDict[k]
-        #     for k,v in globals().items():
-        #         if isinstance(v, Channels.Qubit):
-        #             globals()[k] = self.channelDict[k]
 
     def save_as(self, name):
         chans = list(self.channelDatabase.channels)
@@ -495,10 +483,8 @@ def QubitFactory(label, **kwargs):
     # TODO: this will just get the first entry in the whole damned DB!
     # thing = select(el for el in Channels.Qubit if el.label==label).first()
     thing = {c.label: c for c in channelLib.get_current_channels()}[label]
-
     if thing:
-        channelLib.blub[label] = thing
-        return channelLib.blub[label]
+        return thing
     else:
         return Channels.Qubit(label=label, **kwargs)
     
