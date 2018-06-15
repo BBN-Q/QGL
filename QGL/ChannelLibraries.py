@@ -417,58 +417,112 @@ class ChannelLibrary(object):
 # Convenience functions for generating and linking channels
 # TODO: move these to a shim layer shared by Auspex/QGL
 
-class APS2(object):
-    def __init__(self, label, address=None, delay=0.0):
-        self.chan12 = Channels.PhysicalQuadratureChannel(label=f"{label}-12", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
-        self.m1     = Channels.PhysicalMarkerChannel(label=f"{label}-12m1", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
-        self.m2     = Channels.PhysicalMarkerChannel(label=f"{label}-12m2", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
-        self.m3     = Channels.PhysicalMarkerChannel(label=f"{label}-12m3", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
-        self.m4     = Channels.PhysicalMarkerChannel(label=f"{label}-12m4", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
+# class APS2(object):
+#     def __init__(self, label, address=None, delay=0.0):
+#         self.chan12 = Channels.PhysicalQuadratureChannel(label=f"{label}-12", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
+#         self.m1     = Channels.PhysicalMarkerChannel(label=f"{label}-12m1", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
+#         self.m2     = Channels.PhysicalMarkerChannel(label=f"{label}-12m2", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
+#         self.m3     = Channels.PhysicalMarkerChannel(label=f"{label}-12m3", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
+#         self.m4     = Channels.PhysicalMarkerChannel(label=f"{label}-12m4", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
         
-        self.trigger_interval = None
-        self.trigger_source   = "External"
-        self.address          = address
-        self.delay            = delay
-        self.master           = False
+#         self.trigger_interval = None
+#         self.trigger_source   = "External"
+#         self.address          = address
+#         self.delay            = delay
+#         self.master           = False
 
-class X6(object):
-    def __init__(self, label, address=None):
-        self.chan1 = Channels.ReceiverChannel(label=f"RecvChan-{label}-1", channel_db=channelLib.channelDatabase)
-        self.chan2 = Channels.ReceiverChannel(label=f"RecvChan-{label}-2", channel_db=channelLib.channelDatabase)
-        
-        self.address          = address
-        self.reference        = "external"
-        self.nbr_segments     = 1
-        self.nbr_round_robins = 100
-        self.acquire_mode     = "digitizer"
+def new_APS2(label, address):
+    chan12 = Channels.PhysicalQuadratureChannel(label=f"{label}-12", instrument=label, translator="new_APS2Pattern", channel_db=channelLib.channelDatabase)
+    m1     = Channels.PhysicalMarkerChannel(label=f"{label}-12m1", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
+    m2     = Channels.PhysicalMarkerChannel(label=f"{label}-12m2", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
+    m3     = Channels.PhysicalMarkerChannel(label=f"{label}-12m3", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
+    m4     = Channels.PhysicalMarkerChannel(label=f"{label}-12m4", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
+    
+    this_awg = Channels.AWG(label=label, address=address, channels=[chan12, m1, m2, m3, m4])
+    this_awg.trigger_source = "External"
+    this_awg.address        = address
+
+    commit()
+    return this_awg
+
+def new_X6(label, address):
+    chan1 = Channels.ReceiverChannel(label=f"RecvChan-{label}-1", channel_db=channelLib.channelDatabase)
+    chan2 = Channels.ReceiverChannel(label=f"RecvChan-{label}-2", channel_db=channelLib.channelDatabase)
+    
+    this_dig = Channels.Digitizer(label=label, address=address, channels=[chan1, chan2])
+    this_dig.trigger_source = "External"
+    this_dig.address        = address
+
+    commit()
+    return this_dig
 
 def new_qubit(label):
-    return Channels.Qubit(label=label, channel_db=channelLib.channelDatabase)
+    thing = Channels.Qubit(label=label, channel_db=channelLib.channelDatabase)
+    return thing
 
 def new_source(label, source_type, address, power=-30.0):
-    return Channels.MicrowaveSource(label=label, source_type=source_type, address=address, power=power, channel_db=channelLib.channelDatabase)
+    thing = Channels.MicrowaveSource(label=label, source_type=source_type, address=address, power=power, channel_db=channelLib.channelDatabase)
+    return thing
 
 def set_control(qubit, awg, generator=None):
-    qubit.phys_chan = awg.chan12
+    quads   = [c for c in awg.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
+    markers = [c for c in awg.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
+
+    if isinstance(awg, Channels.AWG) and len(quads) > 1:
+        raise ValueError("In set_control the AWG must have a single quadrature channel or a specific channel must be passed instead")
+    elif isinstance(awg, Channels.AWG) and len(quads) == 1:
+        phys_chan = quads[0]
+    elif isinstance(awg, Channels.PhysicalQuadratureChannel):
+        phys_chan = awg
+    else:
+        raise ValueError("In set_control the AWG must have a single quadrature channel or a specific channel must be passed instead")
+
+    qubit.phys_chan = phys_chan
     if generator:
         qubit.phys_chan.generator = generator
     
-def set_measure(qubit, awg, dig, generator=None, dig_channel=1, trig_channel=1, gate=False, gate_channel=2, trigger_length=1e-7):
+def set_measure(qubit, awg, dig, generator=None, dig_channel=1, trig_channel=None, gate=False, gate_channel=None, trigger_length=1e-7):
+    print(qubit, awg, dig)
+
+    quads   = [c for c in awg.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
+    markers = [c for c in awg.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
+
+    if isinstance(awg, Channels.AWG) and len(quads) > 1:
+        raise ValueError("In set_measure the AWG must have a single quadrature channel or a specific channel must be passed instead")
+    elif isinstance(awg, Channels.AWG) and len(quads) == 1:
+        phys_chan = quads[0]
+    elif isinstance(awg, Channels.PhysicalQuadratureChannel):
+        phys_chan = awg
+    else:
+        raise ValueError("In set_measure the AWG must have a single quadrature channel or a specific channel must be passed instead")
+
     meas = Channels.Measurement(label=f"M-{qubit.label}", channel_db=channelLib.channelDatabase)
+    meas.phys_chan = phys_chan
     if generator:
-        awg.chan12.generator = generator
-    meas.phys_chan     = awg.chan12
+        meas.phys_chan.generator = generator
     
+    phys_trig_channel = trig_channel if trig_channel else awg.get_chan("12m1")
+
     trig_chan              = Channels.LogicalMarkerChannel(label=f"digTrig-{qubit.label}", channel_db=channelLib.channelDatabase)
-    trig_chan.phys_chan    = getattr(awg, f"m{trig_channel}")
+    trig_chan.phys_chan    = phys_trig_channel
     trig_chan.pulse_params = {"length": trigger_length, "shape_fun": "constant"}
     meas.trig_chan         = trig_chan
     
-    meas.receiver_chan     = getattr(dig, f"chan{dig_channel}")
+    if isinstance(dig, Channels.Digitizer) and len(dig.channels) > 1:
+        raise ValueError("In set_measure the Digitizer must have a single receiver channel or a specific channel must be passed instead")
+    elif isinstance(dig, Channels.Digitizer) and len(dig.channels) == 1:
+        rcv_chan = dig.channels[0]
+    elif isinstance(dig, Channels.ReceiverChannel):
+        rcv_chan = dig
+    else:
+        raise ValueError("In set_measure the AWG must have a single quadrature channel or a specific channel must be passed instead")
+
+    meas.receiver_chan = rcv_chan
 
     if gate:
+        phys_gate_channel   = gate_channel if gate_channel else awg.get_chan("12m2")
         gate_chan           = Channels.LogicalMarkerChannel(label=f"M-{qubit.label}-gate", channel_db=channelLib.channelDatabase)
-        gate_chan.phys_chan = getattr(awg, f"m{gate_channel}")
+        gate_chan.phys_chan = phys_gate_channel
         meas.gate_chan      = gate_chan
         
 def set_master(awg, trig_channel=2, pulse_length=1e-7):

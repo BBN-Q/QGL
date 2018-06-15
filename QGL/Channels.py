@@ -42,14 +42,18 @@ Qubit = None
 Edge = None
 MicrowaveSource = None
 ChannelDatabase = None
+Digitizer = None
+AWG = None
 
 def define_entities(db):
 
     class ChannelDatabase(db.Entity):
-        label    = Required(str)
-        channels = Set("Channel", cascade_delete=True)
-        sources  = Set("MicrowaveSource", cascade_delete=True)
-        time     = Optional(datetime.datetime)
+        label      = Required(str)
+        channels   = Set("Channel", cascade_delete=True)
+        sources    = Set("MicrowaveSource", cascade_delete=True)
+        awgs       = Set("AWG", cascade_delete=True)
+        digitizers = Set("Digitizer", cascade_delete=True)
+        time       = Optional(datetime.datetime)
 
     class MicrowaveSource(db.Entity):
         label           = Required(str)
@@ -58,6 +62,33 @@ def define_entities(db):
         power           = Optional(float)
         logical_channel = Optional("PhysicalChannel")
         channel_db      = Optional("ChannelDatabase")
+
+    class Digitizer(db.Entity):
+        label           = Required(str)
+        address         = Optional(str)
+        # stream_types    = Set(str)
+        channels        = Set("ReceiverChannel")
+        trigger_source  = Required(str, default="External", py_check=lambda x: x in ['External', 'Internal'])
+        channel_db      = Optional("ChannelDatabase")
+        # nbr_segments     = Required(int, default=1) # This should be automatic
+        # nbr_round_robins = Required(int, default=100) # This should be automatic
+        # acquire_mode     = Required(str,default="digitizer", py_check=lambda x: x in ['digitizer', 'averager'])
+        
+        def get_chan(self, name):
+            return self.channels.select(lambda x: x.label.endswith(name)).first()
+
+    class AWG(db.Entity):
+        label            = Required(str)
+        address          = Optional(str)
+        channels         = Set("PhysicalChannel", reverse="awg")
+        trigger_interval = Required(float, default=100e-6)
+        trigger_source   = Required(str, default="External", py_check=lambda x: x in ['External', 'Internal'])
+        delay            = Required(float, default=0.0)
+        master           = Required(bool, default=False)
+        channel_db       = Optional("ChannelDatabase")
+
+        def get_chan(self, name):
+            return self.channels.select(lambda x: x.label.endswith(name)).first()
 
     class Channel(db.Entity):
         '''
@@ -86,6 +117,7 @@ def define_entities(db):
         # quad_channel_I  = Optional("PhysicalQuadratureChannel", reverse="I_channel")
         # quad_channel_Q  = Optional("PhysicalQuadratureChannel", reverse="Q_channel")
         # marker_channel  = Optional("PhysicalMarkerChannel")
+        awg             = Optional(AWG)
 
     class LogicalChannel(Channel):
         '''
@@ -114,11 +146,12 @@ def define_entities(db):
         '''
         Something used to implement a standard qubit channel with two analog channels and a microwave gating channel.
         '''
-        # I_channel  = Optional(PhysicalChannel)
-        # Q_channel  = Optional(PhysicalChannel)
-        amp_factor = Required(float, default=1.0)
-        phase_skew = Required(float, default=0.0)
-    #     marker_channel = Optional(PhysicalMarkerChannel)
+        amp_factor           = Required(float, default=1.0)
+        phase_skew           = Required(float, default=0.0)
+        I_channel_offset     = Required(float, default=0.0)
+        Q_channel_offset     = Required(float, default=0.0)
+        I_channel_amp_factor = Required(float, default=1.0)
+        Q_channel_amp_factor = Required(float, default=1.0)
 
     class ReceiverChannel(PhysicalChannel):
         '''
@@ -126,6 +159,13 @@ def define_entities(db):
         '''
         triggering_channel = Optional(LogicalChannel)
         channel            = Optional(int)
+        stream_type        = Required(str, default="Raw", py_check=lambda x: x.lower() in["raw", "demodulated", "integrated", "averaged"])
+        if_freq            = Required(float, default=0.0)
+        kernel             = Optional(str)
+        kernel_bias        = Required(float, default=0.0)
+        threshold          = Required(float, default=0.0)
+        threshold_invert   = Required(bool, default=False)
+        digitizer          = Optional(Digitizer)
 
     def pulse_check(name):
         return name in ["constant", "gaussian", "drag", "gaussOn", "gaussOff", "dragGaussOn", "dragGaussOff",
@@ -220,4 +260,5 @@ def define_entities(db):
     globals()["Edge"] = Edge
     globals()["MicrowaveSource"] = MicrowaveSource
     globals()["ChannelDatabase"] = ChannelDatabase
-    
+    globals()["Digitizer"] = Digitizer
+    globals()["AWG"] = AWG
