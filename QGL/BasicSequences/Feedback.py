@@ -103,7 +103,7 @@ def Reset(qubits,
 
 
 # do not make it a subroutine for now
-def BitFlip3(data_qs, ancilla_qs, theta=None, phi=None, nrounds=1, meas_delay=1e-6):
+def BitFlip3(data_qs, ancilla_qs, theta=None, phi=None, nrounds=1, meas_delay=1e-6, docals=False, calRepeats=2):
     """
 
     Encoding on 3-qubit bit-flip code, followed by n rounds of syndrome detection, and final correction using the n results.
@@ -118,7 +118,7 @@ def BitFlip3(data_qs, ancilla_qs, theta=None, phi=None, nrounds=1, meas_delay=1e
 
     Returns
     -------
-    plotHandle : handle to plot window to prevent destruction
+    metafile : metafile path
     """
     if len(data_qs) != 3 or len(ancilla_qs) != 2:
         raise Exception("Wrong number of qubits")
@@ -140,7 +140,8 @@ def BitFlip3(data_qs, ancilla_qs, theta=None, phi=None, nrounds=1, meas_delay=1e
         MEAS(data_qs[0],amp=0)*MEAS(data_qs[1],amp=0)*MEAS(data_qs[2],amp=0)] # virtual msmt's just to keep the number of segments uniform across digitizer channels
     seqs+=Decode(10, 11, 4**nrounds-1)
     seqs+=qwait("RAM",11, 4**nrounds-1)
-    seqs+=[MEAS(data_qs[0])*MEAS(data_qs[1])*MEAS(data_qs[2])]
+    seqs+=[MEAS(data_qs[0])*MEAS(data_qs[1])*MEAS(data_qs[2])*
+    MEAS(ancilla_qs[0],amp=0)*MEAS(ancilla_qs[1],amp=0)] # virtual msmt's
 
     # apply corrective pulses depending on the decoder result
     FbGates = []
@@ -151,6 +152,40 @@ def BitFlip3(data_qs, ancilla_qs, theta=None, phi=None, nrounds=1, meas_delay=1e
         seqs += qif(k, [FbSeq[k]])
     if docals:
         seqs += create_cal_seqs(qubits,
-        calRepeats,
-        measChans=measChans)
-    return seqs
+        calRepeats)
+    metafile = compile_to_hardware(seqs, 'BitFlip/BitFlip')
+    return metafile
+
+def MajorityVoteN(qubits, nrounds, prep=[], meas_delay=1e-6, docals=False, calRepeats=2):
+    """
+    Majority vote across multiple measurement results (same or different qubits)
+
+    Parameters
+    ----------
+    qubits : tuple of logical channels
+    nrounds: number of consecutive measurements
+    meas_delay : delay between measurements
+    docals, calRepeats: enable calibration sequences, repeated calRepeats times
+
+    Returns
+    -------
+    metafile : metafile path
+    """
+    nqubits = len(qubits)
+    seqs = [MajorityMask(0,1,2**(nrounds*nqubits)-1),
+           Invalidate(addr=10, mask=2**(nrounds*nqubits)-1),
+           Invalidate(addr=11, mask=1)]
+    if prep:
+       seqs += [reduce(operator.mul, [X(q) for n,q in enumerate(qubits) if prep[n]])]
+    for n in range(nrounds):
+       seqs += [reduce(operator.mul, [MEASA(q, (10, 2**(nqubits*n+m))) for m,q in enumerate(qubits)]),  Id(qubits[0],meas_delay)]
+    seqs+=MajorityVote(10,11,2**(nrounds*nqubits)-1)
+    seqs+=qwait("RAM", 11)
+    seqs+=[Id(qubits[0],100e-9)]
+    seqs+=qif(1,[X(qubits[0])]) # placeholder for any conditional operation
+    seqs=[seqs]
+    if docals:
+        seqs += create_cal_seqs(qubits,
+        calRepeats)
+    metafile = compile_to_hardware(seqs, 'MajorityVote/MajorityVote')
+    return metafile
