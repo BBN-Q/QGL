@@ -35,7 +35,7 @@ class APSPatternUtils(unittest.TestCase):
         offsets = {APS2Pattern.wf_sig(pulse): 0}
 
         instructions = APS2Pattern.create_seq_instructions(
-            [seq_1, [], seq_2, [], [], []], offsets)
+            [seq_1, [], seq_2, [], [], []], offsets)[0]
 
         instr_types = [
             APS2Pattern.SYNC, APS2Pattern.WAIT, APS2Pattern.WFM,
