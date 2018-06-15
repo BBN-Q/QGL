@@ -2,11 +2,7 @@ from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
 from ..Cliffords import clifford_seq, clifford_mat, inverse_clifford
-<<<<<<< Updated upstream
 from .helpers import create_cal_seqs, cal_descriptor
-=======
-from .helpers import create_cal_seqs, basic_RB_descriptor, cal_descriptor
->>>>>>> Stashed changes
 
 import os
 from csv import reader
@@ -84,14 +80,7 @@ def SingleQubitRB(qubit, seqs, purity=False, showPlot=False, add_cals=True):
         seqsBis += create_cal_seqs((qubit, ), 2)
         axis_descriptor.append(cal_descriptor((qubit,), 2))
 
-<<<<<<< Updated upstream
     metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor, extra_meta = {'sequences':seqs})
-=======
-    metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor=[
-        basic_RB_descriptor(len(seqs)),
-        cal_descriptor((qubit,), 2)
-    ])
->>>>>>> Stashed changes
 
     if showPlot:
         plot_pulse_files(metafile)
