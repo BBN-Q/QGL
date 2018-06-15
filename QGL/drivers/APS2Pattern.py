@@ -741,7 +741,7 @@ def synchronize_clocks(seqs):
             instr.length = 0
 
 
-def create_seq_instructions(seqs, offsets):
+def create_seq_instructions(seqs, offsets, label = None):
     '''
     Helper function to create instruction vector from an IR sequence and an offset dictionary
     keyed on the wf keys.
@@ -770,7 +770,6 @@ def create_seq_instructions(seqs, offsets):
 
     # always start with SYNC (stealing label from beginning of sequence)
     # unless it is a subroutine (using last entry as return as tell)
-    label = None
     instructions = []
     for ct, seq in enumerate(seqs):
         if len(seq):
@@ -778,7 +777,8 @@ def create_seq_instructions(seqs, offsets):
             break
     if not isinstance(seqs[first_non_empty][-1], ControlFlow.Return):
         if isinstance(seqs[first_non_empty][0], BlockLabel.BlockLabel):
-            label = seqs[first_non_empty][0]
+            if not label:
+                label = seqs[first_non_empty][0]
             timeTuples.pop(0)
             indexes[first_non_empty] += 1
         instructions.append(Sync(label=label))
@@ -875,9 +875,10 @@ def create_seq_instructions(seqs, offsets):
                                                label=label))
 
             #clear label
-            label = None
+            if len(timeTuples)>0:
+                label = None
 
-    return instructions
+    return instructions, label
 
 def create_instr_data(seqs, offsets, cache_lines):
     '''
@@ -893,10 +894,11 @@ def create_instr_data(seqs, offsets, cache_lines):
     num_cache_lines = len(set(cache_lines))
     cache_line_changes = np.concatenate(
         ([0], np.where(np.diff(cache_lines))[0] + 1))
+    label = None
     for ct, seq in enumerate(zip_longest(*seqs, fillvalue=[])):
-        seq_instrs.append(create_seq_instructions(
             list(seq), offsets[cache_lines[ct]]
-            if need_prefetch else offsets[0]))
+            if need_prefetch else offsets[0], label = label)
+        seq_instrs.append(new_instrs)
         #if we need wf prefetching and have moved waveform cache lines then inject prefetch for the next line
         if need_prefetch and (ct in cache_line_changes):
             next_cache_line = cache_lines[cache_line_changes[(np.where(
@@ -904,10 +906,10 @@ def create_instr_data(seqs, offsets, cache_lines):
                     cache_line_changes)]]
             seq_instrs[-1].insert(0, WaveformPrefetch(int(
                 next_cache_line * WAVEFORM_CACHE_SIZE / 2)))
-            #steal label
-            seq_instrs[-1][0].label = seq_instrs[-1][1].label
-            seq_instrs[-1][1].label = None
-
+            #steal label if necessary
+            if not seq_instrs[-1][0].label:
+                seq_instrs[-1][0].label = seq_instrs[-1][1].label
+                seq_instrs[-1][1].label = None
     #concatenate instructions
     instructions = []
     subroutines_start = -1
