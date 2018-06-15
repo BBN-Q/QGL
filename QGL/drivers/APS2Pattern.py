@@ -896,8 +896,8 @@ def create_instr_data(seqs, offsets, cache_lines):
         ([0], np.where(np.diff(cache_lines))[0] + 1))
     label = None
     for ct, seq in enumerate(zip_longest(*seqs, fillvalue=[])):
-            list(seq), offsets[cache_lines[ct]]
-            if need_prefetch else offsets[0], label = label)
+        new_instrs, label = create_seq_instructions(list(seq), offsets[cache_lines[ct]]
+         if need_prefetch else offsets[0], label = label)
         seq_instrs.append(new_instrs)
         #if we need wf prefetching and have moved waveform cache lines then inject prefetch for the next line
         if need_prefetch and (ct in cache_line_changes):
@@ -915,9 +915,12 @@ def create_instr_data(seqs, offsets, cache_lines):
     subroutines_start = -1
     for ct, seq in enumerate(seq_instrs):
         #Use last instruction being return as mark of start of subroutines
-        if (seq[-1].header >> 4) == RET:
-            subroutines_start = ct
-            break
+        try:
+            if (seq[-1].header >> 4) == RET:
+                subroutines_start = ct
+                break
+        except:
+            pass
         instructions += seq
 
     #if we have any subroutines then group in cache lines
