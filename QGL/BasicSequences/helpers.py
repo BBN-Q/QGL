@@ -64,3 +64,12 @@ def delay_descriptor(delays, desired_units="us"):
         'partition': 1
     }
     return axis_descriptor
+
+def basic_RB_descriptor(num_seqs, desired_units="number"):
+    axis_descriptor = {
+        'name': 'sequence',
+        'unit': desired_units,
+        'points': list(range(num_seqs)),
+        'partition': 1
+    }
+    return axis_descriptor
