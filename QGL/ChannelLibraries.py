@@ -54,30 +54,30 @@ def set_from_dict(obj, settings):
             except Exception as e:
                 print(f"{obj.label}: Error loading {prop_name} from config")
 
-def copy_objs(chans, srcs, new_channel_db):
-    new_chans       = []
-    new_srcs        = []
+def copy_objs(*entities, new_channel_db):
+    # Entities is a list of lists of entities of specific types
+    new_entities    = []
     old_to_new      = {}
     links_to_change = {}
 
-    for chan in chans:
-        c, links = copy_entity(chan, new_channel_db)
-        new_chans.append(c)
-        links_to_change[c] = links
-        old_to_new[c.label] = c
-
-    for src in srcs:
-        c, links = copy_entity(src, new_channel_db)
-        new_srcs.append(c)
-        links_to_change[c] = links
-        old_to_new[c.label] = c
+    for ent in entities:
+        new_ents = []
+        for obj in ent:
+            c, links = copy_entity(obj, new_channel_db)
+            new_ents.append(c)
+            links_to_change[c] = links
+            old_to_new[c.label] = c
+        new_entities.append(new_ents)
 
     for chan, link_info in links_to_change.items():
         for attr_name, link_name in link_info.items():
-            new = old_to_new[link_name]
+            if isinstance(link_name, pony.orm.core.Multiset):
+                new = [old_to_new[ln] for ln in link_name]
+            else:
+                new = old_to_new[link_name]
             setattr(chan, attr_name, new)
 
-    return new_chans, new_srcs
+    return new_entities
 
 def copy_entity(obj, new_channel_db):
     """Copy a pony entity instance"""
@@ -127,16 +127,11 @@ class ChannelLibrary(object):
         self.channelDict = {}
 
         # Check to see whether there is already a temp database
-        if "__temp__" in select(c.label for c in Channels.ChannelDatabase):
-            for cdb in select(d for d in Channels.ChannelDatabase if d.label == "__temp__"):
-                print("Trying to clear", cdb.label)
-                select(c for c in Channels.MicrowaveSource if c.channel_db == cdb).delete(bulk=True)
-                select(c for c in Channels.Channel if c.channel_db == cdb).delete(bulk=True)
-                commit()
-                select(d for d in Channels.ChannelDatabase if d == cdb).delete(bulk=True)
-                commit()
+        for cdb in select(d for d in Channels.ChannelDatabase if d.label == "__temp__"):
+            self.clear(channel_db=cdb, create_new=False)
 
         self.channelDatabase = Channels.ChannelDatabase(label="__temp__", time=datetime.datetime.now())
+        commit()
 
         config.load_config()
 
@@ -149,8 +144,39 @@ class ChannelLibrary(object):
     def update_channelDict(self):
         self.channelDict = {c.label: c for c in self.get_current_channels()}
 
-    def list(self):
+    def ls(self):
         select((c.label, c.time, c.id) for c in Channels.ChannelDatabase if c.label != "__temp__").sort_by(1, 2).show()
+
+    def ent_by_type_name(self, name, show=False):
+        q = select(c for c in getattr(Channels,name) if c.label != "__temp__")
+        if show:
+            select(c.label for c in getattr(Channels,name) if c.label != "__temp__").sort_by(1).show()
+        else:
+            return {el.label: el for el in q}
+
+    def dig(self):
+        return self.ent_by_type_name("Digitizer")
+
+    def awg(self):
+        return self.ent_by_type_name("AWG")
+
+    def qubit(self):
+        return self.ent_by_type_name("Qubit")
+
+    def meas(self):
+        return self.ent_by_type_name("Measurement")
+
+    def ls_dig(self):
+        return self.ent_by_type_name("Digitizer", show=True)
+
+    def ls_awg(self):
+        return self.ent_by_type_name("AWG", show=True)
+
+    def ls_qubit(self):
+        return self.ent_by_type_name("Qubit", show=True)
+
+    def ls_meas(self):
+        return self.ent_by_type_name("Measurement", show=True)
 
     def load(self, name, index=1):
         """Load the latest instance for a particular name. Specifying index = 2 will select the second most recent instance """
@@ -161,32 +187,36 @@ class ChannelLibrary(object):
         obj = select(c for c in Channels.ChannelDatabase if c.id==id_num).first()
         self.load_obj(obj)
 
-    def clear(self):
-        select(c for c in Channels.MicrowaveSource if c.channel_db == self.channelDatabase).delete(bulk=True)
-        select(c for c in Channels.Channel if c.channel_db == self.channelDatabase).delete(bulk=True)
-        self.channelDatabase.time  = datetime.datetime.now()
-        commit()
-        select(d for d in Channels.ChannelDatabase if d.label == "__temp__").delete(bulk=True)
-        commit()
-        self.channelDatabase = Channels.ChannelDatabase(label="__temp__", time=datetime.datetime.now())
+    def clear(self, channel_db=None, create_new=True):
+        # If no database is specified, clear self.database
+        channel_db = channel_db if channel_db else self.channelDatabase
+        # First clear items that don't have Sets of other items
+        for ent in [Channels.MicrowaveSource, Channels.Channel, Channels.AWG, Channels.Digitizer]:
+            select(c for c in ent if c.channel_db == channel_db).delete(bulk=True)
+            commit()        
+        # Now clear items that do potentially have sets of items (which should be deleted)
+        for ent in [Channels.ChannelDatabase]:
+            select(d for d in ent if d.label == "__temp__").delete(bulk=True)
+            commit()
+        if create_new:
+            self.channelDatabase = Channels.ChannelDatabase(label="__temp__", time=datetime.datetime.now())
+            commit()
 
     def load_obj(self, obj):
         commit()
         self.clear()
-        chans = list(obj.channels)
-        srcs  = list(obj.sources)
-        new_chans, new_srcs = copy_objs(chans, srcs, self.channelDatabase)
-
+        chans, srcs, awgs, digs = map(list, [obj.channels, obj.sources, obj.awgs, obj.digitizers])
+        copy_objs(chans, srcs, awgs, digs, new_channel_db=self.channelDatabase)
+        commit()
         self.update_channelDict()
 
     def save_as(self, name):
-        chans = list(self.channelDatabase.channels)
-        srcs  = list(self.channelDatabase.sources)
+        chans, srcs, awgs, digs = map(list, [self.channelDatabase.channels, self.channelDatabase.sources,
+                                            self.channelDatabase.awgs, self.channelDatabase.digitizers])
         commit()
         cd = Channels.ChannelDatabase(label=name, time=datetime.datetime.now())
-        new_chans, new_srcs = copy_objs(chans, srcs, cd)
-        cd.channels = new_chans
-        cd.sources  = new_srcs
+        new_chans, new_srcs, new_awgs, new_digs = copy_objs(chans, srcs, awgs, digs, new_channel_db=cd)
+        cd.channels, cd.sources, cd.awgs, cd.digitizers = new_chans, new_srcs, new_awgs, new_digs
         commit()
         
     #Dictionary methods
@@ -417,28 +447,14 @@ class ChannelLibrary(object):
 # Convenience functions for generating and linking channels
 # TODO: move these to a shim layer shared by Auspex/QGL
 
-# class APS2(object):
-#     def __init__(self, label, address=None, delay=0.0):
-#         self.chan12 = Channels.PhysicalQuadratureChannel(label=f"{label}-12", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
-#         self.m1     = Channels.PhysicalMarkerChannel(label=f"{label}-12m1", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
-#         self.m2     = Channels.PhysicalMarkerChannel(label=f"{label}-12m2", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
-#         self.m3     = Channels.PhysicalMarkerChannel(label=f"{label}-12m3", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
-#         self.m4     = Channels.PhysicalMarkerChannel(label=f"{label}-12m4", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
-        
-#         self.trigger_interval = None
-#         self.trigger_source   = "External"
-#         self.address          = address
-#         self.delay            = delay
-#         self.master           = False
-
 def new_APS2(label, address):
-    chan12 = Channels.PhysicalQuadratureChannel(label=f"{label}-12", instrument=label, translator="new_APS2Pattern", channel_db=channelLib.channelDatabase)
+    chan12 = Channels.PhysicalQuadratureChannel(label=f"{label}-12", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
     m1     = Channels.PhysicalMarkerChannel(label=f"{label}-12m1", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
     m2     = Channels.PhysicalMarkerChannel(label=f"{label}-12m2", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
     m3     = Channels.PhysicalMarkerChannel(label=f"{label}-12m3", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
     m4     = Channels.PhysicalMarkerChannel(label=f"{label}-12m4", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
     
-    this_awg = Channels.AWG(label=label, address=address, channels=[chan12, m1, m2, m3, m4])
+    this_awg = Channels.AWG(label=label, address=address, channels=[chan12, m1, m2, m3, m4], channel_db=channelLib.channelDatabase)
     this_awg.trigger_source = "External"
     this_awg.address        = address
 
@@ -449,7 +465,7 @@ def new_X6(label, address):
     chan1 = Channels.ReceiverChannel(label=f"RecvChan-{label}-1", channel_db=channelLib.channelDatabase)
     chan2 = Channels.ReceiverChannel(label=f"RecvChan-{label}-2", channel_db=channelLib.channelDatabase)
     
-    this_dig = Channels.Digitizer(label=label, address=address, channels=[chan1, chan2])
+    this_dig = Channels.Digitizer(label=label, address=address, channels=[chan1, chan2], channel_db=channelLib.channelDatabase)
     this_dig.trigger_source = "External"
     this_dig.address        = address
 
@@ -458,10 +474,12 @@ def new_X6(label, address):
 
 def new_qubit(label):
     thing = Channels.Qubit(label=label, channel_db=channelLib.channelDatabase)
+    commit()
     return thing
 
 def new_source(label, source_type, address, power=-30.0):
     thing = Channels.MicrowaveSource(label=label, source_type=source_type, address=address, power=power, channel_db=channelLib.channelDatabase)
+    commit()
     return thing
 
 def set_control(qubit, awg, generator=None):
@@ -480,10 +498,9 @@ def set_control(qubit, awg, generator=None):
     qubit.phys_chan = phys_chan
     if generator:
         qubit.phys_chan.generator = generator
+    commit()
     
 def set_measure(qubit, awg, dig, generator=None, dig_channel=1, trig_channel=None, gate=False, gate_channel=None, trigger_length=1e-7):
-    print(qubit, awg, dig)
-
     quads   = [c for c in awg.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
     markers = [c for c in awg.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
 
@@ -524,13 +541,18 @@ def set_measure(qubit, awg, dig, generator=None, dig_channel=1, trig_channel=Non
         gate_chan           = Channels.LogicalMarkerChannel(label=f"M-{qubit.label}-gate", channel_db=channelLib.channelDatabase)
         gate_chan.phys_chan = phys_gate_channel
         meas.gate_chan      = gate_chan
+    commit()
         
-def set_master(awg, trig_channel=2, pulse_length=1e-7):
+def set_master(awg, trig_channel, pulse_length=1e-7):
+    if not isinstance(trig_channel, Channels.PhysicalMarkerChannel):
+        raise ValueError("In set_master the trigger channel must be an instance of PhysicalMarkerChannel")
+   
     st = Channels.LogicalMarkerChannel(label="slave_trig", channel_db=channelLib.channelDatabase)
-    st.phys_chan = getattr(awg, f"m{trig_channel}")
+    st.phys_chan = trig_channel
     st.pulse_params = {"length": pulse_length, "shape_fun": "constant"}
     awg.master = True
     awg.trigger_source = "Internal"
+    commit()
 
 def QubitFactory(label, **kwargs):
     ''' Return a saved qubit channel or create a new one. '''

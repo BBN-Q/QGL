@@ -54,6 +54,10 @@ def define_entities(db):
         awgs       = Set("AWG", cascade_delete=True)
         digitizers = Set("Digitizer", cascade_delete=True)
         time       = Optional(datetime.datetime)
+        def __repr__(self):
+            return str(self)
+        def __str__(self):
+            return "{0}('{1}')".format(self.__class__.__name__, self.label)
 
     class MicrowaveSource(db.Entity):
         label           = Required(str)
@@ -62,6 +66,10 @@ def define_entities(db):
         power           = Optional(float)
         logical_channel = Optional("PhysicalChannel")
         channel_db      = Optional("ChannelDatabase")
+        def __repr__(self):
+            return str(self)
+        def __str__(self):
+            return "{0}('{1}')".format(self.__class__.__name__, self.label)
 
     class Digitizer(db.Entity):
         label           = Required(str)
@@ -76,6 +84,12 @@ def define_entities(db):
         
         def get_chan(self, name):
             return self.channels.select(lambda x: x.label.endswith(name)).first()
+        def ch(self, name):
+            return self.get_chan(name)
+        def __repr__(self):
+            return str(self)
+        def __str__(self):
+            return "{0}('{1}')".format(self.__class__.__name__, self.label)
 
     class AWG(db.Entity):
         label            = Required(str)
@@ -89,6 +103,12 @@ def define_entities(db):
 
         def get_chan(self, name):
             return self.channels.select(lambda x: x.label.endswith(name)).first()
+        def ch(self, name):
+            return self.get_chan(name)
+        def __repr__(self):
+            return str(self)
+        def __str__(self):
+            return "{0}('{1}')".format(self.__class__.__name__, self.label)
 
     class Channel(db.Entity):
         '''
