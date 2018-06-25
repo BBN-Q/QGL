@@ -139,6 +139,10 @@ def define_entities(db):
         # marker_channel  = Optional("PhysicalMarkerChannel")
         awg             = Optional(AWG)
 
+        def q(self):
+            if isinstance(self.logical_channel, Qubit):
+                return self.logical_channel
+
     class LogicalChannel(Channel):
         '''
         The main class from which we will generate sequences.
