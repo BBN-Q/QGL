@@ -105,6 +105,7 @@ class ChannelLibrary(object):
             channelLib.db.disconnect()
 
         config.load_db()
+        self.database_provider = "sqlite"
         if database_file:
             self.database_file = database_file
         elif config.db_file:
@@ -114,7 +115,7 @@ class ChannelLibrary(object):
 
         self.db = Database()
         Channels.define_entities(self.db)
-        self.db.bind('sqlite', filename=self.database_file, create_db=True)
+        self.db.bind(self.database_provider, filename=self.database_file, create_db=True)
         self.db.generate_mapping(create_tables=True)
 
         # Dirty trick: push the correct entity defs to the calling context
@@ -127,10 +128,16 @@ class ChannelLibrary(object):
         self.channelDict = {}
 
         # Check to see whether there is already a temp database
-        for cdb in select(d for d in Channels.ChannelDatabase if d.label == "__temp__"):
-            self.clear(channel_db=cdb, create_new=False)
-
-        self.channelDatabase = Channels.ChannelDatabase(label="__temp__", time=datetime.datetime.now())
+        w_dbs = list(select(d for d in Channels.ChannelDatabase if d.label == "working"))
+        if len(w_dbs) > 1:
+            # self.clear(channel_db=cdb, create_new=False)
+            raise Exception("More than one working database exists!")
+        elif len(w_dbs) == 1:
+            self.channelDatabase = w_dbs[0]
+            commit()
+            self.update_channelDict()
+        elif len(w_dbs) == 0:
+            self.channelDatabase = Channels.ChannelDatabase(label="working", time=datetime.datetime.now())
         commit()
 
         config.load_config()
@@ -145,12 +152,12 @@ class ChannelLibrary(object):
         self.channelDict = {c.label: c for c in self.get_current_channels()}
 
     def ls(self):
-        select((c.label, c.time, c.id) for c in Channels.ChannelDatabase if c.label != "__temp__").sort_by(1, 2).show()
+        select((c.label, c.time, c.id) for c in Channels.ChannelDatabase).sort_by(1, 2).show()
 
     def ent_by_type_name(self, name, show=False):
-        q = select(c for c in getattr(Channels,name) if c.label != "__temp__")
+        q = select(c for c in getattr(Channels,name) if c.label == "working")
         if show:
-            select(c.label for c in getattr(Channels,name) if c.label != "__temp__").sort_by(1).show()
+            select(c.label for c in getattr(Channels,name) if c.label == "working").sort_by(1).show()
         else:
             return {el.label: el for el in q}
 
@@ -196,10 +203,10 @@ class ChannelLibrary(object):
             commit()        
         # Now clear items that do potentially have sets of items (which should be deleted)
         for ent in [Channels.ChannelDatabase]:
-            select(d for d in ent if d.label == "__temp__").delete(bulk=True)
+            select(d for d in ent if d.label == "working").delete(bulk=True)
             commit()
         if create_new:
-            self.channelDatabase = Channels.ChannelDatabase(label="__temp__", time=datetime.datetime.now())
+            self.channelDatabase = Channels.ChannelDatabase(label="working", time=datetime.datetime.now())
             commit()
 
     def load_obj(self, obj):
