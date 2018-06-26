@@ -1,0 +1,7 @@
+bbndb >= 0.1
+numpy >= 1.11.1
+scipy >= 0.17.1
+networkx >= 1.11
+h5py >= 2.6.0
+bokeh >= 0.12.13
+jupyter >= 1.0.0

@@ -1,3 +1,0 @@
-[submodule "QGL/bbndb"]
-	path = QGL/bbndb
-	url = git@github.com:bbn-q/bbndb
