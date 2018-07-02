@@ -154,10 +154,8 @@ def pull_uniform_entries(entries, entry_iterators):
         if all(iterDone):
             raise StopIteration("Unable to find a uniform set of entries")
 
-        #test_array = np.empty(len(lengths)).fill(lengths[0])
         #if all(np.isclose(x, lengths[0], atol=1e-10) for x in lengths):
-        if np.all(np.less_equal(np.abs(lengths - lengths[0]), 1e-10)):
-        #if np.allclose(np.array(lengths), test_array, atol=1e-10):
+        if np.all(np.less(np.abs(lengths - lengths[0]), 1e-10)):
             break
 
         #Otherwise try to concatenate on entries to match lengths
