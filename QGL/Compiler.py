@@ -35,6 +35,7 @@ from .PulsePrimitives import Id
 from .PulseSequencer import Pulse, PulseBlock, CompositePulse
 from . import ControlFlow
 from . import BlockLabel
+from . import TdmInstructions # only for APS2-TDM
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,9 @@ def merge_channels(wires, channels):
                 break
             # control flow on any channel should pass thru
             if any(isinstance(e, (ControlFlow.ControlInstruction,
-                                  BlockLabel.BlockLabel)) for e in entries):
+                                  BlockLabel.BlockLabel, TdmInstructions.WriteAddrInstruction,
+                                  TdmInstructions.CustomInstruction,
+                                  TdmInstructions.LoadCmpVramInstruction)) for e in entries):
                 # for the moment require uniform control flow so that we
                 # can pull from the first channel
                 assert all(e == entries[0]
@@ -432,6 +435,15 @@ def compile_to_hardware(seqs,
         else:
             files[awgName] = fullFileName
 
+    # generate TDM sequences FIXME: what's the best way to identify the need for a TDM seq.? Support for single TDM
+    if 'APS2Pattern' in [wire.translator for wire in physWires]:
+        aps2tdm_module = import_module('QGL.drivers.APS2Pattern') # this is redundant with above
+        tdm_instr = aps2tdm_module.tdm_instructions(seqs)
+        files['TDM'] = os.path.normpath(os.path.join(
+            config.AWGDir, fileName + '-' + 'TDM' + suffix + data[
+                'seqFileExt']))
+        aps2tdm_module.write_tdm_seq(tdm_instr, files['TDM'])
+
     # create meta output
     if not axis_descriptor:
         axis_descriptor = [{
@@ -542,7 +554,10 @@ def compile_sequence(seq, channels=None):
                 wires[chan] += [copy(block)]
             continue
         # control flow broadcasts to all channels if channel attribute is None
-        if isinstance(block, ControlFlow.ControlInstruction):
+        if (isinstance(block, ControlFlow.ControlInstruction) or
+                isinstance(block, TdmInstructions.WriteAddrInstruction) or
+                isinstance(block, TdmInstructions.CustomInstruction) or
+                isinstance(block, TdmInstructions.LoadCmpVramInstruction)):
             # Need to deal with attaching measurements and edges to control
             # instruction. Until we have a proper solution for that, we will
             # always broadcast control instructions to all channels
@@ -648,6 +663,8 @@ class Waveform(object):
             self.frameChange = 0
             self.isTimeAmp = False
             self.frequency = 0
+
+            self.maddr = (-1, 0)
         else:
             self.label = pulse.label
             self.key = pulse.hashshape()
@@ -657,6 +674,8 @@ class Waveform(object):
             self.frameChange = pulse.frameChange
             self.isTimeAmp = pulse.isTimeAmp
             self.frequency = pulse.frequency
+
+            self.maddr = pulse.maddr
 
     def __repr__(self):
         return self.__str__()

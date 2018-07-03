@@ -27,7 +27,7 @@ def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False, delay=Non
                for _ in range(numRepeats)]
 
     #Add on the measurement operator.
-    measBlock = reduce(operator.mul, [MEAS(q) for q in qubits])
+    measBlock = reduce(operator.mul, [MEAS(q) for q in measChans])
     #Add optional delay
     full_cal_seqs = [[seq, Id(qubits[0], delay), measBlock] if delay else [seq, measBlock] for seq in cal_seqs]
     if waitcmp:

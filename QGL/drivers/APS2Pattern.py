@@ -7,7 +7,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-	http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,10 +27,14 @@ import h5py
 import numpy as np
 
 from QGL import Compiler, ControlFlow, BlockLabel, PatternUtils
+from QGL import PulseSequencer
 from QGL.PatternUtils import hash_pulse, flatten
+from QGL import TdmInstructions
 
 # Python 2/3 compatibility: use 'int' that subclasses 'long'
 from builtins import int
+
+logger = logging.getLogger(__name__)
 
 #Some constants
 SAMPLING_RATE = 1.2e9
@@ -59,6 +63,11 @@ LOADCMP = 0xB
 PREFETCH = 0xC
 NOP = 0XF
 
+# # APS3 prototype
+CUSTOM = 0xD
+INVALIDATE = 0xE # Invalidate and WriteAddr use the same opcode
+WRITEADDR = 0xE
+
 # WFM/MARKER op codes
 PLAY = 0x0
 WAIT_TRIG = 0x1
@@ -72,6 +81,19 @@ EQUAL = 0x0
 NOTEQUAL = 0x1
 GREATERTHAN = 0x2
 LESSTHAN = 0x3
+
+CMPTABLE = {'==': EQUAL, '!=': NOTEQUAL, '>': GREATERTHAN, '<': LESSTHAN}
+
+# custom OP_CODES
+TDM_MAJORITY_VOTE = 0
+TDM_MAJORITY_VOTE_SET_MASK = 1
+TDM_TSM_SET_ROUNDS = 2
+TDM_TSM = 3
+
+APS_CUSTOM_DECODE = ["APS_RAND", "APS_CLIFFORD_RAND","APS_CLIFFORD_SET_SEED" ,"APS_CLIFFORD_SET_OFFSET"
+, "APS_CLIFFORD_SET_SPACING"]
+
+TDM_CUSTOM_DECODE = ["TDM_MAJORITY_VOTE", "TDM_MAJORITY_VOTE_SET_MASK", "TDM_TSM_SET_ROUNDS", "TDM_TSM"]
 
 # Whether we use PHASE_OFFSET modulation commands or bake it into waveform
 # Default to false as we usually don't have many variants
@@ -102,8 +124,8 @@ def is_compatible_file(filename):
 
 def create_wf_vector(wfLib, seqs):
     '''
-	Helper function to create the wf vector and offsets into it.
-	'''
+    Helper function to create the wf vector and offsets into it.
+    '''
     max_pts_needed = 0
     for wf in wfLib.values():
         if len(wf) == 1:
@@ -188,16 +210,18 @@ def create_wf_vector(wfLib, seqs):
 
 
 class Instruction(object):
-    def __init__(self, header, payload, label=None, target=None):
+    def __init__(self, header, payload, label=None, target=None, decode_as_tdm = False):
         self.header = header
         self.payload = int(payload)
         self.label = label
         self.target = target
+        self.decode_as_tdm = decode_as_tdm
 
     @classmethod
-    def unflatten(cls, instr):
+    def unflatten(cls, instr, decode_as_tdm = False):
         return cls(header=(int(instr) >> 56) & 0xff,
-                   payload=int(instr) & 0xffffffffffffff)
+                   payload=int(instr) & 0xffffffffffffff,
+                   decode_as_tdm = decode_as_tdm)
 
     def __repr__(self):
         return self.__str__()
@@ -206,12 +230,19 @@ class Instruction(object):
 
         opCodes = ["WFM", "MARKER", "WAIT", "LOAD", "REPEAT", "CMP", "GOTO",
                    "CALL", "RET", "SYNC", "MODULATION", "LOADCMP", "PREFETCH",
-                   "NOP", "NOP", "NOP"]
+                   "CUSTOM", "WRITEADDR", "NOP"]
+
+        # list of opCodes where the reprenstation will change
+        excludeList = ["WRITEADDR", "LOADCMP"]
 
         out = "{0} ".format(self.label) if self.label else ""
 
         instrOpCode = (self.header >> 4) & 0xf
-        out += opCodes[instrOpCode]
+
+        opCodeStr = opCodes[instrOpCode]
+
+        if opCodeStr not in excludeList:
+            out += opCodeStr
 
         if (instrOpCode == MARKER) or (instrOpCode == WFM) or (
                 instrOpCode == MODULATION):
@@ -234,6 +265,10 @@ class Instruction(object):
             out += "; TA bit={}".format((self.payload >> 45) & 0x1)
             out += ", count = {}".format((self.payload >> 24) & 2**21 - 1)
             out += ", addr = {}".format(self.payload & 2**24 - 1)
+
+            # # APS3/TDM modifier to use VRAM output
+            # if self.payload & (1 << 48):
+            #     out += ", use_vram"
 
         elif instrOpCode == MARKER:
             mrkOpCode = (self.payload >> 46) & 0x3
@@ -271,6 +306,50 @@ class Instruction(object):
         elif instrOpCode == LOAD:
             out += " | count = {}".format(self.payload)
 
+        elif instrOpCode == CUSTOM:
+            store_addr = self.payload & 0xFFFF
+            load_addr = (self.payload >> 16) & 0xFFFF
+            instruction = (self.payload >> 32) & 0xFF
+            instructionAPS = TDM_CUSTOM_DECODE[instruction]
+            out += " | instruction = {0} ({1}), load_addr = 0x{2:0x}, store_addr = 0x{3:0x}".format(instruction, instructionAPS, load_addr, store_addr)
+
+        elif instrOpCode == WRITEADDR:
+            addr = self.payload & 0xFFFF
+            value = (self.payload >> 16) & 0xFFFFFFFF
+            invalidate = not (self.header & 0x1)
+            mapTrigger = (self.header >> 2) & 0x1
+            writeCrossbar = (self.header >> 1) & 0x1
+
+            instrStr = "WRITEADDR "
+            valueType = "value"
+
+            if invalidate:
+                instrStr = "INVALIDATE"
+                valueType = "valid_mask"
+
+            if mapTrigger:
+                instrStr = "STOREMEAS"
+                valueType = "mapping"
+
+            if writeCrossbar:
+                instrStr = "WRITECB"
+                valuetype = "mapping"
+                addr = (self.payload >> 16) & 0xFFFF
+                value = (self.payload >> 32) & 0xFFFF
+
+            out += "{0} | addr = 0x{1:0x}, {2} = 0x{3:0x}".format(instrStr, addr, valueType, value)
+
+        elif instrOpCode == LOADCMP:
+            addr = self.payload & 0xFFFF
+            mask = (self.payload >> 16) & 0xFFFF
+            use_ram = (self.payload >> 48) & 0x1
+            if self.decode_as_tdm and not use_ram:
+                out += "WAITMEAS"
+            else:
+                src = "EXT"
+                if use_ram:
+                    src = "RAM"
+                out += "LOADCMP | source = {0}, addr = 0x{1:0x}, read_mask = 0x{2:0x}".format(src, addr, mask)
         return out
 
     def __eq__(self, other):
@@ -303,7 +382,7 @@ class Instruction(object):
         return self.header >> 4
 
     def flatten(self):
-        return int((self.header << 56) | (self.payload & 0xffffffffffff))
+        return int((self.header << 56) | (self.payload & 0xffffffffffffff))
 
 
 def Waveform(addr, count, isTA, write=False, label=None):
@@ -392,6 +471,49 @@ def Prefetch(addr, label=None):
 def NoOp():
     return Instruction.unflatten(0xffffffffffffffff)
 
+# QGL instructions
+def Invalidate(addr, mask, label=None):
+    header = WRITEADDR << 4
+    payload = (mask << 16) | addr
+    return Instruction(header, payload, label=label)
+
+def WriteAddr(addr, value, label=None):
+    header = (WRITEADDR << 4) | 1
+    payload = (value << 16) | addr
+    return Instruction(header, payload, label=label)
+
+def StoreMeas(addr, mapping, label=None):
+    header = (WRITEADDR << 4) | 5
+    payload = (mapping << 16) | addr
+    return Instruction(header, payload, label=label)
+
+def CrossBar(addr, value, label=None):
+    header = (WRITEADDR << 4) | 3
+    payload = (value << 32) | (addr << 16)
+    return Instruction(header, payload, label=label)
+
+def Custom(in_addr, out_addr, custom_op, label=None):
+    header = CUSTOM << 4
+    payload = (custom_op << 32) | (in_addr << 16) | out_addr
+    return Instruction(header, payload, label=label)
+
+def MajorityVote(in_addr, out_addr, label=None):
+    return Custom(in_addr, out_addr, 0, label=label)
+
+def MajorityVoteMask(in_addr, out_addr, label=None):
+    return Custom(in_addr, out_addr, 1, label=label)
+
+def DecodeSetRounds(in_addr, out_addr, label=None):
+    return Custom(in_addr, out_addr, 2, label=label)
+
+def Decode(in_addr, out_addr, label=None):
+    return Custom(in_addr, out_addr, 3, label=label)
+
+def LoadCmpVram(addr, mask, label=None):
+    header = LOADCMP << 4
+    payload = (1 << 48) | (mask << 16) | addr
+    return Instruction(header, payload, label=label)
+
 
 def preprocess(seqs, shapeLib):
     seqs = PatternUtils.convert_lengths_to_samples(
@@ -403,10 +525,10 @@ def preprocess(seqs, shapeLib):
 
 def wf_sig(wf):
     '''
-	Compute a signature of a Compiler.Waveform that identifies the relevant properties for
-	two Waveforms to be considered "equal" in the waveform library. For example, we ignore
-	length of TA waveforms.
-	'''
+    Compute a signature of a Compiler.Waveform that identifies the relevant properties for
+    two Waveforms to be considered "equal" in the waveform library. For example, we ignore
+    length of TA waveforms.
+    '''
     if wf.isZero or wf.isTimeAmp:  # 2nd condition necessary until we support RT SSB
         if USE_PHASE_OFFSET_INSTRUCTION:
             return (wf.amp)
@@ -486,89 +608,89 @@ class ModulationCommand(object):
         return instr
 
 def inject_modulation_cmds(seqs):
-	"""
-	Inject modulation commands from phase, frequency and frameChange of waveforms
-	in an IQ waveform sequence. Assume up to 2 NCOs for now.
-	"""
-	cur_freq = 0
-	cur_phase = 0
-	for ct,seq in enumerate(seqs):
-		#check whether we have modulation commands
-		freqs = np.unique([entry.frequency for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)])
-		if len(freqs) > 2:
-			raise Exception("Max 2 frequencies on the same channel allowed.")
-		no_freq_cmds = np.allclose(freqs, 0)
-		phases = [entry.phase for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
-		no_phase_cmds = np.allclose(phases, 0)
-		frame_changes = [entry.frameChange for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
-		no_frame_cmds = np.allclose(frame_changes, 0)
-		no_modulation_cmds = no_freq_cmds and no_phase_cmds and no_frame_cmds
+    """
+    Inject modulation commands from phase, frequency and frameChange of waveforms
+    in an IQ waveform sequence. Assume up to 2 NCOs for now.
+    """
+    cur_freq = 0
+    cur_phase = 0
+    for ct,seq in enumerate(seqs):
+        #check whether we have modulation commands
+        freqs = np.unique([entry.frequency for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)])
+        if len(freqs) > 2:
+            raise Exception("Max 2 frequencies on the same channel allowed.")
+        no_freq_cmds = np.allclose(freqs, 0)
+        phases = [entry.phase for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
+        no_phase_cmds = np.allclose(phases, 0)
+        frame_changes = [entry.frameChange for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
+        no_frame_cmds = np.allclose(frame_changes, 0)
+        no_modulation_cmds = no_freq_cmds and no_phase_cmds and no_frame_cmds
 
-		if no_modulation_cmds:
-			continue
+        if no_modulation_cmds:
+            continue
 
-		mod_seq = []
-		pending_frame_update = False
+        mod_seq = []
+        pending_frame_update = False
 
-		for entry in seq:
+        for entry in seq:
 
-			#copies to avoid same object having different timestamps later
-			#copy through BlockLabel
-			if isinstance(entry, BlockLabel.BlockLabel):
-				mod_seq.append(copy(entry))
-			#mostly copy through control-flow
-			elif isinstance(entry, ControlFlow.ControlInstruction):
-				#heuristic to insert phase reset before trigger if we have modulation commands
-				if isinstance(entry, ControlFlow.Wait):
-					if not ( no_modulation_cmds and (cur_freq == 0) and (cur_phase == 0)):
-						mod_seq.append(ModulationCommand("RESET_PHASE", 0x3))
-						for nco_ind, freq in enumerate(freqs):
-							mod_seq.append( ModulationCommand("SET_FREQ", nco_ind + 1, frequency = -freq) )
-				elif isinstance(entry, ControlFlow.Return):
-					cur_freq = 0 #makes sure that the frequency is set in the first sequence after the definition of subroutines
-				mod_seq.append(copy(entry))
-			elif isinstance(entry, Compiler.Waveform):
-				if not no_modulation_cmds:
-					#select nco
-					nco_select = (list(freqs)).index(entry.frequency) + 1
-					cur_freq = entry.frequency
-					if USE_PHASE_OFFSET_INSTRUCTION and (entry.length > 0) and (cur_phase != entry.phase):
-						mod_seq.append( ModulationCommand("SET_PHASE", nco_select, phase=entry.phase) )
-						cur_phase = entry.phase
-					#now apply modulation for count command and waveform command, if non-zero length
-					if entry.length > 0:
-						mod_seq.append(entry)
-						# if we have a modulate waveform modulate pattern and there is no pending frame update we can append length to previous modulation command
-						if (len(mod_seq) > 1) and (isinstance(mod_seq[-1], Compiler.Waveform)) and (isinstance(mod_seq[-2], ModulationCommand)) and (mod_seq[-2].instruction == "MODULATE") \
-						and mod_seq[-1].frequency == freqs[mod_seq[-2].nco_select - 1] and not pending_frame_update:
-							mod_seq[-2].length += entry.length
-						else:
-							mod_seq.append( ModulationCommand("MODULATE", nco_select, length = entry.length))
-							pending_frame_update = False
-					#now apply non-zero frame changes after so it is applied at end
-					if entry.frameChange != 0:
-						pending_frame_update = True
-						#zero length frame changes (Z pulses) need to be combined with the previous frame change or injected where possible
-						if entry.length == 0:
-							#if the last is a frame change then we can add to the frame change
-							if isinstance(mod_seq[-1], ModulationCommand) and mod_seq[-1].instruction == "UPDATE_FRAME":
-								mod_seq[-1].phase += entry.frameChange
-							#if last entry was pulse without frame change we add frame change
-							elif (isinstance(mod_seq[-1], Compiler.Waveform)) or (mod_seq[-1].instruction == "MODULATE"):
-								mod_seq.append( ModulationCommand("UPDATE_FRAME", nco_select, phase=entry.frameChange) )
-							#if this is the first entry with a wait for trigger then we can inject a frame change
-							#before the wait for trigger but after the RESET_PHASE
-							elif isinstance(mod_seq[-1], ControlFlow.Wait):
-								mod_seq.insert(-1, ModulationCommand("UPDATE_FRAME", nco_select, phase=entry.frameChange) )
-							elif isinstance(mod_seq[-2], ControlFlow.Wait) and isinstance(mod_seq[-1], ModulationCommand) and mod_seq[-1].instruction == "SET_FREQ":
-								mod_seq.insert(-2, ModulationCommand("UPDATE_FRAME", nco_select, phase=entry.frameChange) )
-							#otherwise drop and error if frame has been defined
-							else:
-								raise Exception("Unable to implement zero time Z pulse")
-						else:
-							mod_seq.append( ModulationCommand("UPDATE_FRAME", nco_select, phase=entry.frameChange) )
+            #copies to avoid same object having different timestamps later
+            #copy through BlockLabel
+            if isinstance(entry, BlockLabel.BlockLabel):
+                mod_seq.append(copy(entry))
+            #mostly copy through control-flow
+            elif isinstance(entry, ControlFlow.ControlInstruction) or isinstance(entry, TdmInstructions.LoadCmpVramInstruction) or isinstance(entry, TdmInstructions.WriteAddrInstruction):
+                #heuristic to insert phase reset before trigger if we have modulation commands
+                if isinstance(entry, ControlFlow.Wait):
+                    if not ( no_modulation_cmds and (cur_freq == 0) and (cur_phase == 0)):
+                        mod_seq.append(ModulationCommand("RESET_PHASE", 0x3))
+                        for nco_ind, freq in enumerate(freqs):
+                            mod_seq.append( ModulationCommand("SET_FREQ", nco_ind + 1, frequency = -freq) )
+                elif isinstance(entry, ControlFlow.Return):
+                    cur_freq = 0 #makes sure that the frequency is set in the first sequence after the definition of subroutines
+                mod_seq.append(copy(entry))
+            elif isinstance(entry, Compiler.Waveform):
+                if not no_modulation_cmds:
+                    #select nco
+                    nco_select = (list(freqs)).index(entry.frequency) + 1
+                    cur_freq = entry.frequency
+                    if USE_PHASE_OFFSET_INSTRUCTION and (entry.length > 0) and (cur_phase != entry.phase):
+                        mod_seq.append( ModulationCommand("SET_PHASE", nco_select, phase=entry.phase) )
+                        cur_phase = entry.phase
+                    #now apply modulation for count command and waveform command, if non-zero length
+                    if entry.length > 0:
+                        mod_seq.append(entry)
+                        # if we have a modulate waveform modulate pattern and there is no pending frame update we can append length to previous modulation command
+                        if (len(mod_seq) > 1) and (isinstance(mod_seq[-1], Compiler.Waveform)) and (isinstance(mod_seq[-2], ModulationCommand)) and (mod_seq[-2].instruction == "MODULATE") \
+                        and mod_seq[-1].frequency == freqs[mod_seq[-2].nco_select - 1] and not pending_frame_update:
+                            mod_seq[-2].length += entry.length
+                        else:
+                            mod_seq.append( ModulationCommand("MODULATE", nco_select, length = entry.length))
+                            pending_frame_update = False
+                    #now apply non-zero frame changes after so it is applied at end
+                    if entry.frameChange != 0:
+                        pending_frame_update = True
+                        #zero length frame changes (Z pulses) need to be combined with the previous frame change or injected where possible
+                        if entry.length == 0:
+                            #if the last is a frame change then we can add to the frame change
+                            if isinstance(mod_seq[-1], ModulationCommand) and mod_seq[-1].instruction == "UPDATE_FRAME":
+                                mod_seq[-1].phase += entry.frameChange
+                            #if last entry was pulse without frame change we add frame change
+                            elif (isinstance(mod_seq[-1], Compiler.Waveform)) or (mod_seq[-1].instruction == "MODULATE"):
+                                mod_seq.append( ModulationCommand("UPDATE_FRAME", nco_select, phase=entry.frameChange) )
+                            #if this is the first entry with a wait for trigger then we can inject a frame change
+                            #before the wait for trigger but after the RESET_PHASE
+                            elif isinstance(mod_seq[-1], ControlFlow.Wait):
+                                mod_seq.insert(-1, ModulationCommand("UPDATE_FRAME", nco_select, phase=entry.frameChange) )
+                            elif isinstance(mod_seq[-2], ControlFlow.Wait) and isinstance(mod_seq[-1], ModulationCommand) and mod_seq[-1].instruction == "SET_FREQ":
+                                mod_seq.insert(-2, ModulationCommand("UPDATE_FRAME", nco_select, phase=entry.frameChange) )
+                            #otherwise drop and error if frame has been defined
+                            else:
+                                raise Exception("Unable to implement zero time Z pulse")
+                        else:
+                            mod_seq.append( ModulationCommand("UPDATE_FRAME", nco_select, phase=entry.frameChange) )
 
-		seqs[ct] = mod_seq
+        seqs[ct] = mod_seq
 
 def build_waveforms(seqs, shapeLib):
     # apply amplitude (and optionally phase) and add the resulting waveforms to the library
@@ -619,17 +741,17 @@ def synchronize_clocks(seqs):
             instr.length = 0
 
 
-def create_seq_instructions(seqs, offsets):
+def create_seq_instructions(seqs, offsets, label = None):
     '''
-	Helper function to create instruction vector from an IR sequence and an offset dictionary
-	keyed on the wf keys.
+    Helper function to create instruction vector from an IR sequence and an offset dictionary
+    keyed on the wf keys.
 
-	Seqs is a list of lists containing waveform and marker data, e.g.
-	[wfSeq & modulationSeq, m1Seq, m2Seq, m3Seq, m4Seq]
+    Seqs is a list of lists containing waveform and marker data, e.g.
+    [wfSeq & modulationSeq, m1Seq, m2Seq, m3Seq, m4Seq]
 
-	We take the strategy of greedily grabbing the next instruction that occurs in time, accross
-	all	waveform and marker channels.
-	'''
+    We take the strategy of greedily grabbing the next instruction that occurs in time, accross
+    all    waveform and marker channels.
+    '''
 
     # timestamp all entries before filtering (where we lose time information on control flow)
     for seq in seqs:
@@ -646,11 +768,8 @@ def create_seq_instructions(seqs, offsets):
     # keep track of where we are in each sequence
     indexes = np.zeros(len(seqs), dtype=np.int64)
 
-    cmpTable = {'==': EQUAL, '!=': NOTEQUAL, '>': GREATERTHAN, '<': LESSTHAN}
-
     # always start with SYNC (stealing label from beginning of sequence)
     # unless it is a subroutine (using last entry as return as tell)
-    label = None
     instructions = []
     for ct, seq in enumerate(seqs):
         if len(seq):
@@ -658,7 +777,8 @@ def create_seq_instructions(seqs, offsets):
             break
     if not isinstance(seqs[first_non_empty][-1], ControlFlow.Return):
         if isinstance(seqs[first_non_empty][0], BlockLabel.BlockLabel):
-            label = seqs[first_non_empty][0]
+            if not label:
+                label = seqs[first_non_empty][0]
             timeTuples.pop(0)
             indexes[first_non_empty] += 1
         instructions.append(Sync(label=label))
@@ -678,10 +798,14 @@ def create_seq_instructions(seqs, offsets):
 
         write_flags = [True] * len(entries)
         for ct, (entry, seq_idx) in enumerate(entries):
+
             #use first non empty sequence for control flow
             if seq_idx == first_non_empty and (
                     isinstance(entry, ControlFlow.ControlInstruction) or
-                    isinstance(entry, BlockLabel.BlockLabel)):
+                    isinstance(entry, BlockLabel.BlockLabel) or
+                    isinstance(entry, TdmInstructions.CustomInstruction) or
+                    isinstance(entry, TdmInstructions.WriteAddrInstruction) or
+                    isinstance(entry, TdmInstructions.LoadCmpVramInstruction)):
                 if isinstance(entry, BlockLabel.BlockLabel):
                     # carry label forward to next entry
                     label = entry
@@ -707,9 +831,17 @@ def create_seq_instructions(seqs, offsets):
                     instructions.append(Load(entry.value - 1, label=label))
                 elif isinstance(entry, ControlFlow.ComparisonInstruction):
                     # TODO modify Cmp operator to load from specified address
-                    instructions.append(Cmp(cmpTable[entry.operator],
+                    instructions.append(Cmp(CMPTABLE[entry.operator],
                                             entry.value,
                                             label=label))
+                elif isinstance(entry, TdmInstructions.LoadCmpVramInstruction) and entry.tdm == False:
+                    instructions.append(LoadCmpVram(entry.addr, entry.mask, label=label))
+                # some TDM instructions are ignored by the APS
+                elif isinstance(entry, TdmInstructions.CustomInstruction):
+                    pass
+                elif isinstance(entry, TdmInstructions.WriteAddrInstruction):
+                    if entry.instruction == 'INVALIDATE' and entry.tdm == False:
+                        instructions.append(Invalidate(entry.addr, entry.value, label=label))
 
                 continue
 
@@ -719,12 +851,11 @@ def create_seq_instructions(seqs, offsets):
                     if entry.length < MIN_ENTRY_LENGTH:
                         warn("Dropping Waveform entry of length %s!" % entry.length)
                         continue
-                    instructions.append(Waveform(offsets[wf_sig(entry)],
-                                                 entry.length,
-                                                 entry.isTimeAmp or
-                                                 entry.isZero,
-                                                 write=write_flags[ct],
-                                                 label=label))
+
+                    instructions.append(Waveform(
+                            offsets[wf_sig(entry)], entry.length,
+                            entry.isTimeAmp or entry.isZero,
+                            write=write_flags[ct], label=label))
                 elif isinstance(entry, ModulationCommand):
                     instructions.append(entry.to_instruction(
                         write_flag=write_flags[ct],
@@ -744,17 +875,17 @@ def create_seq_instructions(seqs, offsets):
                                                label=label))
 
             #clear label
-            label = None
+            if len(timeTuples)>0:
+                label = None
 
-    return instructions
-
+    return instructions, label
 
 def create_instr_data(seqs, offsets, cache_lines):
     '''
-	Constructs the complete instruction data vector, and does basic checks for validity.
+    Constructs the complete instruction data vector, and does basic checks for validity.
 
-	Subroutines will be placed at least 8 cache lines away from sequences and aligned to cache line
-	'''
+    Subroutines will be placed at least 8 cache lines away from sequences and aligned to cache line
+    '''
     logger = logging.getLogger(__name__)
     logger.debug('')
 
@@ -763,10 +894,11 @@ def create_instr_data(seqs, offsets, cache_lines):
     num_cache_lines = len(set(cache_lines))
     cache_line_changes = np.concatenate(
         ([0], np.where(np.diff(cache_lines))[0] + 1))
+    label = None
     for ct, seq in enumerate(zip_longest(*seqs, fillvalue=[])):
-        seq_instrs.append(create_seq_instructions(
-            list(seq), offsets[cache_lines[ct]]
-            if need_prefetch else offsets[0]))
+        new_instrs, label = create_seq_instructions(list(seq), offsets[cache_lines[ct]]
+         if need_prefetch else offsets[0], label = label)
+        seq_instrs.append(new_instrs)
         #if we need wf prefetching and have moved waveform cache lines then inject prefetch for the next line
         if need_prefetch and (ct in cache_line_changes):
             next_cache_line = cache_lines[cache_line_changes[(np.where(
@@ -774,18 +906,21 @@ def create_instr_data(seqs, offsets, cache_lines):
                     cache_line_changes)]]
             seq_instrs[-1].insert(0, WaveformPrefetch(int(
                 next_cache_line * WAVEFORM_CACHE_SIZE / 2)))
-            #steal label
-            seq_instrs[-1][0].label = seq_instrs[-1][1].label
-            seq_instrs[-1][1].label = None
-
+            #steal label if necessary
+            if not seq_instrs[-1][0].label:
+                seq_instrs[-1][0].label = seq_instrs[-1][1].label
+                seq_instrs[-1][1].label = None
     #concatenate instructions
     instructions = []
     subroutines_start = -1
     for ct, seq in enumerate(seq_instrs):
         #Use last instruction being return as mark of start of subroutines
-        if (seq[-1].header >> 4) == RET:
-            subroutines_start = ct
-            break
+        try:
+            if (seq[-1].header >> 4) == RET:
+                subroutines_start = ct
+                break
+        except:
+            pass
         instructions += seq
 
     #if we have any subroutines then group in cache lines
@@ -857,15 +992,20 @@ def resolve_symbols(seq):
         if entry.label and entry.label not in symbols:
             symbols[entry.label] = ct
     # then update
-    for entry in seq:
+    for (ct, entry) in enumerate(seq):
         if entry.target:
-            entry.address = symbols[entry.target]
+            # find next available label. The TDM may miss some labels if branches only contain waveforms (which are ignored)
+            for k in range(len(seq)-ct):
+                temp = seq[ct+k]
+                if temp.target in symbols:
+                    break
+            entry.address = symbols[temp.target]
 
 
 def compress_marker(markerLL):
     '''
-	Compresses adjacent entries of the same state into single entries
-	'''
+    Compresses adjacent entries of the same state into single entries
+    '''
     for seq in markerLL:
         idx = 0
         while idx + 1 < len(seq):
@@ -881,8 +1021,8 @@ def compress_marker(markerLL):
 
 def write_sequence_file(awgData, fileName):
     '''
-	Main function to pack channel sequences into an APS2 h5 file.
-	'''
+    Main function to pack channel sequences into an APS2 h5 file.
+    '''
     # Convert QGL IR into a representation that is closer to the hardware.
     awgData['ch12']['linkList'], wfLib = preprocess(
         awgData['ch12']['linkList'], awgData['ch12']['wfLib'])
@@ -966,10 +1106,10 @@ def write_sequence_file(awgData, fileName):
 
 def read_sequence_file(fileName):
     """
-	Reads a HDF5 sequence file and returns a dictionary of lists.
-	Dictionary keys are channel strings such as ch1, ch12m1
-	Lists are or tuples of time-amplitude pairs (time, output)
-	"""
+    Reads a HDF5 sequence file and returns a dictionary of lists.
+    Dictionary keys are channel strings such as ch1, ch12m1
+    Lists are or tuples of time-amplitude pairs (time, output)
+    """
     chanStrs = ['ch1', 'ch2', 'ch12m1', 'ch12m2', 'ch12m3', 'ch12m4',
                 'mod_phase']
     seqs = {ch: [] for ch in chanStrs}
@@ -1126,9 +1266,9 @@ def read_sequence_file(fileName):
 
 def update_wf_library(filename, pulses, offsets):
     """
-	Update a H5 waveform library in place give an iterable of (pulseName, pulse)
-	tuples and offsets into the waveform library.
-	"""
+    Update a H5 waveform library in place give an iterable of (pulseName, pulse)
+    tuples and offsets into the waveform library.
+    """
     assert USE_PHASE_OFFSET_INSTRUCTION == False
     #load the h5 file
     with h5py.File(filename) as FID:
@@ -1149,3 +1289,196 @@ def update_wf_library(filename, pulses, offsets):
                     MAX_WAVEFORM_VALUE * shape.real)
                 FID['/chan_2/waveforms'][offset:offset + length] = np.int16(
                     MAX_WAVEFORM_VALUE * shape.imag)
+
+
+def tdm_instructions(seqs):
+    """
+    Generate the TDM instructions for the given sequence.
+
+    This assumes that there is one instruction sequence, not
+    a list of them (as is generally the case elsewhere). FIXME
+    """
+    instructions = list()
+    label2addr = dict()     # the backpatch table for labels
+
+    label = seqs[0][0]
+    for seq in seqs:
+        seq = list(flatten(copy(seq)))
+
+        #add sync at the beginning of the sequence. FIXME: for now, ignore subroutines. Assume that the first entry is a label
+        instructions.append(Sync(label=label))
+
+        label = None
+        for s in seq:
+            if isinstance(s, BlockLabel.BlockLabel):
+                #label2addr[s.label] = len(instructions) #FIXME this convert a label (A, B, ...) to the instruction number, i.e. the address (typically)
+
+                # carry label forward to next entry
+                label = s
+                continue
+
+            if isinstance(s, ControlFlow.Wait):
+                instructions.append(Wait(label=label))
+            elif isinstance(s, ControlFlow.LoadCmp):
+                instructions.append(LoadCmp(label=label))
+
+            elif isinstance(s, TdmInstructions.WriteAddrInstruction) and s.tdm == True:
+                if s.instruction == 'INVALIDATE':
+                    print('o INVALIDATE(channel=%s, addr=0x%x, mask=0x%x)' %
+                            (str(s.channel), s.addr, s.value))
+                    instructions.append(Invalidate(s.addr, s.value, label=label))
+
+                elif s.instruction == 'WRITEADDR':
+                    print('o WRITEADDR(channel=%s, addr=0x%x, value=0x%x)' %
+                            (str(s.channel), s.addr, s.value))
+                    instructions.append(WriteAddr(s.addr, s.value, label=label))
+
+                elif s.instruction == 'STOREMEAS':
+                    print('STOREMEAS(channel=%s, addr=0x%x, mapping=0x%x)' %
+                            (str(s.channel), s.addr, s.value))
+                    instructions.append(StoreMeas(s.addr, s.value, label=label))
+                else: # TODO: add CrossBar (no need for explicit QGL call for TDM)
+                    print('UNSUPPORTED WriteAddr: %s(channel=%s, addr=0x%x, val=0x%x)' %
+                            (s.instruction, str(s.channel),
+                                s.addr, s.value))
+                    continue
+
+            elif isinstance(s, TdmInstructions.CustomInstruction):
+
+                if s.instruction == 'MAJORITY':
+                    print('MAJORITY(in_addr=%x, out_addr=%x)' %
+                            (s.in_addr, s.out_addr))
+                    instructions.append(
+                            MajorityVote(s.in_addr, s.out_addr, label=label))
+                elif s.instruction == 'MAJORITYMASK':
+                    print('MAJORITYMASK(in_addr=%x, out_addr=%x)' %
+                            (s.in_addr, s.out_addr))
+                    instructions.append(
+                            MajorityVoteMask(s.in_addr, s.out_addr, label=label))
+                elif s.instruction == 'TSM':
+                    print('DECODE(in_addr=%x, out_addr=%x)' %
+                            (s.in_addr, s.out_addr))
+                    instructions.append(
+                            Decode(s.in_addr, s.out_addr, label=label))
+                elif s.instruction == 'TSM_SET_ROUNDS':
+                    print('DECODESETROUNDS(in_addr=%x, out_addr=%x)' %
+                            (s.in_addr, s.out_addr))
+                    instructions.append(
+                            DecodeSetRounds(s.in_addr, s.out_addr, label=label))
+                else: #TODO: add decoder
+                    print('UNSUPPORTED CUSTOM: %s(in_addr=0x%x, out_addr=0x%x)' %
+                            (s.instruction, s.in_addr, s.out_addr))
+
+            elif isinstance(s, ControlFlow.Goto):
+                instructions.append(Goto(s.target, label=label))
+            elif isinstance(s, ControlFlow.Repeat):
+                instructions.append(Repeat(s.target, label=label))
+            elif isinstance(s, ControlFlow.LoadRepeat):
+                instructions.append(Load(s.value - 1, label=label))
+
+            elif isinstance(s, TdmInstructions.LoadCmpVramInstruction):
+                if s.instruction == 'LOADCMPVRAM' and s.tdm == True:
+                    instructions.append(
+                            LoadCmpVram(s.addr, s.mask, label=label))
+
+            elif isinstance(s, PulseSequencer.Pulse):
+                if s.label == 'MEAS' and s.maddr != (-1, 0):
+                    instructions.append(CrossBar(2**s.maddr[1], 0x1, label=label))
+                    instructions.append(LoadCmp(label=label))
+                    instructions.append(StoreMeas(s.maddr[0], 1 << 16, label=label))
+
+            elif isinstance(s, PulseSequencer.PulseBlock):
+                sim_meas = []
+                for k in s.pulses:
+                    if s.pulses[k].label == 'MEAS' and s.pulses[k].maddr != (-1, 0):
+                        sim_meas.append(s.pulses[k])
+                if sim_meas:
+                    maddr = [m.maddr[0] for m in sim_meas]
+                    if len(set(maddr))>1:
+                        raise Exception('Storing simultaneous measurements on different addresses not supported.')
+                    for n,m in enumerate(sim_meas):
+                        instructions.append(CrossBar(2**m.maddr[1], 2**n))
+                    instructions.append(LoadCmp(label=label))
+                    instructions.append(StoreMeas(maddr[0], 1 << 16))
+
+            elif isinstance(s, list):
+                # FIXME:
+                # If this happens, we are confused.
+                print('FIXME: TDM GOT LIST: %s' % str(s))
+
+            elif isinstance(s, ControlFlow.ComparisonInstruction):
+                instructions.append(
+                        Cmp(CMPTABLE[s.operator], s.value, label=label))
+
+            else:
+                pass
+                # use this for debugging purposes
+                #print('OOPS: unhandled [%s]' % str(type(s)))
+
+    resolve_symbols(instructions)
+    return np.fromiter((instr.flatten() for instr in instructions), np.uint64,
+                       len(instructions))
+
+def write_tdm_seq(seq, tdm_fileName):
+    #Open the HDF5 file
+    if os.path.isfile(tdm_fileName):
+        os.remove(tdm_fileName)
+    with h5py.File(tdm_fileName, 'w') as FID:
+        FID['/'].attrs['Version'] = 5.0
+        FID['/'].attrs['target hardware'] = 'APS2'
+        FID['/'].attrs['minimum firmware version'] = 5.0
+        FID['/'].attrs['channelDataFor'] = np.uint16([1, 2])
+
+        #Create the groups and datasets
+        for chanct in range(2):
+            chanStr = '/chan_{0}'.format(chanct + 1)
+            chanGroup = FID.create_group(chanStr)
+            FID.create_dataset(chanStr + '/waveforms', data=np.uint16([]))
+            #Write the instructions to channel 1
+            if np.mod(chanct, 2) == 0:
+                FID.create_dataset(chanStr + '/instructions', data=seq)
+
+# Utility Functions for displaying programs
+
+def get_channel_instructions_string(channel):
+    return '/chan_{}/instructions'.format(channel)
+
+def raw_instructions(filename, channel = 1):
+    channelStr =  get_channel_instructions_string(channel)
+    with h5py.File(filename, 'r') as fid:
+        raw_instrs = fid[channelStr].value.flatten()
+        return raw_instrs
+
+def decompile_instructions(instructions, tdm = False):
+    return [Instruction.unflatten(x, decode_as_tdm = tdm) for x in instructions]
+
+def read_instructions(filename):
+    raw_instrs = raw_instructions(filename)
+    return decompile_instructions(raw_instrs)
+
+def replace_instructions(filename, instructions, channel = 1):
+    channelStr =  get_channel_instructions_string(channel)
+    with h5py.File(filename, 'r+') as fid:
+        del fid[channelStr]
+        fid.create_dataset(channelStr, data=instructions)
+
+def display_decompiled_file(filename, tdm = False):
+    raw = raw_instructions(filename)
+    display_decompiled_instructions(raw, tdm)
+
+def display_decompiled_instructions(raw, tdm = False, display_op_codes = True):
+    cmds = decompile_instructions(raw, tdm)
+    opcodeStr = ''
+    for i,a in enumerate(zip(raw,cmds)):
+        x,y = a
+        if display_op_codes:
+            opcodeStr = "0x{:016x} - ".format(x)
+        print("{:5}: {}{}".format(i, opcodeStr,y))
+
+def display_raw_instructions(raw):
+    for x in raw:
+        print("0x{:016x}".format(x))
+
+def display_raw_file(filename):
+    raw = raw_instructions(filename)
+    display_raw_instructions(raw)

@@ -84,9 +84,11 @@ class ControlFlowTest(unittest.TestCase):
 
     def test_qwait(self):
         q1 = self.q1
-        seq1 = [qwait(), qwait(kind="CMP")]
+        seq1 = [qwait(), qwait(kind="CMP"), qwait(kind = "RAM", addr = 0)]
         assert (isinstance(seq1[0], ControlFlow.Wait))
         assert (isinstance(seq1[1], ControlFlow.LoadCmp))
+        assert (isinstance(seq1[2][0], TdmInstructions.WriteAddrInstruction))
+        assert (isinstance(seq1[2][1], TdmInstructions.LoadCmpVramInstruction))
 
     def test_compile(self):
         q1 = self.q1

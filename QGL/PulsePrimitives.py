@@ -718,12 +718,21 @@ def CNOT(source, target, **kwargs):
     cnot_impl = globals()[config.cnot_implementation]
     return cnot_impl(source, target, **kwargs)
 
-## Measurement operators
-@_memoize
-def MEAS(qubit, **kwargs):
+# The worker method for MEAS and MEASA
+def _MEAS(qubit, **kwargs):
+
     '''
-    MEAS(q1) measures a qubit. Applies to the pulse with the label M-q1
+    _MEAS(q1) implements both MEAS and MEASA, but because of
+    the way memoize works, we want to distinguish them and
+    memoize them separately.  (this may change if the way
+    memoization works is changed)
+
+    TODO: this is annoying because measuring the same qubit
+    but storing the result to two different addresses creates
+    two distinct pulses, unless we also memoize the waveforms
+    themselves.
     '''
+
     channelName = "M-" + qubit.label
     measChan = ChannelLibraries.MeasFactory(channelName)
     params = overrideDefaults(measChan, kwargs)
@@ -736,8 +745,47 @@ def MEAS(qubit, **kwargs):
     if 'amp' not in kwargs:
         ignoredStrParams.append('amp')
     meas_label = "MEAS_no_trig" if 'dig_trig' in kwargs and not kwargs['dig_trig'] else "MEAS"
-    return Pulse(meas_label, measChan, params, amp, 0.0, 0.0, ignoredStrParams)
+    if 'maddr' in kwargs:
+        maddr = kwargs['maddr']
+    else:
+        maddr = (-1, 0)
 
+    return Pulse(meas_label, measChan, params,
+            amp, 0.0, 0.0, ignoredStrParams, maddr=maddr)
+
+## Measurement operators
+@_memoize
+def MEAS(qubit, **kwargs):
+    '''
+    MEAS(q1) measures a qubit (applying the pulse with the label M-q1)
+
+    This is the 'traditional' measurement; it does not require
+    a measurement address, and will gripe if one is provided in
+    the kwargs
+
+    Note that in the future there may be hardware that requires a
+    measurement address (even if it's just a placeholder)
+    '''
+
+    if 'maddr' in kwargs:
+        raise ValueError('MEAS must not have a maddr kwarg')
+
+    return _MEAS(qubit, **kwargs)
+
+@_memoize
+def MEASA(qubit, maddr, **kwargs):
+    '''
+    MEASA(q1) measures a qubit (applying the pulse with the label M-q1)
+    and stores the result in the given address in "measurement memory".
+
+    Note that a failure will occur if the hardware does not support
+    measurement memory and a MEASA is requested.
+
+    There may be special values for maddr that change the behavior
+    of this operation, but they have not been specified yet.
+    '''
+
+    return _MEAS(qubit, maddr=maddr, **kwargs)
 
 #MEAS and ring-down time on one qubit, echo on every other
 def MeasEcho(qM, qD, delay, piShift=None, phase=0):

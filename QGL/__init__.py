@@ -9,3 +9,5 @@ from .Plotting import output_file, output_notebook, show, build_waveforms, plot_
 from .PulseSequencePlotter import plot_pulse_files
 from .Tomography import state_tomo, process_tomo
 from .Scheduler import schedule
+
+from .TdmInstructions import MajorityMask, MajorityVote, WriteAddr, Invalidate, Decode, DecodeSetRounds

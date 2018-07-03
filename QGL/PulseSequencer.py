@@ -32,10 +32,11 @@ from collections import namedtuple
 
 class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "frequency",
                                  "frameChange", "shapeParams", "isTimeAmp",
-                                 "isZero", "ignoredStrParams"])):
+                                 "isZero", "ignoredStrParams",
+                                 "maddr", "moffset"])):
     __slots__ = ()
 
-    def __new__(cls, label, channel, shapeParams, amp=1.0, phase=0, frameChange=0, ignoredStrParams=[]):
+    def __new__(cls, label, channel, shapeParams, amp=1.0, phase=0, frameChange=0, ignoredStrParams=[], maddr=-1, moffset=0):
         if hasattr(channel, 'frequency'):
             frequency = channel.frequency
         else:
@@ -49,7 +50,8 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
         return super(cls, Pulse).__new__(cls, label, channel,
                                          shapeParams['length'], amp, phase,
                                          frequency, frameChange, shapeParams,
-                                         isTimeAmp, isZero, ignoredStrParams)
+                                         isTimeAmp, isZero, ignoredStrParams,
+                                         maddr, moffset)
 
     def __str__(self):
         kwvals = []
@@ -219,7 +221,8 @@ class PulseBlock(object):
             return rhs * self
         # otherwise, we are promoting to a PulseBlock
         rhs = rhs.promote(ptype)
-
+        if not np.isclose(self.length, rhs.length, atol=1e-10):
+            return align('center', self, rhs)
         # copy PulseBlock so we don't modify other references
         result = copy(self)
         result.pulses = copy(self.pulses)
