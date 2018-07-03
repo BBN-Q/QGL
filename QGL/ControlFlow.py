@@ -93,7 +93,7 @@ def qwait(kind="TRIG", addr=None, channels=None):
     elif kind == "CMP":
         return LoadCmp(channels)
     elif kind == "RAM":
-        if not addr:
+        if addr is None:
             raise Exception('Please specify address')
         return [WriteAddrInstruction('INVALIDATE', None, 1, addr, 0xffffffff, False), LoadCmpVramInstruction('LOADCMPVRAM', 1, addr, 0xff, False)]
 
