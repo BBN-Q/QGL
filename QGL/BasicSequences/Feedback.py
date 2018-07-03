@@ -124,7 +124,7 @@ def BitFlip3(data_qs, ancilla_qs, theta=None, phi=None, nrounds=1, meas_delay=1e
         raise Exception("Wrong number of qubits")
     seqs =  [
     DecodeSetRounds(1,0,nrounds),
-    Invalidate(addr=10, mask=4**nrounds-1),
+    Invalidate(addr=10, mask=2*nrounds),
     Invalidate(addr=11, mask=0x1)]
 
     # encode single-qubit state into 3 qubits
@@ -132,16 +132,16 @@ def BitFlip3(data_qs, ancilla_qs, theta=None, phi=None, nrounds=1, meas_delay=1e
         seqs+=[Utheta(data_qs[1], theta, phi), CNOT(data_qs[1], data_qs[0]), CNOT(data_qs[1], data_qs[2])]
 
     # multiple rounds of syndrome measurements
-    for k in range(nrounds):
+    for n in range(nrounds):
         seqs+=[CNOT(data_qs[0],ancilla_qs[0])*CNOT(data_qs[1],ancilla_qs[1])],
         seqs+=[CNOT(data_qs[1], ancilla_qs[0])*CNOT(data_qs[2],ancilla_qs[1])],
-        seqs+= [MEASA(ancilla_qs[0], maddr=(10,2**(2*n)))*MEASA(ancilla_qs[1], maddr=(10,2**(2*n+1))),
+        seqs+= [MEASA(ancilla_qs[0], maddr=(10, 2*n))*MEASA(ancilla_qs[1], maddr=(10, 2*n+1)),
         Id(ancilla_qs[0], meas_delay),
-        MEAS(data_qs[0],amp=0)*MEAS(data_qs[1],amp=0)*MEAS(data_qs[2],amp=0)] # virtual msmt's just to keep the number of segments uniform across digitizer channels
-    seqs+=Decode(10, 11, 4**nrounds-1)
-    seqs+=qwait("RAM",11, 4**nrounds-1)
+        MEAS(data_qs[0], amp=0)*MEAS(data_qs[1], amp=0)*MEAS(data_qs[2], amp=0)] # virtual msmt's just to keep the number of segments uniform across digitizer channels
+    seqs+=Decode(10, 11, 2*nrounds)
+    seqs+=qwait("RAM",11)
     seqs+=[MEAS(data_qs[0])*MEAS(data_qs[1])*MEAS(data_qs[2])*
-    MEAS(ancilla_qs[0],amp=0)*MEAS(ancilla_qs[1],amp=0)] # virtual msmt's
+    MEAS(ancilla_qs[0], amp=0)*MEAS(ancilla_qs[1], amp=0)] # virtual msmt's
 
     # apply corrective pulses depending on the decoder result
     FbGates = []
@@ -172,14 +172,14 @@ def MajorityVoteN(qubits, nrounds, prep=[], meas_delay=1e-6, docals=False, calRe
     metafile : metafile path
     """
     nqubits = len(qubits)
-    seqs = [MajorityMask(0,1,2**(nrounds*nqubits)-1),
-           Invalidate(addr=10, mask=2**(nrounds*nqubits)-1),
+    seqs = [MajorityMask(nrounds*nqubits),
+           Invalidate(addr=10, mask=nrounds*nqubits),
            Invalidate(addr=11, mask=1)]
     if prep:
        seqs += [reduce(operator.mul, [X(q) for n,q in enumerate(qubits) if prep[n]])]
     for n in range(nrounds):
-       seqs += [reduce(operator.mul, [MEASA(q, (10, 2**(nqubits*n+m))) for m,q in enumerate(qubits)]),  Id(qubits[0],meas_delay)]
-    seqs+=MajorityVote(10,11,2**(nrounds*nqubits)-1)
+       seqs += [reduce(operator.mul, [MEASA(q, (10, nqubits*n+m)) for m,q in enumerate(qubits)]),  Id(qubits[0],meas_delay)]
+    seqs+=MajorityVote(10,11, nrounds*nqubits)
     seqs+=qwait("RAM", 11)
     seqs+=[Id(qubits[0],100e-9)]
     seqs+=qif(1,[X(qubits[0])]) # placeholder for any conditional operation

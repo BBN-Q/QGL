@@ -37,14 +37,14 @@ class CustomInstruction(object):
         return not self == other
 
 
-def MajorityVote(in_addr, out_addr, mask): # alternatively, append the loadcmpvram instruction when compiling (see STOREMEAS)
-    return [LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, mask, True), CustomInstruction('MAJORITY', in_addr, out_addr)]
+def MajorityVote(in_addr, out_addr, nmeas): # alternatively, append the loadcmpvram instruction when compiling (see STOREMEAS)
+    return [LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, 2**nmeas-1, True), CustomInstruction('MAJORITY', in_addr, out_addr)]
 
 def MajorityMask(in_addr, out_addr, value):
     return [WriteAddrInstruction('INVALIDATE', None, 1, in_addr, 0x0, True), WriteAddrInstruction('WRITEADDR', None, 0, in_addr, value, True), LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, 0xffff, True), CustomInstruction('MAJORITYMASK', in_addr, out_addr)]
 
-def Decode(in_addr, out_addr, mask):
-    return [LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, mask, True), CustomInstruction('TSM', in_addr, out_addr)]
+def Decode(in_addr, out_addr, nmeas):
+    return [LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, 2**nmeas-1, True), CustomInstruction('TSM', in_addr, out_addr)]
 
 def DecodeSetRounds(in_addr, out_addr, value):
     return [WriteAddrInstruction('INVALIDATE', None, 1, in_addr, 0x0, True), WriteAddrInstruction('WRITEADDR', None, 0, in_addr, value, True), LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, 0xffff, True), CustomInstruction('TSM_SET_ROUNDS', in_addr, out_addr)]
@@ -77,8 +77,8 @@ class WriteAddrInstruction(object):
 def WriteAddr(addr, value, channel=None, tdm=True):
     return WriteAddrInstruction('WRITEADDR', channel, 0, addr, value, tdm)
 
-def Invalidate(addr, mask, channel=None, tdm=True):
-    return WriteAddrInstruction('INVALIDATE', channel, 1, addr, mask, tdm)
+def Invalidate(addr, nmeas, channel=None, tdm=True):
+    return WriteAddrInstruction('INVALIDATE', channel, 1, addr, 2**nmeas-1, tdm)
 
 def CrossBar(addr, value, channel=None, tdm=True): # should this be a high-level instruction though?
     return WriteAddrInstruction('CROSSBAR', channel, 3, addr, value, tdm)

@@ -1300,7 +1300,7 @@ def tdm_instructions(seqs):
     """
     instructions = list()
     label2addr = dict()     # the backpatch table for labels
-    
+
     label = seqs[0][0]
     for seq in seqs:
         seq = list(flatten(copy(seq)))
@@ -1383,7 +1383,6 @@ def tdm_instructions(seqs):
 
             elif isinstance(s, PulseSequencer.Pulse):
                 if s.label == 'MEAS' and s.maddr != (-1, 0):
-                    instructions.append(CrossBar(s.maddr[1], 0x1, label=label)) # this has to change for sim. msmt's
                     instructions.append(LoadCmp(label=label))
                     instructions.append(StoreMeas(s.maddr[0], 1 << 16, label=label)) #1 << s.maddr[1]))
 
@@ -1397,7 +1396,6 @@ def tdm_instructions(seqs):
                     if len(set(maddr))>1:
                         raise Exception('Storing simultaneous measurements on different addresses not supported.')
                     for n,m in enumerate(sim_meas):
-                        instructions.append(CrossBar(m.maddr[1], 2**n))
                     instructions.append(LoadCmp(label=label))
                     instructions.append(StoreMeas(maddr[0], 1 << 16))
 
