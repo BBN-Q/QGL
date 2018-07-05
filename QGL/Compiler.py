@@ -304,7 +304,8 @@ def compile_to_hardware(seqs,
                         suffix='',
                         axis_descriptor=None,
                         add_slave_trigger=True,
-                        extra_meta=None):
+                        extra_meta=None,
+                        tdm_seq = False):
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'.
     Other inputs:
@@ -315,6 +316,7 @@ def compile_to_hardware(seqs,
             if `seqs` generates a Ramsey experiment, axis_descriptor would describe
             the time delays between pulses.
         add_slave_trigger (optional): add the slave trigger(s)
+        tdm_seq (optional): compile for TDM
     '''
     logger.debug("Compiling %d sequence(s)", len(seqs))
 
@@ -436,13 +438,13 @@ def compile_to_hardware(seqs,
             files[awgName] = fullFileName
 
     # generate TDM sequences FIXME: what's the best way to identify the need for a TDM seq.? Support for single TDM
-    if 'APS2Pattern' in [wire.translator for wire in physWires]:
-        aps2tdm_module = import_module('QGL.drivers.APS2Pattern') # this is redundant with above
-        tdm_instr = aps2tdm_module.tdm_instructions(seqs)
-        files['TDM'] = os.path.normpath(os.path.join(
-            config.AWGDir, fileName + '-' + 'TDM' + suffix + data[
-                'seqFileExt']))
-        aps2tdm_module.write_tdm_seq(tdm_instr, files['TDM'])
+    if tdm_seq and 'APS2Pattern' in [wire.translator for wire in physWires]:
+            aps2tdm_module = import_module('QGL.drivers.APS2Pattern') # this is redundant with above
+            tdm_instr = aps2tdm_module.tdm_instructions(seqs)
+            files['TDM'] = os.path.normpath(os.path.join(
+                config.AWGDir, fileName + '-' + 'TDM' + suffix + data[
+                    'seqFileExt']))
+            aps2tdm_module.write_tdm_seq(tdm_instr, files['TDM'])
 
     # create meta output
     if not axis_descriptor:
