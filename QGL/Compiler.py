@@ -456,7 +456,7 @@ def compile_to_hardware(seqs,
         }]
     receiver_measurements = {}
     for wire, n in wire_measurements.items():
-        if wire.receiver_chan:
+        if wire.receiver_chan and n>0:
             receiver_measurements[wire.receiver_chan.label] = n
     meta = {
         'instruments': files,

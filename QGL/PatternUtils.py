@@ -211,7 +211,7 @@ def add_digitizer_trigger(seqs):
 
 def contains_measurement(entry):
     """
-    Determines if a LL entry contains a measurement
+    Determines if a LL entry contains a measurement (with a digitizer trigger)
     """
     if hasattr(entry, 'label') and entry.label == "MEAS":
         return True
