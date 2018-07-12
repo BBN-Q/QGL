@@ -149,7 +149,7 @@ def pull_uniform_entries(entries, entry_iterators):
     #keep track of how many entry iterators are used up
     iterDone = [ False ] * numChan
     ct = 0
-    lengths = [e.length for e in entries]
+    lengths = np.array([e.length for e in entries])
     entries_stack = [[e] for e in entries]
 
     while True:
@@ -157,7 +157,8 @@ def pull_uniform_entries(entries, entry_iterators):
         if all(iterDone):
             raise StopIteration("Unable to find a uniform set of entries")
 
-        if all(np.isclose(x, lengths[0], atol=1e-10) for x in lengths):
+        #if all(np.isclose(x, lengths[0], atol=1e-10) for x in lengths):
+        if np.all(np.less(np.abs(lengths - lengths[0]), 1e-10)):
             break
 
         #Otherwise try to concatenate on entries to match lengths
