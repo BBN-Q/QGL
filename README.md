@@ -26,16 +26,24 @@ pip install watchdog
 ### Python 3.4+
 
 ```bash
-conda install future
-pip install watchdog
 conda install -c ecpy atom
+cd QGL/
+pip install .
 ```
 
 For Python 3.6+ you may need to install watchdog from conda forge:
 ```
 conda install -c conda-forge watchdog
+conda install -c ecpy atom
+cd QGL/
+pip install .
 ```
 
+If you'd like to use some of the built-in gate-set-tomography functionality,
+you can grab the PyGSTi package during the install:
+```
+pip install '.[gst]'
+```
 If the `QGL` module is not installed, the repository path needs to be in the
 `PYTHONPATH`. On Windows machines, you add/modify this environment variable by
 going to System -> Advanced Settings -> Environment variables. On Mac/Linux
