@@ -301,6 +301,7 @@ def collect_specializations(seqs):
 
 def compile_to_hardware(seqs,
                         fileName,
+                        library_version=None,
                         suffix='',
                         axis_descriptor=None,
                         add_slave_trigger=True,
@@ -309,6 +310,9 @@ def compile_to_hardware(seqs,
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'.
     Other inputs:
+        library_version (optional): string or ChannelLibrary instance to pack in the
+            metafile. This will be the version of the library loaded during program
+            execution. Default None uses the current working version.
         suffix (optional): string to append to end of fileName, e.g. with
             fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5
         axis_descriptor (optional): a list of dictionaries describing the effective
@@ -497,6 +501,8 @@ def compile_to_hardware(seqs,
         'num_sequences': len(seqs),
         'num_measurements': num_measurements,
         'axis_descriptor': axis_descriptor,
+        'qubits': [c.label for c in channels if isinstance(c, Channels.Qubit)],
+        'measurements': [c.label for c in channels if isinstance(c, Channels.Measurement)], 
         'receivers': receiver_measurements
     }
     if extra_meta:

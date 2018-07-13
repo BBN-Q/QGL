@@ -43,6 +43,7 @@ import networkx as nx
 from . import config
 from . import Channels
 from . import PulseShapes
+import bbndb
 
 channelLib = None
 
@@ -117,6 +118,7 @@ class ChannelLibrary(object):
         Channels.define_entities(self.db)
         self.db.bind(self.database_provider, filename=self.database_file, create_db=True)
         self.db.generate_mapping(create_tables=True)
+        bbndb.database = self.db
 
         # Dirty trick: push the correct entity defs to the calling context
         for var in ["Measurement","Qubit","Edge"]:
@@ -149,6 +151,7 @@ class ChannelLibrary(object):
         return list(self.channelDatabase.channels) + list(self.channelDatabase.sources)
 
     def update_channelDict(self):
+        commit()
         self.channelDict = {c.label: c for c in self.get_current_channels()}
 
     def ls(self):
@@ -461,19 +464,21 @@ def new_APS2(label, address):
     m3     = Channels.PhysicalMarkerChannel(label=f"{label}-12m3", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
     m4     = Channels.PhysicalMarkerChannel(label=f"{label}-12m4", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
     
-    this_awg = Channels.AWG(label=label, address=address, channels=[chan12, m1, m2, m3, m4], channel_db=channelLib.channelDatabase)
+    this_awg = Channels.AWG(label=label, model="APS2", address=address, channels=[chan12, m1, m2, m3, m4], channel_db=channelLib.channelDatabase)
     this_awg.trigger_source = "External"
     this_awg.address        = address
 
     commit()
     return this_awg
 
-def new_X6(label, address):
-    chan1 = Channels.ReceiverChannel(label=f"RecvChan-{label}-1", channel_db=channelLib.channelDatabase)
-    chan2 = Channels.ReceiverChannel(label=f"RecvChan-{label}-2", channel_db=channelLib.channelDatabase)
+def new_X6(label, address, dsp_channel=0, record_length=1024):
+    chan1 = Channels.ReceiverChannel(label=f"RecvChan-{label}-1", channel=1, dsp_channel=dsp_channel, channel_db=channelLib.channelDatabase)
+    chan2 = Channels.ReceiverChannel(label=f"RecvChan-{label}-2", channel=2, dsp_channel=dsp_channel, channel_db=channelLib.channelDatabase)
     
-    this_dig = Channels.Digitizer(label=label, address=address, channels=[chan1, chan2], channel_db=channelLib.channelDatabase)
+    this_dig = Channels.Digitizer(label=label, model="X6-1000M", address=address, channels=[chan1, chan2],
+                                  record_length=record_length, channel_db=channelLib.channelDatabase)
     this_dig.trigger_source = "External"
+    this_dig.stream_types   = "raw, demodulated, integrated, averaged"
     this_dig.address        = address
 
     commit()
@@ -484,8 +489,8 @@ def new_qubit(label):
     commit()
     return thing
 
-def new_source(label, source_type, address, power=-30.0):
-    thing = Channels.MicrowaveSource(label=label, source_type=source_type, address=address, power=power, channel_db=channelLib.channelDatabase)
+def new_source(label, model, address, power=-30.0):
+    thing = Channels.MicrowaveSource(label=label, model=model, address=address, power=power, channel_db=channelLib.channelDatabase)
     commit()
     return thing
 
