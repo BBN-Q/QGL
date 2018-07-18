@@ -46,9 +46,6 @@ def _memoize(pulseFunc):
         key = (pulseFunc, args)
         if key not in _memoize.cache:
             _memoize.cache[key] = pulseFunc(*args)
-            print("Caching", pulseFunc)
-        else:
-            print("Recalling", pulseFunc)
         return _memoize.cache[key]
 
     return cacheWrap
@@ -760,7 +757,6 @@ def _MEAS(qubit, **kwargs):
         params['frequency'] = measChan.autodyne_freq
         params['baseShape'] = params.pop('shape_fun')
         params['shape_fun'] = PulseShapes.autodyne
-    print(params)
     amp = params.pop('amp')
     ignoredStrParams = ['phase', 'frameChange']
     if 'amp' not in kwargs:
