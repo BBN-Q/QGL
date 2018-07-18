@@ -158,9 +158,9 @@ class ChannelLibrary(object):
         select((c.label, c.time, c.id) for c in Channels.ChannelDatabase).sort_by(1, 2).show()
 
     def ent_by_type_name(self, name, show=False):
-        q = select(c for c in getattr(Channels,name) if c.label == "working")
+        q = select(c for c in getattr(bbndb.qgl,name) if c.channel_db.label == "working")
         if show:
-            select(c.label for c in getattr(Channels,name) if c.label == "working").sort_by(1).show()
+            select(c.label for c in getattr(bbndb.qgl,name) if c.channel_db.label == "working").sort_by(1).show()
         else:
             return {el.label: el for el in q}
 
@@ -479,6 +479,19 @@ def new_X6(label, address, dsp_channel=0, record_length=1024):
                                   record_length=record_length, channel_db=channelLib.channelDatabase)
     this_dig.trigger_source = "External"
     this_dig.stream_types   = "raw, demodulated, integrated, averaged"
+    this_dig.address        = address
+
+    commit()
+    return this_dig
+
+def new_Alazar(label, address, record_length=1024):
+    chan1 = Channels.ReceiverChannel(label=f"RecvChan-{label}-1", channel=1, channel_db=channelLib.channelDatabase)
+    chan2 = Channels.ReceiverChannel(label=f"RecvChan-{label}-2", channel=2, channel_db=channelLib.channelDatabase)
+
+    this_dig = Channels.Digitizer(label=label, model="AlazarATS9870", address=address, channels=[chan1, chan2],
+                                  record_length=record_length, channel_db=channelLib.channelDatabase)
+    this_dig.trigger_source = "External"
+    this_dig.stream_types   = "raw"
     this_dig.address        = address
 
     commit()
