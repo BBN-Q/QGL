@@ -47,8 +47,8 @@ AWG                       = None
 # We retain this local framework in order to maintain
 # the paths for QGL primitives
 
-def define_entities(db):
-    def_ent(db)
+def define_entities(db, cache_callback=None):
+    def_ent(db, cache_callback=cache_callback)
 
     globals()["Channel"]                   = qgl.Channel
     globals()["PhysicalChannel"]           = qgl.PhysicalChannel

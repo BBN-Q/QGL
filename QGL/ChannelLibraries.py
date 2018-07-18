@@ -43,6 +43,7 @@ import networkx as nx
 from . import config
 from . import Channels
 from . import PulseShapes
+from .PulsePrimitives import clear_pulse_cache
 import bbndb
 
 channelLib = None
@@ -91,7 +92,7 @@ def copy_entity(obj, new_channel_db):
             obj_attr = getattr(obj, attr.name)
             if hasattr(obj_attr, "id"):
                 kwargs.pop(attr.name)
-                links[attr.name] = obj_attr.label 
+                links[attr.name] = obj_attr.label
 
     kwargs["channel_db"] = new_channel_db
     return obj.__class__(**kwargs), links
@@ -115,7 +116,7 @@ class ChannelLibrary(object):
             self.database_file = ":memory:"
 
         self.db = Database()
-        Channels.define_entities(self.db)
+        Channels.define_entities(self.db, cache_callback=clear_pulse_cache)
         self.db.bind(self.database_provider, filename=self.database_file, create_db=True)
         self.db.generate_mapping(create_tables=True)
         bbndb.database = self.db
@@ -125,7 +126,7 @@ class ChannelLibrary(object):
             inspect.stack()[1][0].f_globals[var] = getattr(Channels, var)
 
         self.connectivityG = nx.DiGraph()
-        
+
         # This is still somewhere legacy QGL behavior. Massage db into dict for lookup.
         self.channelDict = {}
 
@@ -203,7 +204,7 @@ class ChannelLibrary(object):
         # First clear items that don't have Sets of other items
         for ent in [Channels.MicrowaveSource, Channels.Channel, Channels.AWG, Channels.Digitizer]:
             select(c for c in ent if c.channel_db == channel_db).delete(bulk=True)
-            commit()        
+            commit()
         # Now clear items that do potentially have sets of items (which should be deleted)
         for ent in [Channels.ChannelDatabase]:
             select(d for d in ent if d.label == "working").delete(bulk=True)
@@ -228,7 +229,7 @@ class ChannelLibrary(object):
         new_chans, new_srcs, new_awgs, new_digs = copy_objs(chans, srcs, awgs, digs, new_channel_db=cd)
         cd.channels, cd.sources, cd.awgs, cd.digitizers = new_chans, new_srcs, new_awgs, new_digs
         commit()
-        
+
     #Dictionary methods
     def __getitem__(self, key):
         return self.channelDict[key]
@@ -463,7 +464,7 @@ def new_APS2(label, address):
     m2     = Channels.PhysicalMarkerChannel(label=f"{label}-12m2", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
     m3     = Channels.PhysicalMarkerChannel(label=f"{label}-12m3", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
     m4     = Channels.PhysicalMarkerChannel(label=f"{label}-12m4", instrument=label, translator="APS2Pattern", channel_db=channelLib.channelDatabase)
-    
+
     this_awg = Channels.AWG(label=label, model="APS2", address=address, channels=[chan12, m1, m2, m3, m4], channel_db=channelLib.channelDatabase)
     this_awg.trigger_source = "External"
     this_awg.address        = address
@@ -474,7 +475,7 @@ def new_APS2(label, address):
 def new_X6(label, address, dsp_channel=0, record_length=1024):
     chan1 = Channels.ReceiverChannel(label=f"RecvChan-{label}-1", channel=1, dsp_channel=dsp_channel, channel_db=channelLib.channelDatabase)
     chan2 = Channels.ReceiverChannel(label=f"RecvChan-{label}-2", channel=2, dsp_channel=dsp_channel, channel_db=channelLib.channelDatabase)
-    
+
     this_dig = Channels.Digitizer(label=label, model="X6-1000M", address=address, channels=[chan1, chan2],
                                   record_length=record_length, channel_db=channelLib.channelDatabase)
     this_dig.trigger_source = "External"
@@ -524,7 +525,7 @@ def set_control(qubit, awg, generator=None):
     if generator:
         qubit.phys_chan.generator = generator
     commit()
-    
+
 def set_measure(qubit, awg, dig, generator=None, dig_channel=1, trig_channel=None, gate=False, gate_channel=None, trigger_length=1e-7):
     quads   = [c for c in awg.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
     markers = [c for c in awg.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
@@ -542,14 +543,14 @@ def set_measure(qubit, awg, dig, generator=None, dig_channel=1, trig_channel=Non
     meas.phys_chan = phys_chan
     if generator:
         meas.phys_chan.generator = generator
-    
+
     phys_trig_channel = trig_channel if trig_channel else awg.get_chan("12m1")
 
     trig_chan              = Channels.LogicalMarkerChannel(label=f"digTrig-{qubit.label}", channel_db=channelLib.channelDatabase)
     trig_chan.phys_chan    = phys_trig_channel
     trig_chan.pulse_params = {"length": trigger_length, "shape_fun": "constant"}
     meas.trig_chan         = trig_chan
-    
+
     if isinstance(dig, Channels.Digitizer) and len(dig.channels) > 1:
         raise ValueError("In set_measure the Digitizer must have a single receiver channel or a specific channel must be passed instead")
     elif isinstance(dig, Channels.Digitizer) and len(dig.channels) == 1:
@@ -567,11 +568,11 @@ def set_measure(qubit, awg, dig, generator=None, dig_channel=1, trig_channel=Non
         gate_chan.phys_chan = phys_gate_channel
         meas.gate_chan      = gate_chan
     commit()
-        
+
 def set_master(awg, trig_channel, pulse_length=1e-7):
     if not isinstance(trig_channel, Channels.PhysicalMarkerChannel):
         raise ValueError("In set_master the trigger channel must be an instance of PhysicalMarkerChannel")
-   
+
     st = Channels.LogicalMarkerChannel(label="slave_trig", channel_db=channelLib.channelDatabase)
     st.phys_chan = trig_channel
     st.pulse_params = {"length": pulse_length, "shape_fun": "constant"}
@@ -583,15 +584,15 @@ def QubitFactory(label, **kwargs):
     ''' Return a saved qubit channel or create a new one. '''
     # TODO: this will just get the first entry in the whole damned DB!
     # thing = select(el for el in Channels.Qubit if el.label==label).first()
-    thing = {c.label: c for c in channelLib.get_current_channels()}[label]
+    thing = {c.label: c for c in channelLib.get_current_channels() if isinstance(c, Channels.Qubit)}[label]
     if thing:
         return thing
     else:
         return Channels.Qubit(label=label, **kwargs)
-    
+
 def MeasFactory(label, **kwargs):
     ''' Return a saved measurement channel or create a new one. '''
-    thing = {c.label: c for c in channelLib.get_current_channels()}[label]
+    thing = {c.label: c for c in channelLib.get_current_channels() if isinstance(c, Channels.Measurement)}[label]
     if thing:
         return thing
     else:
@@ -613,4 +614,3 @@ def EdgeFactory(source, target):
     else:
         raise ValueError('Edge {0} not found in connectivity graph'.format((
             source, target)))
-
