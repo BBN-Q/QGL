@@ -37,6 +37,7 @@ import traceback
 import datetime
 import importlib
 import inspect
+from functools import wraps
 from pony.orm import *
 import networkx as nx
 
@@ -47,6 +48,21 @@ from .PulsePrimitives import clear_pulse_cache
 import bbndb
 
 channelLib = None
+db = None
+
+def localize_db_objects(f):
+    """Since we can't mix db objects from separate sessions, re-fetch entities by their unique IDs"""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        global db
+        with db_session:
+            args_info    = [(type(arg), arg.id) if isinstance(arg, db.Entity) else (arg, None) for arg in args]
+            kwargs_info  = {k: (type(v), v.id) if isinstance(v, db.Entity) else (v, None) for k, v in kwargs.items()}
+        with db_session:
+            new_args   = [c[i] if i else c for c, i in args_info]
+            new_kwargs = {k: v[0][v[1]] if v[1] else v[0] for k,v in kwargs_info.items()}
+            return f(*new_args, **new_kwargs)
+    return wrapper
 
 def set_from_dict(obj, settings):
     for prop_name in obj.to_dict().keys():
