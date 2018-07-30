@@ -99,7 +99,7 @@ def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix="", add_cals=True):
     """
     seqsBis = []
     for seq in seqs:
-        seqsBis.append(reduce(operator.add, [clifford_seq(c, q1, q2)
+        seqsBis.append(reduce(operator.add, [clifford_seq(c, q2, q1)
                                              for c in seq]))
 
     #Add the measurement to all sequences

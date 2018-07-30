@@ -79,7 +79,7 @@ def EchoCRLen(controlQ,
              echoCR(controlQ, targetQ, length=l, phase= phase, amp=amp, riseFall=riseFall),
              X(controlQ),
              MEAS(targetQ)*MEAS(controlQ)] for l in lengths] + \
-           create_cal_seqs((targetQ,controlQ), calRepeats, measChans=(targetQ,controlQ))
+           create_cal_seqs((controlQ,targetQ), calRepeats, measChans=(targetQ,controlQ))
 
     metafile = compile_to_hardware(seqs, 'EchoCR/EchoCR',
         axis_descriptor=[
@@ -123,7 +123,7 @@ def EchoCRPhase(controlQ,
              echoCR(controlQ, targetQ, length=length, phase= ph, amp=amp, riseFall = riseFall),
              X90(targetQ)*X(controlQ),
              MEAS(targetQ)*MEAS(controlQ)] for ph in phases] + \
-             create_cal_seqs((targetQ,controlQ), calRepeats, measChans=(targetQ,controlQ))
+             create_cal_seqs((controlQ, targetQ), calRepeats, measChans=(targetQ,controlQ))
 
     axis_descriptor = [
         {
@@ -174,7 +174,7 @@ def EchoCRAmp(controlQ,
              echoCR(controlQ, targetQ, length=length, phase= phase, riseFall=riseFall,amp=a),
              X(controlQ),
              MEAS(targetQ)*MEAS(controlQ)] for a in amps] + \
-           create_cal_seqs((targetQ,controlQ), calRepeats, measChans=(targetQ,controlQ))
+           create_cal_seqs((controlQ ,targetQ), calRepeats, measChans=(targetQ,controlQ))
 
     axis_descriptor = [
         {
