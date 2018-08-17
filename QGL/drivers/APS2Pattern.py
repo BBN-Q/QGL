@@ -1096,7 +1096,14 @@ def write_sequence_file(awgData, fileName):
             chanStr = '/chan_{0}'.format(chanct + 1)
             chanGroup = FID.create_group(chanStr)
             #Write the waveformLib to file
-            FID.create_dataset(chanStr + '/waveforms', data=wfInfo[chanct][0])
+            if wfInfo[chanct][0].size == 0:
+                #If there are no waveforms, ensure that there is some element
+                #so that the waveform group gets written to file.
+                #TODO: Fix this in libaps2
+                data = np.array([0], dtype=np.uint16)
+            else:
+                data = wfInfo[chanct][0]
+            FID.create_dataset(chanStr + '/waveforms', data=data)
 
             #Write the instructions to channel 1
             if np.mod(chanct, 2) == 0:
