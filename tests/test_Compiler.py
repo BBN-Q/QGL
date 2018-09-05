@@ -152,11 +152,11 @@ class CompileUtils(unittest.TestCase):
                 [MEAS(q1)],
                 [MEAS(q2)],
                 [MEAS(q1), MEAS(q2)],
-                [X(q1)]]
+                [X(q1), MEAS(q1)]]
         wireSeqs = Compiler.compile_sequences(seqs)
-        assert Compiler.count_measurements(wireSeqs) == 5
+        assert Compiler.count_measurements(wireSeqs) == 4
         wire_meas = Compiler.count_measurements_per_wire(wireSeqs)
-        assert wire_meas[mq1] == 3
+        assert wire_meas[mq1] == 4
         assert wire_meas[mq2] == 4
 
     def test_frame_update(self):
