@@ -796,7 +796,6 @@ def count_measurements(wireSeqs):
     nmeas_0 = count_measurements_per_wire_idx(wireSeqs, 0)
     seq_measurements[0] = reduce(max, nmeas_0.values())
     meas_ct = [key for key, value in nmeas_0.items() if value == seq_measurements[0]][0]
-    import pdb; pdb.set_trace()
     for ct in range(1, seq_len):
         seq_measurements[ct] = count_measurements_in_wire_idx(wireSeqs[meas_ct], ct)
     return sum(seq_measurements)
