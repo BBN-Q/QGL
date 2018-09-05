@@ -459,6 +459,8 @@ def compile_to_hardware(seqs,
     for wire, n in wire_measurements.items():
         if wire.receiver_chan and n>0:
             receiver_measurements[wire.receiver_chan.label] = n
+    if not all(value == num_measurements for value in receiver_measurements.values()):
+        logger.warning('Measurement number unequal across receiver channels')
     meta = {
         'instruments': files,
         'num_sequences': len(seqs),
