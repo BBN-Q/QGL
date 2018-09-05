@@ -788,15 +788,17 @@ def save_code(seqs, filename):
         FID.write(pretty(seqs))
 
 def count_measurements(wireSeqs):
-    # count number of measurements per sequence as the max over the the number
-    # of measurements per wire
-
     # pick an arbitrary key to determine sequence length
+    # find any wire with at least a measurement. Assume for now that every receiver has the same number of measurements
+    # TODO: different number of measurements / digitizer
     seq_len = len(wireSeqs[list(wireSeqs)[0]])
     seq_measurements = [0 for _ in range(seq_len)]
-    for ct in range(seq_len):
-        seq_measurements[ct] = \
-            reduce(max, count_measurements_per_wire_idx(wireSeqs, ct).values())
+    nmeas_0 = count_measurements_per_wire_idx(wireSeqs, 0)
+    seq_measurements[0] = reduce(max, nmeas_0.values())
+    meas_ct = [key for key, value in nmeas_0.items() if value == seq_measurements[0]][0]
+    import pdb; pdb.set_trace()
+    for ct in range(1, seq_len):
+        seq_measurements[ct] = count_measurements_in_wire_idx(wireSeqs[meas_ct], ct)
     return sum(seq_measurements)
 
 def count_measurements_per_wire(wireSeqs):
@@ -815,4 +817,8 @@ def count_measurements_per_wire_idx(wireSeqs, idx):
         wire: sum(PatternUtils.contains_measurement(e) for e in seqs[idx])
               for wire, seqs in wireSeqs.items()
     }
+    return measurements
+
+def count_measurements_in_wire_idx(wire, idx):
+    measurements = sum(PatternUtils.contains_measurement(e) for e in wire[idx])
     return measurements
