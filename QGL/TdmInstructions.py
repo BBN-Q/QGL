@@ -40,8 +40,8 @@ class CustomInstruction(object):
 def MajorityVote(in_addr, out_addr, nmeas): # alternatively, append the loadcmpvram instruction when compiling (see STOREMEAS)
     return [LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, 2**nmeas-1, True), CustomInstruction('MAJORITY', in_addr, out_addr)]
 
-def MajorityMask(in_addr, out_addr, value):
-    return [WriteAddrInstruction('INVALIDATE', None, 1, in_addr, 0x0, True), WriteAddrInstruction('WRITEADDR', None, 0, in_addr, value, True), LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, 0xffff, True), CustomInstruction('MAJORITYMASK', in_addr, out_addr)]
+def MajorityMask(value):
+    return [WriteAddrInstruction('INVALIDATE', None, 1, 0, 0x0, True), WriteAddrInstruction('WRITEADDR', None, 0, 0, value, True), LoadCmpVramInstruction('LOADCMPVRAM', 1, 0, 0xffff, True), CustomInstruction('MAJORITYMASK', 0, 1)]
 
 def Decode(in_addr, out_addr, nmeas):
     return [LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, 2**nmeas-1, True), CustomInstruction('TSM', in_addr, out_addr)]

@@ -124,8 +124,8 @@ def BitFlip3(data_qs, ancilla_qs, theta=None, phi=None, nrounds=1, meas_delay=1e
         raise Exception("Wrong number of qubits")
     seqs =  [
     DecodeSetRounds(1,0,nrounds),
-    Invalidate(addr=10, mask=2*nrounds),
-    Invalidate(addr=11, mask=0x1)]
+    Invalidate(10, 2*nrounds),
+    Invalidate(11, 1)]
 
     # encode single-qubit state into 3 qubits
     if theta and phi:
@@ -153,7 +153,7 @@ def BitFlip3(data_qs, ancilla_qs, theta=None, phi=None, nrounds=1, meas_delay=1e
     if docals:
         seqs += create_cal_seqs(qubits,
         calRepeats)
-    metafile = compile_to_hardware(seqs, 'BitFlip/BitFlip')
+    metafile = compile_to_hardware(seqs, 'BitFlip/BitFlip', tdm_seq = True)
     return metafile
 
 def MajorityVoteN(qubits, nrounds, prep=[], meas_delay=1e-6, docals=False, calRepeats=2):
@@ -173,8 +173,8 @@ def MajorityVoteN(qubits, nrounds, prep=[], meas_delay=1e-6, docals=False, calRe
     """
     nqubits = len(qubits)
     seqs = [MajorityMask(nrounds*nqubits),
-           Invalidate(addr=10, mask=nrounds*nqubits),
-           Invalidate(addr=11, mask=1)]
+           Invalidate(10, nrounds*nqubits),
+           Invalidate(11, 1)]
     if prep:
        seqs += [reduce(operator.mul, [X(q) for n,q in enumerate(qubits) if prep[n]])]
     for n in range(nrounds):
@@ -187,5 +187,5 @@ def MajorityVoteN(qubits, nrounds, prep=[], meas_delay=1e-6, docals=False, calRe
     if docals:
         seqs += create_cal_seqs(qubits,
         calRepeats)
-    metafile = compile_to_hardware(seqs, 'MajorityVote/MajorityVote')
+    metafile = compile_to_hardware(seqs, 'MajorityVote/MajorityVote', tdm_seq = True)
     return metafile
