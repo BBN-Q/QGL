@@ -541,9 +541,9 @@ def new_qubit(label):
     return thing
 
 @db_session
-def new_source(label, model, address, power=-30.0):
+def new_source(label, model, address, power=-30.0, frequency=5.0e9):
     cdb   = Channels.ChannelDatabase[channelLib.channelDatabase.id] # Can't use external object
-    thing = Channels.MicrowaveSource(label=label, model=model, address=address, power=power, channel_db=cdb)
+    thing = Channels.MicrowaveSource(label=label, model=model, address=address, power=power, frequency=frequency, channel_db=cdb)
     return thing
 
 @localize_db_objects
