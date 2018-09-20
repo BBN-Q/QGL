@@ -101,9 +101,9 @@ def RabiAmp_NQubits(qubits,
     if measChans is None:
         measChans = qubits
 
-    measBlock = reduce(operator.mul, [MEAS(q) for q in qubits])
+    measBlock = reduce(operator.mul, [MEAS(q) for q in measChans])
     seqs = [[reduce(operator.mul,
-                    [Utheta(q, amp=amp, phase=phase) for q in qubits]),
+                    [Utheta(q, amp=amp, phase=phase) for q in measChans]),
              measBlock] for amp in amps]
 
     if docals:
