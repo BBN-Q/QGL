@@ -57,6 +57,31 @@ def gst_map_1Q(gst_list, qubit, qgl_map=gst_gate_map, append_meas=True):
         elif isinstance(item, list):
             yield list(gst_map_1Q(item, qubit, qgl_map=qgl_map, append_meas=append_meas))
 
+def gst_map_2Q(gst_list, qubits, qgl_map=None, append_meas=False):
+    """
+    Helper function that takes an arbitrarily nested list of pygsti gatestrings
+    and converts them into QGL sequences, keeping the same nesting of lists.
+
+    Inputs:
+        gst_list: GateString to convert, or possibly nested list of pyGSTi GateStrings.
+        qubit: QGL qubit to apply the sequence to
+        qgl_map: Dictionary that maps between pyGSTi "Gx" string to QGL pulse
+        append_meas: Append a measurement to each sequence.
+    Returns:
+        QGL sequences, preserving the input list nesting (as a generator)
+    """
+    if isinstance(gst_list, GateString):
+        gst_list = [gst_list]
+    for item in gst_list:
+        if isinstance(item, GateString):
+            mapped = map(lambda x: qgl_map[x], item.tup)
+            if append_meas:
+                yield list(chain(mapped, [reduce(lambda x,y: x*y, map(MEAS, qubits))]))
+            else:
+                yield list(mapped)
+        elif isinstance(item, list):
+            yield list(gst_map_2Q(item, qubit, qgl_map=qgl_map, append_meas=append_meas))
+
 def create_gst_sequence_from_pygsti(gst_list, qubit, gate_map=gst_gate_map):
     """ Returns list of QGL sequences from a pyGSTi GateString list. See gst_map_1Q.
         The return value is a list of sequences that can be complied by QGL.
