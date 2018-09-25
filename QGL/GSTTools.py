@@ -28,8 +28,8 @@ from itertools import chain
 from random import choices
 
 #Default mapping from pyGSTi naming convention to QGL gates.
-gst_gate_map = {"Gx": X,
-                "Gy": Y,
+gst_gate_map = {"Gx": X90,
+                "Gy": Y90,
                 "Gi": Id}
 
 def gst_map_1Q(gst_list, qubit, qgl_map=gst_gate_map, append_meas=True):
