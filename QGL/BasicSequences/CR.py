@@ -192,3 +192,33 @@ def EchoCRAmp(controlQ,
         plot_pulse_files(metafile)
 
     return metafile
+
+def CRtomo_seq(controlQ, targetQ, lengths, ph, amp=0.8, riseFall=20e-9):
+    """
+    Variable length CX experiment, for Hamiltonian tomography.
+
+    Parameters
+    ----------
+    controlQ : logical channel for the control qubit (LogicalChannel)
+    targetQ: logical channel for the target qubit (LogicalChannel)
+    lengths : pulse lengths of the CR pulse to sweep over (iterable)
+    riseFall : rise/fall time of the CR pulse (s)
+    ph : phase of the CR pulse (rad)
+    """
+    CRchan = ChannelLibraries.EdgeFactory(controlQ, targetQ)
+    tomo_pulses = [Y90m, X90, Id]
+    seqs = [[Id(controlQ),
+         flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=l, phase=ph, label="CR"),
+         Id(controlQ)*tomo_pulse(targetQ),
+         MEAS(targetQ)] for l,tomo_pulse in product(lengths, tomo_pulses)] + \
+       [[X(controlQ),
+         flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=l, phase=ph, label="CR"),
+         X(controlQ)*tomo_pulse(targetQ),
+         MEAS(targetQ)] for l,tomo_pulse in product(lengths, tomo_pulses)] + \
+       create_cal_seqs((targetQ,), 2,)
+    metafile = compile_to_hardware(seqs, 'CR/CR',
+        axis_descriptor=[
+            delay_descriptor(np.concatenate((np.repeat(lengths,3), np.repeat(lengths,3)))),
+            cal_descriptor((targetQ,), 2)
+        ])
+    return metafile
