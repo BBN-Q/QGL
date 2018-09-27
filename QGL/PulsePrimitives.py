@@ -646,7 +646,7 @@ def echoCR(controlQ,
            phase=0,
            length=200e-9,
            riseFall=20e-9,
-           lastPi=True):
+           lastPi=True, canc_amp = 0.0, canc_phase=np.pi/2):
     """
     An echoed CR pulse.  Used for calibration of CR gate
     """
@@ -668,6 +668,19 @@ def echoCR(controlQ,
                              length=length,
                              phase=phase + np.pi,
                              label="echoCR_second_half")]
+    if canc_amp != 0:
+        seq[0]*=flat_top_gaussian(targetQ,
+                            amp=canc_amp,
+                            riseFall=riseFall,
+                            length=length,
+                            phase=canc_phase,
+                            label="cancCR_first_half")
+        seq[2]*=flat_top_gaussian(targetQ,
+                            amp=canc_amp,
+                            riseFall=riseFall,
+                            length=length,
+                            phase=canc_phase + np.pi,
+                            label="cancCR_second_half")
     if lastPi:
         seq += [X(controlQ)]
     return CompoundGate(seq)
@@ -679,12 +692,16 @@ def ZX90_CR(controlQ, targetQ, **kwargs):
     """
     CRchan = ChannelLibraries.EdgeFactory(controlQ, targetQ)
     params = overrideDefaults(CRchan, kwargs)
+    canc_amp = params['canc_amp'] if 'canc_amp' in params else 0
+    canc_phase = params['canc_phase'] if 'canc_phase' in params else 0
     return echoCR(controlQ,
                   targetQ,
                   amp=params['amp'],
                   phase=params['phase'],
                   length=params['length'],
-                  riseFall=params['riseFall'])
+                  riseFall=params['riseFall'],
+                  canc_phase=canc_phase,
+                  canc_amp=canc_amp)
 
 
 def CNOT_CR(controlQ, targetQ, **kwargs):

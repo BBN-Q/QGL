@@ -4,6 +4,7 @@ from ..ChannelLibraries import EdgeFactory
 from ..PulseSequencePlotter import plot_pulse_files
 from .helpers import create_cal_seqs, delay_descriptor, cal_descriptor
 import numpy as np
+from itertools import product
 
 def PiRabi(controlQ,
            targetQ,
@@ -56,7 +57,7 @@ def EchoCRLen(controlQ,
               amp=1,
               phase=0,
               calRepeats=2,
-              showPlot=False):
+              showPlot=False, canc_amp=0, canc_phase=np.pi/2):
     """
 	Variable length CX experiment, with echo pulse sandwiched between two CR opposite-phase pulses.
 
@@ -72,14 +73,14 @@ def EchoCRLen(controlQ,
 	showPlot : whether to plot (boolean)
 	"""
     seqs = [[Id(controlQ),
-             echoCR(controlQ, targetQ, length=l, phase=phase, amp=amp, riseFall=riseFall),
+             echoCR(controlQ, targetQ, length=l, phase=phase, amp=amp, riseFall=riseFall, canc_amp=canc_amp, canc_phase=canc_phase),
              Id(controlQ),
              MEAS(targetQ)*MEAS(controlQ)] for l in lengths] + \
            [[X(controlQ),
-             echoCR(controlQ, targetQ, length=l, phase= phase, amp=amp, riseFall=riseFall),
+             echoCR(controlQ, targetQ, length=l, phase= phase, amp=amp, riseFall=riseFall, canc_amp=canc_amp, canc_phase=canc_phase),
              X(controlQ),
              MEAS(targetQ)*MEAS(controlQ)] for l in lengths] + \
-           create_cal_seqs((targetQ,controlQ), calRepeats, measChans=(targetQ,controlQ))
+           create_cal_seqs((targetQ,controlQ), calRepeats, measChans=(targetQ, controlQ))
 
     metafile = compile_to_hardware(seqs, 'EchoCR/EchoCR',
         axis_descriptor=[
@@ -100,7 +101,9 @@ def EchoCRPhase(controlQ,
                 amp=1,
                 length=100e-9,
                 calRepeats=2,
-                showPlot=False):
+                showPlot=False,
+                canc_amp=0,
+                canc_phase=np.pi/2):
     """
 	Variable phase CX experiment, with echo pulse sandwiched between two CR opposite-phase pulses.
 
@@ -116,11 +119,11 @@ def EchoCRPhase(controlQ,
 	showPlot : whether to plot (boolean)
 	"""
     seqs = [[Id(controlQ),
-             echoCR(controlQ, targetQ, length=length, phase=ph, amp=amp, riseFall=riseFall),
+             echoCR(controlQ, targetQ, length=length, phase=ph, amp=amp, riseFall=riseFall, canc_amp=canc_amp, canc_phase=canc_phase),
              X90(targetQ)*Id(controlQ),
              MEAS(targetQ)*MEAS(controlQ)] for ph in phases] + \
            [[X(controlQ),
-             echoCR(controlQ, targetQ, length=length, phase= ph, amp=amp, riseFall = riseFall),
+             echoCR(controlQ, targetQ, length=length, phase= ph, amp=amp, riseFall = riseFall, canc_amp=canc_amp, canc_phase=canc_phase),
              X90(targetQ)*X(controlQ),
              MEAS(targetQ)*MEAS(controlQ)] for ph in phases] + \
              create_cal_seqs((targetQ,controlQ), calRepeats, measChans=(targetQ,controlQ))
