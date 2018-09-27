@@ -23,9 +23,15 @@ from .PulsePrimitives import *
 from .Cliffords import *
 from .BasicSequences.helpers import create_cal_seqs
 from .Compiler import compile_to_hardware
-from pygsti.objects import GateString
 from itertools import chain
 from random import choices
+
+PYGSTI_PRESENT = False
+try:
+   from pygsti.objects import GateString
+   PYGSTI_PRESENT = True
+except:
+   pass
 
 #Default mapping from pyGSTi naming convention to QGL gates.
 gst_gate_map = {"Gx": X90,
