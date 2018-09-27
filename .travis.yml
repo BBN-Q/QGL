@@ -4,6 +4,7 @@
 language: python
 python:
   - 3.5
+  - 3.6
 
 before_install:
   # install git lfs and fetch test data
@@ -38,7 +39,7 @@ install:
   - source activate test-environment
   - conda install -c ecpy atom;
   - pip install watchdog coveralls
-  - pip install pygsti
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then  pip install pygsti; fi
 
 script:
   - coverage run -m unittest discover
