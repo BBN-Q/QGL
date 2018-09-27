@@ -14,7 +14,7 @@ setup(name='QGL',
             "future >= 0.16",
             "watchdog >= 0.8.3",
             "bokeh >= 0.11",
-            "pyyaml >= 3.12"
+            "ruamel_yaml >= 0.11.14"
       ],
       extras_require={"gst": "pygsti>0.9.4"}
 )
