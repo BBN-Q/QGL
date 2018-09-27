@@ -372,6 +372,31 @@ class TestSequences(object):
         SimultaneousRB_AC((self.q1, self.q2), (seqs1, seqs2))
         self.compare_sequences('RB')
 
+    def test_1Q_GST(self):
+        self.set_awg_dir()
+        # list of GST gate strings
+        listOfExperiments = list(np.load('GST/listOfExperiments.npy'))
+        exps = list(GSTTools.gst_map_1Q(listOfExperiments, self.q1))
+        filenames = compile_to_hardware(seqs, 'GST/GST')
+        #self.compare_sequences('GST')
+
+    def test_2Q_GST(self):
+        self.set_awg_dir()
+        def gst_2Qgate_map(q1, q2):
+            return {"Gxi": X90(q1)*Id(q2),
+                     "Gyi": Y90(q1)*Id(q2),
+                     "Gii": Id(q1)*Id(q2),
+                     "Gix": Id(q1)*X90(q2),
+                     "Giy": Id(q1)*Y90(q2),
+                     "Gcnot": CNOT_CR(q2,q1)}
+
+        # list of GST gate strings
+        listOfExperiments = list(np.load('GST2Q/listOfExperiments.npy'))
+        seqs = list(gst_map_2Q(listOfExperiments, (self.q1, self.q2), qgl_map = gst_2Qgate_map(q1, q2), append_meas=True))
+
+        filenames = compile_to_hardware(seqs, 'GST2Q/GST2Q')
+        #self.compare_sequences('GST2Q')
+
 
 class APS2Helper(AWGTestHelper):
     def setUp(self):
