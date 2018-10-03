@@ -39,8 +39,9 @@ Qubit                     = None
 Edge                      = None
 MicrowaveSource           = None
 ChannelDatabase           = None
-Digitizer                 = None
-AWG                       = None
+Receiver                  = None
+Transmitter               = None
+Transceiver               = None
 
 # The main definitions have been moved to bbndb
 # to keep the schema consistent across Auspex and QGL
@@ -62,5 +63,6 @@ def define_entities(db, cache_callback=None):
     globals()["Edge"]                      = qgl.Edge
     globals()["MicrowaveSource"]           = qgl.MicrowaveSource
     globals()["ChannelDatabase"]           = qgl.ChannelDatabase
-    globals()["Digitizer"]                 = qgl.Digitizer
-    globals()["AWG"]                       = qgl.AWG
+    globals()["Receiver"]                  = qgl.Receiver
+    globals()["Transmitter"]               = qgl.Transmitter
+    globals()["Transceiver"]               = qgl.Transceiver

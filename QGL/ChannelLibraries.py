@@ -39,6 +39,7 @@ import importlib
 import inspect
 from functools import wraps
 from pony.orm import *
+import numpy as np
 import networkx as nx
 
 from . import config
@@ -189,25 +190,25 @@ class ChannelLibrary(object):
         else:
             return {el.label: el for el in q}
 
-    def dig(self):
-        return self.ent_by_type_name("Digitizer")
+    def receivers(self):
+        return self.ent_by_type_name("Receiver")
 
-    def awg(self):
-        return self.ent_by_type_name("AWG")
+    def transmitter(self):
+        return self.ent_by_type_name("Transmitter")
 
-    def qubit(self):
+    def qubits(self):
         return self.ent_by_type_name("Qubit")
 
     def meas(self):
         return self.ent_by_type_name("Measurement")
 
-    def ls_dig(self):
-        return self.ent_by_type_name("Digitizer", show=True)
+    def ls_receivers(self):
+        return self.ent_by_type_name("Receiver", show=True)
 
-    def ls_awg(self):
-        return self.ent_by_type_name("AWG", show=True)
+    def ls_transmitters(self):
+        return self.ent_by_type_name("Transmitter", show=True)
 
-    def ls_qubit(self):
+    def ls_qubits(self):
         return self.ent_by_type_name("Qubit", show=True)
 
     def ls_meas(self):
@@ -229,7 +230,7 @@ class ChannelLibrary(object):
         # If no database is specified, clear self.database
         channel_db = channel_db if channel_db else self.channelDatabase
         # First clear items that don't have Sets of other items
-        for ent in [Channels.MicrowaveSource, Channels.Channel, Channels.AWG, Channels.Digitizer]:
+        for ent in [Channels.MicrowaveSource, Channels.Channel, Channels.Transmitter, Channels.Receiver, Channels.Transceiver]:
             select(c for c in ent if c.channel_db == channel_db).delete(bulk=True)
             commit()
         # Now clear items that do potentially have sets of items (which should be deleted)
@@ -244,19 +245,20 @@ class ChannelLibrary(object):
     def load_obj(self, obj):
         commit()
         self.clear()
-        chans, srcs, awgs, digs = map(list, [obj.channels, obj.sources, obj.awgs, obj.digitizers])
-        copy_objs(chans, srcs, awgs, digs, new_channel_db=self.channelDatabase)
+        chans, srcs, d2as, a2ds, trans = map(list, [obj.channels, obj.sources, obj.transmitters, obj.receivers, obj.transceivers])
+        copy_objs(chans, srcs, d2as, a2ds, trans, new_channel_db=self.channelDatabase)
         commit()
         self.update_channelDict()
 
     @db_session
     def save_as(self, name):
-        chans, srcs, awgs, digs = map(list, [self.channelDatabase.channels, self.channelDatabase.sources,
-                                            self.channelDatabase.awgs, self.channelDatabase.digitizers])
+        chans, srcs, d2as, a2dsm, trans = map(list, [self.channelDatabase.channels, self.channelDatabase.sources,
+                                            self.channelDatabase.transmitters, self.channelDatabase.receivers,
+                                            self.channelDatabase.transceivers])
         commit()
         cd = Channels.ChannelDatabase(label=name, time=datetime.datetime.now())
-        new_chans, new_srcs, new_awgs, new_digs = copy_objs(chans, srcs, awgs, digs, new_channel_db=cd)
-        cd.channels, cd.sources, cd.awgs, cd.digitizers = new_chans, new_srcs, new_awgs, new_digs
+        new_chans, new_srcs, new_d2as, new_a2ds, new_trans = copy_objs(chans, srcs, d2as, a2ds, trans, new_channel_db=cd)
+        cd.channels, cd.sources, cd.transmitters, cd.receivers, cd.transceivers = new_chans, new_srcs, new_d2as, new_a2ds, new_trans
         commit()
 
     #Dictionary methods
@@ -497,12 +499,23 @@ def new_APS2(label, address):
     m3     = Channels.PhysicalMarkerChannel(label=f"{label}-12m3", instrument=label, translator="APS2Pattern", channel_db=cdb)
     m4     = Channels.PhysicalMarkerChannel(label=f"{label}-12m4", instrument=label, translator="APS2Pattern", channel_db=cdb)
 
-    this_awg = Channels.AWG(label=label, model="APS2", address=address, channels=[chan12, m1, m2, m3, m4], channel_db=cdb)
-    this_awg.trigger_source = "External"
-    this_awg.address        = address
+    this_transmitter = Channels.Transmitter(label=label, model="APS2", address=address, channels=[chan12, m1, m2, m3, m4], channel_db=cdb)
+    this_transmitter.trigger_source = "External"
+    this_transmitter.address        = address
 
     commit()
-    return this_awg
+    return this_transmitter
+
+@db_session
+def new_APS2_rack(label, num, start_address):
+    cdb              = Channels.ChannelDatabase[channelLib.channelDatabase.id] # Can't use external object
+    address_start    = ".".join(start_address.split(".")[:3])
+    address_end      = int(start_address.split(".")[-1])
+    transmitters     = [new_APS2(f"{label}_U{i}", f"{address_start}.{address_end+i}") for i in range(1,num+1)]
+    this_transceiver = Channels.Transceiver(label=label, model="APS2Rack", transmitters=transmitters, channel_db=cdb)
+
+    commit()
+    return this_transceiver
 
 @db_session
 def new_X6(label, address, dsp_channel=0, record_length=1024):
@@ -510,14 +523,18 @@ def new_X6(label, address, dsp_channel=0, record_length=1024):
     chan1 = Channels.ReceiverChannel(label=f"RecvChan-{label}-1", channel=1, dsp_channel=dsp_channel, channel_db=cdb)
     chan2 = Channels.ReceiverChannel(label=f"RecvChan-{label}-2", channel=2, dsp_channel=dsp_channel, channel_db=cdb)
 
-    this_dig = Channels.Digitizer(label=label, model="X6-1000M", address=address, channels=[chan1, chan2],
+    this_receiver = Channels.Receiver(label=label, model="X6-1000M", address=address, channels=[chan1, chan2],
                                   record_length=record_length, channel_db=cdb)
-    this_dig.trigger_source = "External"
-    this_dig.stream_types   = "raw, demodulated, integrated, averaged"
-    this_dig.address        = address
+    this_receiver.trigger_source = "External"
+    this_receiver.stream_types   = "raw, demodulated, integrated"
+    this_receiver.address        = address
+
+    # Add a default kernel
+    chan1.kernel = np.ones(record_length, dtype=np.complex).tobytes()
+    chan2.kernel = np.ones(record_length, dtype=np.complex).tobytes()
 
     commit()
-    return this_dig
+    return this_receiver
 
 @db_session
 def new_Alazar(label, address, record_length=1024):
@@ -525,14 +542,14 @@ def new_Alazar(label, address, record_length=1024):
     chan1 = Channels.ReceiverChannel(label=f"RecvChan-{label}-1", channel=1, channel_db=cdb)
     chan2 = Channels.ReceiverChannel(label=f"RecvChan-{label}-2", channel=2, channel_db=cdb)
 
-    this_dig = Channels.Digitizer(label=label, model="AlazarATS9870", address=address, channels=[chan1, chan2],
+    this_receiver = Channels.Receiver(label=label, model="AlazarATS9870", address=address, channels=[chan1, chan2],
                                   record_length=record_length, channel_db=cdb)
-    this_dig.trigger_source = "External"
-    this_dig.stream_types   = "raw"
-    this_dig.address        = address
+    this_receiver.trigger_source = "External"
+    this_receiver.stream_types   = "raw"
+    this_receiver.address        = address
 
     commit()
-    return this_dig
+    return this_receiver
 
 @db_session
 def new_qubit(label):
@@ -547,69 +564,69 @@ def new_source(label, model, address, power=-30.0, frequency=5.0e9):
     return thing
 
 @localize_db_objects
-def set_control(qubit, awg, generator=None):
-    quads   = [c for c in awg.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
-    markers = [c for c in awg.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
+def set_control(qubit, transmitter, generator=None):
+    quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
+    markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
 
-    if isinstance(awg, Channels.AWG) and len(quads) > 1:
-        raise ValueError("In set_control the AWG must have a single quadrature channel or a specific channel must be passed instead")
-    elif isinstance(awg, Channels.AWG) and len(quads) == 1:
+    if isinstance(transmitter, Channels.Transmitter) and len(quads) > 1:
+        raise ValueError("In set_control the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
+    elif isinstance(transmitter, Channels.Transmitter) and len(quads) == 1:
         phys_chan = quads[0]
-    elif isinstance(awg, Channels.PhysicalQuadratureChannel):
-        phys_chan = awg
+    elif isinstance(transmitter, Channels.PhysicalQuadratureChannel):
+        phys_chan = transmitter
     else:
-        raise ValueError("In set_control the AWG must have a single quadrature channel or a specific channel must be passed instead")
+        raise ValueError("In set_control the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
 
     qubit.phys_chan = phys_chan
     if generator:
         qubit.phys_chan.generator = generator
 
 @localize_db_objects
-def set_measure(qubit, awg, dig, generator=None, dig_channel=1, trig_channel=None, gate=False, gate_channel=None, trigger_length=1e-7):
+def set_measure(qubit, transmitter, receivers, generator=None, receivers_channel=1, trig_channel=None, gate=False, gate_channel=None, trigger_length=1e-7):
     cdb     = Channels.ChannelDatabase[channelLib.channelDatabase.id] # Can't use external object
-    quads   = [c for c in awg.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
-    markers = [c for c in awg.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
+    quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
+    markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
 
-    if isinstance(awg, Channels.AWG) and len(quads) > 1:
-        raise ValueError("In set_measure the AWG must have a single quadrature channel or a specific channel must be passed instead")
-    elif isinstance(awg, Channels.AWG) and len(quads) == 1:
+    if isinstance(transmitter, Channels.Transmitter) and len(quads) > 1:
+        raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
+    elif isinstance(transmitter, Channels.Transmitter) and len(quads) == 1:
         phys_chan = quads[0]
-    elif isinstance(awg, Channels.PhysicalQuadratureChannel):
-        phys_chan = awg
+    elif isinstance(transmitter, Channels.PhysicalQuadratureChannel):
+        phys_chan = transmitter
     else:
-        raise ValueError("In set_measure the AWG must have a single quadrature channel or a specific channel must be passed instead")
+        raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
 
     meas = Channels.Measurement(label=f"M-{qubit.label}", channel_db=cdb)
     meas.phys_chan = phys_chan
     if generator:
         meas.phys_chan.generator = generator
 
-    phys_trig_channel = trig_channel if trig_channel else awg.get_chan("12m1")
+    phys_trig_channel = trig_channel if trig_channel else transmitter.get_chan("12m1")
 
-    trig_chan              = Channels.LogicalMarkerChannel(label=f"digTrig-{qubit.label}", channel_db=cdb)
+    trig_chan              = Channels.LogicalMarkerChannel(label=f"receiversTrig-{qubit.label}", channel_db=cdb)
     trig_chan.phys_chan    = phys_trig_channel
     trig_chan.pulse_params = {"length": trigger_length, "shape_fun": "constant"}
     meas.trig_chan         = trig_chan
 
-    if isinstance(dig, Channels.Digitizer) and len(dig.channels) > 1:
-        raise ValueError("In set_measure the Digitizer must have a single receiver channel or a specific channel must be passed instead")
-    elif isinstance(dig, Channels.Digitizer) and len(dig.channels) == 1:
-        rcv_chan = dig.channels[0]
-    elif isinstance(dig, Channels.ReceiverChannel):
-        rcv_chan = dig
+    if isinstance(receivers, Channels.Receiver) and len(receivers.channels) > 1:
+        raise ValueError("In set_measure the Receiver must have a single receiver channel or a specific channel must be passed instead")
+    elif isinstance(receivers, Channels.Receiver) and len(receivers.channels) == 1:
+        rcv_chan = receivers.channels[0]
+    elif isinstance(receivers, Channels.ReceiverChannel):
+        rcv_chan = receivers
     else:
-        raise ValueError("In set_measure the AWG must have a single quadrature channel or a specific channel must be passed instead")
+        raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
 
     meas.receiver_chan = rcv_chan
 
     if gate:
-        phys_gate_channel   = gate_channel if gate_channel else awg.get_chan("12m2")
+        phys_gate_channel   = gate_channel if gate_channel else transmitter.get_chan("12m2")
         gate_chan           = Channels.LogicalMarkerChannel(label=f"M-{qubit.label}-gate", channel_db=cdb)
         gate_chan.phys_chan = phys_gate_channel
         meas.gate_chan      = gate_chan
 
 @localize_db_objects
-def set_master(awg, trig_channel, pulse_length=1e-7):
+def set_master(transmitter, trig_channel, pulse_length=1e-7):
     if not isinstance(trig_channel, Channels.PhysicalMarkerChannel):
         raise ValueError("In set_master the trigger channel must be an instance of PhysicalMarkerChannel")
 
@@ -617,8 +634,8 @@ def set_master(awg, trig_channel, pulse_length=1e-7):
     st = Channels.LogicalMarkerChannel(label="slave_trig", channel_db=cdb)
     st.phys_chan = trig_channel
     st.pulse_params = {"length": pulse_length, "shape_fun": "constant"}
-    awg.master = True
-    awg.trigger_source = "Internal"
+    transmitter.master = True
+    transmitter.trigger_source = "Internal"
 
 @db_session
 def QubitFactory(label, **kwargs):
