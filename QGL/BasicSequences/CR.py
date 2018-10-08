@@ -15,18 +15,18 @@ def PiRabi(controlQ,
            calRepeats=2,
            showPlot=False):
     """
-	Variable length CX experiment.
+    Variable length CX experiment.
 
-	Parameters
-	----------
-	controlQ : logical channel for the control qubit (LogicalChannel)
-	targetQ: logical channel for the target qubit (LogicalChannel)
-	lengths : pulse lengths of the CR pulse to sweep over (iterable)
-	riseFall : rise/fall time of the CR pulse (s)
-	amp : amplitude of the CR pulse
-	phase : phase of the CR pulse (rad)
-	showPlot : whether to plot (boolean)
-	"""
+    Parameters
+    ----------
+    controlQ : logical channel for the control qubit (LogicalChannel)
+    targetQ: logical channel for the target qubit (LogicalChannel)
+    lengths : pulse lengths of the CR pulse to sweep over (iterable)
+    riseFall : rise/fall time of the CR pulse (s)
+    amp : amplitude of the CR pulse
+    phase : phase of the CR pulse (rad)
+    showPlot : whether to plot (boolean)
+    """
 
     CRchan = EdgeFactory(controlQ, targetQ)
     seqs = [[Id(controlQ),
@@ -57,22 +57,21 @@ def EchoCRLen(controlQ,
               amp=1,
               phase=0,
               calRepeats=2,
-              showPlot=False):
               showPlot=False, canc_amp=0, canc_phase=np.pi/2):
     """
-	Variable length CX experiment, with echo pulse sandwiched between two CR opposite-phase pulses.
+    Variable length CX experiment, with echo pulse sandwiched between two CR opposite-phase pulses.
 
-	Parameters
-	----------
-	controlQ : logical channel for the control qubit (LogicalChannel)
-	targetQ: logical channel for the target qubit (LogicalChannel)
-	lengths : pulse lengths of the CR pulse to sweep over (iterable)
-	riseFall : rise/fall time of the CR pulse (s)
-	amp : amplitude of the CR pulse
-	phase : phase of the CR pulse (rad)
-	calRepeats : number of repetitions of readout calibrations for each 2-qubit state
-	showPlot : whether to plot (boolean)
-	"""
+    Parameters
+    ----------
+    controlQ : logical channel for the control qubit (LogicalChannel)
+    targetQ: logical channel for the target qubit (LogicalChannel)
+    lengths : pulse lengths of the CR pulse to sweep over (iterable)
+    riseFall : rise/fall time of the CR pulse (s)
+    amp : amplitude of the CR pulse
+    phase : phase of the CR pulse (rad)
+    calRepeats : number of repetitions of readout calibrations for each 2-qubit state
+    showPlot : whether to plot (boolean)
+    """
     seqs = [[Id(controlQ),
              echoCR(controlQ, targetQ, length=l, phase=phase, amp=amp, riseFall=riseFall, canc_amp=canc_amp, canc_phase=canc_phase),
              Id(controlQ),
