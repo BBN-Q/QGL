@@ -6,13 +6,13 @@ import re
 import importlib
 
 # Where to store AWG data
-AWGDir         = None
+AWGDir           = None
 
 # The db file, where the channel libraries are stored
-db_file        = None
+db_resource_name = None
 
 # The config file (executed upon channel library loading)
-config_file    = None
+config_file      = None
 
 # plotting options
 plotBackground = '#EAEAF2'
@@ -36,6 +36,7 @@ def load_config():
             raise Exception(f"Could not import/execute the BBN_CONFIG {os.getenv('BBN_CONFIG')}")
             
 def load_db():
-    global db_file
+    global db_resource_name
     if os.getenv('BBN_DB'):
-        db_file = os.getenv("BBN_DB")
+        db_resource_name = os.getenv("BBN_DB")
+    return db_resource_name

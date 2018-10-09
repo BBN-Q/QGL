@@ -23,46 +23,4 @@ limitations under the License.
 
 from . import config
 from . import PulseShapes
-from bbndb import define_entities as def_ent
-from bbndb import qgl
-
-# Get these in global scope for module imports
-Channel                   = None
-PhysicalChannel           = None
-LogicalChannel            = None
-PhysicalQuadratureChannel = None
-PhysicalMarkerChannel     = None
-LogicalMarkerChannel      = None
-ReceiverChannel           = None
-Measurement               = None
-Qubit                     = None
-Edge                      = None
-MicrowaveSource           = None
-ChannelDatabase           = None
-Receiver                  = None
-Transmitter               = None
-Transceiver               = None
-
-# The main definitions have been moved to bbndb
-# to keep the schema consistent across Auspex and QGL
-# We retain this local framework in order to maintain
-# the paths for QGL primitives
-
-def define_entities(db, cache_callback=None):
-    def_ent(db, cache_callback=cache_callback)
-
-    globals()["Channel"]                   = qgl.Channel
-    globals()["PhysicalChannel"]           = qgl.PhysicalChannel
-    globals()["LogicalChannel"]            = qgl.LogicalChannel
-    globals()["PhysicalQuadratureChannel"] = qgl.PhysicalQuadratureChannel
-    globals()["PhysicalMarkerChannel"]     = qgl.PhysicalMarkerChannel
-    globals()["LogicalMarkerChannel"]      = qgl.LogicalMarkerChannel
-    globals()["ReceiverChannel"]           = qgl.ReceiverChannel
-    globals()["Measurement"]               = qgl.Measurement
-    globals()["Qubit"]                     = qgl.Qubit
-    globals()["Edge"]                      = qgl.Edge
-    globals()["MicrowaveSource"]           = qgl.MicrowaveSource
-    globals()["ChannelDatabase"]           = qgl.ChannelDatabase
-    globals()["Receiver"]                  = qgl.Receiver
-    globals()["Transmitter"]               = qgl.Transmitter
-    globals()["Transceiver"]               = qgl.Transceiver
+from bbndb.qgl import *

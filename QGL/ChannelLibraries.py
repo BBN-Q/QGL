@@ -38,34 +38,33 @@ import datetime
 import importlib
 import inspect
 from functools import wraps
-from pony.orm import *
 import numpy as np
 import networkx as nx
+ 
+import bbndb
 
 from . import config
 from . import Channels
 from . import PulseShapes
 from .PulsePrimitives import clear_pulse_cache
-import bbndb
 
 channelLib = None
-db = None
 
-def localize_db_objects(f):
-    """Since we can't mix db objects from separate sessions, re-fetch entities by their unique IDs"""
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        global db
-        with db_session:
-            args_info    = [(type(arg), arg.id) if isinstance(arg, db.Entity) else (arg, None) for arg in args]
-            kwargs_info  = {k: (type(v), v.id) if isinstance(v, db.Entity) else (v, None) for k, v in kwargs.items()}
-        with db_session:
-            new_args   = [c[i] if i else c for c, i in args_info]
-            new_kwargs = {k: v[0][v[1]] if v[1] else v[0] for k,v in kwargs_info.items()}
-            return f(*new_args, **new_kwargs)
-    return wrapper
+# def localize_db_objects(f):
+    # """Since we can't mix db objects from separate sessions, re-fetch entities by their unique IDs"""
+    # @wraps(f)
+    # def wrapper(*args, **kwargs):
+    #     global db
+    #     with db_session:
+    #         args_info    = [(type(arg), arg.id) if isinstance(arg, db.Entity) else (arg, None) for arg in args]
+    #         kwargs_info  = {k: (type(v), v.id) if isinstance(v, db.Entity) else (v, None) for k, v in kwargs.items()}
+    #     with db_session:
+    #         new_args   = [c[i] if i else c for c, i in args_info]
+    #         new_kwargs = {k: v[0][v[1]] if v[1] else v[0] for k,v in kwargs_info.items()}
+    #         return f(*new_args, **new_kwargs)
+    # return wrapper
 
-def set_from_dict(obj, settings):
+def set_from_dict(self, obj, settings):
     for prop_name in obj.to_dict().keys():
         if prop_name in settings.keys():
             try:
@@ -73,7 +72,6 @@ def set_from_dict(obj, settings):
             except Exception as e:
                 print(f"{obj.label}: Error loading {prop_name} from config")
 
-@db_session
 def copy_objs(*entities, new_channel_db):
     # Entities is a list of lists of entities of specific types
     new_entities    = []
@@ -99,7 +97,6 @@ def copy_objs(*entities, new_channel_db):
 
     return new_entities
 
-@db_session
 def copy_entity(obj, new_channel_db):
     """Copy a pony entity instance"""
     kwargs = {a.name: getattr(obj, a.name) for a in obj._attrs_ if a.name not in ["id", "classtype"]}
@@ -118,71 +115,57 @@ def copy_entity(obj, new_channel_db):
 
 class ChannelLibrary(object):
 
-    def __init__(self, database_file=None, channelDict={}, **kwargs):
+    def __init__(self, db_resource_name=None):
         """Create the channel library."""
 
-        global channelLib, db
-        if channelLib is not None:
-            channelLib.db.disconnect()
+        global channelLib
 
-        config.load_db()
-        self.database_provider = "sqlite"
-        if database_file:
-            self.database_file = database_file
-        elif config.db_file:
-            self.database_file = config.db_file
+        self.db_provider = "sqlite"
+        self.db_resource_name = ":memory:"
+
+        if bbndb.engine:
+            # Use current db
+            self.db = bbndb.engine
         else:
-            self.database_file = ":memory:"
+            
+            if db_resource_name:
+                self.db_resource_name = db_resource_name
+            elif config.load_db():
+                self.db_resource_name = config.load_db()
 
-        db = Database()
-        Channels.define_entities(db, cache_callback=clear_pulse_cache)
-        db.bind(self.database_provider, filename=self.database_file, create_db=True)
-        db.generate_mapping(create_tables=True)
-        bbndb.database = db
-
-        # Dirty trick: push the correct entity defs to the calling context
-        for var in ["Measurement","Qubit","Edge"]:
-            inspect.stack()[1][0].f_globals[var] = getattr(Channels, var)
+            self.db = bbndb.engine = bbndb.create_engine(f'{self.db_provider}:///{self.db_resource_name}', echo=False)
+        
+        bbndb.Base.metadata.create_all(bbndb.engine)
+        bbndb.Session.configure(bind=bbndb.engine)
+        self.Session = bbndb.Session
+        self.session = self.Session()
 
         self.connectivityG = nx.DiGraph()
 
-        # This is still somewhere legacy QGL behavior. Massage db into dict for lookup.
-        self.channelDict = {}
-
         # Check to see whether there is already a temp database
-        with db_session:
-            w_dbs = list(select(d for d in Channels.ChannelDatabase if d.label == "working"))
-            if len(w_dbs) > 1:
-                # self.clear(channel_db=cdb, create_new=False)
-                raise Exception("More than one working database exists!")
-            elif len(w_dbs) == 1:
-                self.channelDatabase = w_dbs[0]
-                commit()
-                self.update_channelDict()
-            elif len(w_dbs) == 0:
-                self.channelDatabase = Channels.ChannelDatabase(label="working", time=datetime.datetime.now())
-            # commit()
+        working_dbs = self.session.query(Channels.ChannelDatabase).filter_by(label="working").all()
+        if len(working_dbs) > 1:
+            raise Exception("More than one working database exists!")
+        elif len(working_dbs) == 1:
+            self.channelDatabase = working_dbs[0]
+        elif len(working_dbs) == 0:
+            self.channelDatabase = Channels.ChannelDatabase(label="working", time=datetime.datetime.now())
+            self.session.add(self.channelDatabase)
 
-        config.load_config()
+        self.update_channelDict()
 
         # Update the global reference
         channelLib = self
 
-    @db_session
     def get_current_channels(self):
-        cdb = Channels.ChannelDatabase[self.channelDatabase.id] # Can't use external object
-        return list(cdb.channels) + list(cdb.sources)
+        return self.channelDatabase.channels + self.channelDatabase.generators
 
-    @db_session
     def update_channelDict(self):
-        commit()
         self.channelDict = {c.label: c for c in self.get_current_channels()}
 
-    @db_session
     def ls(self):
         select((c.label, c.time, c.id) for c in Channels.ChannelDatabase).sort_by(1, 2).show()
 
-    @db_session
     def ent_by_type_name(self, name, show=False):
         q = select(c for c in getattr(bbndb.qgl,name) if c.channel_db.label == "working")
         if show:
@@ -214,52 +197,40 @@ class ChannelLibrary(object):
     def ls_meas(self):
         return self.ent_by_type_name("Measurement", show=True)
 
-    @db_session
     def load(self, name, index=1):
         """Load the latest instance for a particular name. Specifying index = 2 will select the second most recent instance """
         obj = list(select(c for c in Channels.ChannelDatabase if c.label==name).sort_by(desc(Channels.ChannelDatabase.time)))
         self.load_obj(obj[-index])
 
-    @db_session
     def load_by_id(self, id_num):
         obj = select(c for c in Channels.ChannelDatabase if c.id==id_num).first()
         self.load_obj(obj)
 
-    @db_session
     def clear(self, channel_db=None, create_new=True):
         # If no database is specified, clear self.database
         channel_db = channel_db if channel_db else self.channelDatabase
         # First clear items that don't have Sets of other items
         for ent in [Channels.MicrowaveSource, Channels.Channel, Channels.Transmitter, Channels.Receiver, Channels.Transceiver]:
             select(c for c in ent if c.channel_db == channel_db).delete(bulk=True)
-            commit()
         # Now clear items that do potentially have sets of items (which should be deleted)
         for ent in [Channels.ChannelDatabase]:
             select(d for d in ent if d.label == "working").delete(bulk=True)
-            commit()
         if create_new:
-            self.channelDatabase = Channels.ChannelDatabase(label="working", time=datetime.datetime.now())
-            commit()
+            print("created new database with id", self.channelDatabase.id)
+        channelLib = self
 
-    @db_session
     def load_obj(self, obj):
-        commit()
         self.clear()
         chans, srcs, d2as, a2ds, trans = map(list, [obj.channels, obj.sources, obj.transmitters, obj.receivers, obj.transceivers])
         copy_objs(chans, srcs, d2as, a2ds, trans, new_channel_db=self.channelDatabase)
-        commit()
         self.update_channelDict()
 
-    @db_session
     def save_as(self, name):
         chans, srcs, d2as, a2dsm, trans = map(list, [self.channelDatabase.channels, self.channelDatabase.sources,
                                             self.channelDatabase.transmitters, self.channelDatabase.receivers,
                                             self.channelDatabase.transceivers])
-        commit()
-        cd = Channels.ChannelDatabase(label=name, time=datetime.datetime.now())
         new_chans, new_srcs, new_d2as, new_a2ds, new_trans = copy_objs(chans, srcs, d2as, a2ds, trans, new_channel_db=cd)
         cd.channels, cd.sources, cd.transmitters, cd.receivers, cd.transceivers = new_chans, new_srcs, new_d2as, new_a2ds, new_trans
-        commit()
 
     #Dictionary methods
     def __getitem__(self, key):
@@ -280,7 +251,6 @@ class ChannelLibrary(object):
     def values(self):
         return self.channelDict.values()
 
-    @db_session
     def build_connectivity_graph(self):
         # build connectivity graph
 <<<<<<< HEAD
@@ -487,158 +457,149 @@ class ChannelLibrary(object):
             self.connectivityG[chan.source][chan.target]['channel'] = chan
 >>>>>>> Ditch atom, move to Pony.orm for all channel library objects.
 
-# Convenience functions for generating and linking channels
-# TODO: move these to a shim layer shared by Auspex/QGL
+    # # Convenience functions for generating and linking channels
+    # # TODO: move these to a shim layer shared by Auspex/QGL
+    # def sessionify(func):
+    #     @wraps(func)
+    #     def without_session(*args, **kwargs):
+    #         return func(channelLib.session, *args, **kwargs)
+    #     return without_session
 
-@db_session
-def new_APS2(label, address):
-    cdb    = Channels.ChannelDatabase[channelLib.channelDatabase.id] # Can't use external object
-    chan12 = Channels.PhysicalQuadratureChannel(label=f"{label}-12", instrument=label, translator="APS2Pattern", channel_db=cdb)
-    m1     = Channels.PhysicalMarkerChannel(label=f"{label}-12m1", instrument=label, translator="APS2Pattern", channel_db=cdb)
-    m2     = Channels.PhysicalMarkerChannel(label=f"{label}-12m2", instrument=label, translator="APS2Pattern", channel_db=cdb)
-    m3     = Channels.PhysicalMarkerChannel(label=f"{label}-12m3", instrument=label, translator="APS2Pattern", channel_db=cdb)
-    m4     = Channels.PhysicalMarkerChannel(label=f"{label}-12m4", instrument=label, translator="APS2Pattern", channel_db=cdb)
+    def new_APS2(self, label, address):
+        chan12 = Channels.PhysicalQuadratureChannel(label=f"{label}-12", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
+        m1     = Channels.PhysicalMarkerChannel(label=f"{label}-12m1", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
+        m2     = Channels.PhysicalMarkerChannel(label=f"{label}-12m2", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
+        m3     = Channels.PhysicalMarkerChannel(label=f"{label}-12m3", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
+        m4     = Channels.PhysicalMarkerChannel(label=f"{label}-12m4", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
 
-    this_transmitter = Channels.Transmitter(label=label, model="APS2", address=address, channels=[chan12, m1, m2, m3, m4], channel_db=cdb)
-    this_transmitter.trigger_source = "External"
-    this_transmitter.address        = address
+        this_transmitter = Channels.Transmitter(label=label, model="APS2", address=address, channels=[chan12, m1, m2, m3, m4], channel_db=self.channelDatabase)
+        this_transmitter.trigger_source = "external"
+        this_transmitter.address        = address
 
-    commit()
-    return this_transmitter
+        self.session.add(this_transmitter)
+        return this_transmitter
 
-@db_session
-def new_APS2_rack(label, num, start_address):
-    cdb              = Channels.ChannelDatabase[channelLib.channelDatabase.id] # Can't use external object
-    address_start    = ".".join(start_address.split(".")[:3])
-    address_end      = int(start_address.split(".")[-1])
-    transmitters     = [new_APS2(f"{label}_U{i}", f"{address_start}.{address_end+i}") for i in range(1,num+1)]
-    this_transceiver = Channels.Transceiver(label=label, model="APS2Rack", transmitters=transmitters, channel_db=cdb)
+    def new_APS2_rack(self, label, num, start_address):
+        address_start    = ".".join(start_address.split(".")[:3])
+        address_end      = int(start_address.split(".")[-1])
+        transmitters     = [new_APS2(f"{label}_U{i}", f"{address_start}.{address_end+i}") for i in range(1,num+1)]
+        this_transceiver = Channels.Transceiver(label=label, model="APS2Rack", transmitters=transmitters, channel_db=self.channelDatabase)
 
-    commit()
-    return this_transceiver
+        self.session.add(this_transceiver)
+        return this_transceiver
 
-@db_session
-def new_X6(label, address, dsp_channel=0, record_length=1024):
-    cdb   = Channels.ChannelDatabase[channelLib.channelDatabase.id] # Can't use external object
-    chan1 = Channels.ReceiverChannel(label=f"RecvChan-{label}-1", channel=1, dsp_channel=dsp_channel, channel_db=cdb)
-    chan2 = Channels.ReceiverChannel(label=f"RecvChan-{label}-2", channel=2, dsp_channel=dsp_channel, channel_db=cdb)
+    def new_X6(self, label, address, dsp_channel=0, record_length=1024):
+        chan1 = Channels.ReceiverChannel(label=f"RecvChan-{label}-1", channel=1, dsp_channel=dsp_channel, channel_db=self.channelDatabase)
+        chan2 = Channels.ReceiverChannel(label=f"RecvChan-{label}-2", channel=2, dsp_channel=dsp_channel, channel_db=self.channelDatabase)
 
-    this_receiver = Channels.Receiver(label=label, model="X6-1000M", address=address, channels=[chan1, chan2],
-                                  record_length=record_length, channel_db=cdb)
-    this_receiver.trigger_source = "External"
-    this_receiver.stream_types   = "raw, demodulated, integrated"
-    this_receiver.address        = address
+        this_receiver = Channels.Receiver(label=label, model="X6-1000M", address=address, channels=[chan1, chan2],
+                                      record_length=record_length, channel_db=self.channelDatabase)
+        this_receiver.trigger_source = "external"
+        this_receiver.stream_types   = "raw, demodulated, integrated"
+        this_receiver.address        = address
 
-    # Add a default kernel
-    chan1.kernel = np.ones(record_length, dtype=np.complex).tobytes()
-    chan2.kernel = np.ones(record_length, dtype=np.complex).tobytes()
+        # Add a default kernel
+        chan1.kernel = np.ones(record_length, dtype=np.complex).tobytes()
+        chan2.kernel = np.ones(record_length, dtype=np.complex).tobytes()
 
-    commit()
-    return this_receiver
+        self.session.add(this_receiver)
+        return this_receiver
 
-@db_session
-def new_Alazar(label, address, record_length=1024):
-    cdb   = Channels.ChannelDatabase[channelLib.channelDatabase.id] # Can't use external object
-    chan1 = Channels.ReceiverChannel(label=f"RecvChan-{label}-1", channel=1, channel_db=cdb)
-    chan2 = Channels.ReceiverChannel(label=f"RecvChan-{label}-2", channel=2, channel_db=cdb)
+    def new_Alazar(self, label, address, record_length=1024):
+        chan1 = Channels.ReceiverChannel(label=f"RecvChan-{label}-1", channel=1, channel_db=self.channelDatabase)
+        chan2 = Channels.ReceiverChannel(label=f"RecvChan-{label}-2", channel=2, channel_db=self.channelDatabase)
 
-    this_receiver = Channels.Receiver(label=label, model="AlazarATS9870", address=address, channels=[chan1, chan2],
-                                  record_length=record_length, channel_db=cdb)
-    this_receiver.trigger_source = "External"
-    this_receiver.stream_types   = "raw"
-    this_receiver.address        = address
+        this_receiver = Channels.Receiver(label=label, model="AlazarATS9870", address=address, channels=[chan1, chan2],
+                                      record_length=record_length, channel_db=self.channelDatabase)
+        this_receiver.trigger_source = "external"
+        this_receiver.stream_types   = "raw"
+        this_receiver.address        = address
 
-    commit()
-    return this_receiver
+        self.session.add(this_receiver)
+        return this_receiver
 
-@db_session
-def new_qubit(label):
-    cdb   = Channels.ChannelDatabase[channelLib.channelDatabase.id] # Can't use external object
-    thing = Channels.Qubit(label=label, channel_db=cdb)
-    return thing
+    def new_qubit(self, label):
+        thing = Channels.Qubit(label=label, channel_db=self.channelDatabase)
+        self.session.add(thing)
+        return thing
 
-@db_session
-def new_source(label, model, address, power=-30.0, frequency=5.0e9):
-    cdb   = Channels.ChannelDatabase[channelLib.channelDatabase.id] # Can't use external object
-    thing = Channels.MicrowaveSource(label=label, model=model, address=address, power=power, frequency=frequency, channel_db=cdb)
-    return thing
+    def new_source(self, label, model, address, power=-30.0, frequency=5.0e9):
+        thing = Channels.MicrowaveSource(label=label, model=model, address=address, power=power, frequency=frequency, channel_db=self.channelDatabase)
+        self.session.add(thing)
+        return thing
 
-@localize_db_objects
-def set_control(qubit, transmitter, generator=None):
-    quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
-    markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
+    # @localize_db_objects
+    def set_control(self, qubit, transmitter, generator=None):
+        quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
+        markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
 
-    if isinstance(transmitter, Channels.Transmitter) and len(quads) > 1:
-        raise ValueError("In set_control the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
-    elif isinstance(transmitter, Channels.Transmitter) and len(quads) == 1:
-        phys_chan = quads[0]
-    elif isinstance(transmitter, Channels.PhysicalQuadratureChannel):
-        phys_chan = transmitter
-    else:
-        raise ValueError("In set_control the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
+        if isinstance(transmitter, Channels.Transmitter) and len(quads) > 1:
+            raise ValueError("In set_control the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
+        elif isinstance(transmitter, Channels.Transmitter) and len(quads) == 1:
+            phys_chan = quads[0]
+        elif isinstance(transmitter, Channels.PhysicalQuadratureChannel):
+            phys_chan = transmitter
+        else:
+            raise ValueError("In set_control the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
 
-    qubit.phys_chan = phys_chan
-    if generator:
-        qubit.phys_chan.generator = generator
+        qubit.phys_chan = phys_chan
+        if generator:
+            qubit.phys_chan.generator = generator
 
-@localize_db_objects
-def set_measure(qubit, transmitter, receivers, generator=None, receivers_channel=1, trig_channel=None, gate=False, gate_channel=None, trigger_length=1e-7):
-    cdb     = Channels.ChannelDatabase[channelLib.channelDatabase.id] # Can't use external object
-    quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
-    markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
+    # @localize_db_objects
+    def set_measure(self, qubit, transmitter, receivers, generator=None, receivers_channel=1, trig_channel=None, gate=False, gate_channel=None, trigger_length=1e-7):
+        quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
+        markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
 
-    if isinstance(transmitter, Channels.Transmitter) and len(quads) > 1:
-        raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
-    elif isinstance(transmitter, Channels.Transmitter) and len(quads) == 1:
-        phys_chan = quads[0]
-    elif isinstance(transmitter, Channels.PhysicalQuadratureChannel):
-        phys_chan = transmitter
-    else:
-        raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
+        if isinstance(transmitter, Channels.Transmitter) and len(quads) > 1:
+            raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
+        elif isinstance(transmitter, Channels.Transmitter) and len(quads) == 1:
+            phys_chan = quads[0]
+        elif isinstance(transmitter, Channels.PhysicalQuadratureChannel):
+            phys_chan = transmitter
+        else:
+            raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
 
-    meas = Channels.Measurement(label=f"M-{qubit.label}", channel_db=cdb)
-    meas.phys_chan = phys_chan
-    if generator:
-        meas.phys_chan.generator = generator
+        meas = Channels.Measurement(label=f"M-{qubit.label}", channel_db=self.channelDatabase)
+        meas.phys_chan = phys_chan
+        if generator:
+            meas.phys_chan.generator = generator
 
-    phys_trig_channel = trig_channel if trig_channel else transmitter.get_chan("12m1")
+        phys_trig_channel = trig_channel if trig_channel else transmitter.get_chan("12m1")
 
-    trig_chan              = Channels.LogicalMarkerChannel(label=f"receiversTrig-{qubit.label}", channel_db=cdb)
-    trig_chan.phys_chan    = phys_trig_channel
-    trig_chan.pulse_params = {"length": trigger_length, "shape_fun": "constant"}
-    meas.trig_chan         = trig_chan
+        trig_chan              = Channels.LogicalMarkerChannel(label=f"receiversTrig-{qubit.label}", channel_db=self.channelDatabase)
+        trig_chan.phys_chan    = phys_trig_channel
+        trig_chan.pulse_params = {"length": trigger_length, "shape_fun": "constant"}
+        meas.trig_chan         = trig_chan
 
-    if isinstance(receivers, Channels.Receiver) and len(receivers.channels) > 1:
-        raise ValueError("In set_measure the Receiver must have a single receiver channel or a specific channel must be passed instead")
-    elif isinstance(receivers, Channels.Receiver) and len(receivers.channels) == 1:
-        rcv_chan = receivers.channels[0]
-    elif isinstance(receivers, Channels.ReceiverChannel):
-        rcv_chan = receivers
-    else:
-        raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
+        if isinstance(receivers, Channels.Receiver) and len(receivers.channels) > 1:
+            raise ValueError("In set_measure the Receiver must have a single receiver channel or a specific channel must be passed instead")
+        elif isinstance(receivers, Channels.Receiver) and len(receivers.channels) == 1:
+            rcv_chan = receivers.channels[0]
+        elif isinstance(receivers, Channels.ReceiverChannel):
+            rcv_chan = receivers
+        else:
+            raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
 
-    meas.receiver_chan = rcv_chan
+        meas.receiver_chan = rcv_chan
 
-    if gate:
-        phys_gate_channel   = gate_channel if gate_channel else transmitter.get_chan("12m2")
-        gate_chan           = Channels.LogicalMarkerChannel(label=f"M-{qubit.label}-gate", channel_db=cdb)
-        gate_chan.phys_chan = phys_gate_channel
-        meas.gate_chan      = gate_chan
+        if gate:
+            phys_gate_channel   = gate_channel if gate_channel else transmitter.get_chan("12m2")
+            gate_chan           = Channels.LogicalMarkerChannel(label=f"M-{qubit.label}-gate", channel_db=self.channelDatabase)
+            gate_chan.phys_chan = phys_gate_channel
+            meas.gate_chan      = gate_chan
 
-@localize_db_objects
-def set_master(transmitter, trig_channel, pulse_length=1e-7):
-    if not isinstance(trig_channel, Channels.PhysicalMarkerChannel):
-        raise ValueError("In set_master the trigger channel must be an instance of PhysicalMarkerChannel")
+    def set_master(self, transmitter, trig_channel, pulse_length=1e-7):
+        if not isinstance(trig_channel, Channels.PhysicalMarkerChannel):
+            raise ValueError("In set_master the trigger channel must be an instance of PhysicalMarkerChannel")
 
-    cdb = Channels.ChannelDatabase[channelLib.channelDatabase.id] # Can't use external object
-    st = Channels.LogicalMarkerChannel(label="slave_trig", channel_db=cdb)
-    st.phys_chan = trig_channel
-    st.pulse_params = {"length": pulse_length, "shape_fun": "constant"}
-    transmitter.master = True
-    transmitter.trigger_source = "Internal"
+        st = Channels.LogicalMarkerChannel(label="slave_trig", channel_db=self.channelDatabase)
+        st.phys_chan = trig_channel
+        st.pulse_params = {"length": pulse_length, "shape_fun": "constant"}
+        transmitter.master = True
+        transmitter.trigger_source = "internal"
 
-@db_session
-def QubitFactory(label, **kwargs):
+def QubitFactory(self, label, **kwargs):
     ''' Return a saved qubit channel or create a new one. '''
     # TODO: this will just get the first entry in the whole damned DB!
     # thing = select(el for el in Channels.Qubit if el.label==label).first()
@@ -648,8 +609,7 @@ def QubitFactory(label, **kwargs):
     else:
         return Channels.Qubit(label=label, **kwargs)
 
-@db_session
-def MeasFactory(label, **kwargs):
+def MeasFactory(self, label, **kwargs):
     ''' Return a saved measurement channel or create a new one. '''
     thing = {c.label: c for c in channelLib.get_current_channels() if isinstance(c, Channels.Measurement)}[label]
     if thing:
@@ -657,8 +617,7 @@ def MeasFactory(label, **kwargs):
     else:
         return Channels.Measurement(label=label, **kwargs)
 
-@db_session
-def MarkerFactory(label, **kwargs):
+def MarkerFactory(self, label, **kwargs):
     ''' Return a saved Marker channel or create a new one. '''
     thing = {c.label: c for c in channelLib.get_current_channels()}[label]
     if thing:
@@ -666,8 +625,7 @@ def MarkerFactory(label, **kwargs):
     else:
         return Channels.LogicalMarkerChannel(label=label, **kwargs)
 
-@db_session
-def EdgeFactory(source, target):
+def EdgeFactory(self, source, target):
     if channelLib.connectivityG.has_edge(source, target):
         return channelLib.connectivityG[source][target]['channel']
     elif channelLib.connectivityG.has_edge(target, source):

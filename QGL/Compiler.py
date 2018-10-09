@@ -480,8 +480,8 @@ def compile_to_hardware(seqs,
         extra_meta = awg_metas
     # create meta output
     db_info = {
-        'db_provider': ChannelLibraries.channelLib.database_provider,
-        'db_filename': ChannelLibraries.channelLib.database_file,
+        'db_provider': ChannelLibraries.channelLib.db_provider,
+        'db_resource_name': ChannelLibraries.channelLib.db_resource_name,
         'library_name': 'working',
         'library_id': ChannelLibraries.channelLib.channelDatabase.id
     }
