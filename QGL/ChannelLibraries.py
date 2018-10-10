@@ -476,14 +476,6 @@ class ChannelLibrary(object):
             self.connectivityG[chan.source][chan.target]['channel'] = chan
 >>>>>>> Ditch atom, move to Pony.orm for all channel library objects.
 
-    # # Convenience functions for generating and linking channels
-    # # TODO: move these to a shim layer shared by Auspex/QGL
-    # def sessionify(func):
-    #     @wraps(func)
-    #     def without_session(*args, **kwargs):
-    #         return func(channelLib.session, *args, **kwargs)
-    #     return without_session
-
     def new_APS2(self, label, address):
         chan12 = Channels.PhysicalQuadratureChannel(label=f"{label}-12", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
         m1     = Channels.PhysicalMarkerChannel(label=f"{label}-12m1", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
@@ -618,33 +610,42 @@ class ChannelLibrary(object):
         transmitter.master = True
         transmitter.trigger_source = "internal"
 
-def QubitFactory(self, label, **kwargs):
+def QubitFactory(label, **kwargs):
     ''' Return a saved qubit channel or create a new one. '''
     # TODO: this will just get the first entry in the whole damned DB!
     # thing = select(el for el in Channels.Qubit if el.label==label).first()
-    thing = {c.label: c for c in channelLib.get_current_channels() if isinstance(c, Channels.Qubit)}[label]
-    if thing:
-        return thing
+    q = channelLib.session.query(Channels.Qubit).filter(Channels.Qubit.label==label).all()
+    # thing = {c.label: c for c in channelLib.get_current_channels() if isinstance(c, Channels.Qubit)}[label]
+    if len(q) == 1:
+        return q[0]
     else:
-        return Channels.Qubit(label=label, **kwargs)
+        c = Channels.Qubit(label=label, channel_db=channelLib.channelDatabase, **kwargs)
+        channelLib.session.add(c)
+        return c
 
-def MeasFactory(self, label, **kwargs):
+def MeasFactory(label, **kwargs):
     ''' Return a saved measurement channel or create a new one. '''
-    thing = {c.label: c for c in channelLib.get_current_channels() if isinstance(c, Channels.Measurement)}[label]
-    if thing:
-        return thing
+    q = channelLib.session.query(Channels.Measurement).filter(Channels.Measurement.label==label).all()
+    # thing = {c.label: c for c in channelLib.get_current_channels() if isinstance(c, Channels.Measurement)}[label]
+    if len(q) == 1:
+        return q[0]
     else:
-        return Channels.Measurement(label=label, **kwargs)
+        c = Channels.Measurement(label=label, channel_db=channelLib.channelDatabase, **kwargs)
+        channelLib.session.add(c)
+        return c
 
-def MarkerFactory(self, label, **kwargs):
+def MarkerFactory(label, **kwargs):
     ''' Return a saved Marker channel or create a new one. '''
-    thing = {c.label: c for c in channelLib.get_current_channels()}[label]
-    if thing:
-        return thing
+    q = channelLib.session.query(Channels.LogicalMarkerChannel).filter(Channels.LogicalMarkerChannel.label==label).all()
+    # thing = {c.label: c for c in channelLib.get_current_channels()}[label]
+    if len(q) == 1:
+        return q[0]
     else:
-        return Channels.LogicalMarkerChannel(label=label, **kwargs)
+        c = Channels.LogicalMarkerChannel(label=label, channel_db=channelLib.channelDatabase, **kwargs)
+        channelLib.session.add(c)
+        return c
 
-def EdgeFactory(self, source, target):
+def EdgeFactory(source, target):
     if channelLib.connectivityG.has_edge(source, target):
         return channelLib.connectivityG[source][target]['channel']
     elif channelLib.connectivityG.has_edge(target, source):
