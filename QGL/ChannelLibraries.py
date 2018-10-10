@@ -143,7 +143,8 @@ class ChannelLibrary(object):
         self.connectivityG = nx.DiGraph()
 
         # Check to see whether there is already a temp database
-        working_dbs = self.session.query(Channels.ChannelDatabase).filter_by(label="working").all()
+        working_dbs = self.query(Channels.ChannelDatabase, label="working").all()
+        # working_dbs = self.session.query(Channels.ChannelDatabase).filter_by(label="working").all()
         if len(working_dbs) > 1:
             raise Exception("More than one working database exists!")
         elif len(working_dbs) == 1:
@@ -157,6 +158,9 @@ class ChannelLibrary(object):
         # Update the global reference
         channelLib = self
 
+    def query(self, obj_type, **kwargs):
+        return self.session.query(obj_type).filter_by(**kwargs)
+
     def get_current_channels(self):
         return self.channelDatabase.channels + self.channelDatabase.generators
 
@@ -164,38 +168,47 @@ class ChannelLibrary(object):
         self.channelDict = {c.label: c for c in self.get_current_channels()}
 
     def ls(self):
-        select((c.label, c.time, c.id) for c in Channels.ChannelDatabase).sort_by(1, 2).show()
+        cdb = Channels.ChannelDatabase
+        q = self.session.query(cdb.label, cdb.time, cdb.id).\
+            order_by(Channels.ChannelDatabase.id, Channels.ChannelDatabase.label).all()
+        # select((c.label, c.time, c.id) for c in Channels.ChannelDatabase).sort_by(1, 2).show()
+        for i, (label, time, id) in enumerate(q):
+                print(f"[{id}] ({time}) -> {label}")
 
-    def ent_by_type_name(self, name, show=False):
-        q = select(c for c in getattr(bbndb.qgl,name) if c.channel_db.label == "working")
+    def ent_by_type(self, obj_type, show=False):
+        q = self.session.query(obj_type).filter(obj_type.channel_db.has(label="working")).order_by(obj_type.label).all()
         if show:
-            select(c.label for c in getattr(bbndb.qgl,name) if c.channel_db.label == "working").sort_by(1).show()
+            for i, el in enumerate(q):
+                print(f"[{i}] -> {el.label}")
         else:
-            return {el.label: el for el in q}
+            return q
 
     def receivers(self):
-        return self.ent_by_type_name("Receiver")
+        return self.ent_by_type(Channels.Receiver)
 
-    def transmitter(self):
-        return self.ent_by_type_name("Transmitter")
+    def transmitters(self):
+        return self.ent_by_type(Channels.Transmitter)
+
+    def transceivers(self):
+        return self.ent_by_type(Channels.Transceiver)
 
     def qubits(self):
-        return self.ent_by_type_name("Qubit")
+        return self.ent_by_type(Channels.Qubit)
 
     def meas(self):
-        return self.ent_by_type_name("Measurement")
+        return self.ent_by_type(Channels.Measurement)
 
     def ls_receivers(self):
-        return self.ent_by_type_name("Receiver", show=True)
+        return self.ent_by_type(Channels.Receiver, show=True)
 
     def ls_transmitters(self):
-        return self.ent_by_type_name("Transmitter", show=True)
+        return self.ent_by_type(Channels.Transmitter, show=True)
 
     def ls_qubits(self):
-        return self.ent_by_type_name("Qubit", show=True)
+        return self.ent_by_type(Channels.Qubit, show=True)
 
-    def ls_meas(self):
-        return self.ent_by_type_name("Measurement", show=True)
+    def ls_measurements(self):
+        return self.ent_by_type(Channels.Measurement, show=True)
 
     def load(self, name, index=1):
         """Load the latest instance for a particular name. Specifying index = 2 will select the second most recent instance """
@@ -224,6 +237,12 @@ class ChannelLibrary(object):
         chans, srcs, d2as, a2ds, trans = map(list, [obj.channels, obj.sources, obj.transmitters, obj.receivers, obj.transceivers])
         copy_objs(chans, srcs, d2as, a2ds, trans, new_channel_db=self.channelDatabase)
         self.update_channelDict()
+
+    def save(self):
+        self.session.commit()
+
+    def discard_changes(self):
+        self.session.rollback()
 
     def save_as(self, name):
         chans, srcs, d2as, a2dsm, trans = map(list, [self.channelDatabase.channels, self.channelDatabase.sources,
