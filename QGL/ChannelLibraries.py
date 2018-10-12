@@ -8,7 +8,7 @@ Moved to pony ORM from atom June 1, 2018
 Original Author: Colm Ryan
 Modified By: Graham Rowlands
 
-Copyright 2016 Raytheon BBN Technologies
+Copyright 2016-2018 Raytheon BBN Technologies
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -57,91 +57,11 @@ def check_session_dirty(f):
     """Since we can't mix db objects from separate sessions, re-fetch entities by their unique IDs"""
     @wraps(f)
     def wrapper(cls, *args, **kwargs):
-        if not 'force' in kwargs and kwargs['force']:
-            if len(cls.session.dirty | cls.session.new) != 0:
-                kwargs.pop('force')
-                raise Exception("Uncommitted transactions for working database. Either use force=True or commit/revert your changes.")
-        return f(cls, *args, **kwargs)
+        if 'force' in kwargs and kwargs['force']:
+            return f(cls, *args, **kwargs)
+        elif len(cls.session.dirty | cls.session.new) != 0:
+            raise Exception("Uncommitted transactions for working database. Either use force=True or commit/revert your changes.")
     return wrapper
-
-# def set_from_dict(self, obj, settings):
-#     for prop_name in obj.to_dict().keys():
-#         if prop_name in settings.keys():
-#             try:
-#                 setattr(obj, prop_name, settings[prop_name])
-#             except Exception as e:
-#                 print(f"{obj.label}: Error loading {prop_name} from config")
-
-
-# def copy_objs(entities, new_channel_db, session):
-#     # Entities is a list of lists of entities of specific types
-#     new_entities    = []
-#     old_to_new      = {}
-#     links_to_change = {}
-
-#     for ent in entities:
-#         new_ents = []
-#         for obj in ent:
-#             c, links = copy_entity(obj, new_channel_db, session)
-#             new_ents.append(c)
-#             links_to_change[c] = links
-#             old_to_new[c.label] = c
-#         new_entities.append(new_ents)
-#     # import ipdb; ipdb.set_trace()
-#     # for chan, link_info in links_to_change.items():
-#     #     for attr_name, link_name in link_info.items():
-#     #         if isinstance(link_name, list):
-#     #             new = [old_to_new[ln] for ln in link_name]
-#     #         else:
-#     #             new = old_to_new[link_name]
-#     #         setattr(chan, attr_name, new)
-#     # import ipdb; ipdb.set_trace()
-#     for ents in new_entities:
-#         session.add_all(ents)
-#     session.add(new_channel_db)
-#     return new_entities
-
-# def copy_entity(obj, new_channel_db, session):
-#     """Copy a pony entity instance"""
-#     rel_vals = {}
-#     to_relink = []
-
-#     # Make a copy of the relationships
-#     print("Copying object", obj.label)
-#     for rel_name in obj.__mapper__.attrs.keys():
-#         attr = getattr(obj, rel_name)
-#         # print("\texamining", rel_name, attr.__class__)
-#         if isinstance(attr, list):
-#             rel_vals[rel_name] = attr.copy()
-#             # to_relink.append(rel_name)
-#         else:
-#             rel_vals[rel_name] = attr
-
-#     # for rel_name in obj.__mapper__.attrs.keys():
-
-#     # Expire these relationships from the session
-#     # print("to_relink", to_relink)
-#     # session.expire(obj, to_relink)
-#     # print("\tNew label", obj.label)
-
-#     # Make the object instances transient
-#     make_transient(obj)
-#     # print("\tNew label", obj.label)
-
-#     # Restore the old links
-#     for rel_name, rel_val in rel_vals.items():
-#         # print("\tsetting", rel_name, rel_val)
-#         setattr(obj, rel_name, rel_val)
-#     # print("\tNew label", obj.label)
-
-#     # Reset the id and channel db
-#     obj.id = None
-#     obj.channel_db = new_channel_db
-#     # print("\tNew label", obj.label)
-
-#     session.add(obj)
-
-#     return obj, rel_vals
 
 class ChannelLibrary(object):
 
@@ -177,7 +97,6 @@ class ChannelLibrary(object):
 
         # Check to see whether there is already a temp database
         working_dbs = self.query(Channels.ChannelDatabase, label="working").all()
-        # working_dbs = self.session.query(Channels.ChannelDatabase).filter_by(label="working").all()
         if len(working_dbs) > 1:
             raise Exception("More than one working database exists!")
         elif len(working_dbs) == 1:
@@ -270,9 +189,9 @@ class ChannelLibrary(object):
         channelLib = self
 
     def load_obj(self, obj):
-        self.clear()
-        chans, srcs, d2as, a2ds, trans = map(list, [obj.channels, obj.generators, obj.transmitters, obj.receivers, obj.transceivers])
-        copy_objs([chans, srcs, d2as, a2ds, trans], self.channelDatabase, self.session)
+        self.clear(create_new=False)
+        self.channelDatabase = bbndb.deepcopy_sqla_object(obj, self.session)
+        self.channelDatabase.label = "working"
         self.update_channelDict()
 
     def commit(self):
