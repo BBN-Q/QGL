@@ -12,7 +12,7 @@ AWGDir           = None
 db_resource_name = None
 
 # The config file (executed upon channel library loading)
-config_file      = None
+# config_file      = None
 
 # plotting options
 plotBackground = '#EAEAF2'

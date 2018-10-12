@@ -3,7 +3,7 @@ Channels is where we store information for mapping virtual (qubit) channel to
 real channels.
 
 Split from Channels.py on Jan 14, 2016.
-Moved to pony ORM from atom June 1, 2018
+Moved to SQLAlchemy ORM from atom 2018
 
 Original Author: Colm Ryan
 Modified By: Graham Rowlands
@@ -125,7 +125,8 @@ class ChannelLibrary(object):
         q = self.session.query(cdb.label, cdb.time, cdb.id).\
             order_by(Channels.ChannelDatabase.id, Channels.ChannelDatabase.label).all()
         for i, (label, time, id) in enumerate(q):
-                print(f"[{id}] ({time}) -> {label}")
+                t = time.strftime("(%Y) %b. %d @ %I:%M:%S %p")
+                print(f"[{id}] {t} -> {label}")
 
     def ent_by_type(self, obj_type, show=False):
         q = self.session.query(obj_type).filter(obj_type.channel_db.has(label="working")).order_by(obj_type.label).all()
@@ -201,6 +202,8 @@ class ChannelLibrary(object):
         self.session.rollback()
 
     def save_as(self, name):
+        if name == "working":
+            raise ValueError("Cannot save as `working` since that is the default working environment name...")
         self.commit()
         new_channelDatabase = bbndb.deepcopy_sqla_object(self.channelDatabase, self.session)
         new_channelDatabase.label = name
