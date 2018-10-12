@@ -49,6 +49,7 @@ from . import PulseShapes
 from .PulsePrimitives import clear_pulse_cache
 
 from sqlalchemy.orm.session import make_transient
+from sqlalchemy.pool import StaticPool
 
 channelLib = None
 
@@ -63,69 +64,84 @@ def check_session_dirty(f):
         return f(cls, *args, **kwargs)
     return wrapper
 
-def set_from_dict(self, obj, settings):
-    for prop_name in obj.to_dict().keys():
-        if prop_name in settings.keys():
-            try:
-                setattr(obj, prop_name, settings[prop_name])
-            except Exception as e:
-                print(f"{obj.label}: Error loading {prop_name} from config")
+# def set_from_dict(self, obj, settings):
+#     for prop_name in obj.to_dict().keys():
+#         if prop_name in settings.keys():
+#             try:
+#                 setattr(obj, prop_name, settings[prop_name])
+#             except Exception as e:
+#                 print(f"{obj.label}: Error loading {prop_name} from config")
 
-def copy_objs(entities, new_channel_db, session):
-    # Entities is a list of lists of entities of specific types
-    new_entities    = []
-    old_to_new      = {}
-    links_to_change = {}
 
-    for ent in entities:
-        new_ents = []
-        for obj in ent:
-            c, links = copy_entity(obj, new_channel_db, session)
-            new_ents.append(c)
-            links_to_change[c] = links
-            old_to_new[c.label] = c
-        new_entities.append(new_ents)
+# def copy_objs(entities, new_channel_db, session):
+#     # Entities is a list of lists of entities of specific types
+#     new_entities    = []
+#     old_to_new      = {}
+#     links_to_change = {}
 
-    for chan, link_info in links_to_change.items():
-        for attr_name, link_name in link_info.items():
-            if isinstance(link_name, list):
-                new = [old_to_new[ln] for ln in link_name]
-            else:
-                new = old_to_new[link_name]
-            setattr(chan, attr_name, new)
+#     for ent in entities:
+#         new_ents = []
+#         for obj in ent:
+#             c, links = copy_entity(obj, new_channel_db, session)
+#             new_ents.append(c)
+#             links_to_change[c] = links
+#             old_to_new[c.label] = c
+#         new_entities.append(new_ents)
+#     # import ipdb; ipdb.set_trace()
+#     # for chan, link_info in links_to_change.items():
+#     #     for attr_name, link_name in link_info.items():
+#     #         if isinstance(link_name, list):
+#     #             new = [old_to_new[ln] for ln in link_name]
+#     #         else:
+#     #             new = old_to_new[link_name]
+#     #         setattr(chan, attr_name, new)
+#     # import ipdb; ipdb.set_trace()
+#     for ents in new_entities:
+#         session.add_all(ents)
+#     session.add(new_channel_db)
+#     return new_entities
 
-    session.add_all(entities + [new_channel_db])
-    return new_entities
+# def copy_entity(obj, new_channel_db, session):
+#     """Copy a pony entity instance"""
+#     rel_vals = {}
+#     to_relink = []
 
-def copy_entity(obj, new_channel_db, session):
-    """Copy a pony entity instance"""
-    rel_vals = {}
+#     # Make a copy of the relationships
+#     print("Copying object", obj.label)
+#     for rel_name in obj.__mapper__.attrs.keys():
+#         attr = getattr(obj, rel_name)
+#         # print("\texamining", rel_name, attr.__class__)
+#         if isinstance(attr, list):
+#             rel_vals[rel_name] = attr.copy()
+#             # to_relink.append(rel_name)
+#         else:
+#             rel_vals[rel_name] = attr
 
-    # Make a copy of the relationships
-    for rel_name in obj.__mapper__.relationships.keys():
-        attr = getattr(obj, rel_name)
-        print("examining", rel_name, attr.__class__)
-        if isinstance(attr, list):
-            print("adding", rel_name)
-            rel_vals[rel_name] = attr.copy()
+#     # for rel_name in obj.__mapper__.attrs.keys():
 
-    # Expire these relationships from the session
-    session.expire(b)
+#     # Expire these relationships from the session
+#     # print("to_relink", to_relink)
+#     # session.expire(obj, to_relink)
+#     # print("\tNew label", obj.label)
 
-    # Make the object instances transient
-    make_transient(obj)
+#     # Make the object instances transient
+#     make_transient(obj)
+#     # print("\tNew label", obj.label)
 
-    # Restore the old links
-    for rel_name, rel_val in rel_vals.items():
-        setattr(obj, rel_name, rel_val)
+#     # Restore the old links
+#     for rel_name, rel_val in rel_vals.items():
+#         # print("\tsetting", rel_name, rel_val)
+#         setattr(obj, rel_name, rel_val)
+#     # print("\tNew label", obj.label)
 
-    # Reset the id and channel db
-    obj.id = None
-    obj.channel_db = new_channel_db
+#     # Reset the id and channel db
+#     obj.id = None
+#     obj.channel_db = new_channel_db
+#     # print("\tNew label", obj.label)
 
-    session.add(obj)
+#     session.add(obj)
 
-    return obj, rel_vals
+#     return obj, rel_vals
 
 class ChannelLibrary(object):
 
@@ -147,7 +163,10 @@ class ChannelLibrary(object):
             elif config.load_db():
                 self.db_resource_name = config.load_db()
 
-            self.db = bbndb.engine = bbndb.create_engine(f'{self.db_provider}:///{self.db_resource_name}', echo=False)
+            self.db = bbndb.engine = bbndb.create_engine(f'{self.db_provider}:///{self.db_resource_name}',
+                                                            connect_args={'check_same_thread':False},
+                                                            poolclass=StaticPool,
+                                                            echo=False)
 
         bbndb.Base.metadata.create_all(bbndb.engine)
         bbndb.Session.configure(bind=bbndb.engine)
@@ -264,11 +283,10 @@ class ChannelLibrary(object):
 
     def save_as(self, name):
         self.commit()
-        chans, srcs, d2as, a2ds, trans = map(list, [self.channelDatabase.channels, self.channelDatabase.generators,
-                                            self.channelDatabase.transmitters, self.channelDatabase.receivers,
-                                            self.channelDatabase.transceivers])
-        new_chans, new_srcs, new_d2as, new_a2ds, new_trans = copy_objs([chans, srcs, d2as, a2ds, trans], cd, self.session)
-        cd.channels, cd.generators, cd.transmitters, cd.receivers, cd.transceivers = new_chans, new_srcs, new_d2as, new_a2ds, new_trans
+        new_channelDatabase = bbndb.deepcopy_sqla_object(self.channelDatabase, self.session)
+        new_channelDatabase.label = name
+        new_channelDatabase.time = datetime.datetime.now()
+        self.commit()
 
     #Dictionary methods
     def __getitem__(self, key):
@@ -380,7 +398,7 @@ class ChannelLibrary(object):
         if generator:
             qubit.phys_chan.generator = generator
 
-    def set_measure(self, qubit, transmitter, receivers, generator=None, receivers_channel=1, trig_channel=None, gate=False, gate_channel=None, trigger_length=1e-7):
+    def set_measure(self, qubit, transmitter, receivers, generator=None, trig_channel=None, gate=False, gate_channel=None, trigger_length=1e-7):
         quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
         markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
 
