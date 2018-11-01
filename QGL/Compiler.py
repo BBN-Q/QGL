@@ -420,6 +420,7 @@ def compile_to_hardware(seqs,
 
     # convert to hardware formats
     # files = {}
+    awg_metas = {}
     for awgName, data in awgData.items():
         # create the target folder if it does not exist
         targetFolder = os.path.split(os.path.normpath(os.path.join(
@@ -429,7 +430,9 @@ def compile_to_hardware(seqs,
         fullFileName = os.path.normpath(os.path.join(
             config.AWGDir, fileName + '-' + awgName + suffix + data[
                 'seqFileExt']))
-        data['translator'].write_sequence_file(data, fullFileName)
+        new_meta = data['translator'].write_sequence_file(data, fullFileName)
+        if new_meta:
+            awg_metas[awgName] = new_meta
 
         # Allow for per channel and per AWG seq files
         if awgName in label_to_inst:
@@ -437,7 +440,6 @@ def compile_to_hardware(seqs,
                 files[label_to_inst[awgName]][label_to_chan[awgName]] = fullFileName
         else:
             files[awgName] = fullFileName
-
     # generate TDM sequences FIXME: what's the best way to identify the need for a TDM seq.? Support for single TDM
     if tdm_seq and 'APS2Pattern' in [wire.translator for wire in physWires]:
             aps2tdm_module = import_module('QGL.drivers.APS2Pattern') # this is redundant with above
@@ -447,6 +449,10 @@ def compile_to_hardware(seqs,
                     'seqFileExt']))
             aps2tdm_module.write_tdm_seq(tdm_instr, files['TDM'])
 
+    if extra_meta:
+        extra_meta.update(awg_metas)
+    else:
+        extra_meta = awg_metas
     # create meta output
     if not axis_descriptor:
         axis_descriptor = [{
@@ -467,7 +473,7 @@ def compile_to_hardware(seqs,
         'receivers': receiver_measurements
     }
     if extra_meta:
-        meta.update(extra_meta)
+        meta.update({'extra_meta': extra_meta})
     metafilepath = os.path.join(config.AWGDir, fileName + '-meta.json')
     with open(metafilepath, 'w') as FID:
         json.dump(meta, FID, indent=2, sort_keys=True)
@@ -666,7 +672,7 @@ class Waveform(object):
             self.frameChange = 0
             self.isTimeAmp = False
             self.frequency = 0
-
+            self.logicalChan = ""
             self.maddr = (-1, 0)
         else:
             self.label = pulse.label
@@ -677,7 +683,7 @@ class Waveform(object):
             self.frameChange = pulse.frameChange
             self.isTimeAmp = pulse.isTimeAmp
             self.frequency = pulse.frequency
-
+            self.logicalChan = pulse.channel
             self.maddr = pulse.maddr
 
     def __repr__(self):
