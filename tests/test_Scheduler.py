@@ -121,3 +121,6 @@ class SchedulerTest(unittest.TestCase):
 
         # should be unchanged
         assert seq == result
+
+if __name__ == "__main__":
+    unittest.main()
