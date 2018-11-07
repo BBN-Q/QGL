@@ -265,32 +265,35 @@ class ChannelLibrary(Atom):
                     else:
                         master_awgs.append(name)
                 # Eventually we should support multiple masters...
-                # if "slave_trig" in instr.keys():
-                #     params = {}
-                #     params["label"]        = name + "_slave_trig"
-                #     params["phys_chan"]    = name + "-" + instr["slave_trig"]
-                #     params["pulse_params"] = {"length": 1e-7, "shape_fun": "constant"}
-                #     params["__module__"]   = "QGL.Channels"
-                #     params["__class__"]    = "LogicalMarkerChannel"
-                #     print(params["label"], "***")
-                #     channel_dict[params["label"]] = params
+                if "slave_trig" in instr.keys():
+                    params = {}
+                    params["label"]        = "slave_trig"
+                    params["phys_chan"]    = name + "-" + instr["slave_trig"]
+                    if params["phys_chan"] in marker_lens.keys():
+                        length = marker_lens[params["phys_chan"]]
+                    else:
+                        length = 1e-7
+                    params["pulse_params"] = {"length": length, "shape_fun": "constant"}
+                    params["__module__"]   = "QGL.Channels"
+                    params["__class__"]    = "LogicalMarkerChannel"
+                    channel_dict[params["label"]] = params
 
             # Establish the slave trigger, assuming for now that we have a single
             # APS master. This might change later.
             if len(master_awgs) > 1:
                 raise ValueError("More than one AWG is marked as master.")
-            elif len(master_awgs) == 1  and instr_dict[master_awgs[0].split('-')[0]]['type'] != 'TDM':
-                params = {}
-                params["label"]       = "slave_trig"
-                params["phys_chan"]    = master_awgs[0]
-                if params["phys_chan"] in marker_lens.keys():
-                    length = marker_lens[params["phys_chan"]]
-                else:
-                    length = 1e-7
-                params["pulse_params"] = {"length": length, "shape_fun": "constant"}
-                params["__module__"]  = "QGL.Channels"
-                params["__class__"]   = "LogicalMarkerChannel"
-                channel_dict[params["label"]] = params
+            # elif len(master_awgs) == 1  and instr_dict[master_awgs[0].split('-')[0]]['type'] != 'TDM':
+            #     params = {}
+            #     params["label"]       = "slave_trig"
+            #     params["phys_chan"]    = master_awgs[0]
+            #     if params["phys_chan"] in marker_lens.keys():
+            #         length = marker_lens[params["phys_chan"]]
+            #     else:
+            #         length = 1e-7
+            #     params["pulse_params"] = {"length": length, "shape_fun": "constant"}
+            #     params["__module__"]  = "QGL.Channels"
+            #     params["__class__"]   = "LogicalMarkerChannel"
+            #     channel_dict[params["label"]] = params
 
             for name, filt in filter_dict.items():
                 if "StreamSelector" in filt["type"]:
