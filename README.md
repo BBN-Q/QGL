@@ -63,3 +63,7 @@ The QGL config file will be created the first time you run `import QGL` or `from
 * networkx
 * iPython/Jupyter 4.0 (only for Jupyter notebooks)
 * ruamel_yaml
+
+## UnitTest data support
+This repository uses the Git Large File Storage (LFS) extension to manage a few
+UnitTest data files (see https://git-lfs.github.com/).
