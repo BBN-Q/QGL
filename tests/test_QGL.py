@@ -88,7 +88,21 @@ class SequenceTestCases(object):
                     'Warning: valid waveform file for {0} not found at: {1}'.format(
                         caseName, fileName))
                 continue
+            # -----
+            # print( "\n\rDBG::Calling \"with h5py.File( {0}, 'r')\"...".format( fileName) )
+            # -----
+            # The following pulls in Git Large File Storage (LFS) data files
+            # from cached signature references;  if the h5py.File call fails
+            # with an OSError, double-check git-lfs library installation (in
+            # addition to git) -- <https://git-lfs.github.com/>
+            #
+            # Where git-lfs was NOT installed the h5py.File() call was observed
+            # returning:
+            #
+            # OSError: Unable to open file (file signature not found))
+            #
             with h5py.File(fileName, 'r') as FID:
+                # print( "DBG::FID: {0}".format( FID))
                 for name, waveform in FID['/channels'].items():
                     validWaveform[name] = waveform[:]
             self.validWaveforms[caseName] = validWaveform
