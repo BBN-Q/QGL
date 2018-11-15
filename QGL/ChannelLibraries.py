@@ -57,9 +57,14 @@ def check_session_dirty(f):
     """Since we can't mix db objects from separate sessions, re-fetch entities by their unique IDs"""
     @wraps(f)
     def wrapper(cls, *args, **kwargs):
-        if 'force' in kwargs and kwargs['force']:
+        if (len(cls.session.dirty | cls.session.new)) == 0:
+            if 'force' in kwargs:
+                kwargs.pop('force')
             return f(cls, *args, **kwargs)
-        elif len(cls.session.dirty | cls.session.new) != 0:
+        elif 'force' in kwargs and kwargs['force']:
+            kwargs.pop('force')
+            return f(cls, *args, **kwargs)
+        else:
             raise Exception("Uncommitted transactions for working database. Either use force=True or commit/revert your changes.")
     return wrapper
 
@@ -91,7 +96,7 @@ class ChannelLibrary(object):
         bbndb.Base.metadata.create_all(bbndb.engine)
         bbndb.Session.configure(bind=bbndb.engine)
         self.Session = bbndb.Session
-        self.session = self.Session()
+        bbndb.session = self.session = self.Session()
 
         self.connectivityG = nx.DiGraph()
 
@@ -103,7 +108,7 @@ class ChannelLibrary(object):
             self.channelDatabase = working_dbs[0]
         elif len(working_dbs) == 0:
             self.channelDatabase = Channels.ChannelDatabase(label="working", time=datetime.datetime.now())
-            self.session.add(self.channelDatabase)
+            self.add_and_update_dict(self.channelDatabase)
             self.session.commit()
 
         self.update_channelDict()
@@ -185,7 +190,7 @@ class ChannelLibrary(object):
 
         if create_new:
             self.channelDatabase = Channels.ChannelDatabase(label="working", time=datetime.datetime.now())
-            self.session.add(self.channelDatabase)
+            self.add_and_update_dict(self.channelDatabase)
             self.session.commit()
         channelLib = self
 
@@ -193,10 +198,12 @@ class ChannelLibrary(object):
         self.clear(create_new=False)
         self.channelDatabase = bbndb.deepcopy_sqla_object(obj, self.session)
         self.channelDatabase.label = "working"
+        self.session.commit()
         self.update_channelDict()
 
     def commit(self):
         self.session.commit()
+        self.update_channelDict()
 
     def revert(self):
         self.session.rollback()
@@ -209,6 +216,10 @@ class ChannelLibrary(object):
         new_channelDatabase.label = name
         new_channelDatabase.time = datetime.datetime.now()
         self.commit()
+
+    def add_and_update_dict(self, el):
+        self.session.add(el)
+        self.update_channelDict()
 
     #Dictionary methods
     def __getitem__(self, key):
@@ -251,7 +262,7 @@ class ChannelLibrary(object):
         this_transmitter.trigger_source = "external"
         this_transmitter.address        = address
 
-        self.session.add(this_transmitter)
+        self.add_and_update_dict(this_transmitter)
         return this_transmitter
 
     def new_APS2_rack(self, label, num, start_address):
@@ -260,7 +271,7 @@ class ChannelLibrary(object):
         transmitters     = [new_APS2(f"{label}_U{i}", f"{address_start}.{address_end+i}") for i in range(1,num+1)]
         this_transceiver = Channels.Transceiver(label=label, model="APS2Rack", transmitters=transmitters, channel_db=self.channelDatabase)
 
-        self.session.add(this_transceiver)
+        self.add_and_update_dict(this_transceiver)
         return this_transceiver
 
     def new_X6(self, label, address, dsp_channel=0, record_length=1024):
@@ -277,7 +288,7 @@ class ChannelLibrary(object):
         chan1.kernel = np.ones(record_length, dtype=np.complex).tobytes()
         chan2.kernel = np.ones(record_length, dtype=np.complex).tobytes()
 
-        self.session.add(this_receiver)
+        self.add_and_update_dict(this_receiver)
         return this_receiver
 
     def new_Alazar(self, label, address, record_length=1024):
@@ -290,17 +301,17 @@ class ChannelLibrary(object):
         this_receiver.stream_types   = "raw"
         this_receiver.address        = address
 
-        self.session.add(this_receiver)
+        self.add_and_update_dict(this_receiver)
         return this_receiver
 
-    def new_qubit(self, label):
-        thing = Channels.Qubit(label=label, channel_db=self.channelDatabase)
-        self.session.add(thing)
+    def new_qubit(self, label, **kwargs):
+        thing = Channels.Qubit(label=label, channel_db=self.channelDatabase, **kwargs)
+        self.add_and_update_dict(thing)
         return thing
 
     def new_source(self, label, model, address, power=-30.0, frequency=5.0e9):
         thing = Channels.Generator(label=label, model=model, address=address, power=power, frequency=frequency, channel_db=self.channelDatabase)
-        self.session.add(thing)
+        self.add_and_update_dict(thing)
         return thing
 
     def set_control(self, qubit, transmitter, generator=None):
@@ -344,6 +355,7 @@ class ChannelLibrary(object):
         trig_chan.phys_chan    = phys_trig_channel
         trig_chan.pulse_params = {"length": trigger_length, "shape_fun": "constant"}
         meas.trig_chan         = trig_chan
+        qubit.measure_chan     = meas
 
         if isinstance(receivers, Channels.Receiver) and len(receivers.channels) > 1:
             raise ValueError("In set_measure the Receiver must have a single receiver channel or a specific channel must be passed instead")
@@ -372,35 +384,33 @@ class ChannelLibrary(object):
         transmitter.master = True
         transmitter.trigger_source = "internal"
 
-def QubitFactory(label, **kwargs):
-    ''' Return a saved qubit channel or create a new one. '''
-    q = channelLib.session.query(Channels.Qubit).filter(Channels.Qubit.label==label).all()
-    if len(q) == 1:
-        return q[0]
+def QubitFactory(label):
+    ''' Return a saved qubit channel'''
+    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
+    # q = channelLib.session.query(Channels.Qubit).filter(Channels.Qubit.label==label and Channels.Qubit.channel_db==channelLib.channelDatabase).all()
+    if len(cs) == 1:
+        return cs[0]
     else:
-        c = Channels.Qubit(label=label, channel_db=channelLib.channelDatabase, **kwargs)
-        channelLib.session.add(c)
-        return c
+        raise Exception(f"Expected to find a single qubit {label} but found {len(cs)} qubits with the same label instead.")
 
-def MeasFactory(label, **kwargs):
+def MeasFactory(label):
     ''' Return a saved measurement channel or create a new one. '''
-    q = channelLib.session.query(Channels.Measurement).filter(Channels.Measurement.label==label).all()
-    if len(q) == 1:
-        return q[0]
+    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
+    # q = channelLib.session.query(Channels.Qubit).filter(Channels.Qubit.label==label and Channels.Qubit.channel_db==channelLib.channelDatabase).all()
+    if len(cs) == 1:
+        return cs[0]
     else:
-        c = Channels.Measurement(label=label, channel_db=channelLib.channelDatabase, **kwargs)
-        channelLib.session.add(c)
-        return c
+        raise Exception(f"Expected to find a single measurement {label} but found {len(cs)} measurements with the same label instead.")
 
-def MarkerFactory(label, **kwargs):
+def MarkerFactory(label):
     ''' Return a saved Marker channel or create a new one. '''
-    q = channelLib.session.query(Channels.LogicalMarkerChannel).filter(Channels.LogicalMarkerChannel.label==label).all()
-    if len(q) == 1:
-        return q[0]
+    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
+    # q = channelLib.session.query(Channels.Qubit).filter(Channels.Qubit.label==label and Channels.Qubit.channel_db==channelLib.channelDatabase).all()
+    if len(cs) == 1:
+        return cs[0]
     else:
-        c = Channels.LogicalMarkerChannel(label=label, channel_db=channelLib.channelDatabase, **kwargs)
-        channelLib.session.add(c)
-        return c
+        raise Exception(f"Expected to find a single marker {label} but found {len(cs)} markers with the same label instead.")
+
 
 def EdgeFactory(source, target):
     if channelLib.connectivityG.has_edge(source, target):
