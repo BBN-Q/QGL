@@ -403,6 +403,7 @@ class ChannelLibrary(object):
 
 def QubitFactory(label):
     ''' Return a saved qubit channel'''
+    channelLib.update_channelDict()
     cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
     # q = channelLib.session.query(Channels.Qubit).filter(Channels.Qubit.label==label and Channels.Qubit.channel_db==channelLib.channelDatabase).all()
     if len(cs) == 1:
@@ -412,6 +413,7 @@ def QubitFactory(label):
 
 def MeasFactory(label):
     ''' Return a saved measurement channel or create a new one. '''
+    channelLib.update_channelDict()
     cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
     # q = channelLib.session.query(Channels.Qubit).filter(Channels.Qubit.label==label and Channels.Qubit.channel_db==channelLib.channelDatabase).all()
     if len(cs) == 1:
@@ -422,14 +424,15 @@ def MeasFactory(label):
 def MarkerFactory(label):
     ''' Return a saved Marker channel or create a new one. '''
     cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
+    channelLib.update_channelDict()
     # q = channelLib.session.query(Channels.Qubit).filter(Channels.Qubit.label==label and Channels.Qubit.channel_db==channelLib.channelDatabase).all()
     if len(cs) == 1:
         return cs[0]
     else:
         raise Exception(f"Expected to find a single marker {label} but found {len(cs)} markers with the same label instead.")
 
-
 def EdgeFactory(source, target):
+    channelLib.update_channelDict()
     if channelLib.connectivityG.has_edge(source, target):
         return channelLib.connectivityG[source][target]['channel']
     elif channelLib.connectivityG.has_edge(target, source):
