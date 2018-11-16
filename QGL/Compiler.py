@@ -323,7 +323,7 @@ def compile_to_hardware(seqs,
         tdm_seq (optional): compile for TDM
     '''
     ChannelLibraries.channelLib.update_channelDict()
-    # clear_pulse_cache()
+    clear_pulse_cache()
 
     logger.debug("Compiling %d sequence(s)", len(seqs))
 
