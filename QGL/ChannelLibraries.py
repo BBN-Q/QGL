@@ -50,6 +50,7 @@ from .PulsePrimitives import clear_pulse_cache
 
 from sqlalchemy.orm.session import make_transient
 from sqlalchemy.pool import StaticPool
+from IPython.display import HTML, display
 
 channelLib = None
 
@@ -130,7 +131,13 @@ class ChannelLibrary(object):
         return self.session.query(obj_type).filter_by(**kwargs)
 
     def get_current_channels(self):
-        return self.channelDatabase.channels + self.channelDatabase.generators
+        return (self.channelDatabase.channels + 
+               self.channelDatabase.generators + 
+               self.channelDatabase.transmitters + 
+               self.channelDatabase.receivers + 
+               self.channelDatabase.transceivers + 
+               self.channelDatabase.instruments + 
+               self.channelDatabase.processors)
 
     def update_channelDict(self):
         self.channelDict = {c.label: c for c in self.get_current_channels()}
@@ -139,9 +146,12 @@ class ChannelLibrary(object):
         cdb = Channels.ChannelDatabase
         q = self.session.query(cdb.label, cdb.time, cdb.id).\
             order_by(Channels.ChannelDatabase.id, Channels.ChannelDatabase.label).all()
+        table_code = ""        
         for i, (label, time, id) in enumerate(q):
-                t = time.strftime("(%Y) %b. %d @ %I:%M:%S %p")
-                print(f"[{id}] {t} -> {label}")
+            y, d, t = map(time.strftime, ["%Y", "%b. %d", "%I:%M:%S %p"])
+            # t = time.strftime("(%Y) %b. %d @ %I:%M:%S %p")
+            table_code += f"<tr><td>{id}</td><td>{y}</td><td>{d}</td><td>{t}</td><td>{label}</td></tr>"
+        display(HTML(f"<table><tr><th>id</th><th>Year</th><th>Date</th><th>Time</th><th>Name</th></tr><tr>{table_code}</tr></table>"))
 
     def ent_by_type(self, obj_type, show=False):
         q = self.session.query(obj_type).filter(obj_type.channel_db.has(label="working")).order_by(obj_type.label).all()
