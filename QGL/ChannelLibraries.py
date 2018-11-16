@@ -68,6 +68,16 @@ def check_session_dirty(f):
             raise Exception("Uncommitted transactions for working database. Either use force=True or commit/revert your changes.")
     return wrapper
 
+def check_for_duplicates(f):
+    """Since we can't mix db objects from separate sessions, re-fetch entities by their unique IDs"""
+    @wraps(f)
+    def wrapper(cls, label, *args, **kwargs):
+        if label in cls.channelDict:
+            raise ValueError(f"Cannot create {label}: a channel with the same name already exists.")
+        else:
+            return f(cls, label, *args, **kwargs)  
+    return wrapper
+
 class ChannelLibrary(object):
 
     def __init__(self, db_resource_name=None):
@@ -208,6 +218,7 @@ class ChannelLibrary(object):
     def revert(self):
         self.session.rollback()
 
+    @check_session_dirty
     def save_as(self, name):
         if name == "working":
             raise ValueError("Cannot save as `working` since that is the default working environment name...")
@@ -251,6 +262,7 @@ class ChannelLibrary(object):
             self.connectivityG[chan.source][chan.target]['channel'] = chan
 >>>>>>> Ditch atom, move to Pony.orm for all channel library objects.
 
+    @check_for_duplicates
     def new_APS2(self, label, address):
         chan12 = Channels.PhysicalQuadratureChannel(label=f"{label}-12", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
         m1     = Channels.PhysicalMarkerChannel(label=f"{label}-12m1", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
@@ -265,6 +277,7 @@ class ChannelLibrary(object):
         self.add_and_update_dict(this_transmitter)
         return this_transmitter
 
+    @check_for_duplicates
     def new_APS2_rack(self, label, num, start_address):
         address_start    = ".".join(start_address.split(".")[:3])
         address_end      = int(start_address.split(".")[-1])
@@ -274,6 +287,7 @@ class ChannelLibrary(object):
         self.add_and_update_dict(this_transceiver)
         return this_transceiver
 
+    @check_for_duplicates
     def new_X6(self, label, address, dsp_channel=0, record_length=1024):
         chan1 = Channels.ReceiverChannel(label=f"RecvChan-{label}-1", channel=1, dsp_channel=dsp_channel, channel_db=self.channelDatabase)
         chan2 = Channels.ReceiverChannel(label=f"RecvChan-{label}-2", channel=2, dsp_channel=dsp_channel, channel_db=self.channelDatabase)
@@ -291,6 +305,7 @@ class ChannelLibrary(object):
         self.add_and_update_dict(this_receiver)
         return this_receiver
 
+    @check_for_duplicates
     def new_Alazar(self, label, address, record_length=1024):
         chan1 = Channels.ReceiverChannel(label=f"RecvChan-{label}-1", channel=1, channel_db=self.channelDatabase)
         chan2 = Channels.ReceiverChannel(label=f"RecvChan-{label}-2", channel=2, channel_db=self.channelDatabase)
@@ -304,11 +319,13 @@ class ChannelLibrary(object):
         self.add_and_update_dict(this_receiver)
         return this_receiver
 
+    @check_for_duplicates
     def new_qubit(self, label, **kwargs):
         thing = Channels.Qubit(label=label, channel_db=self.channelDatabase, **kwargs)
         self.add_and_update_dict(thing)
         return thing
 
+    @check_for_duplicates
     def new_source(self, label, model, address, power=-30.0, frequency=5.0e9):
         thing = Channels.Generator(label=label, model=model, address=address, power=power, frequency=frequency, channel_db=self.channelDatabase)
         self.add_and_update_dict(thing)
