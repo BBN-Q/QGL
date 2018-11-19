@@ -197,8 +197,7 @@ class ChannelLibrary(object):
 
     @check_session_dirty
     def load_by_id(self, id_num):
-        cdb = Channels.ChannelDatabase
-        item = self.session.query(cdb).filter(cdb.id==id_num).first()
+        item = self.session.query(Channels.ChannelDatabase).filter_by(id=id_num).first()
         self.load_obj(item)
 
     def clear(self, channel_db=None, create_new=True):
@@ -213,6 +212,19 @@ class ChannelLibrary(object):
             self.add_and_update_dict(self.channelDatabase)
             self.session.commit()
         channelLib = self
+
+    def rm(self, library_name, keep_id=-1):
+        """Remove the channel library named `library_name`. If no `keep_version` is specified then
+        all versions are removed. Otherwise """
+        cdb = Channels.ChannelDatabase
+        items = self.session.query(cdb).filter(cdb.label==library_name and cdb.id!=keep_id).all()
+        for item in items:
+            self.session.delete(item)
+
+    def rm_by_id(self, id):
+        """Remove the channel library with id `id`"""
+        item = self.session.query(Channels.ChannelDatabase).filter_by(id=id_num).first()
+        self.session.delete(item)
 
     def load_obj(self, obj):
         self.clear(create_new=False)
