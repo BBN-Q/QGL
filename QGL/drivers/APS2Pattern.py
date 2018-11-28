@@ -650,7 +650,7 @@ def inject_modulation_cmds(seqs):
                 #heuristic to insert phase reset before trigger if we have modulation commands
                 if isinstance(entry, ControlFlow.Wait):
                     if not ( no_modulation_cmds and (cur_freq == 0) and (cur_phase == 0)):
-                        mod_seq.append(ModulationCommand("RESET_PHASE", 0x3))
+                        mod_seq.append(ModulationCommand("RESET_PHASE", 0xF))
                         for nco_ind, freq in enumerate(freqs):
                             mod_seq.append( ModulationCommand("SET_FREQ", nco_ind + 1, frequency = -freq) )
                 elif isinstance(entry, ControlFlow.Return):
