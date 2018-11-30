@@ -2,7 +2,7 @@
 echo ""
 echo "#---------- $0 (QGL) start..."
 echo ""
-#----- Simple script to capture basic documentation rendering logic.
+#----- Simple script to capture unittest preparation and invocation logic.
 
 pwd
 
