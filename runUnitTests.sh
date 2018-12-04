@@ -61,7 +61,9 @@ fi
 
 echo ""
 echo "#----- Testing LFS data file dependent QGL modules via ~:"
-export CMD="python -m unittest tests.test_QGL tests.test_Sequences.py -v -f"
+# Careful -- in this format (tests.moduleName) DON'T cite the .py suffix
+# (it will render an odd error regarding missing 'py' attribute)
+export CMD="python -m unittest tests.test_QGL tests.test_Sequences -v -f"
 echo $CMD
 echo ""
 $CMD

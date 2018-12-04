@@ -8,6 +8,11 @@ import QGL
 from QGL.Channels import Edge, Measurement, LogicalChannel, LogicalMarkerChannel, PhysicalMarkerChannel, PhysicalQuadratureChannel
 from QGL.drivers import APSPattern, APS2Pattern, TekPattern
 
+# Pulled in logger to help debug stand-alone run issue with the config.AWGDir
+# (the configuration was NOT gettng loaded when run independently)
+#
+import logging
+logger = logging.getLogger( 'sequences')
 
 class AWGTestHelper(object):
     testFileDirectory = './tests/test_data/awg/'
@@ -92,6 +97,13 @@ class AWGTestHelper(object):
 
     def set_awg_dir(self, footer=""):
         cn = self.__class__.__name__
+
+        if None == QGL.config.AWGDir:
+            logger.warning( "\n\r#----- EEE NULL QGL.config.AWGDir {%s} cited; calling load_config()...", QGL.config.AWGDir)
+            QGL.config.load_config()
+            logger.warning( "#----- Post load-config QGL.config.AWGDir: {%s}.\n\r", QGL.config.AWGDir)
+        #else:
+        #    logger.warning( "\n\r#----- Using QGL.config.AWGDir {%s} 8-p", QGL.config.AWGDir)
 
         self.awg_dir = os.path.abspath(QGL.config.AWGDir + os.path.sep + cn)
         self.truth_dir = os.path.abspath(self.testFileDirectory + os.path.sep +
