@@ -141,6 +141,7 @@ class ChannelLibrary(object):
 
     def update_channelDict(self):
         self.channelDict = {c.label: c for c in self.get_current_channels()}
+        self.build_connectivity_graph()
 
     def ls(self):
         cdb = Channels.ChannelDatabase
@@ -251,7 +252,10 @@ class ChannelLibrary(object):
         self.commit()
 
     def add_and_update_dict(self, el):
-        self.session.add(el)
+        if isinstance(el, list):
+            self.session.add_all(el)
+        else:
+            self.session.add(el)
         self.update_channelDict()
 
     #Dictionary methods
@@ -303,7 +307,7 @@ class ChannelLibrary(object):
     def new_APS2_rack(self, label, num, start_address):
         address_start    = ".".join(start_address.split(".")[:3])
         address_end      = int(start_address.split(".")[-1])
-        transmitters     = [new_APS2(f"{label}_U{i}", f"{address_start}.{address_end+i}") for i in range(1,num+1)]
+        transmitters     = [self.new_APS2(f"{label}_U{i}", f"{address_start}.{address_end+i}") for i in range(1,num+1)]
         this_transceiver = Channels.Transceiver(label=label, model="APS2Rack", transmitters=transmitters, channel_db=self.channelDatabase)
 
         self.add_and_update_dict(this_transceiver)
@@ -369,6 +373,14 @@ class ChannelLibrary(object):
         qubit.phys_chan = phys_chan
         if generator:
             qubit.phys_chan.generator = generator
+
+    def set_qubit_connectivity(self, graph):
+        """
+        Graph is a networkx DiGraph consisting of edges (source qubit, target qubit)
+        """
+        new_edges = [Channels.Edge(label=f"{source.label}->{target.label}", source=source, target=target) for source, target in graph.edges()]
+        self.add_and_update_dict(new_edges)
+        return new_edges
 
     def set_measure(self, qubit, transmitter, receivers, generator=None, trig_channel=None, gate=False, gate_channel=None, trigger_length=1e-7):
         quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
