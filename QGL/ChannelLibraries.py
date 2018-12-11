@@ -373,6 +373,7 @@ class ChannelLibrary(object):
         qubit.phys_chan = phys_chan
         if generator:
             qubit.phys_chan.generator = generator
+        self.update_channelDict()
 
     def set_qubit_connectivity(self, graph):
         """
@@ -418,12 +419,14 @@ class ChannelLibrary(object):
             raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
 
         meas.receiver_chan = rcv_chan
+        self.add_and_update_dict([meas, trig_chan])
 
         if gate:
             phys_gate_channel   = gate_channel if gate_channel else transmitter.get_chan("12m2")
             gate_chan           = Channels.LogicalMarkerChannel(label=f"M-{qubit.label}-gate", channel_db=self.channelDatabase)
             gate_chan.phys_chan = phys_gate_channel
             meas.gate_chan      = gate_chan
+            self.add_and_update_dict([gate_chan])
 
     def set_master(self, transmitter, trig_channel, pulse_length=1e-7):
         if not isinstance(trig_channel, Channels.PhysicalMarkerChannel):
@@ -434,6 +437,7 @@ class ChannelLibrary(object):
         st.pulse_params = {"length": pulse_length, "shape_fun": "constant"}
         transmitter.master = True
         transmitter.trigger_source = "internal"
+        self.add_and_update_dict([st])
 
 def QubitFactory(label):
     ''' Return a saved qubit channel'''
