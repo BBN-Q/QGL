@@ -276,7 +276,8 @@ def bundle_wires(physWires, wfs):
     awgData = setup_awg_channels(physWires.keys())
     for chan in physWires.keys():
         _, awgChan = chan.label.rsplit('-', 1)
-        awgChan = 'ch' + awgChan
+        if awgChan[0] != 'm':
+            awgChan = 'ch' + awgChan
         awgData[chan.instrument][awgChan]['linkList'] = physWires[chan]
         awgData[chan.instrument][awgChan]['wfLib'] = wfs[chan]
         if hasattr(chan, 'correctionT'):

@@ -290,13 +290,13 @@ class ChannelLibrary(object):
 
     @check_for_duplicates
     def new_APS2(self, label, address):
-        chan12 = Channels.PhysicalQuadratureChannel(label=f"{label}-12", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
-        m1     = Channels.PhysicalMarkerChannel(label=f"{label}-12m1", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
-        m2     = Channels.PhysicalMarkerChannel(label=f"{label}-12m2", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
-        m3     = Channels.PhysicalMarkerChannel(label=f"{label}-12m3", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
-        m4     = Channels.PhysicalMarkerChannel(label=f"{label}-12m4", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
+        chan1  = Channels.PhysicalQuadratureChannel(label=f"{label}-1", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
+        m1     = Channels.PhysicalMarkerChannel(label=f"{label}-m1", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
+        m2     = Channels.PhysicalMarkerChannel(label=f"{label}-m2", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
+        m3     = Channels.PhysicalMarkerChannel(label=f"{label}-m3", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
+        m4     = Channels.PhysicalMarkerChannel(label=f"{label}-m4", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
 
-        this_transmitter = Channels.Transmitter(label=label, model="APS2", address=address, channels=[chan12, m1, m2, m3, m4], channel_db=self.channelDatabase)
+        this_transmitter = Channels.Transmitter(label=label, model="APS2", address=address, channels=[chan1, m1, m2, m3, m4], channel_db=self.channelDatabase)
         this_transmitter.trigger_source = "external"
         this_transmitter.address        = address
 
@@ -401,7 +401,7 @@ class ChannelLibrary(object):
         if generator:
             meas.phys_chan.generator = generator
 
-        phys_trig_channel = trig_channel if trig_channel else transmitter.get_chan("12m1")
+        phys_trig_channel = trig_channel if trig_channel else transmitter.get_chan("m1")
 
         trig_chan              = Channels.LogicalMarkerChannel(label=f"receiversTrig-{qubit.label}", channel_db=self.channelDatabase)
         trig_chan.phys_chan    = phys_trig_channel
@@ -422,7 +422,7 @@ class ChannelLibrary(object):
         self.add_and_update_dict([meas, trig_chan])
 
         if gate:
-            phys_gate_channel   = gate_channel if gate_channel else transmitter.get_chan("12m2")
+            phys_gate_channel   = gate_channel if gate_channel else transmitter.get_chan("m2")
             gate_chan           = Channels.LogicalMarkerChannel(label=f"M-{qubit.label}-gate", channel_db=self.channelDatabase)
             gate_chan.phys_chan = phys_gate_channel
             meas.gate_chan      = gate_chan

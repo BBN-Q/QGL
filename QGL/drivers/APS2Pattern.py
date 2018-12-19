@@ -106,7 +106,7 @@ SAVE_WF_OFFSETS = False
 SEQFILE_PER_CHANNEL = False
 
 def get_empty_channel_set():
-    return {'ch12': {}, 'ch12m1': {}, 'ch12m2': {}, 'ch12m3': {}, 'ch12m4': {}}
+    return {'ch1': {}, 'm1': {}, 'm2': {}, 'm3': {}, 'm4': {}}
 
 
 def get_seq_file_extension():
@@ -1024,11 +1024,11 @@ def write_sequence_file(awgData, fileName):
     Main function to pack channel sequences into an APS2 h5 file.
     '''
     # Convert QGL IR into a representation that is closer to the hardware.
-    awgData['ch12']['linkList'], wfLib = preprocess(
-        awgData['ch12']['linkList'], awgData['ch12']['wfLib'])
+    awgData['ch1']['linkList'], wfLib = preprocess(
+        awgData['ch1']['linkList'], awgData['ch1']['wfLib'])
 
     # compress marker data
-    for field in ['ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']:
+    for field in ['m1', 'm2', 'm3', 'm4']:
         if 'linkList' in awgData[field].keys():
             PatternUtils.convert_lengths_to_samples(awgData[field]['linkList'],
                                                     SAMPLING_RATE, 1,
@@ -1041,10 +1041,10 @@ def write_sequence_file(awgData, fileName):
     wfInfo = []
     wfInfo.append(create_wf_vector({key: wf.real
                                     for key, wf in wfLib.items()}, awgData[
-                                        'ch12']['linkList']))
+                                        'ch1']['linkList']))
     wfInfo.append(create_wf_vector({key: wf.imag
                                     for key, wf in wfLib.items()}, awgData[
-                                        'ch12']['linkList']))
+                                        'ch1']['linkList']))
 
     if SAVE_WF_OFFSETS:
         #create a set of all waveform signatures in offset dictionaries
@@ -1055,7 +1055,7 @@ def write_sequence_file(awgData, fileName):
             wf_sigs |= set(offset_dict.keys())
         #create dictionary linking entry labels (that's what we'll have later) with offsets
         offsets = {}
-        for seq in awgData['ch12']['linkList']:
+        for seq in awgData['ch1']['linkList']:
             for entry in seq:
                 if len(wf_sigs) == 0:
                     break
@@ -1079,7 +1079,7 @@ def write_sequence_file(awgData, fileName):
 
     # build instruction vector
     seq_data = [awgData[s]['linkList']
-                for s in ['ch12', 'ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']]
+                for s in ['ch1', 'm1', 'm2', 'm3', 'm4']]
     instructions = create_instr_data(seq_data, wfInfo[0][1], wfInfo[0][2])
 
     #Open the HDF5 file
@@ -1114,10 +1114,10 @@ def write_sequence_file(awgData, fileName):
 def read_sequence_file(fileName):
     """
     Reads a HDF5 sequence file and returns a dictionary of lists.
-    Dictionary keys are channel strings such as ch1, ch12m1
+    Dictionary keys are channel strings such as ch1, m1
     Lists are or tuples of time-amplitude pairs (time, output)
     """
-    chanStrs = ['ch1', 'ch2', 'ch12m1', 'ch12m2', 'ch12m3', 'ch12m4',
+    chanStrs = ['ch1', 'ch2', 'm1', 'm2', 'm3', 'm4',
                 'mod_phase']
     seqs = {ch: [] for ch in chanStrs}
 
@@ -1189,7 +1189,7 @@ def read_sequence_file(fileName):
                                 seqs[chan][-1].append((1, sample))
 
             elif instr.opcode == MARKER:
-                chan = 'ch12m' + str(((instr.header >> 2) & 0x3) + 1)
+                chan = 'm' + str(((instr.header >> 2) & 0x3) + 1)
                 count = instr.payload & 0xffffffff
                 count = (count + 1) * ADDRESS_UNIT
                 state = (instr.payload >> 32) & 0x1
