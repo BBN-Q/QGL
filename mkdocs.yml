@@ -1,5 +1,5 @@
 site_name: QGL
-pages:
+nav:
     - Intro: index.md
     - Configuration: config.md
     - Examples: examples.md
