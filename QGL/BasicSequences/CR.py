@@ -80,11 +80,7 @@ def EchoCRLen(controlQ,
              echoCR(controlQ, targetQ, length=l, phase= phase, amp=amp, riseFall=riseFall, canc_amp=canc_amp, canc_phase=canc_phase),
              X(controlQ),
              MEAS(targetQ)*MEAS(controlQ)] for l in lengths] + \
-<<<<<<< HEAD
-           create_cal_seqs((targetQ,controlQ), calRepeats, measChans=(targetQ, controlQ))
-=======
            create_cal_seqs((controlQ,targetQ), calRepeats, measChans=(targetQ,controlQ))
->>>>>>> 3e7c872... Consistent order (qc,qt) for CR
 
     metafile = compile_to_hardware(seqs, 'EchoCR/EchoCR',
         axis_descriptor=[
