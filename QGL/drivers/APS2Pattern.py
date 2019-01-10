@@ -619,11 +619,11 @@ def inject_modulation_cmds(seqs):
         freqs = np.unique([entry.frequency for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)])
         if len(freqs) > 2:
             raise Exception("Max 2 frequencies on the same channel allowed.")
-        no_freq_cmds = np.allclose(freqs, 0)
+        no_freq_cmds = np.all(np.less(np.abs(freqs), 1e-8))
         phases = [entry.phase for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
-        no_phase_cmds = np.allclose(phases, 0)
+        no_phase_cmds = np.all(np.less(np.abs(phases), 1e-8))
         frame_changes = [entry.frameChange for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
-        no_frame_cmds = np.allclose(frame_changes, 0)
+        no_frame_cmds = np.all(np.less(np.abs(frame_changes), 1e-8))
         no_modulation_cmds = no_freq_cmds and no_phase_cmds and no_frame_cmds
 
         if no_modulation_cmds:
