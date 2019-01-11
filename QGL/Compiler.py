@@ -19,10 +19,9 @@ import logging
 import numpy as np
 import os
 import operator
-import psutil
 from warnings import warn
 from copy import copy
-from functools import reduce, lru_cache
+from functools import reduce
 from importlib import import_module
 import json
 from . import config
@@ -298,148 +297,6 @@ def collect_specializations(seqs):
             funcs.append(ControlFlow.qfunction_specialization(target))
             done.append(target)
     return funcs
-
-def compile_to_qgl_IR(seqs,
-                        suffix='',
-                        axis_descriptor=None,
-                        add_slave_trigger=True,
-                        extra_meta=None,
-                        tdm_seq = False):
-    '''
-    Compiles 'seqs' to a hardware description and saves it to 'fileName'.
-    Other inputs:
-        suffix (optional): string to append to end of fileName, e.g. with
-            fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5
-        axis_descriptor (optional): a list of dictionaries describing the effective
-            axes of the measurements that the sequence will yield. For instance,
-            if `seqs` generates a Ramsey experiment, axis_descriptor would describe
-            the time delays between pulses.
-        add_slave_trigger (optional): add the slave trigger(s)
-        tdm_seq (optional): compile for TDM
-    '''
-    process = psutil.Process(os.getpid())
-
-    logger.info("Compiling %d sequence(s)", len(seqs))
-    logger.info("Using {} GB of memory".format(process.memory_info().rss/1e9))
-
-    # all sequences should start with a WAIT for synchronization
-    for seq in seqs:
-        if not isinstance(seq[0], ControlFlow.Wait):
-            logger.debug("Adding a WAIT - first sequence element was %s", seq[0])
-            seq.insert(0, ControlFlow.Wait())
-
-    # Add the digitizer trigger to measurements
-    logger.info("Adding digitizer trigger")
-    logger.info("Using {} GB of memory".format(process.memory_info().rss/1e9))
-    PatternUtils.add_digitizer_trigger(seqs)
-
-    # Add gating/blanking pulses
-    logger.info("Adding blanking pulses")
-    logger.info("Using {} GB of memory".format(process.memory_info().rss/1e9))
-    for seq in seqs:
-        PatternUtils.add_gate_pulses(seq)
-
-    if add_slave_trigger and 'slave_trig' in ChannelLibraries.channelLib:
-        # Add the slave trigger
-        logger.info("Adding slave trigger")
-        logger.info("Using {} GB of memory".format(process.memory_info().rss/1e9))
-        PatternUtils.add_slave_trigger(seqs,
-                                       ChannelLibraries.channelLib['slave_trig'])
-    else:
-        logger.info("Not adding slave trigger")
-        logger.info("Using {} GB of memory".format(process.memory_info().rss/1e9))
-
-    # find channel set at top level to account for individual sequence channel variability
-    channels = set()
-    for seq in seqs:
-        channels |= find_unique_channels(seq)
-
-    # Compile all the pulses/pulseblocks to sequences of pulses and control flow
-    logger.info("Compiling sequences")
-    logger.info("Using {} GB of memory".format(process.memory_info().rss/1e9))
-    wireSeqs = compile_sequences(seqs, channels)
-
-    if not validate_linklist_channels(wireSeqs.keys()):
-        print("Compile to hardware failed")
-        return
-
-    logger.info('')
-    logger.info("Now after gating constraints:")
-    logger.info("Using {} GB of memory".format(process.memory_info().rss/1e9))
-    # apply gating constraints
-    for chan, seq in wireSeqs.items():
-        if isinstance(chan, Channels.LogicalMarkerChannel):
-            wireSeqs[chan] = PatternUtils.apply_gating_constraints(
-                chan.phys_chan, seq)
-    debug_print(wireSeqs, 'Gated sequence')
-
-    # save number of measurements for meta info
-    logger.info("Counting measurements")
-    logger.info("Using {} GB of memory".format(process.memory_info().rss/1e9))
-    num_measurements = count_measurements(wireSeqs)
-    wire_measurements = count_measurements_per_wire(wireSeqs)
-
-    # map logical to physical channels, physWires is a list of
-    # PhysicalQuadratureChannels and PhysicalMarkerChannels
-    # for the APS, the naming convention is:
-    # ASPName-12, or APSName-12m1
-    logger.info("Mapping logical to physical")
-    logger.info("Using {} GB of memory".format(process.memory_info().rss/1e9))
-    physWires = map_logical_to_physical(wireSeqs)
-
-    del wireSeqs
-
-    # Pave the way for composite instruments, not useful yet...
-    files = {}
-    label_to_inst   = {}
-    label_to_chan   = {}
-    old_wire_names  = {}
-    old_wire_instrs = {}
-    for wire, pulses in physWires.items():
-        pattern_module = import_module('QGL.drivers.' + wire.translator)
-        if pattern_module.SEQFILE_PER_CHANNEL:
-            inst_name = pattern_module.get_true_inst_name(wire.label)
-            chan_name = pattern_module.get_true_chan_name(wire.label)
-            has_non_id_pulses = any([len([p for p in ps if isinstance(p,Pulse) and p.label!="Id"]) > 0 for ps in pulses])
-            label_to_inst[wire.label] = inst_name
-            if has_non_id_pulses:
-                label_to_chan[wire.label] = chan_name
-            # Change the name/inst for uniqueness, but we must restore this later!
-            old_wire_names[wire] = wire.label
-            old_wire_instrs[wire] = wire.instrument
-            wire.instrument = wire.label
-            wire.label = chan_name
-            files[inst_name] = {}
-
-    # construct channel delay map
-    logger.info("Building delay map")
-    logger.info("Using {} GB of memory".format(process.memory_info().rss/1e9))
-    delays = channel_delay_map(physWires)
-
-    # apply delays
-    for chan, wire in physWires.items():
-        PatternUtils.delay(wire, delays[chan])
-    debug_print(physWires, 'Delayed wire')
-
-    # generate wf library (base shapes)
-    logger.info("Generating waveforms")
-    logger.info("Using {} GB of memory".format(process.memory_info().rss/1e9))
-    wfs = generate_waveforms(physWires)
-
-    # replace Pulse objects with Waveforms
-    logger.info("Mapping pulses to waveforms")
-    logger.info("Using {} GB of memory".format(process.memory_info().rss/1e9))
-    physWires = pulses_to_waveforms(physWires)
-
-    # bundle wires on instruments, or channels depending
-    # on whether we have one sequence per channel
-    logger.info("Bundling wires!")
-    logger.info("Using {} GB of memory".format(process.memory_info().rss/1e9))
-    awgData = bundle_wires(physWires, wfs)
-
-    logger.info("DONE!")
-    logger.info("Used {} GB of memory".format(process.memory_info().rss/1e9))
-    return awgData
 
 def compile_to_hardware(seqs,
                         fileName,
@@ -963,7 +820,7 @@ def count_measurements_per_wire(wireSeqs):
     seq_len = len(wireSeqs[list(wireSeqs)[0]])
     meas_wires = list(filter(lambda x: isinstance(x, Channels.Measurement), wireSeqs))
     measurements = {wire: 0 for wire in meas_wires}
-    for ct in range(seq_len):
+    for ct in range(seq_lendef
         seq_measurements = count_measurements_per_wire_idx(wireSeqs, ct)
         for wire in meas_wires:
             measurements[wire] += seq_measurements[wire]
