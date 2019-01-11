@@ -820,7 +820,7 @@ def count_measurements_per_wire(wireSeqs):
     seq_len = len(wireSeqs[list(wireSeqs)[0]])
     meas_wires = list(filter(lambda x: isinstance(x, Channels.Measurement), wireSeqs))
     measurements = {wire: 0 for wire in meas_wires}
-    for ct in range(seq_lendef
+    for ct in range(seq_len):
         seq_measurements = count_measurements_per_wire_idx(wireSeqs, ct)
         for wire in meas_wires:
             measurements[wire] += seq_measurements[wire]
