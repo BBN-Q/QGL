@@ -22,10 +22,9 @@ import operator
 import psutil
 from warnings import warn
 from copy import copy
-from functools import reduce
+from functools import reduce, lru_cache
 from importlib import import_module
 import json
-
 from . import config
 from . import PatternUtils
 from .PatternUtils import flatten, has_gate
@@ -388,6 +387,8 @@ def compile_to_qgl_IR(seqs,
     logger.info("Using {} GB of memory".format(process.memory_info().rss/1e9))
     physWires = map_logical_to_physical(wireSeqs)
 
+    del wireSeqs
+
     # Pave the way for composite instruments, not useful yet...
     files = {}
     label_to_inst   = {}
@@ -437,6 +438,7 @@ def compile_to_qgl_IR(seqs,
     awgData = bundle_wires(physWires, wfs)
 
     logger.info("DONE!")
+    logger.info("Used {} GB of memory".format(process.memory_info().rss/1e9))
     return awgData
 
 def compile_to_hardware(seqs,
@@ -795,12 +797,24 @@ def normalize(seq, channels=None):
             block.pulses[ch] = Id(ch, blocklen)
     return seq
 
-class Waveform(object):
+class MemoizedObject(type):
+    """Metaclass for memoizing objects. Designed to save memory when processing
+    very long sequences. Overrides __call__ to prevent creating a new instance.
+    Idea from https://stackoverflow.com/questions/47785795/memoized-objects-still-have-their-init-invoked
+    """
+    def __init__(self, name, bases, namespace):
+        super().__init__(name, bases, namespace)
+        self.cache = {}
+    def __call__(self, pulse=None):
+        hash = pulse.hashshape()
+        if pulse is not None and hash not in self.cache:
+            self.cache[hash] = super().__call__(pulse=pulse)
+        return self.cache[hash]
+
+class Waveform(metaclass=MemoizedObject):
     """
     Simplified channel independent version of a Pulse with a key into waveform library.
     """
-
-
     def __init__(self, pulse=None):
         if pulse is None:
             self.label = ""
