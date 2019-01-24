@@ -35,6 +35,7 @@ from .PulseSequencer import Pulse, PulseBlock, CompositePulse
 from . import ControlFlow
 from . import BlockLabel
 from . import TdmInstructions # only for APS2-TDM
+import gc
 
 import psutil
 
@@ -469,11 +470,14 @@ def compile_to_hardware(seqs,
     logger.info("Used {} MB of memory.".format((new_mem - mem)/1e6))
     mem = new_mem
 
+    del wireSeqs
+    gc.collect()
 
     # convert to hardware formats
     # files = {}
     awg_metas = {}
-    for awgName, data in awgData.items():
+    for awgName in list(awgData.keys()):
+        data = awgData[awgName]
         # create the target folder if it does not exist
         targetFolder = os.path.split(os.path.normpath(os.path.join(
             config.AWGDir, fileName)))[0]
@@ -496,6 +500,11 @@ def compile_to_hardware(seqs,
                 files[label_to_inst[awgName]][label_to_chan[awgName]] = fullFileName
         else:
             files[awgName] = fullFileName
+
+        del data
+        del awgData[awgName]
+        gc.collect()
+
     # generate TDM sequences FIXME: what's the best way to identify the need for a TDM seq.? Support for single TDM
     if tdm_seq and 'APS2Pattern' in [wire.translator for wire in physWires]:
             aps2tdm_module = import_module('QGL.drivers.APS2Pattern') # this is redundant with above
