@@ -38,6 +38,7 @@ import datetime
 import importlib
 import inspect
 from functools import wraps
+import itertools
 import numpy as np
 import networkx as nx
 
@@ -76,7 +77,7 @@ def check_for_duplicates(f):
         if label in cls.channelDict:
             raise ValueError(f"Cannot create {label}: a channel with the same name already exists.")
         else:
-            return f(cls, label, *args, **kwargs)  
+            return f(cls, label, *args, **kwargs)
     return wrapper
 
 class ChannelLibrary(object):
@@ -131,12 +132,12 @@ class ChannelLibrary(object):
         return self.session.query(obj_type).filter_by(**kwargs)
 
     def get_current_channels(self):
-        return (self.channelDatabase.channels + 
-               self.channelDatabase.generators + 
-               self.channelDatabase.transmitters + 
-               self.channelDatabase.receivers + 
-               self.channelDatabase.transceivers + 
-               self.channelDatabase.instruments + 
+        return (self.channelDatabase.channels +
+               self.channelDatabase.generators +
+               self.channelDatabase.transmitters +
+               self.channelDatabase.receivers +
+               self.channelDatabase.transceivers +
+               self.channelDatabase.instruments +
                self.channelDatabase.processors)
 
     def update_channelDict(self):
@@ -147,7 +148,7 @@ class ChannelLibrary(object):
         cdb = Channels.ChannelDatabase
         q = self.session.query(cdb.label, cdb.time, cdb.id).\
             order_by(Channels.ChannelDatabase.id, Channels.ChannelDatabase.label).all()
-        table_code = ""        
+        table_code = ""
         for i, (label, time, id) in enumerate(q):
             y, d, t = map(time.strftime, ["%Y", "%b. %d", "%I:%M:%S %p"])
             # t = time.strftime("(%Y) %b. %d @ %I:%M:%S %p")
@@ -304,29 +305,52 @@ class ChannelLibrary(object):
         return this_transmitter
 
     @check_for_duplicates
-    def new_APS2_rack(self, label, num, start_address):
-        address_start    = ".".join(start_address.split(".")[:3])
-        address_end      = int(start_address.split(".")[-1])
-        transmitters     = [self.new_APS2(f"{label}_U{i}", f"{address_start}.{address_end+i}") for i in range(1,num+1)]
+    def new_TDM(self, label, address):
+        return Channels.Processor(label=label, model="TDM", address=address, trigger_interval=250e-6)
+
+    @check_for_duplicates
+    def new_APS2_rack(self, label, num, start_address, tdm_ip=None):
+        address_start = ".".join(start_address.split(".")[:3])
+        address_end   = int(start_address.split(".")[-1])
+        transmitters  = [self.new_APS2(f"{label}_U{i}", f"{address_start}.{address_end+i}") for i in range(1,num+1)]
+
         this_transceiver = Channels.Transceiver(label=label, model="APS2Rack", transmitters=transmitters, channel_db=self.channelDatabase)
+        for t in transmitters:
+            t.transceiver = this_transceiver
+
+        if tdm_ip:
+            tdm = self.new_TDM(f"{label}_TDM", tdm_ip)
+            this_transceiver.processors = [tdm]
+            for t in transmitters:
+                t.trigger_source = 'system'
 
         self.add_and_update_dict(this_transceiver)
         return this_transceiver
 
     @check_for_duplicates
     def new_X6(self, label, address, dsp_channel=0, record_length=1024):
-        chan1 = Channels.ReceiverChannel(label=f"RecvChan-{label}-1", channel=1, dsp_channel=dsp_channel, channel_db=self.channelDatabase)
-        chan2 = Channels.ReceiverChannel(label=f"RecvChan-{label}-2", channel=2, dsp_channel=dsp_channel, channel_db=self.channelDatabase)
 
-        this_receiver = Channels.Receiver(label=label, model="X6-1000M", address=address, channels=[chan1, chan2],
+        phys_channels = (1, 2)
+        dsp_channels = (1, 2)
+        stream_types = ("raw", "demodulated", "integrated")
+
+        chans = []
+
+        for p, d, s in itertools.product(phys_channels, dsp_channels, stream_types):
+            chans.append(Channels.ReceiverChannel(label=f"RecvChan-{label}-{s}-{d}-{p}",
+                            channel=p, dsp_channel=d, stream_type=s,
+                            channel_db=self.channelDatabase))
+
+        this_receiver = Channels.Receiver(label=label, model="X6-1000M", address=address, channels=chans,
                                       record_length=record_length, channel_db=self.channelDatabase)
         this_receiver.trigger_source = "external"
         this_receiver.stream_types   = "raw, demodulated, integrated"
         this_receiver.address        = address
 
         # Add a default kernel
-        chan1.kernel = np.ones(record_length, dtype=np.complex).tobytes()
-        chan2.kernel = np.ones(record_length, dtype=np.complex).tobytes()
+        for chan in chans:
+            if chan.stream_type is "integrated":
+                chan.kernel = np.ones(record_length, dtype=np.complex).tobytes()
 
         self.add_and_update_dict(this_receiver)
         return this_receiver
@@ -352,8 +376,10 @@ class ChannelLibrary(object):
         return thing
 
     @check_for_duplicates
-    def new_source(self, label, model, address, power=-30.0, frequency=5.0e9):
-        thing = Channels.Generator(label=label, model=model, address=address, power=power, frequency=frequency, channel_db=self.channelDatabase)
+    def new_source(self, label, model, address, power=-30.0, frequency=5.0e9, reference=None):
+        thing = Channels.Generator(label=label, model=model, address=address, power=power,
+                                    frequency=frequency, reference=reference,
+                                    channel_db=self.channelDatabase)
         self.add_and_update_dict(thing)
         return thing
 
@@ -396,6 +422,8 @@ class ChannelLibrary(object):
         else:
             raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
 
+        if f"M-{qubit.label}" in self.channelDict:
+            raise ValueError(f"Cannot create Measurement M-{qubit.label}: a channel with the same name already exists.")
         meas = Channels.Measurement(label=f"M-{qubit.label}", channel_db=self.channelDatabase)
         meas.phys_chan = phys_chan
         if generator:
@@ -403,7 +431,9 @@ class ChannelLibrary(object):
 
         phys_trig_channel = trig_channel if trig_channel else transmitter.get_chan("m1")
 
-        trig_chan              = Channels.LogicalMarkerChannel(label=f"receiversTrig-{qubit.label}", channel_db=self.channelDatabase)
+        trig_chan              = Channels.LogicalMarkerChannel(label=f"ReceiverTrig-{qubit.label}", channel_db=self.channelDatabase)
+        # print(phys_trig_channel.id, trig_chan.id)
+        self.session.add(trig_chan)
         trig_chan.phys_chan    = phys_trig_channel
         trig_chan.pulse_params = {"length": trigger_length, "shape_fun": "constant"}
         meas.trig_chan         = trig_chan
@@ -428,16 +458,25 @@ class ChannelLibrary(object):
             meas.gate_chan      = gate_chan
             self.add_and_update_dict([gate_chan])
 
-    def set_master(self, transmitter, trig_channel, pulse_length=1e-7):
-        if not isinstance(trig_channel, Channels.PhysicalMarkerChannel):
-            raise ValueError("In set_master the trigger channel must be an instance of PhysicalMarkerChannel")
+    def set_master(self, master_instrument, trig_channel=None, pulse_length=1e-7):
 
-        st = Channels.LogicalMarkerChannel(label="slave_trig", channel_db=self.channelDatabase)
-        st.phys_chan = trig_channel
-        st.pulse_params = {"length": pulse_length, "shape_fun": "constant"}
-        transmitter.master = True
-        transmitter.trigger_source = "internal"
-        self.add_and_update_dict([st])
+        if isinstance(master_instrument, Channels.Processor):
+            master_instrument.master = True
+
+        elif trig_channel:
+
+            if not isinstance(trig_channel, Channels.PhysicalMarkerChannel):
+                raise ValueError("In set_master the trigger channel must be an instance of PhysicalMarkerChannel")
+
+            st = Channels.LogicalMarkerChannel(label="slave_trig", channel_db=self.channelDatabase)
+            st.phys_chan = trig_channel
+            st.pulse_params = {"length": pulse_length, "shape_fun": "constant"}
+            master_instrument.master = True
+            master_instrument.trigger_source = "internal"
+            self.add_and_update_dict([st])
+
+        else:
+            raise ValueError(f"Could not determine which transmitter to set as master for {transmitter}:{trig_channel}")
 
 def QubitFactory(label):
     ''' Return a saved qubit channel'''

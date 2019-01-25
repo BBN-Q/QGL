@@ -78,7 +78,7 @@ def plot_pulse_files(metafile, time=False):
     Helper function to plot a list of AWG files. A JS slider allows choice of sequence number.
     '''
     #If we only go one filename turn it into a list
-    
+
     with open(metafile, 'r') as FID:
         meta_info = json.load(FID)
     fileNames = []
@@ -166,8 +166,8 @@ def extract_waveforms(fileNames, nameDecorator='', time=False):
         # Assume a naming convention path/to/file/SequenceName-AWGName.h5
         AWGName = "-".join((os.path.split(os.path.splitext(fileName)[0])[1]).split('-')[1:])
         # Strip any _ suffix
-        if '_' in AWGName:
-            AWGName = AWGName[:AWGName.index('_')]
+        # if '_' in AWGName:
+        #     AWGName = AWGName[:AWGName.index('_')]
 
         translator = resolve_translator(fileName, translators)
         wfs = translator.read_sequence_file(fileName)
@@ -177,7 +177,7 @@ def extract_waveforms(fileNames, nameDecorator='', time=False):
             if all_zero_seqs(seqs):
                 continue
             num_seqs = max(num_seqs, len(seqs))
-            line_names.append((AWGName + nameDecorator + '_' + k).replace("-","_")) 
+            line_names.append((AWGName + nameDecorator + '_' + k).replace("-","_"))
             k_ = line_names[-1].replace("-", "_")
             for ct, seq in enumerate(seqs):
                 data_dicts[k_ + "_{:d}".format(ct + 1)] = {}
@@ -205,7 +205,7 @@ def plot_pulse_files_compare(metafile1, metafile2, time=False):
 
     with open(metafile1, 'r') as FID:
         meta_info1 = json.load(FID)
-    
+
     for el in meta_info1["instruments"].values():
         # Accomodate seq_file per instrument and per channel
         if isinstance(el, str):
@@ -216,7 +216,7 @@ def plot_pulse_files_compare(metafile1, metafile2, time=False):
 
     with open(metafile2, 'r') as FID:
         meta_info2 = json.load(FID)
-    
+
     for el in meta_info2["instruments"].values():
         # Accomodate seq_file per instrument and per channel
         if isinstance(el, str):
