@@ -380,7 +380,7 @@ class ChannelLibrary(object):
         self.add_and_update_dict(thing)
         return thing
 
-    def set_control(self, qubit, transmitter, generator=None):
+    def set_control(self, qubit_or_edge, transmitter, generator=None):
         quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
         markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
 
@@ -393,10 +393,18 @@ class ChannelLibrary(object):
         else:
             raise ValueError("In set_control the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
 
-        qubit.phys_chan = phys_chan
+        qubit_or_edge.phys_chan = phys_chan
         if generator:
-            qubit.phys_chan.generator = generator
+            qubit_or_edge.phys_chan.generator = generator
         self.update_channelDict()
+
+    def new_edge(self, source, target):
+        label = f"{source.label}->{target.label}"
+        if label in self.channelDict:
+            raise ValueError("Cannot construct edge {label} since it is already in the channel library.")
+        edge = Channels.Edge(label=f"{source.label}->{target.label}", source=source, target=target, channel_db=self.channelDatabase)
+        self.add_and_update_dict(edge)
+        return edge
 
     def set_qubit_connectivity(self, graph):
         """
