@@ -309,11 +309,8 @@ class ChannelLibrary(object):
         return Channels.Processor(label=label, model="TDM", address=address, trigger_interval=250e-6)
 
     @check_for_duplicates
-    def new_APS2_rack(self, label, num, start_address, tdm_ip=None):
-        address_start = ".".join(start_address.split(".")[:3])
-        address_end   = int(start_address.split(".")[-1])
-        transmitters  = [self.new_APS2(f"{label}_U{i}", f"{address_start}.{address_end+i}") for i in range(1,num+1)]
-
+    def new_APS2_rack(self, label, ip_addresses, tdm_ip=None):
+        transmitters  = [self.new_APS2(f"{label}_U{n+1}", f"{ip}") for n, ip in enumerate(ip_addresses)]
         this_transceiver = Channels.Transceiver(label=label, model="APS2Rack", transmitters=transmitters, channel_db=self.channelDatabase)
         for t in transmitters:
             t.transceiver = this_transceiver
