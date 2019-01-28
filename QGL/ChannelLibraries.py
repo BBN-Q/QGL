@@ -280,14 +280,11 @@ class ChannelLibrary(object):
 
     def build_connectivity_graph(self):
         # build connectivity graph
-        for chan in select(q for q in Channels.Qubit if q not in self.connectivityG):
-=======
         for chan in self.session.query(Channels.Qubit).filter(Channels.Qubit not in self.connectivityG).all():
             self.connectivityG.add_node(chan)
         for chan in self.session.query(Channels.Edge): #select(e for e in Channels.Edge):
             self.connectivityG.add_edge(chan.source, chan.target)
             self.connectivityG[chan.source][chan.target]['channel'] = chan
->>>>>>> Ditch atom, move to Pony.orm for all channel library objects.
 
     @check_for_duplicates
     def new_APS2(self, label, address):
