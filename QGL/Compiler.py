@@ -37,8 +37,6 @@ from . import BlockLabel
 from . import TdmInstructions # only for APS2-TDM
 import gc
 
-import psutil
-
 logger = logging.getLogger(__name__)
 
 def map_logical_to_physical(wires):
@@ -301,9 +299,6 @@ def collect_specializations(seqs):
             done.append(target)
     return funcs
 
-def _get_mem():
-    return psutil.Process(os.getpid()).memory_info().rss
-
 def compile_to_hardware(seqs,
                         fileName,
                         suffix='',
@@ -328,8 +323,6 @@ def compile_to_hardware(seqs,
     # save input code to file
     save_code(seqs, fileName + suffix)
 
-    mem = _get_mem()
-
     # all sequences should start with a WAIT for synchronization
     for seq in seqs:
         if not isinstance(seq[0], ControlFlow.Wait):
@@ -339,17 +332,11 @@ def compile_to_hardware(seqs,
     # Add the digitizer trigger to measurements
     logger.info("Adding digitizer trigger")
     PatternUtils.add_digitizer_trigger(seqs)
-    new_mem = _get_mem()
-    logger.info("Used {} MB of memory.".format((new_mem - mem)/1e6))
-    mem = new_mem
 
     # Add gating/blanking pulses
     logger.info("Adding blanking pulses")
     for seq in seqs:
         PatternUtils.add_gate_pulses(seq)
-    new_mem = _get_mem()
-    logger.info("Used {} MB of memory.".format((new_mem - mem)/1e6))
-    mem = new_mem
 
     if add_slave_trigger and 'slave_trig' in ChannelLibraries.channelLib:
         # Add the slave trigger
@@ -364,16 +351,10 @@ def compile_to_hardware(seqs,
     channels = set()
     for seq in seqs:
         channels |= find_unique_channels(seq)
-    new_mem = _get_mem()
-    logger.info("Used {} MB of memory.".format((new_mem - mem)/1e6))
-    mem = new_mem
 
     # Compile all the pulses/pulseblocks to sequences of pulses and control flow
     logger.info("Compiling sequences.")
     wireSeqs = compile_sequences(seqs, channels)
-    new_mem = _get_mem()
-    logger.info("Used {} MB of memory.".format((new_mem - mem)/1e6))
-    mem = new_mem
 
     if not validate_linklist_channels(wireSeqs.keys()):
         print("Compile to hardware failed")
@@ -388,17 +369,11 @@ def compile_to_hardware(seqs,
             wireSeqs[chan] = PatternUtils.apply_gating_constraints(
                 chan.phys_chan, seq)
     debug_print(wireSeqs, 'Gated sequence')
-    new_mem = _get_mem()
-    logger.info("Used {} MB of memory.".format((new_mem - mem)/1e6))
-    mem = new_mem
 
     # save number of measurements for meta info
     logger.info("Counting measurements.")
     num_measurements = count_measurements(wireSeqs)
     wire_measurements = count_measurements_per_wire(wireSeqs)
-    new_mem = _get_mem()
-    logger.info("Used {} MB of memory.".format((new_mem - mem)/1e6))
-    mem = new_mem
 
     # map logical to physical channels, physWires is a list of
     # PhysicalQuadratureChannels and PhysicalMarkerChannels
@@ -406,9 +381,6 @@ def compile_to_hardware(seqs,
     # ASPName-12, or APSName-12m1
     logger.info("Mapping logical to physical channels.")
     physWires = map_logical_to_physical(wireSeqs)
-    new_mem = _get_mem()
-    logger.info("Used {} MB of memory.".format((new_mem - mem)/1e6))
-    mem = new_mem
 
     # Pave the way for composite instruments, not useful yet...
     files = {}
@@ -435,41 +407,25 @@ def compile_to_hardware(seqs,
     # construct channel delay map
     logger.info("Constructing delay map.")
     delays = channel_delay_map(physWires)
-    new_mem = _get_mem()
-    logger.info("Used {} MB of memory.".format((new_mem - mem)/1e6))
-    mem = new_mem
 
     # apply delays
     logger.info("Applying delays.")
     for chan, wire in physWires.items():
         PatternUtils.delay(wire, delays[chan])
     debug_print(physWires, 'Delayed wire')
-    new_mem = _get_mem()
-    logger.info("Used {} MB of memory.".format((new_mem - mem)/1e6))
-    mem = new_mem
 
     # generate wf library (base shapes)
     logger.info("Generating waveform library.")
     wfs = generate_waveforms(physWires)
-    new_mem = _get_mem()
-    logger.info("Used {} MB of memory.".format((new_mem - mem)/1e6))
-    mem = new_mem
 
     # replace Pulse objects with Waveforms
     logger.info("Replacing pulses with waveforms")
     physWires = pulses_to_waveforms(physWires)
-    new_mem = _get_mem()
-    logger.info("Used {} MB of memory.".format((new_mem - mem)/1e6))
-    mem = new_mem
 
     # bundle wires on instruments, or channels depending
     # on whether we have one sequence per channel
     logger.info("Bundling wires.")
     awgData = bundle_wires(physWires, wfs)
-    new_mem = _get_mem()
-    logger.info("Used {} MB of memory.".format((new_mem - mem)/1e6))
-    mem = new_mem
-
     del wireSeqs
     gc.collect()
 
@@ -488,9 +444,6 @@ def compile_to_hardware(seqs,
                 'seqFileExt']))
         logger.info("Writing sequence file for: {}".format(awgName))
         new_meta = data['translator'].write_sequence_file(data, fullFileName)
-        new_mem = _get_mem()
-        logger.info("Used {} MB of memory.".format((new_mem - mem)/1e6))
-        mem = new_mem
         if new_meta:
             awg_metas[awgName] = new_meta
 
