@@ -101,7 +101,7 @@ def merge_channels(wires, channels):
                 [e.amp * e.frequency for e in entries])[0]
             assert len(nonZeroSSBChan) <= 1, \
                 "Unable to handle merging more than one non-zero entry with non-zero frequency."
-            if nonZeroSSBChan:
+            if nonZeroSSBChan.size > 0:
                 frequency = entries[nonZeroSSBChan[0]].frequency
             else:
                 frequency = 0.0
