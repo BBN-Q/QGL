@@ -90,6 +90,23 @@ class ControlFlowTest(unittest.TestCase):
         assert (isinstance(seq1[2][0], TdmInstructions.WriteAddrInstruction))
         assert (isinstance(seq1[2][1], TdmInstructions.LoadCmpVramInstruction))
 
+    def test_qwait_err(self):
+        q1 = self.q1
+        with self.assertRaises(ValueError) as exc:
+            seq1 = [qwait(kind='FOO')]
+        exc_str = str(exc.exception)
+        assert (exc_str == 'Unknown kind parameter [FOO]')
+
+        with self.assertRaises(ValueError) as exc:
+            seq1 = [qwait(kind='RAM')]
+        exc_str = str(exc.exception)
+        assert (exc_str == 'Please specify addr')
+
+        # test the legal values
+        seq1 = [qwait(kind='TRIG')]
+        seq1 = [qwait(kind='CMP')]
+        seq1 = [qwait(kind='RAM', addr=0xff)]
+
     def test_compile(self):
         q1 = self.q1
         seq1 = [X90(q1), Y90(q1)]
