@@ -299,7 +299,7 @@ def align(mode="center", *pulses):
            pulse_list.append(pulse)
     if max(pad_lengths) == 0:
         # no padding element required
-        return pulses
+        return reduce(operator.mul, pulses)
     elif mode == 'left':
         return reduce(operator.mul,[p + TAPulse('Id', p.channel, max(pulse_lengths) - p.length,0) if p.length < max(pulse_lengths) else p for p in pulse_list])
     elif mode == 'right':
