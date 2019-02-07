@@ -23,7 +23,7 @@ from copy import copy
 from future.moves.itertools import zip_longest
 import pickle
 
-import h5py
+import struct
 import numpy as np
 
 from QGL import Compiler, ControlFlow, BlockLabel, PatternUtils
@@ -108,17 +108,13 @@ SEQFILE_PER_CHANNEL = False
 def get_empty_channel_set():
     return {'ch1': {}, 'm1': {}, 'm2': {}, 'm3': {}, 'm4': {}}
 
-
 def get_seq_file_extension():
-    return '.h5'
-
+    return '.aps2'
 
 def is_compatible_file(filename):
-    with h5py.File(filename, 'r') as FID:
-        target = FID['/'].attrs['target hardware']
-        if isinstance(target, str):
-            target = target.encode('utf-8')
-        if target == b'APS2':
+    with open(filename, 'rb') as FID:
+        byte = FID.read(4)
+        if byte == b'APS2':
             return True
     return False
 
@@ -1082,34 +1078,33 @@ def write_sequence_file(awgData, fileName):
                 for s in ['ch1', 'm1', 'm2', 'm3', 'm4']]
     instructions = create_instr_data(seq_data, wfInfo[0][1], wfInfo[0][2])
 
-    #Open the HDF5 file
+    #Open the binary file
     if os.path.isfile(fileName):
         os.remove(fileName)
-    with h5py.File(fileName, 'w') as FID:
-        FID['/'].attrs['Version'] = 4.0
-        FID['/'].attrs['target hardware'] = 'APS2'
-        FID['/'].attrs['minimum firmware version'] = 4.0
-        FID['/'].attrs['channelDataFor'] = np.uint16([1, 2])
+
+    with open(fileName, 'wb') as FID:
+        FID.write(b'APS2')                     # target hardware
+        FID.write(np.float32(4.0).tobytes())   # Version
+        FID.write(np.float32(4.0).tobytes())   # minimum firmware version
+        FID.write(np.uint16(2).tobytes())      # number of channels
+        # FID.write(np.uint16([1, 2]).tobytes()) # channelDataFor
+        FID.write(np.uint64(instructions.size).tobytes()) # instructions length
+        FID.write(instructions.tobytes()) # instructions in uint64 form
 
         #Create the groups and datasets
         for chanct in range(2):
-            chanStr = '/chan_{0}'.format(chanct + 1)
-            chanGroup = FID.create_group(chanStr)
+            # chanStr = '/chan_{0}'.format(chanct + 1)
+            # chanGroup = FID.create_group(chanStr)
             #Write the waveformLib to file
             if wfInfo[chanct][0].size == 0:
                 #If there are no waveforms, ensure that there is some element
                 #so that the waveform group gets written to file.
                 #TODO: Fix this in libaps2
-                data = np.array([0], dtype=np.uint16)
+                data = np.array([0], dtype=np.int16)
             else:
                 data = wfInfo[chanct][0]
-            FID.create_dataset(chanStr + '/waveforms', data=data)
-
-            #Write the instructions to channel 1
-            if np.mod(chanct, 2) == 0:
-                FID.create_dataset(chanStr + '/instructions',
-                                   data=instructions)
-
+            FID.write(np.uint64(data.size).tobytes()) # waveform data length for channel
+            FID.write(data.tobytes())
 
 def read_sequence_file(fileName):
     """
@@ -1130,16 +1125,21 @@ def read_sequence_file(fileName):
                 #marker channel
                 seqs[ch].append([])
 
-    with h5py.File(fileName, 'r') as FID:
-        file_version = FID["/"].attrs["Version"]
+    with open(fileName, 'rb') as FID:
+        target_hw    = FID.read(4).decode('utf-8')
+        file_version = struct.unpack('<f', FID.read(4))[0]
+        min_fw       = struct.unpack('<f', FID.read(4))[0]
+        num_chans    = struct.unpack('<H', FID.read(2))[0]
+        
+        inst_len     = struct.unpack('<Q', FID.read(8))[0]
+        instructions = np.frombuffer(FID.read(8*inst_len), dtype=np.uint64)
+        
         wf_lib = {}
-        wf_lib['ch1'] = (
-            1.0 /
-            MAX_WAVEFORM_VALUE) * FID['/chan_1/waveforms'].value.flatten()
-        wf_lib['ch2'] = (
-            1.0 /
-            MAX_WAVEFORM_VALUE) * FID['/chan_2/waveforms'].value.flatten()
-        instructions = FID['/chan_1/instructions'].value.flatten()
+        for i in range(num_chans):
+            wf_len  = struct.unpack('<Q', FID.read(8))[0]
+            wf_dat  = np.frombuffer(FID.read(2*wf_len), dtype=np.int16)
+            wf_lib[f'ch{i+1}'] = ( 1.0 / MAX_WAVEFORM_VALUE) * wf_dat.flatten()
+
         NUM_NCO = 2
         freq = np.zeros(NUM_NCO)  #radians per timestep
         phase = np.zeros(NUM_NCO)
