@@ -24,6 +24,7 @@ from future.moves.itertools import zip_longest
 import pickle
 
 import struct
+import sys
 import numpy as np
 
 from QGL import Compiler, ControlFlow, BlockLabel, PatternUtils
@@ -258,9 +259,9 @@ class Instruction(object):
             wfOpCode = (self.payload >> 46) & 0x3
             wfOpCodes = ["PLAY", "TRIG", "SYNC", "PREFETCH"]
             out += wfOpCodes[wfOpCode]
-            out += "; TA bit={}".format((self.payload >> 45) & 0x1)
-            out += ", count = {}".format((self.payload >> 24) & 2**21 - 1)
-            out += ", addr = {}".format(self.payload & 2**24 - 1)
+            out += "; TA_bit={}".format((self.payload >> 45) & 0x1)
+            out += ", count={}".format((self.payload >> 24) & 2**21 - 1)
+            out += ", addr={}".format(self.payload & 2**24 - 1)
 
             # # APS3/TDM modifier to use VRAM output
             # if self.payload & (1 << 48):
@@ -271,7 +272,7 @@ class Instruction(object):
             mrkOpCodes = ["PLAY", "TRIG", "SYNC"]
             out += mrkOpCodes[mrkOpCode]
             out += "; state={}".format((self.payload >> 32) & 0x1)
-            out += ", count = {}".format(self.payload & 2**32 - 1)
+            out += ", count={}".format(self.payload & 2**32 - 1)
 
         elif instrOpCode == MODULATION:
             modulatorOpCode = (self.payload >> 45) & 0x7
@@ -293,21 +294,21 @@ class Instruction(object):
             cmpCodes = ["EQUAL", "NOTEQUAL", "GREATERTHAN", "LESSTHAN"]
             cmpCode = (self.payload >> 8) & 0x3
             out += " | " + cmpCodes[cmpCode]
-            out += ", value = {}".format(self.payload & 0xff)
+            out += ", value={}".format(self.payload & 0xff)
 
         elif any(
             [instrOpCode == op for op in [GOTO, CALL, RET, REPEAT, PREFETCH]]):
-            out += " | target addr = {}".format(self.payload & 2**26 - 1)
+            out += " | target_addr={}".format(self.payload & 2**26 - 1)
 
         elif instrOpCode == LOAD:
-            out += " | count = {}".format(self.payload)
+            out += " | count={}".format(self.payload)
 
         elif instrOpCode == CUSTOM:
             store_addr = self.payload & 0xFFFF
             load_addr = (self.payload >> 16) & 0xFFFF
             instruction = (self.payload >> 32) & 0xFF
             instructionAPS = TDM_CUSTOM_DECODE[instruction]
-            out += " | instruction = {0} ({1}), load_addr = 0x{2:0x}, store_addr = 0x{3:0x}".format(instruction, instructionAPS, load_addr, store_addr)
+            out += " | instruction={0} ({1}), load_addr=0x{2:0x}, store_addr=0x{3:0x}".format(instruction, instructionAPS, load_addr, store_addr)
 
         elif instrOpCode == WRITEADDR:
             addr = self.payload & 0xFFFF
@@ -333,7 +334,7 @@ class Instruction(object):
                 addr = (self.payload >> 16) & 0xFFFF
                 value = (self.payload >> 32) & 0xFFFF
 
-            out += "{0} | addr = 0x{1:0x}, {2} = 0x{3:0x}".format(instrStr, addr, valueType, value)
+            out += "{0} | addr=0x{1:0x}, {2}=0x{3:0x}".format(instrStr, addr, valueType, value)
 
         elif instrOpCode == LOADCMP:
             addr = self.payload & 0xFFFF
@@ -345,7 +346,7 @@ class Instruction(object):
                 src = "EXT"
                 if use_ram:
                     src = "RAM"
-                out += "LOADCMP | source = {0}, addr = 0x{1:0x}, read_mask = 0x{2:0x}".format(src, addr, mask)
+                out += "LOADCMP | source={0}, addr=0x{1:0x}, read_mask=0x{2:0x}".format(src, addr, mask)
         return out
 
     def __eq__(self, other):
@@ -1447,14 +1448,16 @@ def write_tdm_seq(seq, tdm_fileName):
 
 # Utility Functions for displaying programs
 
-def get_channel_instructions_string(channel):
-    return '/chan_{}/instructions'.format(channel)
-
-def raw_instructions(filename, channel = 1):
-    channelStr =  get_channel_instructions_string(channel)
-    with h5py.File(filename, 'r') as fid:
-        raw_instrs = fid[channelStr].value.flatten()
-        return raw_instrs
+def raw_instructions(fileName):
+    with open(fileName, 'rb') as FID:
+        target_hw    = FID.read(4).decode('utf-8')
+        file_version = struct.unpack('<f', FID.read(4))[0]
+        min_fw       = struct.unpack('<f', FID.read(4))[0]
+        num_chans    = struct.unpack('<H', FID.read(2))[0]
+        
+        inst_len     = struct.unpack('<Q', FID.read(8))[0]
+        instructions = np.frombuffer(FID.read(8*inst_len), dtype=np.uint64)
+    return instructions
 
 def decompile_instructions(instructions, tdm = False):
     return [Instruction.unflatten(x, decode_as_tdm = tdm) for x in instructions]
@@ -1489,3 +1492,65 @@ def display_raw_instructions(raw):
 def display_raw_file(filename):
     raw = raw_instructions(filename)
     display_raw_instructions(raw)
+
+if __name__ == '__main__':
+    if len(sys.argv) == 2:
+        
+        from PyQt5.QtWidgets import QApplication, QWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QAbstractItemView
+        from PyQt5.QtGui import QIcon, QColor
+
+        colors = {"WFM": QColor(0,200,0),
+                  "GOTO": QColor(0,100,100),
+                  "MARKER": QColor(150,150,200)}
+
+        class App(QWidget):
+         
+            def __init__(self, instructions):
+                super().__init__()
+                self.title = 'APS2 Disassembled Instructions'
+                self.left = 100
+                self.top = 100
+                self.width = 1000
+                self.height = 1200
+                self.instructions = instructions
+                self.initUI()
+         
+            def initUI(self):
+                self.setWindowTitle(self.title)
+                self.setGeometry(self.left, self.top, self.width, self.height)
+         
+                self.createTable()
+                self.layout = QVBoxLayout()
+                self.layout.addWidget(self.tableWidget) 
+                self.setLayout(self.layout) 
+         
+                # Show widget
+                self.show()
+         
+            def createTable(self):
+               # Create table
+                self.tableWidget = QTableWidget()
+                self.tableWidget.setRowCount(len(self.instructions))
+                self.tableWidget.setColumnCount(7)
+
+                for k, instr in enumerate(self.instructions):
+                    fields = str(instr).replace(',','').replace(';', '').split(" ")
+                    if "|" in fields:
+                        fields.remove("|")
+                    if fields[0] in colors:
+                        color = colors[fields[0]]
+                    else:
+                        color = None
+                    for l, f in enumerate(fields):
+                        text = fields[l]
+                        item = QTableWidgetItem(text)
+                        if color:
+                            item.setBackground(color)
+                        self.tableWidget.setItem(k,l, item)
+                self.tableWidget.move(0,0)
+                self.tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)
+
+        app = QApplication(sys.argv[:1])
+        ex = App(read_instructions(sys.argv[1]))
+        sys.exit(app.exec_())
+

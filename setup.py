@@ -9,7 +9,6 @@ setup(name='QGL',
         "numpy >= 1.11.1",
         "scipy >= 0.17.1",
         "networkx >= 1.11",
-        "h5py >= 2.6.0",
         "bokeh >= 0.12.13",
         # "pony >= 0.7.4", # This needs to be 0.7.4-dev
     ])
