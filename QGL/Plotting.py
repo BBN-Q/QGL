@@ -22,28 +22,13 @@ limitations under the License.
 '''
 
 import os.path, uuid, tempfile
-import bokeh.plotting as bk
-from bokeh.layouts import column
-from bokeh.util.warnings import BokehUserWarning
-from bokeh.resources import INLINE
 import numpy as np
 import warnings
 from . import config
 
-def output_notebook(local=True, suppress_warnings=False):
-    if suppress_warnings:
-        warnings.simplefilter("ignore", BokehUserWarning)
-    if local:
-        bk.output_notebook(resources=INLINE)
-    else:
-        bk.output_notebook()
-
-def output_file(local=True, suppress_warnings=True):
-    if suppress_warnings:
-        warnings.simplefilter("ignore", BokehUserWarning)
-    mode = "inline" if local else "cdn"
-    bk.output_file(os.path.join(tempfile.gettempdir(), str(uuid.uuid4()) +
-                                ".html"), mode=mode)
+def output_notebook():
+    import matplotlib
+    matplotlib.use("nbagg")
 
 def build_waveforms(seq):
     # import here to avoid circular imports
@@ -76,30 +61,30 @@ def build_waveforms(seq):
         concatShapes[q] = np.append(concatShapes[q], 0)
     return concatShapes
 
+#
+# def plot_waveforms(waveforms, figTitle=''):
+#     channels = waveforms.keys()
+#     # plot
+#     plots = []
+#     for (ct, chan) in enumerate(channels):
+#         fig = bk.figure(title=figTitle + repr(chan),
+#                         plot_width=800,
+#                         plot_height=350,
+#                         y_range=[-1.05, 1.05],
+#                         x_axis_label=u'Time (μs)')
+#         fig.background_fill_color = config.plotBackground
+#         if config.gridColor:
+#             fig.xgrid.grid_line_color = config.gridColor
+#             fig.ygrid.grid_line_color = config.gridColor
+#         waveformToPlot = waveforms[chan]
+#         xpts = np.linspace(0, len(waveformToPlot) / chan.phys_chan.sampling_rate
+#                            / 1e-6, len(waveformToPlot))
+#         fig.line(xpts, np.real(waveformToPlot), color='red')
+#         fig.line(xpts, np.imag(waveformToPlot), color='blue')
+#         plots.append(fig)
+#     bk.show(column(*plots))
 
-def plot_waveforms(waveforms, figTitle=''):
-    channels = waveforms.keys()
-    # plot
-    plots = []
-    for (ct, chan) in enumerate(channels):
-        fig = bk.figure(title=figTitle + repr(chan),
-                        plot_width=800,
-                        plot_height=350,
-                        y_range=[-1.05, 1.05],
-                        x_axis_label=u'Time (μs)')
-        fig.background_fill_color = config.plotBackground
-        if config.gridColor:
-            fig.xgrid.grid_line_color = config.gridColor
-            fig.ygrid.grid_line_color = config.gridColor
-        waveformToPlot = waveforms[chan]
-        xpts = np.linspace(0, len(waveformToPlot) / chan.phys_chan.sampling_rate
-                           / 1e-6, len(waveformToPlot))
-        fig.line(xpts, np.real(waveformToPlot), color='red')
-        fig.line(xpts, np.imag(waveformToPlot), color='blue')
-        plots.append(fig)
-    bk.show(column(*plots))
-
-
-def show(seq):
-    waveforms = build_waveforms(seq)
-    plot_waveforms(waveforms)
+#
+# def show(seq):
+#     waveforms = build_waveforms(seq)
+#     plot_waveforms(waveforms)

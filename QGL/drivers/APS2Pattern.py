@@ -178,7 +178,7 @@ def create_wf_vector(wfLib, seqs):
                 idx = int(CACHE_LINE_LENGTH * (
                     (idx + CACHE_LINE_LENGTH) // CACHE_LINE_LENGTH))
                 wfVec = np.append(wfVec,
-                                  np.zeros(CACHE_LINE_LENGTH,
+                                  np.zeros(int(CACHE_LINE_LENGTH),
                                            dtype=np.int16))
                 offsets.append({})
 
@@ -1094,8 +1094,6 @@ def write_sequence_file(awgData, fileName):
 
         #Create the groups and datasets
         for chanct in range(2):
-            # chanStr = '/chan_{0}'.format(chanct + 1)
-            # chanGroup = FID.create_group(chanStr)
             #Write the waveformLib to file
             if wfInfo[chanct][0].size == 0:
                 #If there are no waveforms, ensure that there is some element
@@ -1131,10 +1129,10 @@ def read_sequence_file(fileName):
         file_version = struct.unpack('<f', FID.read(4))[0]
         min_fw       = struct.unpack('<f', FID.read(4))[0]
         num_chans    = struct.unpack('<H', FID.read(2))[0]
-        
+
         inst_len     = struct.unpack('<Q', FID.read(8))[0]
         instructions = np.frombuffer(FID.read(8*inst_len), dtype=np.uint64)
-        
+
         wf_lib = {}
         for i in range(num_chans):
             wf_len  = struct.unpack('<Q', FID.read(8))[0]
@@ -1454,7 +1452,7 @@ def raw_instructions(fileName):
         file_version = struct.unpack('<f', FID.read(4))[0]
         min_fw       = struct.unpack('<f', FID.read(4))[0]
         num_chans    = struct.unpack('<H', FID.read(2))[0]
-        
+
         inst_len     = struct.unpack('<Q', FID.read(8))[0]
         instructions = np.frombuffer(FID.read(8*inst_len), dtype=np.uint64)
     return instructions
@@ -1495,7 +1493,7 @@ def display_raw_file(filename):
 
 if __name__ == '__main__':
     if len(sys.argv) == 2:
-        
+
         from PyQt5.QtWidgets import QApplication, QWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QAbstractItemView
         from PyQt5.QtGui import QIcon, QColor
 
@@ -1504,7 +1502,7 @@ if __name__ == '__main__':
                   "MARKER": QColor(150,150,200)}
 
         class App(QWidget):
-         
+
             def __init__(self, instructions):
                 super().__init__()
                 self.title = 'APS2 Disassembled Instructions'
@@ -1514,19 +1512,19 @@ if __name__ == '__main__':
                 self.height = 1200
                 self.instructions = instructions
                 self.initUI()
-         
+
             def initUI(self):
                 self.setWindowTitle(self.title)
                 self.setGeometry(self.left, self.top, self.width, self.height)
-         
+
                 self.createTable()
                 self.layout = QVBoxLayout()
-                self.layout.addWidget(self.tableWidget) 
-                self.setLayout(self.layout) 
-         
+                self.layout.addWidget(self.tableWidget)
+                self.setLayout(self.layout)
+
                 # Show widget
                 self.show()
-         
+
             def createTable(self):
                # Create table
                 self.tableWidget = QTableWidget()
@@ -1553,4 +1551,3 @@ if __name__ == '__main__':
         app = QApplication(sys.argv[:1])
         ex = App(read_instructions(sys.argv[1]))
         sys.exit(app.exec_())
-
