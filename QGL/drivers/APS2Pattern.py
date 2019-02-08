@@ -163,7 +163,7 @@ def create_wf_vector(wfLib, seqs):
 
     else:
         #otherwise fill in one cache line at a time
-        CACHE_LINE_LENGTH = WAVEFORM_CACHE_SIZE / 2
+        CACHE_LINE_LENGTH = int(np.round(WAVEFORM_CACHE_SIZE / 2)) - 1
         wfVec = np.zeros(CACHE_LINE_LENGTH, dtype=np.int16)
         offsets = [{}]
         cache_lines = []

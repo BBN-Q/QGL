@@ -36,8 +36,10 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
                                  "maddr", "moffset"])):
     __slots__ = ()
 
-    def __new__(cls, label, channel, shapeParams, amp=1.0, phase=0, frameChange=0, ignoredStrParams=[], maddr=-1, moffset=0):
-        if hasattr(channel, 'frequency'):
+    def __new__(cls, label, channel, shapeParams, amp=1.0, phase=0, frameChange=0, ignoredStrParams=[], maddr=-1, moffset=0, frequency=None):
+        if frequency:
+            frequency = frequency
+        elif hasattr(channel, 'frequency'):
             frequency = channel.frequency
         else:
             frequency = 0
