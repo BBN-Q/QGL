@@ -25,9 +25,8 @@ limitations under the License.
 import os.path
 import json
 from importlib import import_module
-from ipywidgets import interact, interactive, fixed, interact_manual, IntSlider
+from ipywidgets import interact, VBox, IntSlider
 import ipywidgets as widgets
-import matplotlib.pyplot as plt
 import numpy as np
 
 from . import config
@@ -68,7 +67,7 @@ def resolve_translator(filename, translators):
     raise NameError("No translator found to open the given file %s", filename)
 
 
-def plot_pulse_files(metafile, time=False, backend='matplotlib'):
+def plot_pulse_files(metafile, time=True, backend='bqplot'):
     '''
     plot_pulse_files(metafile)
 
@@ -92,24 +91,44 @@ def plot_pulse_files(metafile, time=False, backend='matplotlib'):
     sequencename = localname.split('-')[0]
 
     if backend=='matplotlib':
-        fig = plt.figure()
-        ax = fig.add_subplot(1,1,1)
-        ax.set_title("Waveform Plotter")
-        lines = []
-        for line_name in line_names:
-            dat = data_dicts[f"{line_name}_1"]
-            line, = ax.plot(dat['x'], dat['y'], label=line_name, linewidth=1.0)
-            lines.append(line)
-        plt.tight_layout()
-        plt.show()
-
+        import matplotlib.pyplot as plt
         def update_plot(seq_ind):
-            for line, line_name in zip(lines, line_names):
+            for line_name in line_names:
                 dat = data_dicts[f"{line_name}_{seq_ind}"]
-                line.set_xdata(dat['x'])
-                line.set_ydata(dat['y'])
-            fig.canvas.draw()
+                plt.plot(dat['x'], dat['y'], label=line_name, linewidth=1.0)
         interact(update_plot, seq_ind=IntSlider(min=1,max=num_seqs,step=1,value=1,description="Sequence Number"))
+
+    elif backend=='bqplot':
+        from bqplot import DateScale, LinearScale, Axis, Lines, Figure, Tooltip
+        from bqplot.colorschemes import CATEGORY10, CATEGORY20
+        from ipywidgets import interact, IntSlider
+        sx = LinearScale()
+        sy = LinearScale(min=-1.0, max=2*len(line_names)-1.0)
+        if time:
+            ax = Axis(label='Time (ns)', scale=sx)
+        else:
+            ax = Axis(label="Samples", scale=sx)
+        ay = Axis(label='Amplitude', scale=sy, orientation='vertical')
+
+        colors = CATEGORY10 if len(line_names)<10 else CATEGORY20
+        lines = []
+        tt = Tooltip(fields=['name'], labels=['Channel'])
+        x_mult = 1.0e9 if time else 1
+        for i, line_name in enumerate(line_names):
+            dat = data_dicts[f"{line_name}_1"]
+            lines.append(Lines(labels=[line_name], x=x_mult*dat['x'], y=dat['y'], scales={'x': sx, 'y': sy}, 
+                                tooltip=tt, animate=False, colors=[colors[i]]))
+
+        slider = IntSlider(min=1, max=num_seqs, step=1, description='Segment', value=1)
+        def segment_changed(change):
+            for line, line_name in zip(lines, line_names):
+                dat = data_dicts[f"{line_name}_{slider.value}"]
+                line.x = x_mult*dat['x']
+                line.y = dat['y']
+        slider.observe(segment_changed, 'value')
+        fig = Figure(marks=lines, axes=[ax, ay], title='Waveform Plotter',animation_duration=50)
+        return VBox([slider, fig])
+
 
 def extract_waveforms(fileNames, nameDecorator='', time=False):
     line_names = []
@@ -147,101 +166,101 @@ def extract_waveforms(fileNames, nameDecorator='', time=False):
     return line_names, num_seqs, data_dicts
 
 
-def plot_pulse_files_compare(metafile1, metafile2, time=False):
-    '''
-    plot_pulse_files_compare(fileNames1, fileNames2)
+# def plot_pulse_files_compare(metafile1, metafile2, time=False):
+#     '''
+#     plot_pulse_files_compare(fileNames1, fileNames2)
 
-    Helper function to plot a list of AWG files. A JS slider allows choice of sequence number.
-    '''
-    #If we only go one filename turn it into a list
-    fileNames1 = []
-    fileNames2 = []
+#     Helper function to plot a list of AWG files. A JS slider allows choice of sequence number.
+#     '''
+#     #If we only go one filename turn it into a list
+#     fileNames1 = []
+#     fileNames2 = []
 
-    with open(metafile1, 'r') as FID:
-        meta_info1 = json.load(FID)
+#     with open(metafile1, 'r') as FID:
+#         meta_info1 = json.load(FID)
 
-    for el in meta_info1["instruments"].values():
-        # Accomodate seq_file per instrument and per channel
-        if isinstance(el, str):
-            fileNames1.append(el)
-        elif isinstance(el, dict):
-            for file in el.values():
-                fileNames1.append(file)
+#     for el in meta_info1["instruments"].values():
+#         # Accomodate seq_file per instrument and per channel
+#         if isinstance(el, str):
+#             fileNames1.append(el)
+#         elif isinstance(el, dict):
+#             for file in el.values():
+#                 fileNames1.append(file)
 
-    with open(metafile2, 'r') as FID:
-        meta_info2 = json.load(FID)
+#     with open(metafile2, 'r') as FID:
+#         meta_info2 = json.load(FID)
 
-    for el in meta_info2["instruments"].values():
-        # Accomodate seq_file per instrument and per channel
-        if isinstance(el, str):
-            fileNames2.append(el)
-        elif isinstance(el, dict):
-            for file in el.values():
-                fileNames2.append(file)
+#     for el in meta_info2["instruments"].values():
+#         # Accomodate seq_file per instrument and per channel
+#         if isinstance(el, str):
+#             fileNames2.append(el)
+#         elif isinstance(el, dict):
+#             for file in el.values():
+#                 fileNames2.append(file)
 
-    line_names1, num_seqs1, data_dicts1 = extract_waveforms(fileNames1, 'A', time=time)
-    line_names2, num_seqs2, data_dicts2 = extract_waveforms(fileNames2, 'B', time=time)
-    num_seqs = max(num_seqs1, num_seqs2)
-    data_dicts1.update(data_dicts2)
-    line_names = line_names1 + line_names2
+#     line_names1, num_seqs1, data_dicts1 = extract_waveforms(fileNames1, 'A', time=time)
+#     line_names2, num_seqs2, data_dicts2 = extract_waveforms(fileNames2, 'B', time=time)
+#     num_seqs = max(num_seqs1, num_seqs2)
+#     data_dicts1.update(data_dicts2)
+#     line_names = line_names1 + line_names2
 
-    localname = os.path.split(fileNames1[0])[1]
-    sequencename = localname.split('-')[0]
+#     localname = os.path.split(fileNames1[0])[1]
+#     sequencename = localname.split('-')[0]
 
-    data = {line_name: ColumnDataSource(data=dat) for line_name,dat in data_dicts1.items()}
-    plot = Figure(title=sequencename, plot_width=1000)
-    plot.background_fill_color = config.plotBackground
-    if config.gridColor:
-        plot.xgrid.grid_line_color = config.gridColor
-        plot.ygrid.grid_line_color = config.gridColor
+#     data = {line_name: ColumnDataSource(data=dat) for line_name,dat in data_dicts1.items()}
+#     plot = Figure(title=sequencename, plot_width=1000)
+#     plot.background_fill_color = config.plotBackground
+#     if config.gridColor:
+#         plot.xgrid.grid_line_color = config.gridColor
+#         plot.ygrid.grid_line_color = config.gridColor
 
-    # Colobrewer2 qualitative Set1 (http://colorbrewer2.org)
-    colours = [
-        "#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#ffff33",
-        "#a65628", "#f781bf", "#999999"
-    ]
+#     # Colobrewer2 qualitative Set1 (http://colorbrewer2.org)
+#     colours = [
+#         "#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#ffff33",
+#         "#a65628", "#f781bf", "#999999"
+#     ]
 
-    js_sources = data
-    for ct, k in enumerate(line_names):
-        k_ = k.replace("-", "_")
-        line = plot.line(data_dicts1[k + "_1"]["x"],
-                         data_dicts1[k + "_1"]["y"],
-                         color=colours[ct % len(colours)],
-                         line_width=2,
-                         legend=k.replace("_", "-"))
-        js_sources[k_] = line.data_source
+#     js_sources = data
+#     for ct, k in enumerate(line_names):
+#         k_ = k.replace("-", "_")
+#         line = plot.line(data_dicts1[k + "_1"]["x"],
+#                          data_dicts1[k + "_1"]["y"],
+#                          color=colours[ct % len(colours)],
+#                          line_width=2,
+#                          legend=k.replace("_", "-"))
+#         js_sources[k_] = line.data_source
 
-    code_template = Template("""
-        var seq_num = cb_obj.getv('value');
-        // console.log(seq_num);
-        var all_data = {
-            {% for trace in trace_names %}
-                '{{trace}}': {{trace}}.getv('data'),
-            {% endfor %}
-        };
-        {% for line in line_names %}
-        {{line}}['data'] = {'x': (all_data['{{line}}_'.concat(seq_num.toString())])['x'],
-                              'y': (all_data['{{line}}_'.concat(seq_num.toString())])['y']};
-        {% endfor %}
-    """)
-    rendered = code_template.render(
-            line_names=line_names,
-            trace_names=list(data.keys())[:-len(line_names)]
-            )
+#     code_template = Template("""
+#         var seq_num = cb_obj.getv('value');
+#         // console.log(seq_num);
+#         var all_data = {
+#             {% for trace in trace_names %}
+#                 '{{trace}}': {{trace}}.getv('data'),
+#             {% endfor %}
+#         };
+#         {% for line in line_names %}
+#         {{line}}['data'] = {'x': (all_data['{{line}}_'.concat(seq_num.toString())])['x'],
+#                               'y': (all_data['{{line}}_'.concat(seq_num.toString())])['y']};
+#         {% endfor %}
+#     """)
+#     rendered = code_template.render(
+#             line_names=line_names,
+#             trace_names=list(data.keys())[:-len(line_names)]
+#             )
 
-    callback = CustomJS(
-        args=dict(**js_sources),
-        code=rendered)
+#     callback = CustomJS(
+#         args=dict(**js_sources),
+#         code=rendered)
 
-    if num_seqs > 1:
-        slider = Slider(start=1,
-                        end=num_seqs,
-                        value=1,
-                        step=1,
-                        title="Sequence",
-                        callback=callback)
+#     if num_seqs > 1:
+#         slider = Slider(start=1,
+#                         end=num_seqs,
+#                         value=1,
+#                         step=1,
+#                         title="Sequence",
+#                         callback=callback)
 
-        layout = column(slider, plot)
-        show(layout)
-    else:
-        show(plot)
+#         layout = column(slider, plot)
+#         show(layout)
+#     else:
+#         show(plot)
