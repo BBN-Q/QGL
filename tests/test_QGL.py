@@ -55,7 +55,7 @@ class SequenceTestCases(object):
 
     def build_filename(self, name):
         # utility for reading and writing
-        return self.testFileDirectory + self.fileHeader + '-' + name + '.h5'
+        return self.testFileDirectory + self.fileHeader + '-' + name + '.aps2'
 
     def write(self):
         # writes each sequence to a file in the test data directory a file header
