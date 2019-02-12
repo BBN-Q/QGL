@@ -26,10 +26,6 @@ import numpy as np
 import warnings
 from . import config
 
-def output_notebook():
-    import matplotlib
-    matplotlib.use("nbagg")
-
 def build_waveforms(seq):
     # import here to avoid circular imports
     from . import Compiler, PulseSequencer, BlockLabel, ControlFlow
