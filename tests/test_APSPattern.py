@@ -8,14 +8,12 @@ from QGL.drivers import APSPattern
 
 class APSPatternUtils(unittest.TestCase):
     def setUp(self):
-        # self.q1gate = Channels.LogicalMarkerChannel(label='q1-gate')
-        # self.q1 = Qubit(label='q1', gate_chan=self.q1gate)
-        self.q1 = Qubit(label='q1')
+        self.cl = ChannelLibrary(db_resource_name=":memory:")
+        self.q1gate = Channels.LogicalMarkerChannel(label='q1-gate', channel_db=self.cl.channelDatabase)
+        self.q1 = self.cl.new_qubit(label='q1')
+        self.q1.gate_chan = self.q1gate
         self.q1.pulse_params['length'] = 30e-9
-
-        ChannelLibrary(blank=True) # Create a blank ChannelLibrary
-        ChannelLibraries.channelLib.channelDict = {'q1': self.q1}
-        ChannelLibraries.channelLib.build_connectivity_graph()
+        self.cl.update_channelDict()
 
     def test_unroll_loops_simple(self):
         q1 = self.q1
