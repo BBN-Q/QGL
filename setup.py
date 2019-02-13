@@ -10,4 +10,5 @@ setup(name='QGL',
         "scipy >= 0.17.1",
         "networkx >= 1.11",
         "bqplot >= 0.11.5",
+        "sqlalchemy >= 1.2.17",
     ])
