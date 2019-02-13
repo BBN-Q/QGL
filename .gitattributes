@@ -1,2 +1,3 @@
 *.h5 filter=lfs diff=lfs merge=lfs -text
 *.aps2 filter=lfs diff=lfs merge=lfs -text
+*.aps1 filter=lfs diff=lfs merge=lfs -text

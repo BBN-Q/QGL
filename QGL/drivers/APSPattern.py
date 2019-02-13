@@ -680,26 +680,20 @@ def write_sequence_file(awgData, fileName, miniLLRepeat=1):
     if os.path.isfile(fileName):
         os.remove(fileName)
 
-
+    print("WRiting ", fileName)
     with open(fileName, 'wb') as FID:
+        channelDataFor = np.array([0,0,0,0], dtype=np.bool)
+        if LLs12:
+            channelDataFor[0:2] = True
+        if LLs34:
+            channelDataFor[2:] = True
+        LLData = [LLs12, LLs34]
+        repeats = [0, 0]
+
         FID.write(b'APS1')                     # target hardware
         FID.write(np.float32(2.2).tobytes())   # Version
-        FID.write(np.float32(4.0).tobytes())   # minimum firmware version
-        FID.write(np.uint16(2).tobytes())      # number of channels
-        FID.write(np.uint16([1, 2]).tobytes()) # channelDataFor
-        FID.write(np.uint64(instructions.size).tobytes()) # instructions length
-        FID.write(instructions.tobytes()) # instructions in uint64 form
-    
-    with h5py.File(fileName, 'w') as FID:
-
-        #List of which channels we have data for
-        #TODO: actually handle incomplete channel data
-        channelDataFor = [1, 2] if LLs12 else []
-        channelDataFor += [3, 4] if LLs34 else []
-        FID['/'].attrs['Version'] = 2.2
-        FID['/'].attrs['target hardware'] = 'APS1'
-        FID['/'].attrs['channelDataFor'] = np.uint16(channelDataFor)
-        FID['/'].attrs['miniLLRepeat'] = np.uint16(miniLLRepeat - 1)
+        FID.write(channelDataFor.tobytes())    # channelDataFor
+        FID.write(np.array(miniLLRepeat-1, dtype=np.bool).tobytes()) # MiniLLRepeat
 
         #Create the waveform vectors
         wfInfo = []
@@ -709,29 +703,39 @@ def write_sequence_file(awgData, fileName, miniLLRepeat=1):
             wfInfo.append(create_wf_vector({key: wf.imag
                                             for key, wf in wfLib.items()}))
 
-        LLData = [LLs12, LLs34]
-        repeats = [0, 0]
         #Create the groups and datasets
         for chanct in range(4):
-            chanStr = '/chan_{0}'.format(chanct + 1)
-            chanGroup = FID.create_group(chanStr)
-            chanGroup.attrs['isIQMode'] = np.uint8(1)
-            #Write the waveformLib to file
-            FID.create_dataset('{0}/waveformLib'.format(chanStr),
-                               data=wfInfo[chanct][0])
+            # chanStr = '/chan_{0}'.format(chanct + 1)
+            # chanGroup = FID.create_group(chanStr)
+            FID.write(np.uint8(1).tobytes()) # isIQMode
+            FID.write(np.uint64(wfInfo[chanct][0].size).tobytes()) # Length of waveforms
+            FID.write(wfInfo[chanct][0].tobytes())                 # Waveforms np.int16
 
+            # chanGroup.attrs['isIQMode'] = np.uint8(1)
+            #Write the waveformLib to file
+            # FID.create_dataset('{0}/waveformLib'.format(chanStr),
+            #                    data=wfInfo[chanct][0])
+        for chanct in [1,3]:
             #For A channels (1 & 3) we write link list data if we actually have any
-            if (np.mod(chanct, 2) == 0) and LLData[chanct // 2]:
-                groupStr = chanStr + '/linkListData'
-                LLGroup = FID.create_group(groupStr)
+            if LLData[chanct // 2]:
+                # groupStr = chanStr + '/linkListData'
+                # LLGroup = FID.create_group(groupStr)
                 LLDataVecs, numEntries = create_LL_data(
                     LLData[chanct // 2], wfInfo[chanct][1],
                     os.path.basename(fileName))
-                LLGroup.attrs['length'] = numEntries
+                # LLGroup.attrs['length'] = numEntries
+                FID.write(np.uint64(len(LLDataVecs.keys())).tobytes()) # numKeys
+                FID.write(np.uint64(numEntries).tobytes()) # numEntries
+
+                # print(numEntries, len(LLDataVecs.keys()))
                 for key, dataVec in LLDataVecs.items():
-                    FID.create_dataset(groupStr + '/' + key, data=dataVec)
-            else:
-                chanGroup.attrs['isLinkListData'] = np.uint8(0)
+                    print(key, dataVec.dtype)
+                    FID.write(key.ljust(32,"#").encode("utf-8")) # Key 32 byte utf-8
+                    FID.write(dataVec.tobytes())                 # Data np.uint16
+                    # FID.create_dataset(groupStr + '/' + key, data=dataVec)
+
+            # else:
+            #     chanGroup.attrs['isLinkListData'] = np.uint8(0)
 
 
 def read_sequence_file(fileName):
@@ -748,6 +752,15 @@ def read_sequence_file(fileName):
     chanStrs = ['ch1', 'ch2', 'ch3', 'ch4']
     chanStrs2 = ['chan_1', 'chan_2', 'chan_3', 'chan_4']
     mrkStrs = ['ch1m1', 'ch2m1', 'ch3m1', 'ch4m1']
+
+    with open(fileName, 'rb') as FID:
+        target_hw      = FID.read(4).decode('utf-8')
+        file_version   = struct.unpack('<f', FID.read(4))[0]
+        channelDataFor = np.frombuffer(FID.read(4), dtype=np.bool)
+        print("REad", channelDataFor, file_version, target_hw)
+        # inst_len     = struct.unpack('<Q', FID.read(8))[0]
+        # instructions = np.frombuffer(FID.read(8*inst_len), dtype=np.uint64)
+
 
     with h5py.File(fileName, 'r') as FID:
         for chanct, chanStr in enumerate(chanStrs2):
@@ -822,7 +835,7 @@ def read_sequence_file(fileName):
                             AWGData[mrkStrs[chanct]][-1].append((delay - 1, 0))
                             AWGData[mrkStrs[chanct]][-1].append((1, 1))
 
-    return AWGData
+    return curLLdata,AWGData
 
 
 if __name__ == '__main__':
