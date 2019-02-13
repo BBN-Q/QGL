@@ -13,11 +13,6 @@ class ControlFlowTest(unittest.TestCase):
         self.q3 = cl.new_qubit(label='q3')
         self.q4 = cl.new_qubit(label='q4')
         cl.update_channelDict()
-        # self.q1 = Qubit(label='q1')
-        # self.q2 = Qubit(label='q2')
-        
-        # ChannelLibrary(blank=True) # Create a blank ChannelLibrary
-        # ChannelLibraries.channelLib.build_connectivity_graph()
 
     def test_qif(self):
         q1 = self.q1
@@ -25,8 +20,6 @@ class ControlFlowTest(unittest.TestCase):
         seq2 = [X(q1), Y(q1), Z(q1)]
         label(seq1)
         label(seq2)
-        # print qif(0, seq1, seq2)
-        # print ([CmpEq(0), Goto(label(seq1))] + seq2 + [Goto(endlabel(seq1))] + seq1
         assert (qif(0, seq1, seq2) == [CmpEq("m", 0), Goto(label(seq1))] + seq2 +
                 [Goto(endlabel(seq1))] + seq1)
 
