@@ -7,12 +7,17 @@ from QGL.BlockLabel import label, endlabel
 
 class ControlFlowTest(unittest.TestCase):
     def setUp(self):
-        self.q1 = Qubit(label='q1')
-        self.q2 = Qubit(label='q2')
+        cl = ChannelLibrary(db_resource_name=":memory:")
+        self.q1 = cl.new_qubit(label='q1')
+        self.q2 = cl.new_qubit(label='q2')
+        self.q3 = cl.new_qubit(label='q3')
+        self.q4 = cl.new_qubit(label='q4')
+        cl.update_channelDict()
+        # self.q1 = Qubit(label='q1')
+        # self.q2 = Qubit(label='q2')
         
-        ChannelLibrary(blank=True) # Create a blank ChannelLibrary
-        ChannelLibraries.channelLib.channelDict = {'q1': self.q1, 'q2': self.q2}
-        ChannelLibraries.channelLib.build_connectivity_graph()
+        # ChannelLibrary(blank=True) # Create a blank ChannelLibrary
+        # ChannelLibraries.channelLib.build_connectivity_graph()
 
     def test_qif(self):
         q1 = self.q1
