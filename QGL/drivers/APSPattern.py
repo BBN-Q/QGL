@@ -16,7 +16,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 '''
 
-import h5py
 import os
 import numpy as np
 from warnings import warn
@@ -56,15 +55,12 @@ def get_empty_channel_set():
 
 
 def get_seq_file_extension():
-    return '.h5'
-
+    return '.aps1'
 
 def is_compatible_file(filename):
-    with h5py.File(filename, 'r') as FID:
-        target = FID['/'].attrs['target hardware']
-        if isinstance(target, str):
-            target = target.encode('utf-8')
-        if target == b'APS1':
+    with open(filename, 'rb') as FID:
+        byte = FID.read(4)
+        if byte == b'APS1':
             return True
     return False
 
@@ -683,6 +679,17 @@ def write_sequence_file(awgData, fileName, miniLLRepeat=1):
     #Open the HDF5 file
     if os.path.isfile(fileName):
         os.remove(fileName)
+
+
+    with open(fileName, 'wb') as FID:
+        FID.write(b'APS1')                     # target hardware
+        FID.write(np.float32(2.2).tobytes())   # Version
+        FID.write(np.float32(4.0).tobytes())   # minimum firmware version
+        FID.write(np.uint16(2).tobytes())      # number of channels
+        FID.write(np.uint16([1, 2]).tobytes()) # channelDataFor
+        FID.write(np.uint64(instructions.size).tobytes()) # instructions length
+        FID.write(instructions.tobytes()) # instructions in uint64 form
+    
     with h5py.File(fileName, 'w') as FID:
 
         #List of which channels we have data for

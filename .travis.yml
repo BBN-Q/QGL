@@ -40,7 +40,7 @@ install:
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy sqlalchemy jupyter scipy networkx
   - source activate test-environment
   - pip install coveralls
-  - pip istall bqplot
+  - pip install bqplot
   - pip install git+https://github.com/BBN-Q/bbndb.git
   - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then  pip install pygsti; fi
 
