@@ -1,4 +1,3 @@
-import h5py
 import unittest
 import numpy as np
 import time
@@ -6,7 +5,6 @@ import os.path
 import struct
 from bbndb.qgl import PhysicalChannel, LogicalChannel, Measurement
 from QGL import *
-import h5py
 
 # Waveform numpy assert_allclose Test for QGL
 #
