@@ -41,6 +41,8 @@ from functools import wraps
 import itertools
 import numpy as np
 import networkx as nx
+from warnings import warn
+import logging
 
 import bbndb
 
@@ -54,6 +56,8 @@ from sqlalchemy.pool import StaticPool
 from IPython.display import HTML, display
 
 channelLib = None
+
+logger = logging.getLogger(__name__)
 
 def check_session_dirty(f):
     """Since we can't mix db objects from separate sessions, re-fetch entities by their unique IDs"""
@@ -75,7 +79,8 @@ def check_for_duplicates(f):
     @wraps(f)
     def wrapper(cls, label, *args, **kwargs):
         if label in cls.channelDict:
-            raise ValueError(f"Cannot create {label}: a channel with the same name already exists.")
+            logger.warning(f"Cannot create {label}: a channel with the same name already exists.")
+            return cls.channelDict[label]
         else:
             return f(cls, label, *args, **kwargs)
     return wrapper
@@ -429,8 +434,10 @@ class ChannelLibrary(object):
             raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
 
         if f"M-{qubit.label}" in self.channelDict:
-            raise ValueError(f"Cannot create Measurement M-{qubit.label}: a channel with the same name already exists.")
-        meas = Channels.Measurement(label=f"M-{qubit.label}", channel_db=self.channelDatabase)
+            logger.warning(f"Cannot create Measurement M-{qubit.label}: a channel with the same name already exists.")
+            meas = self.channelDict[f"M-{qubit.label}"]
+        else:
+            meas = Channels.Measurement(label=f"M-{qubit.label}", channel_db=self.channelDatabase)
         meas.phys_chan = phys_chan
         if generator:
             meas.phys_chan.generator = generator
