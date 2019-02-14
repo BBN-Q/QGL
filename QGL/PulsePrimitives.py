@@ -25,12 +25,15 @@ from .PulseSequencer import Pulse, TAPulse, CompoundGate, align
 from functools import wraps, reduce
 
 
-def overrideDefaults(chan, updateParams):
+def overrideDefaults(chan, updateParams, ignoredStrParams=['isRunTime', 'maddr', 'moffset']):
     '''Helper function to update any parameters passed in and fill in the defaults otherwise.'''
     # The default parameter list depends on the channel type so pull out of channel
     # Then update passed values
     paramDict = chan.pulse_params.copy()
     paramDict.update(updateParams)
+    for param in ignoredStrParams:
+        if param in paramDict.keys():
+            paramDict.pop(param)
     return paramDict
 
 
@@ -113,7 +116,7 @@ def Utheta(qubit,
         else:
             # linearly scale based upon the 'pi/2' amplitude
             amp  = (angle / (pi/2)) * qubit.pulse_params['pi2Amp']
-    return Pulse(label, qubit, params, amp, phase, 0.0, ignoredStrParams, frequency=frequency)
+    return Pulse(label, qubit, params, amp, phase, 0.0, ignoredStrParams, frequency=frequency, **kwargs)
 
 
 # generic pulses around X, Y, and Z axes
@@ -337,6 +340,14 @@ def arb_axis_drag(qubit,
     return Pulse(kwargs["label"] if "label" in kwargs else "ArbAxis", qubit,
                  params, 1.0, aziAngle, frameChange)
 
+def RandomAC(qubit):
+    params = overrideDefaults(qubit, {})
+    return Pulse("RandomAC", qubit, params, isRunTime=True)
+
+def RandomDiAC(qubit):
+    params = overrideDefaults(qubit, {})
+    params["length"] *= 2.0
+    return Pulse("RandomAC", qubit, params, isRunTime=True)
 
 def AC(qubit, cliffNum):
     """

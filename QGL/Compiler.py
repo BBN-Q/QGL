@@ -30,6 +30,7 @@ from .PatternUtils import flatten, has_gate
 from . import Channels
 from . import ChannelLibraries
 from . import PulseShapes
+from . import PulsePrimitives
 from .PulsePrimitives import Id, clear_pulse_cache
 from .PulseSequencer import Pulse, PulseBlock, CompositePulse
 from . import ControlFlow
@@ -221,12 +222,34 @@ def generate_waveforms(physicalWires):
         for pulse in flatten(wire):
             if not isinstance(pulse, Pulse):
                 continue
+            if pulse.isRunTime:
+                #skip run-time pulses as we need to add the set of all possible pulses to
+                #the waveform table
+                continue
             if pulse.hashshape() not in wfs[ch]:
                 if pulse.isTimeAmp:
                     wfs[ch][pulse.hashshape()] = np.ones(1, dtype=np.complex)
                 else:
                     wfs[ch][pulse.hashshape()] = pulse.shape
     return wfs
+
+def add_runtime_pulse_set(physicalWires, wfs):
+
+    for ch, wire in physicalWires.items():
+        rt_pulses = [pulse for pulse in flatten(wire) if pulse.isRunTime]
+        pulse_type = set([pulse.label for pulse in rt_pulses])
+        if len(pulse_type) > 1:
+            raise Exception("All run-time pulses must have the same label.")
+        if pulse_type not in ("RandomAC, RandomDiAC"):
+            raise Exception(f"Unknown run time pulse type {pulse_type}.")
+
+        pulse_fn = getattr(PulsePrimitives, pulse_type.split('Random')[-1], None)
+
+
+
+
+
+
 
 
 def pulses_to_waveforms(physicalWires):
@@ -425,6 +448,10 @@ def compile_to_hardware(seqs,
     # generate wf library (base shapes)
     logger.info("Generating waveform library.")
     wfs = generate_waveforms(physWires)
+
+    # If there are run-time pulses add these to the library
+    if PatternUtils.contains_runtime_pulses(seqs):
+        wfs = add_runtime_pulse_set(physWires, wfs)
 
     # replace Pulse objects with Waveforms
     logger.info("Replacing pulses with waveforms")
@@ -713,7 +740,8 @@ class Waveform(object):
 
     #Use slots to create attributes to save on memory.
     __slots__ = ["label", "key", "amp", "length", "phase", "frameChange",
-                    "isTimeAmp", "frequency", "logicalChan", "maddr", "startTime"]
+                    "isTimeAmp", "frequency", "logicalChan", "maddr", "startTime",
+                    "isRunTime"]
 
     def __init__(self, pulse=None):
         if pulse is None:
@@ -727,6 +755,7 @@ class Waveform(object):
             self.frequency = 0
             self.logicalChan = ""
             self.maddr = (-1, 0)
+            self.isRunTime = False
         else:
             self.label = pulse.label
             self.key = pulse.hashshape()
@@ -738,11 +767,14 @@ class Waveform(object):
             self.frequency = pulse.frequency
             self.logicalChan = pulse.channel
             self.maddr = pulse.maddr
+            self.isRunTime = pulse.isRunTime
 
     def __repr__(self):
         return self.__str__()
 
     def __str__(self):
+        if self.isRunTime:
+            return f"Hardware-Generated({self.length})"
         if self.isTimeAmp:
             TA = 'HIGH' if self.amp != 0 else 'LOW'
             return "Waveform-TA(" + TA + ", " + str(self.length) + ")"
@@ -751,6 +783,8 @@ class Waveform(object):
                 self.key)[:6] + ", " + str(self.length) + ")"
 
     def __eq__(self, other):
+        if self.isRunTime or other.isRunTime:
+            return False
         if isinstance(other, self.__class__):
             #No __dict__ property so we check all properties.
             return all((getattr(self, attr, None) == getattr(other, attr, None) for attr in self.__slots__))

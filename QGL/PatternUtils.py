@@ -208,6 +208,11 @@ def add_digitizer_trigger(seqs):
                             trig_chan in seq[ct].pulses.keys()):
                         seq[ct] = align('left', seq[ct], TAPulse("TRIG", trig_chan, trig_chan.pulse_params['length'], 1.0, 0.0, 0.0))
 
+def contains_runtime_pulses(seqs):
+    """
+    Determines if sequences contain run-time generated pulses.
+    """
+    return any([hasattr(entry, 'isRunTime') and entry.isRunTime for entry in flatten(seqs)])
 
 def contains_measurement(entry):
     """
