@@ -41,7 +41,6 @@ from functools import wraps
 import itertools
 import numpy as np
 import networkx as nx
-from warnings import warn
 import logging
 
 import bbndb
