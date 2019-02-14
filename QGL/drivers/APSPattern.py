@@ -17,10 +17,10 @@ limitations under the License.
 '''
 
 import os
+import struct
 import numpy as np
 from warnings import warn
-from itertools import chain
-from future.moves.itertools import zip_longest
+from itertools import chain, zip_longest
 from QGL import Compiler, ControlFlow, BlockLabel, PatternUtils
 from QGL.PatternUtils import hash_pulse, flatten
 from copy import copy, deepcopy
@@ -658,7 +658,7 @@ def unroll_loops(LLs):
 
 def write_sequence_file(awgData, fileName, miniLLRepeat=1):
     '''
-	Main function to pack channel LLs into an APS h5 file.
+	Main function to pack channel LLs into an APS1 file.
 	'''
     #Preprocess the sequence data to handle APS restrictions
     LLs12, repeat12, wfLib12 = preprocess(awgData['ch12']['linkList'],
@@ -676,11 +676,10 @@ def write_sequence_file(awgData, fileName, miniLLRepeat=1):
     merge_APS_markerData(LLs12, awgData['ch2m1']['linkList'], 2)
     merge_APS_markerData(LLs34, awgData['ch3m1']['linkList'], 1)
     merge_APS_markerData(LLs34, awgData['ch4m1']['linkList'], 2)
-    #Open the HDF5 file
+
     if os.path.isfile(fileName):
         os.remove(fileName)
 
-    print("WRiting ", fileName)
     with open(fileName, 'wb') as FID:
         channelDataFor = np.array([0,0,0,0], dtype=np.bool)
         if LLs12:
@@ -702,40 +701,25 @@ def write_sequence_file(awgData, fileName, miniLLRepeat=1):
                                             for key, wf in wfLib.items()}))
             wfInfo.append(create_wf_vector({key: wf.imag
                                             for key, wf in wfLib.items()}))
-
         #Create the groups and datasets
         for chanct in range(4):
-            # chanStr = '/chan_{0}'.format(chanct + 1)
-            # chanGroup = FID.create_group(chanStr)
             FID.write(np.uint8(1).tobytes()) # isIQMode
             FID.write(np.uint64(wfInfo[chanct][0].size).tobytes()) # Length of waveforms
             FID.write(wfInfo[chanct][0].tobytes())                 # Waveforms np.int16
 
-            # chanGroup.attrs['isIQMode'] = np.uint8(1)
-            #Write the waveformLib to file
-            # FID.create_dataset('{0}/waveformLib'.format(chanStr),
-            #                    data=wfInfo[chanct][0])
-        for chanct in [1,3]:
+        FID.write(np.uint8(len(LLData[0]) > 0).tobytes()) # LL for chan1
+        FID.write(np.uint8(len(LLData[1]) > 0).tobytes()) # LL for chan3
+        for chanct in [0,2]:
             #For A channels (1 & 3) we write link list data if we actually have any
             if LLData[chanct // 2]:
-                # groupStr = chanStr + '/linkListData'
-                # LLGroup = FID.create_group(groupStr)
                 LLDataVecs, numEntries = create_LL_data(
                     LLData[chanct // 2], wfInfo[chanct][1],
                     os.path.basename(fileName))
-                # LLGroup.attrs['length'] = numEntries
                 FID.write(np.uint64(len(LLDataVecs.keys())).tobytes()) # numKeys
                 FID.write(np.uint64(numEntries).tobytes()) # numEntries
-
-                # print(numEntries, len(LLDataVecs.keys()))
                 for key, dataVec in LLDataVecs.items():
-                    print(key, dataVec.dtype)
                     FID.write(key.ljust(32,"#").encode("utf-8")) # Key 32 byte utf-8
                     FID.write(dataVec.tobytes())                 # Data np.uint16
-                    # FID.create_dataset(groupStr + '/' + key, data=dataVec)
-
-            # else:
-            #     chanGroup.attrs['isLinkListData'] = np.uint8(0)
 
 
 def read_sequence_file(fileName):
@@ -752,90 +736,101 @@ def read_sequence_file(fileName):
     chanStrs = ['ch1', 'ch2', 'ch3', 'ch4']
     chanStrs2 = ['chan_1', 'chan_2', 'chan_3', 'chan_4']
     mrkStrs = ['ch1m1', 'ch2m1', 'ch3m1', 'ch4m1']
-
+    
+    data = {}
     with open(fileName, 'rb') as FID:
         target_hw      = FID.read(4).decode('utf-8')
         file_version   = struct.unpack('<f', FID.read(4))[0]
         channelDataFor = np.frombuffer(FID.read(4), dtype=np.bool)
-        print("REad", channelDataFor, file_version, target_hw)
-        # inst_len     = struct.unpack('<Q', FID.read(8))[0]
-        # instructions = np.frombuffer(FID.read(8*inst_len), dtype=np.uint64)
+        miniLLRepeat   = struct.unpack('?', FID.read(1))[0]
 
+        # channels = [chanStrs2[i] for i in range(4) if channelDataFor[i]]
+        channels = chanStrs2
+        for channel in channels:
+            data[channel] = {}
+            data[channel]["isIQMode"] = bool(struct.unpack('?', FID.read(1))[0])
+            wf_len   = struct.unpack('<Q', FID.read(8))[0]
+            data[channel]["waveformLib"] = np.frombuffer(FID.read(2*wf_len), dtype=np.int16)
+        
+        has_LLs = [struct.unpack('?', FID.read(1))[0] for i in range(2)]
+        for LLexists, chanct in zip(has_LLs, [0,2]):
+            if LLexists:
+                
+                channel = channels[chanct]
+                numKeys      = struct.unpack('<Q', FID.read(8))[0]  
+                numEntries   = struct.unpack('<Q', FID.read(8))[0]  
+                data[channel]["linkListData"] = {}
+                data[channel]["linkListData"]["numLLEntries"] = numEntries
+                for i in range(numKeys): #key, dataVec in LLDataVecs.items():
+                    key     = FID.read(32).decode('utf-8').replace('#','')
+                    dataVec = np.frombuffer(FID.read(2*numEntries), dtype=np.uint16)
+                    data[channel]["linkListData"][key] = dataVec
 
-    with h5py.File(fileName, 'r') as FID:
-        for chanct, chanStr in enumerate(chanStrs2):
-            #If we're in IQ mode then the Q channel gets its linkListData from the I channel
-            if FID[chanStr].attrs['isIQMode']:
-                tmpChan = 2 * (chanct // 2)
-                curLLData = FID[chanStrs2[tmpChan]][
-                    'linkListData'] if "linkListData" in FID[chanStrs2[
-                        tmpChan]] else []
-            else:
-                curLLData = FID[chanStr][
-                    'linkListData'] if "linkListData" in FID[chanStrs2[
-                        tmpChan]] else []
+    for chanct, chanStr in enumerate(chanStrs2):
+        #If we're in IQ mode then the Q channel gets its linkListData from the I channel
+        if data[channel]['isIQMode']:
+            tmpChan = 2 * (chanct // 2)
+            curLLData = data[chanStrs2[tmpChan]][
+                'linkListData'] if "linkListData" in data[chanStrs2[tmpChan]] else []
+        else:
+            curLLData = data[chanStr][
+                'linkListData'] if "linkListData" in data[chanStrs2[tmpChan]] else []
+        if curLLData and has_LLs[chanct//2]:
+            #Pull out the LL data in sample units
+            #Cast type to avoid uint16 overflow
+            addr     = (curLLData['addr'].astype(np.uint)) * ADDRESS_UNIT
+            count    = ((curLLData['count'] + 1).astype(np.uint)) * ADDRESS_UNIT
+            repeat   = curLLData['repeat']
+            trigger1 = (curLLData['trigger1'].astype(np.uint)) * ADDRESS_UNIT
+            trigger2 = (curLLData['trigger2'].astype(np.uint)) * ADDRESS_UNIT
 
-            if curLLData:
-                #Pull out the LL data in sample units
-                #Cast type to avoid uint16 overflow
-                addr = (curLLData['addr'].value.astype(np.uint)) * ADDRESS_UNIT
-                count = ((curLLData['count'].value + 1).astype(np.uint)
-                         ) * ADDRESS_UNIT
-                repeat = curLLData['repeat'].value
-                trigger1 = (
-                    curLLData['trigger1'].value.astype(np.uint)) * ADDRESS_UNIT
-                trigger2 = (
-                    curLLData['trigger2'].value.astype(np.uint)) * ADDRESS_UNIT
+            #Pull out and scale the waveform data
+            wf_lib = (1.0 / MAX_WAVEFORM_VALUE) * data[chanStr]['waveformLib']
 
-                #Pull out and scale the waveform data
-                wf_lib = (
-                    1.0 /
-                    MAX_WAVEFORM_VALUE) * FID[chanStr]['waveformLib'].value
+            #Initialize the lists of time-amplitude pairs
+            AWGData[chanStrs[chanct]] = []
+            AWGData[mrkStrs[chanct]] = []
 
-                #Initialize the lists of time-amplitude pairs
-                AWGData[chanStrs[chanct]] = []
-                AWGData[mrkStrs[chanct]] = []
+            cum_time = 0
 
-                cum_time = 0
+            #Loop over LL entries
+            for ct in range(curLLData["numLLEntries"]):
+                #If we are starting a new sequence push back an empty array
+                if START_MINILL_MASK & repeat[ct]:
+                    AWGData[chanStrs[chanct]].append([])
+                    trigger_delays = [0]
+                    cum_time = 0
 
-                #Loop over LL entries
-                for ct in range(curLLData.attrs['length']):
-                    #If we are starting a new sequence push back an empty array
-                    if START_MINILL_MASK & repeat[ct]:
-                        AWGData[chanStrs[chanct]].append([])
-                        trigger_delays = [0]
-                        cum_time = 0
+                #Record the trigger delays
+                if np.mod(chanct, 2) == 0:
+                    if trigger1[ct] > 0:
+                        trigger_delays.append(cum_time + trigger1[ct])
+                else:
+                    if trigger2[ct] > 0:
+                        trigger_delays.append(cum_time + trigger2[ct])
 
-                    #Record the trigger delays
-                    if np.mod(chanct, 2) == 0:
-                        if trigger1[ct] > 0:
-                            trigger_delays.append(cum_time + trigger1[ct])
-                    else:
-                        if trigger2[ct] > 0:
-                            trigger_delays.append(cum_time + trigger2[ct])
+                #waveforms
+                wf_repeat = (repeat[ct] & REPEAT_MASK) + 1
+                if TA_PAIR_MASK & repeat[ct]:
+                    AWGData[chanStrs[chanct]][-1].append(
+                        (wf_repeat * count[ct], wf_lib[addr[ct]]))
+                else:
+                    for repct in range(wf_repeat):
+                        for sample in wf_lib[addr[ct]:addr[ct] + count[
+                                ct]]:
+                            AWGData[chanStrs[chanct]][-1].append(
+                                (1, sample))
 
-                    #waveforms
-                    wf_repeat = (repeat[ct] & REPEAT_MASK) + 1
-                    if TA_PAIR_MASK & repeat[ct]:
-                        AWGData[chanStrs[chanct]][-1].append(
-                            (wf_repeat * count[ct], wf_lib[addr[ct]]))
-                    else:
-                        for repct in range(wf_repeat):
-                            for sample in wf_lib[addr[ct]:addr[ct] + count[
-                                    ct]]:
-                                AWGData[chanStrs[chanct]][-1].append(
-                                    (1, sample))
+                cum_time += count[ct]
 
-                    cum_time += count[ct]
+                #Create the trigger sequence
+                if END_MINILL_MASK & repeat[ct]:
+                    AWGData[mrkStrs[chanct]].append([])
+                    for delay in np.diff(trigger_delays):
+                        AWGData[mrkStrs[chanct]][-1].append((delay - 1, 0))
+                        AWGData[mrkStrs[chanct]][-1].append((1, 1))
 
-                    #Create the trigger sequence
-                    if END_MINILL_MASK & repeat[ct]:
-                        AWGData[mrkStrs[chanct]].append([])
-                        for delay in np.diff(trigger_delays):
-                            AWGData[mrkStrs[chanct]][-1].append((delay - 1, 0))
-                            AWGData[mrkStrs[chanct]][-1].append((1, 1))
-
-    return curLLdata,AWGData
+    return AWGData
 
 
 if __name__ == '__main__':

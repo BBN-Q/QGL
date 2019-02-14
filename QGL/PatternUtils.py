@@ -334,5 +334,5 @@ def update_wf_library(pulses, path):
                 awg, [str(p) for p in ps.values()]))
             continue
         print("Updating pulses for {}".format(awg))
-        translators[awg].update_wf_library(path + "-" + awg + ".h5", ps,
+        translators[awg].update_wf_library(path + "-" + awg + ".aps", ps,
                                            offsets)

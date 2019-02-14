@@ -6,7 +6,7 @@ from QGL import GSTTools
 import QGL
 
 from QGL.Channels import Edge, Measurement, LogicalChannel, LogicalMarkerChannel, PhysicalMarkerChannel, PhysicalQuadratureChannel
-from QGL.drivers import APSPattern, APS2Pattern, TekPattern
+from QGL.drivers import APSPattern, APS2Pattern
 
 # Pulled in logger to help debug stand-alone run issue with the config.AWGDir
 # (the configuration was NOT gettng loaded when run independently)
@@ -111,8 +111,10 @@ class AWGTestHelper(object):
             logger.warning( "#----- Post load-config QGL.config.AWGDir: {%s}.\n\r", QGL.config.AWGDir)
         #else:
         #    logger.warning( "\n\r#----- Using QGL.config.AWGDir {%s} 8-p", QGL.config.AWGDir)
+        if not hasattr(self, 'original_awg_dir'):
+          self.original_awg_dir = QGL.config.AWGDir
 
-        self.awg_dir = os.path.abspath(QGL.config.AWGDir + os.path.sep + cn)
+        self.awg_dir = os.path.abspath(self.original_awg_dir + os.path.sep + cn)
         self.truth_dir = os.path.abspath(self.testFileDirectory + os.path.sep +
                                          cn)
 
@@ -503,116 +505,116 @@ class TestAPS2(unittest.TestCase, APS2Helper, TestSequences):
         self.compare_sequences('CNOT_CR_mux')
 
 
-# class TestAPS1(unittest.TestCase, AWGTestHelper, TestSequences):
-#     def setUp(self):
-#         AWGTestHelper.__init__(self, APSPattern)
-#         for name in ['APS1', 'APS2', 'APS3']:
-#             for ch in ['12', '34']:
-#                 channelName = name + '-' + ch
-#                 channel = PhysicalQuadratureChannel(label=channelName)
-#                 channel.sampling_rate = 1.2e9
-#                 channel.instrument = name
-#                 channel.translator = 'APSPattern'
-#                 self.channels[channelName] = channel
+class TestAPS1(unittest.TestCase, AWGTestHelper, TestSequences):
+    def setUp(self):
+        AWGTestHelper.__init__(self, APSPattern)
+        for name in ['APS1', 'APS2', 'APS3']:
+            for ch in ['12', '34']:
+                channelName = name + '-' + ch
+                channel = PhysicalQuadratureChannel(label=channelName)
+                channel.sampling_rate = 1.2e9
+                channel.instrument = name
+                channel.translator = 'APSPattern'
+                self.channels[channelName] = channel
 
-#             for m in range(1, 5):
-#                 channelName = "{0}-{1}m1".format(name, m)
-#                 channel = PhysicalMarkerChannel(label=channelName)
-#                 channel.sampling_rate = 1.2e9
-#                 channel.instrument = name
-#                 channel.translator = 'APSPattern'
-#                 self.channels[channelName] = channel
+            for m in range(1, 5):
+                channelName = "{0}-{1}m1".format(name, m)
+                channel = PhysicalMarkerChannel(label=channelName)
+                channel.sampling_rate = 1.2e9
+                channel.instrument = name
+                channel.translator = 'APSPattern'
+                self.channels[channelName] = channel
 
-#         mapping = {'digitizerTrig': 'APS1-1m1',
-#                    'slave_trig': 'APS1-2m1',
-#                    'q1': 'APS1-12',
-#                    'M-q1': 'APS1-34',
-#                    'M-q1-gate': 'APS1-3m1',
-#                    'q1-gate': 'APS1-4m1',
-#                    'q2': 'APS2-12',
-#                    'M-q2': 'APS2-34',
-#                    'M-q2-gate': 'APS2-1m1',
-#                    'q2-gate': 'APS2-2m1',
-#                    'cr': 'APS3-12',
-#                    'cr-gate': 'APS3-1m1',
-#                    'M-q1q2': 'APS3-34',
-#                    'M-q1q2-gate': 'APS3-2m1'}
+        mapping = {'digitizerTrig': 'APS1-1m1',
+                   'slave_trig': 'APS1-2m1',
+                   'q1': 'APS1-12',
+                   'M-q1': 'APS1-34',
+                   'M-q1-gate': 'APS1-3m1',
+                   'q1-gate': 'APS1-4m1',
+                   'q2': 'APS2-12',
+                   'M-q2': 'APS2-34',
+                   'M-q2-gate': 'APS2-1m1',
+                   'q2-gate': 'APS2-2m1',
+                   'cr': 'APS3-12',
+                   'cr-gate': 'APS3-1m1',
+                   'M-q1q2': 'APS3-34',
+                   'M-q1q2-gate': 'APS3-2m1'}
 
-#         # override trigger lengths on APS1 to get single blips
-#         self.channels['slave_trig'].pulse_params['length'] = 0.833e-9
-#         self.channels['digitizerTrig'].pulse_params['length'] = 0.833e-9
-#         self.finalize_map(mapping)
+        # override trigger lengths on APS1 to get single blips
+        self.channels['slave_trig'].pulse_params['length'] = 0.833e-9
+        self.channels['digitizerTrig'].pulse_params['length'] = 0.833e-9
+        self.finalize_map(mapping)
 
-#     def compare_file_data(self, testFile, truthFile):
-#         '''
-# 		Override the method in AWGTestHelper so that we can special-case marker comparison
-# 		'''
-#         awgData = self.read_function(testFile)
-#         truthData = self.read_function(truthFile)
+    def compare_file_data(self, testFile, truthFile):
+        '''
+		Override the method in AWGTestHelper so that we can special-case marker comparison
+		'''
+        awgData = self.read_function(testFile)
+        truthData = self.read_function(truthFile)
 
-#         awgDataLen = len(awgData)
-#         truthDataLen = len(truthData)
+        awgDataLen = len(awgData)
+        truthDataLen = len(truthData)
 
-#         self.assertTrue(awgDataLen == truthDataLen,
-#                         "Expected {0} sequences in file. Found {1}.".format(
-#                             truthDataLen, awgDataLen))
+        self.assertTrue(awgDataLen == truthDataLen,
+                        "Expected {0} sequences in file. Found {1}.".format(
+                            truthDataLen, awgDataLen))
 
-#         for name in truthData:
-#             self.assertTrue(
-#                 name in awgData,
-#                 "Expected channel {0} not found in file {1}".format(name,
-#                                                                     testFile))
-#             isMarker = ('m' == name[-2])
+        for name in truthData:
+            self.assertTrue(
+                name in awgData,
+                "Expected channel {0} not found in file {1}".format(name,
+                                                                    testFile))
+            isMarker = ('m' == name[-2])
 
-#             for x in range(len(truthData[name])):
-#                 seqA = np.array(truthData[name][x])
-#                 seqB = np.array(awgData[name][x])
-#                 if isMarker:
-#                     self.compare_marker_sequence(
-#                         seqA, seqB,
-#                         "\nFile {0} =>\nChannel {1} Sequence {2}".format(
-#                             testFile, name, x))
-#                 else:
-#                     self.compare_sequence(
-#                         seqA, seqB,
-#                         "\nFile {0} =>\nChannel {1} Sequence {2}".format(
-#                             testFile, name, x))
+            for x in range(len(truthData[name])):
+                seqA = np.array(truthData[name][x])
+                seqB = np.array(awgData[name][x])
+                if isMarker:
+                    self.compare_marker_sequence(
+                        seqA, seqB,
+                        "\nFile {0} =>\nChannel {1} Sequence {2}".format(
+                            testFile, name, x))
+                else:
+                    self.compare_sequence(
+                        seqA, seqB,
+                        "\nFile {0} =>\nChannel {1} Sequence {2}".format(
+                            testFile, name, x))
 
-#     def compare_marker_sequence(self, seqA, seqB, errorHeader):
-#         markerDistanceTolerance = 4
-#         self.assertTrue(seqA.size == seqB.size,
-#                         "{0} size {1} != size {2}".format(
-#                             errorHeader, str(seqA.size), str(seqB.size)))
+    def compare_marker_sequence(self, seqA, seqB, errorHeader):
+        markerDistanceTolerance = 4
+        self.assertTrue(seqA.size == seqB.size,
+                        "{0} size {1} != size {2}".format(
+                            errorHeader, str(seqA.size), str(seqB.size)))
 
-#         # convert sequences to locations of blips
-#         idxA = np.where(seqA)[0]
-#         idxB = np.where(seqB)[0]
-#         self.assertTrue(
-#             len(idxA) == len(idxB),
-#             "{0}.\nNumber of blips did not match: {1} != {2}".format(
-#                 errorHeader, len(idxA), len(idxB)))
-#         # compare the blip locations element-wise
-#         if len(idxA) > 0:
-#             diff = np.abs(idxA - idxB)
-#         else:
-#             diff = np.array([0])
-#         self.assertTrue(
-#             max(diff) <= markerDistanceTolerance,
-#             "{0}\nMismatches: {1}".format(errorHeader, diff.nonzero()[0]))
+        # convert sequences to locations of blips
+        idxA = np.where(seqA)[0]
+        idxB = np.where(seqB)[0]
+        self.assertTrue(
+            len(idxA) == len(idxB),
+            "{0}.\nNumber of blips did not match: {1} != {2}".format(
+                errorHeader, len(idxA), len(idxB)))
+        # compare the blip locations element-wise
+        if len(idxA) > 0:
+            diff = np.abs(idxA - idxB)
+        else:
+            diff = np.array([0])
+        self.assertTrue(
+            max(diff) <= markerDistanceTolerance,
+            "{0}\nMismatches: {1}".format(errorHeader, diff.nonzero()[0]))
 
-#     @unittest.expectedFailure
-#     def test_Rabi_RabiWidth(self):
-#         """ test_Rabi_RabiWidth is expected to fail on APS1 with the following error:
-# 			AssertionError: Oops! You have exceeded the waveform memory of the APS
-# 		"""
-#         TestSequences.test_Rabi_RabiWidth(self)
+    @unittest.expectedFailure
+    def test_Rabi_RabiWidth(self):
+        """ test_Rabi_RabiWidth is expected to fail on APS1 with the following error:
+			AssertionError: Oops! You have exceeded the waveform memory of the APS
+		"""
+        TestSequences.test_Rabi_RabiWidth(self)
 
-#     @unittest.expectedFailure
-#     def test_RB_SimultaneousRB_AC(self):
-#         """ test_RB_SimultaneousRB_AC is expected to fail on APS1 with the following error:
-# 			AssertionError: Oops! You have exceeded the waveform memory of the APS
-# 		"""
-#         TestSequences.test_RB_SimultaneousRB_AC(self)
+    @unittest.expectedFailure
+    def test_RB_SimultaneousRB_AC(self):
+        """ test_RB_SimultaneousRB_AC is expected to fail on APS1 with the following error:
+			AssertionError: Oops! You have exceeded the waveform memory of the APS
+		"""
+        TestSequences.test_RB_SimultaneousRB_AC(self)
 
 if __name__ == "__main__":
     unittest.main()

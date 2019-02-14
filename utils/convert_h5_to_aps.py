@@ -5,22 +5,27 @@ import os.path
 
 def write_to_aps1(fileName, data):
     channelDataFor = np.array([i in data['channelDataFor'] for i in range(1,5)], dtype=np.bool)
-    with open(fileName, 'wb') as FID:
-        FID.write(b'APS1')                     # target hardware
-        FID.write(np.float32(2.2).tobytes())   # Version
-        FID.write(channelDataFor.tobytes())    # channelDataFor
-        FID.write(np.array(data['miniLLRepeat'], dtype=np.bool).tobytes()) # MiniLLRepeat
-        for name in data['channels'].keys():
-            FID.write(np.uint8(data['channels'][name]['isIQMode']).tobytes()) # isIQMode
-            FID.write(np.uint64(data['channels'][name]['waveformLib'].size).tobytes()) # Length of waveforms
-            FID.write(data['channels'][name]['waveformLib'].tobytes()) # Waveforms np.int16
-        for name in ['chan_1', 'chan_3']:
-            if 'linkListData' in data['channels'][name].keys():
-                FID.write(np.uint64(data['channels'][name]['linkListNumKeys']).tobytes()) # numKeys
-                FID.write(np.uint64(data['channels'][name]['linkListDataLength']).tobytes()) # numEntries
-                for key, dataVec in data['channels'][name]['linkListData'].items():
-                    FID.write(key.ljust(32,"#").encode("utf-8")) # Key 32 byte utf-8
-                    FID.write(dataVec.tobytes())           
+    try:
+        with open(fileName, 'wb') as FID:
+            FID.write(b'APS1')                     # target hardware
+            FID.write(np.float32(2.2).tobytes())   # Version
+            FID.write(channelDataFor.tobytes())    # channelDataFor
+            FID.write(np.array(data['miniLLRepeat'], dtype=np.bool).tobytes()) # MiniLLRepeat
+            for name in data['channels'].keys():
+                FID.write(np.uint8(data['channels'][name]['isIQMode']).tobytes()) # isIQMode
+                FID.write(np.uint64(data['channels'][name]['waveformLib'].size).tobytes()) # Length of waveforms
+                FID.write(data['channels'][name]['waveformLib'].tobytes()) # Waveforms np.int16
+            FID.write(np.uint8('linkListData' in data['channels']['chan_1'].keys()).tobytes()) # LL for chan1
+            FID.write(np.uint8('linkListData' in data['channels']["chan_3"].keys()).tobytes()) # LL for chan3
+            for name in ['chan_1', 'chan_3']:
+                if 'linkListData' in data['channels'][name].keys():
+                    FID.write(np.uint64(data['channels'][name]['linkListNumKeys']).tobytes()) # numKeys
+                    FID.write(np.uint64(data['channels'][name]['linkListDataLength']).tobytes()) # numEntries
+                    for key, dataVec in data['channels'][name]['linkListData'].items():
+                        FID.write(key.ljust(32,"#").encode("utf-8")) # Key 32 byte utf-8
+                        FID.write(dataVec.tobytes())           
+    except:
+        print(f"Warning: could not write aps1 file {fileName}")
 
 def write_to_aps2(fileName, data):
     instructions = data['instructions']
@@ -78,7 +83,6 @@ def read_aps1_from_h5(fileName):
         for channel in channels:
             data['channels'][channel] = {'waveformLib': FID[f'/{channel}/waveformLib'].value.flatten()}
             data['channels'][channel]['isIQMode'] = FID[f'/{channel}'].attrs['isIQMode']
-            # print(list(FID[f'/{channel}'].keys()))
             if 'linkListData' in list(FID[f'/{channel}'].keys()):
                 data['channels'][channel]['linkListData'] = {}
                 for key in FID[f'/{channel}/linkListData'].keys():
@@ -88,14 +92,15 @@ def read_aps1_from_h5(fileName):
     return data
 
 if __name__ == '__main__':
-    basename, ext = os.path.splitext(sys.argv[1])
-    print(f"Converting {basename+'.h5'}")
-    inst = get_type(basename+'.h5')
-    if inst == "APS2":
-        data = read_aps2_from_h5(basename+'.h5')
-        write_to_aps2(basename+".aps2", data)
-    if inst == "APS1":
-        data = read_aps1_from_h5(basename+'.h5')
-        write_to_aps1(basename+".aps1", data)
+    for filename in sys.argv[1:]:
+        basename, ext = os.path.splitext(filename)
+        print(f"Converting {basename+'.h5'}")
+        inst = get_type(basename+'.h5')
+        if inst == "APS2":
+            data = read_aps2_from_h5(basename+'.h5')
+            write_to_aps2(basename+".aps2", data)
+        if inst == "APS1":
+            data = read_aps1_from_h5(basename+'.h5')
+            write_to_aps1(basename+".aps1", data)
 
 

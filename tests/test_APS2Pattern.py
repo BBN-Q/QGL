@@ -1,4 +1,3 @@
-import h5py
 import unittest
 import numpy as np
 from copy import copy
