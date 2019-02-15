@@ -306,6 +306,22 @@ class ChannelLibrary(object):
         return this_transmitter
 
     @check_for_duplicates
+    def new_APS(self, label, address):
+        chan1  = Channels.PhysicalQuadratureChannel(label=f"{label}-12", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        chan2  = Channels.PhysicalQuadratureChannel(label=f"{label}-34", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        m1     = Channels.PhysicalMarkerChannel(label=f"{label}-1m1", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        m2     = Channels.PhysicalMarkerChannel(label=f"{label}-2m1", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        m3     = Channels.PhysicalMarkerChannel(label=f"{label}-2m1", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        m4     = Channels.PhysicalMarkerChannel(label=f"{label}-4m1", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+
+        this_transmitter = Channels.Transmitter(label=label, model="APS", address=address, channels=[chan1, chan2, m1, m2, m3, m4], channel_db=self.channelDatabase)
+        this_transmitter.trigger_source = "external"
+        this_transmitter.address        = address
+
+        self.add_and_update_dict(this_transmitter)
+        return this_transmitter
+
+    @check_for_duplicates
     def new_TDM(self, label, address):
         return Channels.Processor(label=label, model="TDM", address=address, trigger_interval=250e-6)
 
