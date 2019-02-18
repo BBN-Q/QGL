@@ -234,23 +234,40 @@ def generate_waveforms(physicalWires):
     return wfs
 
 def add_runtime_pulse_set(physicalWires, wfs):
-
     for ch, wire in physicalWires.items():
-        rt_pulses = [pulse for pulse in flatten(wire) if pulse.isRunTime]
-        pulse_type = set([pulse.label for pulse in rt_pulses])
+        rt_pulses = [pulse for pulse in flatten(wire) if isinstance(pulse, Pulse) and pulse.isRunTime]
+        if len(rt_pulses) == 0:
+            continue
+        pulse_type = list(set([pulse.label for pulse in rt_pulses]))
+        pulse_logical_chan = list(set([pulse.channel for pulse in rt_pulses]))
+        
         if len(pulse_type) > 1:
-            raise Exception("All run-time pulses must have the same label.")
-        if pulse_type not in ("RandomAC, RandomDiAC"):
+            raise Exception(f"All run-time pulses must have the same label. Found: {pulse_type}.")
+        if len(pulse_logical_chan) > 1:
+            raise Exception(f"Found more than one channel per run-time pulse set: {pulse_logical_chan}.")
+        if pulse_type[0] not in ("RandomAC, RandomDiAC"):
             raise Exception(f"Unknown run time pulse type {pulse_type}.")
+        pulse_fn = getattr(PulsePrimitives, pulse_type[0].split('Random')[-1], None)
+        if pulse_fn is None:
+            raise Exception("Was unable to get pulse type for run-time generated pulses.")
 
-        pulse_fn = getattr(PulsePrimitives, pulse_type.split('Random')[-1], None)
+        all_cliffords = [pulse_fn(pulse_logical_chan[0], n) for n in range(24)]
+        #Some could be CompositePulses so crack into indvidual pulses
+        all_pulses = []
+        for cliff in all_cliffords:
+            try:
+                for p in cliff.pulses:
+                    all_pulses.append(p)
+            except AttributeError:
+                all_pulses.append(cliff)
+        for cp in all_pulses:
+            if cp.hashshape() not in wfs[ch]: #don't duplicate data
+                if cp.isTimeAmp:
+                    wfs[ch][cp.hashshape()] = np.ones(1, dtype=np.complex)
+                else:
+                    wfs[ch][cp.hashshape()] = cp.shape
 
-
-
-
-
-
-
+    return wfs
 
 def pulses_to_waveforms(physicalWires):
     logger.debug("Converting pulses_to_waveforms:")
