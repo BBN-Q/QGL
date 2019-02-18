@@ -347,7 +347,7 @@ def RandomAC(qubit):
 def RandomDiAC(qubit):
     params = overrideDefaults(qubit, {})
     params["length"] *= 2.0
-    return Pulse("RandomAC", qubit, params, isRunTime=True)
+    return Pulse("RandomDiAC", qubit, params, isRunTime=True)
 
 def AC(qubit, cliffNum):
     """
