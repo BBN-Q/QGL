@@ -389,20 +389,18 @@ class ChannelLibrary(object):
         self.add_and_update_dict(thing)
         return thing
 
-    def set_control(self, qubit_or_edge, transmitter, generator=None, aps1_chan=None):
-        quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
-        markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
-
-        if isinstance(transmitter, Channels.Transmitter) and len(quads) > 1:
-            #raise ValueError("In set_control the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
-            print("Warning: In set_control the Transmitter must have a single quadrature channel if using APS2. Assuming APS1.")
-            if aps1_chan != '12' and aps1_chan != '34':
-                raise ValueError("Assuming APS1, specify APS channel 12 or 34")
-            phys_chan = transmitter.ch(aps1_chan)
-        elif isinstance(transmitter, Channels.Transmitter) and len(quads) == 1:
-            phys_chan = quads[0]
+    def set_control(self, qubit_or_edge, transmitter, generator=None):
+        
+        if isinstance(transmitter, Channels.Transmitter):
+            quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
+            markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
+            if len(quads) > 1:
+            	raise ValueError("In set_control the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
+            elif len(quads) == 1:
+            	phys_chan = quads[0]
         elif isinstance(transmitter, Channels.PhysicalQuadratureChannel):
             phys_chan = transmitter
+            markers = [c for c in transmitter.transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
         else:
             raise ValueError("In set_control the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
 
@@ -427,20 +425,18 @@ class ChannelLibrary(object):
         self.add_and_update_dict(new_edges)
         return new_edges
 
-    def set_measure(self, qubit, transmitter, receivers, generator=None, trig_channel=None, gate=False, gate_channel=None, trigger_length=1e-7, aps1_chan=None):
-        quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
-        markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
+    def set_measure(self, qubit, transmitter, receivers, generator=None, trig_channel=None, gate=False, gate_channel=None, trigger_length=1e-7):
 
-        if isinstance(transmitter, Channels.Transmitter) and len(quads) > 1:
-            #raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
-            print("Warning: In set_measure the Transmitter must have a single quadrature channel if using APS2. Assuming APS1.")
-            if aps1_chan != '12' and aps1_chan != '34':
-                raise ValueError("Assuming APS1, specify APS channel 12 or 34")
-            phys_chan = transmitter.ch(aps1_chan)
-        elif isinstance(transmitter, Channels.Transmitter) and len(quads) == 1:
-            phys_chan = quads[0]
+        if isinstance(transmitter, Channels.Transmitter):
+                quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
+                markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
+                if len(quads) > 1:
+                    raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
+                elif len(quads) == 1:
+                    phys_chan = quads[0]
         elif isinstance(transmitter, Channels.PhysicalQuadratureChannel):
             phys_chan = transmitter
+            markers = [c for c in transmitter.transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
         else:
             raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
 
