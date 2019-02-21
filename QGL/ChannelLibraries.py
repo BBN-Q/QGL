@@ -314,6 +314,10 @@ class ChannelLibrary(object):
         return Channels.SpectrumAnalyzer(label=label, model="SpectrumAnalyzer", address=address, LO_source=source)
 
     @check_for_duplicates
+    def new_DC_source(self, label, address):
+        return Channels.DCSource(label=label, model="YokogawaGS200", address=address, standalone=True)
+
+    @check_for_duplicates
     def new_APS2_rack(self, label, ip_addresses, tdm_ip=None):
         transmitters  = [self.new_APS2(f"{label}_U{n+1}", f"{ip}") for n, ip in enumerate(ip_addresses)]
         this_transceiver = Channels.Transceiver(label=label, model="APS2Rack", transmitters=transmitters, channel_db=self.channelDatabase)
