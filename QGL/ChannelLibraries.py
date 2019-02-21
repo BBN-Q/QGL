@@ -182,18 +182,6 @@ class ChannelLibrary(object):
     def meas(self):
         return self.ent_by_type(Channels.Measurement)
 
-    def ls_receivers(self):
-        return self.ent_by_type(Channels.Receiver, show=True)
-
-    def ls_transmitters(self):
-        return self.ent_by_type(Channels.Transmitter, show=True)
-
-    def ls_qubits(self):
-        return self.ent_by_type(Channels.Qubit, show=True)
-
-    def ls_measurements(self):
-        return self.ent_by_type(Channels.Measurement, show=True)
-
     @check_session_dirty
     def load(self, name, index=1):
         """Load the latest instance for a particular name. Specifying index = 2 will select the second most recent instance """
@@ -299,6 +287,22 @@ class ChannelLibrary(object):
         m4     = Channels.PhysicalMarkerChannel(label=f"{label}-m4", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
 
         this_transmitter = Channels.Transmitter(label=label, model="APS2", address=address, channels=[chan1, m1, m2, m3, m4], channel_db=self.channelDatabase)
+        this_transmitter.trigger_source = "external"
+        this_transmitter.address        = address
+
+        self.add_and_update_dict(this_transmitter)
+        return this_transmitter
+
+    @check_for_duplicates
+    def new_APS(self, label, address):
+        chan1  = Channels.PhysicalQuadratureChannel(label=f"{label}-12", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        chan2  = Channels.PhysicalQuadratureChannel(label=f"{label}-34", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        m1     = Channels.PhysicalMarkerChannel(label=f"{label}-1m1", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        m2     = Channels.PhysicalMarkerChannel(label=f"{label}-2m1", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        m3     = Channels.PhysicalMarkerChannel(label=f"{label}-3m1", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        m4     = Channels.PhysicalMarkerChannel(label=f"{label}-4m1", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+
+        this_transmitter = Channels.Transmitter(label=label, model="APS", address=address, channels=[chan1, chan2, m1, m2, m3, m4], channel_db=self.channelDatabase)
         this_transmitter.trigger_source = "external"
         this_transmitter.address        = address
 

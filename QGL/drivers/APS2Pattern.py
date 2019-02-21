@@ -20,7 +20,7 @@ import os
 import logging
 from warnings import warn
 from copy import copy
-from future.moves.itertools import zip_longest
+from itertools import zip_longest
 import pickle
 
 import struct
