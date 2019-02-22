@@ -151,8 +151,9 @@ class Goto(ControlInstruction):
 
 class Call(ControlInstruction):
     # target is a BlockLabel
-    def __init__(self, target):
+    def __init__(self, target, load_addr=False):
         super(Call, self).__init__("CALL", target=target)
+        self.load_addr = load_addr
 
 
 class Return(ControlInstruction):

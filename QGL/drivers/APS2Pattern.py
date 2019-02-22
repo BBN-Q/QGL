@@ -31,6 +31,8 @@ from QGL import Compiler, ControlFlow, BlockLabel, PatternUtils
 from QGL import PulseSequencer
 from QGL.PatternUtils import hash_pulse, flatten
 from QGL import TdmInstructions
+from QGL import APS2CustomInstructions
+from QGL.APS2CustomInstructions import APS2_CUSTOM_DECODE
 
 # Python 2/3 compatibility: use 'int' that subclasses 'long'
 from builtins import int
@@ -86,20 +88,17 @@ LESSTHAN = 0x3
 
 CMPTABLE = {'==': EQUAL, '!=': NOTEQUAL, '>': GREATERTHAN, '<': LESSTHAN}
 
-# custom OP_CODES
+# custom TDM OP_CODES
 TDM_MAJORITY_VOTE = 0
 TDM_MAJORITY_VOTE_SET_MASK = 1
 TDM_TSM_SET_ROUNDS = 2
 TDM_TSM = 3
 
-APS_CUSTOM_DECODE = ["APS_RAND", "APS_CLIFFORD_RAND","APS_CLIFFORD_SET_SEED" ,"APS_CLIFFORD_SET_OFFSET"
-, "APS_CLIFFORD_SET_SPACING"]
-
 TDM_CUSTOM_DECODE = ["TDM_MAJORITY_VOTE", "TDM_MAJORITY_VOTE_SET_MASK", "TDM_TSM_SET_ROUNDS", "TDM_TSM"]
 
 # Whether we use PHASE_OFFSET modulation commands or bake it into waveform
 # Default to false as we usually don't have many variants
-USE_PHASE_OFFSET_INSTRUCTION = False
+USE_PHASE_OFFSET_INSTRUCTION = True
 
 # Whether to save the waveform offsets for partial compilation
 SAVE_WF_OFFSETS = False
@@ -446,8 +445,8 @@ def Goto(addr, label=None):
     return Command(GOTO, addr, label=label)
 
 
-def Call(addr, label=None):
-    return Command(CALL, addr, label=label)
+def Call(addr, load_addr=False, label=None):
+    return Command(CALL, addr, label=label, write=load_addr)
 
 
 def Return(label=None):
@@ -513,11 +512,11 @@ def LoadCmpVram(addr, mask, label=None):
     return Instruction(header, payload, label=label)
 
 
-def preprocess(seqs, shapeLib):
+def preprocess(seqs, shapeLib, clifford_set=False):
     seqs = PatternUtils.convert_lengths_to_samples(
         seqs, SAMPLING_RATE, ADDRESS_UNIT, Compiler.Waveform)
     wfLib = build_waveforms(seqs, shapeLib)
-    inject_modulation_cmds(seqs)
+    inject_modulation_cmds(seqs, force_phase_update=clifford_set)
     return seqs, wfLib
 
 
@@ -611,7 +610,7 @@ class ModulationCommand(object):
         instr.writeFlag = write_flag
         return instr
 
-def inject_modulation_cmds(seqs):
+def inject_modulation_cmds(seqs, force_phase_update=False):
     """
     Inject modulation commands from phase, frequency and frameChange of waveforms
     in an IQ waveform sequence. Assume up to 2 NCOs for now.
@@ -629,7 +628,7 @@ def inject_modulation_cmds(seqs):
         frame_changes = [entry.frameChange for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
         no_frame_cmds = np.all(np.less(np.abs(frame_changes), 1e-8))
         no_modulation_cmds = no_freq_cmds and no_phase_cmds and no_frame_cmds
-
+        #import pdb; pdb.set_trace()
         if no_modulation_cmds:
             continue
 
@@ -672,10 +671,11 @@ def inject_modulation_cmds(seqs):
                             mod_seq.append( ModulationCommand("MODULATE", nco_select, length = entry.length))
                             pending_frame_update = False
                     #now apply non-zero frame changes after so it is applied at end
+
                     if entry.frameChange != 0:
                         pending_frame_update = True
                         #zero length frame changes (Z pulses) need to be combined with the previous frame change or injected where possible
-                        if entry.length == 0:
+                        if entry.length == 0 and not force_phase_update:
                             #if the last is a frame change then we can add to the frame change
                             if isinstance(mod_seq[-1], ModulationCommand) and mod_seq[-1].instruction == "UPDATE_FRAME":
                                 mod_seq[-1].phase += entry.frameChange
@@ -808,7 +808,7 @@ def create_seq_instructions(seqs, offsets, label = None):
                     isinstance(entry, ControlFlow.ControlInstruction) or
                     isinstance(entry, BlockLabel.BlockLabel) or
                     isinstance(entry, TdmInstructions.CustomInstruction) or
-                    isinstance(entry, TdmInstructions.WriteAddrInstruction) or
+                    isinstance(entry, TdmInstructions.Instruction) or
                     isinstance(entry, TdmInstructions.LoadCmpVramInstruction)):
                 if isinstance(entry, BlockLabel.BlockLabel):
                     # carry label forward to next entry
@@ -827,7 +827,7 @@ def create_seq_instructions(seqs, offsets, label = None):
                 elif isinstance(entry, ControlFlow.Goto):
                     instructions.append(Goto(entry.target, label=label))
                 elif isinstance(entry, ControlFlow.Call):
-                    instructions.append(Call(entry.target, label=label))
+                    instructions.append(Call(entry.target, load_addr = entry.load_addr, label=label))
                 elif isinstance(entry, ControlFlow.Repeat):
                     instructions.append(Repeat(entry.target, label=label))
                 # value argument commands
