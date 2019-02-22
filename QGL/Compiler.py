@@ -233,34 +233,40 @@ def generate_waveforms(physicalWires):
                     wfs[ch][pulse.hashshape()] = pulse.shape
     return wfs
 
+def get_clifford_type(wire, allowed_types=("RandomAC")):
+    rt_pulses = [pulse for pulse in flatten(wire) if isinstance(pulse, Pulse) and pulse.isRunTime]
+    if len(rt_pulses) == 0:
+        return None
+    pulse_type = list(set([pulse.label for pulse in rt_pulses]))
+    pulse_logical_chan = list(set([pulse.channel for pulse in rt_pulses]))
+    if len(pulse_type) > 1:
+        raise Exception(f"All run-time pulses must have the same label. Found: {pulse_type}.")
+    if len(pulse_logical_chan) > 1:
+        raise Exception(f"Found more than one channel per run-time pulse set: {pulse_logical_chan}.")
+    if pulse_type[0] not in allowed_types:
+        raise Exception(f"Unknown run time pulse type {pulse_type}.")
+    pulse_fn = getattr(PulsePrimitives, pulse_type[0].split('Random')[-1], None)
+    if pulse_fn is None:
+        raise Exception("Was unable to get pulse type for run-time generated pulses.")
+    return lambda x: pulse_fn(pulse_logical_chan[0], x)
+
+
 def add_runtime_pulse_set(physicalWires, wfs):
     for ch, wire in physicalWires.items():
-        rt_pulses = [pulse for pulse in flatten(wire) if isinstance(pulse, Pulse) and pulse.isRunTime]
-        if len(rt_pulses) == 0:
-            continue
-        pulse_type = list(set([pulse.label for pulse in rt_pulses]))
-        pulse_logical_chan = list(set([pulse.channel for pulse in rt_pulses]))
-        
-        if len(pulse_type) > 1:
-            raise Exception(f"All run-time pulses must have the same label. Found: {pulse_type}.")
-        if len(pulse_logical_chan) > 1:
-            raise Exception(f"Found more than one channel per run-time pulse set: {pulse_logical_chan}.")
-        if pulse_type[0] not in ("RandomAC, RandomDiAC"):
-            raise Exception(f"Unknown run time pulse type {pulse_type}.")
-        pulse_fn = getattr(PulsePrimitives, pulse_type[0].split('Random')[-1], None)
+        pulse_fn = get_clifford_type(wire)
         if pulse_fn is None:
-            raise Exception("Was unable to get pulse type for run-time generated pulses.")
-
-        all_cliffords = [pulse_fn(pulse_logical_chan[0], n) for n in range(24)]
-        #Some could be CompositePulses so crack into indvidual pulses
+            continue
         all_pulses = []
+        all_cliffords = [pulse_fn(n) for n in range(24)]
+        #Some could be CompositePulses so crack into indvidual pulses
         for cliff in all_cliffords:
             try:
                 for p in cliff.pulses:
                     all_pulses.append(p)
             except AttributeError:
                 all_pulses.append(cliff)
-        for cp in all_pulses:
+
+        for cp in all_pulses: #make all-pulses a set?
             if cp.hashshape() not in wfs[ch]: #don't duplicate data
                 if cp.isTimeAmp:
                     wfs[ch][cp.hashshape()] = np.ones(1, dtype=np.complex)
@@ -268,6 +274,15 @@ def add_runtime_pulse_set(physicalWires, wfs):
                     wfs[ch][cp.hashshape()] = cp.shape
 
     return wfs
+
+def create_clifford_waveforms(physicalWires):
+    clifford_sets = {}
+    for ch, wire in physicalWires.items():
+        pulse_fn = get_clifford_type(wire)
+        if pulse_fn is None:
+            continue
+        clifford_sets[ch] = [[Waveform(pulse_fn(n))] for n in range(24)]
+    return clifford_sets
 
 def pulses_to_waveforms(physicalWires):
     logger.debug("Converting pulses_to_waveforms:")
@@ -312,7 +327,7 @@ def setup_awg_channels(physicalChannels):
     return data
 
 
-def bundle_wires(physWires, wfs):
+def bundle_wires(physWires, wfs, cliff_wires=None):
     awgData = setup_awg_channels(physWires.keys())
     for chan in physWires.keys():
         _, awgChan = chan.label.rsplit('-', 1)
@@ -320,6 +335,8 @@ def bundle_wires(physWires, wfs):
             awgChan = 'ch' + awgChan
         awgData[chan.instrument][awgChan]['linkList'] = physWires[chan]
         awgData[chan.instrument][awgChan]['wfLib'] = wfs[chan]
+        if cliff_wires is not None and chan in cliff_wires.keys():
+            awgData[chan.instrument][awgChan]['clifford_set'] = cliff_wires[chan]
         if hasattr(chan, 'correctionT'):
             awgData[chan.instrument][awgChan]['correctionT'] = chan.correctionT
     return awgData
@@ -340,36 +357,11 @@ def collect_specializations(seqs):
             done.append(target)
     return funcs
 
-def compile_to_hardware(seqs,
-                        fileName,
-                        library_version=None,
-                        suffix='',
-                        axis_descriptor=None,
-                        add_slave_trigger=True,
-                        extra_meta=None,
-                        tdm_seq = False):
-    '''
-    Compiles 'seqs' to a hardware description and saves it to 'fileName'.
-    Other inputs:
-        library_version (optional): string or ChannelLibrary instance to pack in the
-            metafile. This will be the version of the library loaded during program
-            execution. Default None uses the current working version.
-        suffix (optional): string to append to end of fileName, e.g. with
-            fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5
-        axis_descriptor (optional): a list of dictionaries describing the effective
-            axes of the measurements that the sequence will yield. For instance,
-            if `seqs` generates a Ramsey experiment, axis_descriptor would describe
-            the time delays between pulses.
-        add_slave_trigger (optional): add the slave trigger(s)
-        tdm_seq (optional): compile for TDM
-    '''
+def compile_to_IR(seqs, add_slave_trigger=True, tdm_seq=False):
+
     ChannelLibraries.channelLib.update_channelDict()
     clear_pulse_cache()
-
     logger.debug("Compiling %d sequence(s)", len(seqs))
-
-    # save input code to file
-    save_code(seqs, fileName + suffix)
 
     # all sequences should start with a WAIT for synchronization
     for seq in seqs:
@@ -469,6 +461,9 @@ def compile_to_hardware(seqs,
     # If there are run-time pulses add these to the library
     if PatternUtils.contains_runtime_pulses(seqs):
         wfs = add_runtime_pulse_set(physWires, wfs)
+        cliff_wires = create_clifford_waveforms(physWires)
+    else:
+        cliff_wires = None
 
     # replace Pulse objects with Waveforms
     logger.info("Replacing pulses with waveforms")
@@ -477,9 +472,36 @@ def compile_to_hardware(seqs,
     # bundle wires on instruments, or channels depending
     # on whether we have one sequence per channel
     logger.info("Bundling wires.")
-    awgData = bundle_wires(physWires, wfs)
-    del wireSeqs
-    gc.collect()
+    awgData = bundle_wires(physWires, wfs, cliff_wires=cliff_wires)
+    return awgData
+
+def compile_to_hardware(seqs,
+                        fileName,
+                        library_version=None,
+                        suffix='',
+                        axis_descriptor=None,
+                        add_slave_trigger=True,
+                        extra_meta=None,
+                        tdm_seq = False):
+    '''
+    Compiles 'seqs' to a hardware description and saves it to 'fileName'.
+    Other inputs:
+        library_version (optional): string or ChannelLibrary instance to pack in the
+            metafile. This will be the version of the library loaded during program
+            execution. Default None uses the current working version.
+        suffix (optional): string to append to end of fileName, e.g. with
+            fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5
+        axis_descriptor (optional): a list of dictionaries describing the effective
+            axes of the measurements that the sequence will yield. For instance,
+            if `seqs` generates a Ramsey experiment, axis_descriptor would describe
+            the time delays between pulses.
+        add_slave_trigger (optional): add the slave trigger(s)
+        tdm_seq (optional): compile for TDM
+    '''
+    # save input code to file
+    save_code(seqs, fileName + suffix)
+
+    awgData = compile_to_IR(seqs, add_slave_trigger=add_slave_trigger, tdm_seq=tdm_seq)
 
     # convert to hardware formats
     # files = {}
@@ -790,7 +812,7 @@ class Waveform(object):
 
     def __str__(self):
         if self.isRunTime:
-            return f"Hardware-Generated({self.length})"
+            return f"Hardware-Generated({self.label}, {self.length})"
         if self.isTimeAmp:
             TA = 'HIGH' if self.amp != 0 else 'LOW'
             return "Waveform-TA(" + TA + ", " + str(self.length) + ")"

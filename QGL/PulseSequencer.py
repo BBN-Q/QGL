@@ -263,6 +263,11 @@ class PulseBlock(object):
         return not self == other
 
     @property
+    def isRunTime(self):
+        #Check if any of the member pulses contain a run-time pulse
+        return any([hasattr(entry, 'isRunTime') and entry.isRunTime for entry in self.pulses.values()])
+
+    @property
     def channel(self):
         return self.pulses.keys()
 

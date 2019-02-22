@@ -109,5 +109,5 @@ class LoadCmpVramInstruction(object):
         return not self == other
 
 
-# def LoadCmpVram(addr, mask):
-#     return LoadCmpVramInstruction('LOADCMPVRAM', 1, addr, mask)
+def LoadCmpVram(addr, mask, tdm=True):
+    return LoadCmpVramInstruction('LOADCMPVRAM', 1, addr, mask, tdm)
