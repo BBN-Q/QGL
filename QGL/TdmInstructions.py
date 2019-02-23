@@ -36,6 +36,13 @@ class CustomInstruction(object):
     def __ne__(self, other):
         return not self == other
 
+    def __str__(self):
+        return f"{self.instruction}({hex(self.in_addr)}, {hex(self.out_addr)})"
+
+    def __repr__(self):
+        return self.__str__()
+
+
 
 def MajorityVote(in_addr, out_addr, nmeas): # alternatively, append the loadcmpvram instruction when compiling (see STOREMEAS)
     return [LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, 2**nmeas-1, True), CustomInstruction('MAJORITY', in_addr, out_addr)]
@@ -74,6 +81,12 @@ class WriteAddrInstruction(object):
     def __ne__(self, other):
         return not self == other
 
+    def __str__(self):
+        return f"{self.instruction}({hex(self.addr)}, {hex(self.value)})"
+
+    def __repr__(self):
+        return self.__str__()
+
 def WriteAddr(addr, value, channel=None, tdm=True):
     return WriteAddrInstruction('WRITEADDR', channel, 0, addr, value, tdm)
 
@@ -107,6 +120,12 @@ class LoadCmpVramInstruction(object):
 
     def __ne__(self, other):
         return not self == other
+
+    def __str__(self):
+        return f"{self.instruction}({hex(self.addr)}, {hex(self.mask)})"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 def LoadCmpVram(addr, mask, tdm=True):
