@@ -154,6 +154,13 @@ class Call(ControlInstruction):
         super(Call, self).__init__("CALL", target=target)
         self.load_addr = load_addr
 
+    def __str__(self):
+        if self.load_addr:
+            return f"{self.instruction}({str(self.target)})"
+        else:
+            return f"{self.instruction}({str(self.target)}, LOAD)"
+
+
 
 class Return(ControlInstruction):
     def __init__(self):
