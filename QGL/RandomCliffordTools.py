@@ -17,18 +17,23 @@ limitations under the License.
 '''
 
 from . import config
+from functools import reduce
 from . import PatternUtils
 from .PatternUtils import flatten, has_gate
 from . import Channels
 from . import ChannelLibraries
 from . import PulseShapes
 from . import PulsePrimitives
+from . import Compiler
 from .PulsePrimitives import Id, clear_pulse_cache
 from .PulseSequencer import Pulse, PulseBlock, CompositePulse
 from . import ControlFlow
 from . import BlockLabel
 from . import TdmInstructions # only for APS2-TDM
-from . import APS2CustomInstructions
+from .APS2CustomInstructions import *
+from .Cliffords import C1, inverse_clifford, clifford_multiply
+
+VALID_CLIFFORD_TYPES = ('RandomAC',)
 
 def generate_clifford_jump_table(cliff_wires, jt_label = None):
     """Generate the jump table that will be used to call into the clifford set"""
@@ -49,3 +54,42 @@ def generate_clifford_jump_table(cliff_wires, jt_label = None):
         cliff.append(ControlFlow.Return())
 
     cliff_wires.insert(0, jump_table)
+
+def insert_clifford_calls(seqs, jt_label=None, cliff_addr=0x3, add_inv = True,
+                            inv_addr=0x3, inv_values=[]):
+
+    if jt_label is None:
+        jt_label = BlockLabel.BlockLabel("JT")
+    if not isinstance(jt_label, BlockLabel.BlockLabel):
+        raise ValueError("Jump table label must be a BlockLabel.")
+
+    for idx, seq in enumerate(seqs[:]):
+        if not PatternUtils.contains_runtime_pulses(seq):
+            continue
+        new_seq = []
+        for pulse in seq:
+            if isinstance(pulse, Compiler.Waveform) and pulse.isRunTime \
+                and pulse.label in VALID_CLIFFORD_TYPES:
+                has_random_cliff = True
+                new_seq.extend(RandomClifford(jt_label, cliff_addr))
+                print("Inserting clifford pulse!")
+            else:
+                new_seq.append(pulse)
+
+        if add_inv:
+            #insert reset after first wait
+            w_idx = next(i for i, v in enumerate(new_seq) if isinstance(v, ControlFlow.Wait))
+            new_seq.insert(w_idx+1, RandomCliffordInverseReset(0x0))
+            #insert at end of sequence or before last GOTO
+            if isinstance(new_seq[-1], ControlFlow.Goto):
+                  new_seq[-1:-1] = RandomCliffordInverse(jt_label, inv_addr)
+            else:
+                  new_seq.extend(RandomCliffordInverse(jt_label, inv_addr))
+
+        seqs[idx] = new_seq
+
+def randomize_clifford_sequences(qubit, seqs, clifford_type=PulsePrimitives.RandomAC):
+
+    c_seqs = [[clifford_type(qubit) for _ in seq] for seq in seqs]
+    inverses = [inverse_clifford(C1[reduce(clifford_multiply, seq)]) for seq in seqs]
+    return c_seqs, inverses
