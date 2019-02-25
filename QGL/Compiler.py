@@ -36,6 +36,8 @@ from .PulseSequencer import Pulse, PulseBlock, CompositePulse
 from . import ControlFlow
 from . import BlockLabel
 from . import TdmInstructions # only for APS2-TDM
+from . import APS2CustomInstructions
+from . import RandomCliffordTools
 import gc
 
 logger = logging.getLogger(__name__)
@@ -327,7 +329,7 @@ def setup_awg_channels(physicalChannels):
     return data
 
 
-def bundle_wires(physWires, wfs, cliff_wires=None):
+def bundle_wires(physWires, wfs):
     awgData = setup_awg_channels(physWires.keys())
     for chan in physWires.keys():
         _, awgChan = chan.label.rsplit('-', 1)
@@ -335,8 +337,6 @@ def bundle_wires(physWires, wfs, cliff_wires=None):
             awgChan = 'ch' + awgChan
         awgData[chan.instrument][awgChan]['linkList'] = physWires[chan]
         awgData[chan.instrument][awgChan]['wfLib'] = wfs[chan]
-        if cliff_wires is not None and chan in cliff_wires.keys():
-            awgData[chan.instrument][awgChan]['clifford_set'] = cliff_wires[chan]
         if hasattr(chan, 'correctionT'):
             awgData[chan.instrument][awgChan]['correctionT'] = chan.correctionT
     return awgData
@@ -357,7 +357,7 @@ def collect_specializations(seqs):
             done.append(target)
     return funcs
 
-def compile_to_IR(seqs, add_slave_trigger=True, tdm_seq=False):
+def compile_to_IR(seqs, add_slave_trigger=True, tdm_seq=False, random_cliffords=False):
 
     ChannelLibraries.channelLib.update_channelDict()
     clear_pulse_cache()
@@ -394,7 +394,7 @@ def compile_to_IR(seqs, add_slave_trigger=True, tdm_seq=False):
 
     # Compile all the pulses/pulseblocks to sequences of pulses and control flow
     logger.info("Compiling sequences.")
-    wireSeqs = compile_sequences(seqs, channels)
+    wireSeqs = compile_sequences(seqs, channels, random_cliffords=random_cliffords)
 
     if not validate_linklist_channels(wireSeqs.keys()):
         print("Compile to hardware failed")
@@ -459,11 +459,8 @@ def compile_to_IR(seqs, add_slave_trigger=True, tdm_seq=False):
     wfs = generate_waveforms(physWires)
 
     # If there are run-time pulses add these to the library
-    if PatternUtils.contains_runtime_pulses(seqs):
+    if random_cliffords:
         wfs = add_runtime_pulse_set(physWires, wfs)
-        cliff_wires = create_clifford_waveforms(physWires)
-    else:
-        cliff_wires = None
 
     # replace Pulse objects with Waveforms
     logger.info("Replacing pulses with waveforms")
@@ -472,7 +469,7 @@ def compile_to_IR(seqs, add_slave_trigger=True, tdm_seq=False):
     # bundle wires on instruments, or channels depending
     # on whether we have one sequence per channel
     logger.info("Bundling wires.")
-    awgData = bundle_wires(physWires, wfs, cliff_wires=cliff_wires)
+    awgData = bundle_wires(physWires, wfs)
     return awgData
 
 def compile_to_hardware(seqs,
@@ -590,7 +587,7 @@ def compile_to_hardware(seqs,
     return metafilepath
 
 
-def compile_sequences(seqs, channels=set()):
+def compile_sequences(seqs, channels=set(), random_cliffords=False):
     '''
     Main function to convert sequences to miniLL's and waveform libraries.
     '''
@@ -603,6 +600,16 @@ def compile_sequences(seqs, channels=set()):
     # append function specialization to sequences
     subroutines = collect_specializations(seqs)
     seqs += subroutines
+
+    if random_cliffords:
+        qubits = [q for q in list(channels) if isinstance(q, Channels.Qubit)]
+        if len(qubits) > 1:
+            raise Exception("Too many qubits! Don't know how to deal with this yet.")
+        #replace cliffords with
+        cliffords = [[get_clifford_type(seqs)(n)] for n in range(24)]
+        RandomCliffordTools.generate_clifford_jump_table(cliffords)
+        RandomCliffordTools.insert_clifford_calls(seqs)
+        seqs += cliffords
 
     #expand the channel definitions for anything defined in subroutines
     for func in subroutines:
@@ -665,10 +672,10 @@ def compile_sequence(seq, channels=None):
                 wires[chan] += [copy(block)]
             continue
         # control flow broadcasts to all channels if channel attribute is None
-        if (isinstance(block, ControlFlow.ControlInstruction) or
-                isinstance(block, TdmInstructions.WriteAddrInstruction) or
-                isinstance(block, TdmInstructions.CustomInstruction) or
-                isinstance(block, TdmInstructions.LoadCmpVramInstruction)):
+        if isinstance(block, ControlFlow.ControlInstruction): #or
+                #isinstance(block, TdmInstructions.WriteAddrInstruction) or
+                #isinstance(block, TdmInstructions.CustomInstruction) or
+                #isinstance(block, TdmInstructions.LoadCmpVramInstruction)):
             # Need to deal with attaching measurements and edges to control
             # instruction. Until we have a proper solution for that, we will
             # always broadcast control instructions to all channels
@@ -676,6 +683,9 @@ def compile_sequence(seq, channels=None):
             block_channels = channels
             for chan in block_channels:
                 wires[chan] += [copy(block)]
+            continue
+        #Don't propagate VRAM instructions
+        if isinstance(block, TdmInstructions.VRAMInstruction) or isinstance(block, TdmInstructions.CustomInstruction):
             continue
         # propagate frame change from nodes to edges
         for chan in channels:
