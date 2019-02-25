@@ -32,7 +32,7 @@ from QGL import PulseSequencer
 from QGL.PatternUtils import hash_pulse, flatten
 from QGL import TdmInstructions
 from QGL import APS2CustomInstructions
-from QGL.APS2CustomInstructions import APS2_CUSTOM_DECODE
+from QGL.APS2CustomInstructions import APS2_CUSTOM, APS2_CUSTOM_DECODE
 
 # Python 2/3 compatibility: use 'int' that subclasses 'long'
 from builtins import int
@@ -306,7 +306,10 @@ class Instruction(object):
             store_addr = self.payload & 0xFFFF
             load_addr = (self.payload >> 16) & 0xFFFF
             instruction = (self.payload >> 32) & 0xFF
-            instructionAPS = TDM_CUSTOM_DECODE[instruction]
+            if self.decode_as_tdm:
+                instructionAPS = TDM_CUSTOM_DECODE[instruction]
+            else:
+                instructionAPS = APS2_CUSTOM_DECODE[instruction]
             out += " | instruction={0} ({1}), load_addr=0x{2:0x}, store_addr=0x{3:0x}".format(instruction, instructionAPS, load_addr, store_addr)
 
         elif instrOpCode == WRITEADDR:
@@ -510,12 +513,11 @@ def LoadCmpVram(addr, mask, label=None):
     payload = (1 << 48) | (mask << 16) | addr
     return Instruction(header, payload, label=label)
 
-
-def preprocess(seqs, shapeLib, clifford_set=False):
+def preprocess(seqs, shapeLib):
     seqs = PatternUtils.convert_lengths_to_samples(
         seqs, SAMPLING_RATE, ADDRESS_UNIT, Compiler.Waveform)
     wfLib = build_waveforms(seqs, shapeLib)
-    inject_modulation_cmds(seqs, force_phase_update=clifford_set)
+    inject_modulation_cmds(seqs)
     return seqs, wfLib
 
 
@@ -715,7 +717,7 @@ def synchronize_clocks(seqs):
     syncInstructions = [list(filter(
         lambda s: isinstance(s, ControlFlow.ControlInstruction), seq))
                         for seq in seqs if seq]
-
+    #import pdb; pdb.set_trace()
     # Add length to control-flow instructions to make accumulated time match at end of CFI.
     # Keep running tally of how much each channel has been shifted so far.
     localShift = [0 for _ in syncInstructions]
@@ -801,7 +803,7 @@ def create_seq_instructions(seqs, offsets, label = None):
                     isinstance(entry, ControlFlow.ControlInstruction) or
                     isinstance(entry, BlockLabel.BlockLabel) or
                     isinstance(entry, TdmInstructions.CustomInstruction) or
-                    isinstance(entry, TdmInstructions.Instruction) or
+                    #isinstance(entry, TdmInstructions.Instruction) or ??????
                     isinstance(entry, TdmInstructions.LoadCmpVramInstruction)):
                 if isinstance(entry, BlockLabel.BlockLabel):
                     # carry label forward to next entry
@@ -835,11 +837,15 @@ def create_seq_instructions(seqs, offsets, label = None):
                     instructions.append(LoadCmpVram(entry.addr, entry.mask, label=label))
                 # some TDM instructions are ignored by the APS
                 elif isinstance(entry, TdmInstructions.CustomInstruction):
-                    pass
+                    try:
+                        instructions.append(Custom(entry.in_addr, entry.out_addr,
+                                                    APS2_CUSTOM[entry.instruction], label=label))
+                    except KeyError as e:
+                        raise Exception(f"Got unknown APS2 instruction: {e.args[0]} in {str(entry)}.")
                 elif isinstance(entry, TdmInstructions.WriteAddrInstruction):
                     if entry.instruction == 'INVALIDATE' and entry.tdm == False:
                         instructions.append(Invalidate(entry.addr, entry.value, label=label))
-
+                label=None #Reset label to prevent it propagating in a jump table
                 continue
 
             if seq_idx == 0:
@@ -983,20 +989,29 @@ def create_instr_data(seqs, offsets, cache_lines):
 
 
 def resolve_symbols(seq):
-    symbols = {}
-    # create symbol look-up table
-    for ct, entry in enumerate(seq):
-        if entry.label and entry.label not in symbols:
-            symbols[entry.label] = ct
-    # then update
-    for (ct, entry) in enumerate(seq):
-        if entry.target:
-            # find next available label. The TDM may miss some labels if branches only contain waveforms (which are ignored)
-            for k in range(len(seq)-ct):
-                temp = seq[ct+k]
-                if temp.target in symbols:
-                    break
-            entry.address = symbols[temp.target]
+
+    labeled_entries = [(idx, entry.label) for idx, entry in enumerate(seq) if entry.label is not None]
+    import pdb; pdb.set_trace()
+    symbols = {label: idx for idx, label in labeled_entries}
+    print(f"Found labels: {symbols}")
+    for entry in seq:
+        if entry.target is not None and entry.target in symbols.keys():
+            entry.address = symbols[entry.target]
+
+    # symbols = {}
+    # # create symbol look-up table
+    # for ct, entry in enumerate(seq):
+    #     if entry.label and entry.label not in symbols:
+    #         symbols[entry.label] = ct
+    # # then update
+    # for (ct, entry) in enumerate(seq):
+    #     if entry.target:
+    #         # find next available label. The TDM may miss some labels if branches only contain waveforms (which are ignored)
+    #         for k in range(len(seq)-ct):
+    #             temp = seq[ct+k]
+    #             if temp.label in symbols:
+    #                 break
+    #         entry.address = symbols[temp.label]
 
 
 def compress_marker(markerLL):

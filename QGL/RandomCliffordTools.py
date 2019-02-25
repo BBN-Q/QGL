@@ -68,11 +68,11 @@ def insert_clifford_calls(seqs, jt_label=None, cliff_addr=0x3, add_inv = True,
             continue
         new_seq = []
         for pulse in seq:
-            if isinstance(pulse, Compiler.Waveform) and pulse.isRunTime \
+            if isinstance(pulse, Pulse) and pulse.isRunTime \
                 and pulse.label in VALID_CLIFFORD_TYPES:
                 has_random_cliff = True
                 new_seq.extend(RandomClifford(jt_label, cliff_addr))
-                print("Inserting clifford pulse!")
+                #print("Inserting clifford pulse!")
             else:
                 new_seq.append(pulse)
 

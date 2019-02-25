@@ -372,7 +372,7 @@ def AC(qubit, cliffNum):
     #Now a big else if chain for to get the specific Clifford
     if cliffNum == 0:
         #Identity gate
-        return Id(qubit, length=0)
+        return Id(qubit)#Id(qubit, length=0)
     elif cliffNum == 1:
         #X90
         return X90(qubit)

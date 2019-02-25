@@ -58,7 +58,10 @@ def DecodeSetRounds(in_addr, out_addr, value):
 
 # TODO: the rest of the CUSTOM instructions
 
-class WriteAddrInstruction(object):
+class VRAMInstruction(object):
+    pass
+
+class WriteAddrInstruction(VRAMInstruction):
 
     def __init__(self, name, channel, modifier, addr, value, tdm, **kwargs):
         self.instruction = name
@@ -99,7 +102,7 @@ def CrossBar(addr, value, channel=None, tdm=True): # should this be a high-level
 def StoreMeas(addr, value, channel=None, tdm=True):
     return WriteAddrInstruction('STOREMEAS', channel, 5, addr, value, tdm)
 
-class LoadCmpVramInstruction(object):
+class LoadCmpVramInstruction(VRAMInstruction):
 
     def __init__(self, name, use_vram, addr, mask, tdm):
         # TODO: sanity checks on input values

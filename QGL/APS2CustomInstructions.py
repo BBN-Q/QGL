@@ -29,13 +29,15 @@ from .ControlFlow import LoadCmp, Call
 #                               returns starting address of jump table entry from RAM
 #APS_CLIFFORD_INVERSE:          Store waveform address of inverse waveform to be jumped to
 
-APS2_CUSTOM_DECODE = {"APS_RAND": 0,
+APS2_CUSTOM = {"APS_RAND": 0,
                      "APS_CLIFFORD_RAND": 2,
                      "APS_CLIFFORD_INVERSE": 6,
                      "APS_CLIFFORD_INVERSE_RESET": 7,
                      "APS_CLIFFORD_SET_SEED": 3,
                      "APS_CLIFFORD_SET_OFFSET": 4,
                      "APS_CLIFFORD_SET_SPACING": 5}
+
+APS2_CUSTOM_DECODE = {v: k for k, v in APS2_CUSTOM.items()}
 
 ##Note that the expected call pattern for the randomizer is:
 
