@@ -998,7 +998,6 @@ def create_instr_data(seqs, offsets, cache_lines):
 def resolve_symbols(seq):
 
     labeled_entries = [(idx, entry.label) for idx, entry in enumerate(seq) if entry.label is not None]
-    import pdb; pdb.set_trace()
     symbols = {label: idx for idx, label in labeled_entries}
     print(f"Found labels: {symbols}")
     for entry in seq:
