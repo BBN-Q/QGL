@@ -1523,15 +1523,24 @@ if __name__ == '__main__':
     if len(sys.argv) == 2:
 
         from PyQt5.QtWidgets import QApplication, QWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QAbstractItemView
-        from PyQt5.QtGui import QIcon, QColor
+        from PyQt5.QtGui import QIcon, QColor, QFont
+
+        table_font = QFont("Arial", weight=57)
 
         colors = {"WFM": QColor(0,200,0),
                   "GOTO": QColor(0,100,100),
                   "MARKER": QColor(150,150,200),
                   "CUSTOM": QColor(200,65,200),
-                  "WRITEADDR": QColor(245, 105, 65)}
+                  "WRITEADDR": QColor(245, 105, 65),
+                  "INVALIDATE": QColor(245, 105, 65),
+                  "CALL": QColor(65, 205, 245),
+                  "RET": QColor(65, 205, 245),
+                  "LOADCMP": QColor(245, 225, 65),
+                  "MODULATION": QColor(175, 255, 185)}
 
         class App(QWidget):
+
+            COLUMN_COUNT = 7
 
             def __init__(self, instructions):
                 super().__init__()
@@ -1559,7 +1568,7 @@ if __name__ == '__main__':
                # Create table
                 self.tableWidget = QTableWidget()
                 self.tableWidget.setRowCount(len(self.instructions))
-                self.tableWidget.setColumnCount(7)
+                self.tableWidget.setColumnCount(self.COLUMN_COUNT)
 
                 for k, instr in enumerate(self.instructions):
                     fields = str(instr).replace(',','').replace(';', '').split(" ")
@@ -1572,9 +1581,17 @@ if __name__ == '__main__':
                     for l, f in enumerate(fields):
                         text = fields[l]
                         item = QTableWidgetItem(text)
+                        item.setFont(table_font)
                         if color:
                             item.setBackground(color)
                         self.tableWidget.setItem(k,l, item)
+                    if l < self.COLUMN_COUNT-1:
+                        for j in range(l+1, self.COLUMN_COUNT):
+                            item = QTableWidgetItem("")
+                            if color:
+                                item.setBackground(color)
+                            self.tableWidget.setItem(k, j, item)
+
                 self.tableWidget.move(0,0)
                 self.tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)
 
