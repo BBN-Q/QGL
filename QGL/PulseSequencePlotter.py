@@ -25,8 +25,6 @@ limitations under the License.
 import os.path
 import json
 from importlib import import_module
-from ipywidgets import interact, VBox, IntSlider
-import ipywidgets as widgets
 import numpy as np
 
 from . import config
@@ -92,6 +90,7 @@ def plot_pulse_files(metafile, time=True, backend='bqplot'):
 
     if backend=='matplotlib':
         import matplotlib.pyplot as plt
+        from ipywidgets import interact, IntSlider
         def update_plot(seq_ind):
             for line_name in line_names:
                 dat = data_dicts[f"{line_name}_{seq_ind}"]
@@ -101,7 +100,7 @@ def plot_pulse_files(metafile, time=True, backend='bqplot'):
     elif backend=='bqplot':
         from bqplot import DateScale, LinearScale, Axis, Lines, Figure, Tooltip
         from bqplot.colorschemes import CATEGORY10, CATEGORY20
-        from ipywidgets import interact, IntSlider
+        from ipywidgets import interact, IntSlider, VBox
         sx = LinearScale()
         sy = LinearScale(min=-1.0, max=2*len(line_names)-1.0)
         if time:
@@ -116,7 +115,7 @@ def plot_pulse_files(metafile, time=True, backend='bqplot'):
         x_mult = 1.0e9 if time else 1
         for i, line_name in enumerate(line_names):
             dat = data_dicts[f"{line_name}_1"]
-            lines.append(Lines(labels=[line_name], x=x_mult*dat['x'], y=dat['y'], scales={'x': sx, 'y': sy}, 
+            lines.append(Lines(labels=[line_name], x=x_mult*dat['x'], y=dat['y'], scales={'x': sx, 'y': sy},
                                 tooltip=tt, animate=False, colors=[colors[i]]))
 
         slider = IntSlider(min=1, max=num_seqs, step=1, description='Segment', value=1)
