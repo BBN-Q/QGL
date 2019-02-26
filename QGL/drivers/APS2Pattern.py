@@ -1546,8 +1546,11 @@ def display_raw_file(filename):
 if __name__ == '__main__':
     if len(sys.argv) == 2:
 
-        from PyQt5.QtWidgets import QApplication, QWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QAbstractItemView
+        from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QAbstractItemView, QPushButton
         from PyQt5.QtGui import QIcon, QColor, QFont
+
+        from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg
+        from matplotlib.figure import Figure
 
         table_font = QFont("Arial", weight=QFont.Bold)
 
@@ -1591,7 +1594,7 @@ if __name__ == '__main__':
 
             COLUMN_COUNT = 7
 
-            def __init__(self, instructions):
+            def __init__(self, instructions, waveforms):
                 super().__init__()
                 self.title = 'APS2 Disassembled Instructions'
                 self.left = 100
@@ -1632,11 +1635,31 @@ if __name__ == '__main__':
                         color = None
                     for l, f in enumerate(fields):
                         text = fields[l]
-                        item = QTableWidgetItem(text)
-                        item.setFont(table_font)
-                        if color:
-                            item.setBackground(color)
-                        self.tableWidget.setItem(k,l, item)
+                        if text == "GOTO":
+                            btn = QPushButton(self.tableWidget)
+                            btn.setText('GOTO')
+                            target_row = int(fields[1].split("=")[1])
+                            def scroll_to_goto_target(row=target_row, tab=self.tableWidget):
+                                tab.scrollToItem(tab.item(row, 0))
+                            btn.clicked.connect(scroll_to_goto_target)
+                            self.tableWidget.setCellWidget(k, l, btn)
+                        if text == "WFM" and int(fields[4].split("=")[1])==0:
+                            # Not a TA pair
+                            btn = QPushButton(self.tableWidget)
+                            btn.setText('WFM')
+                            addr = int(fields[6].split("=")[1])
+                            count = int(fields[5].split("=")[1])
+                            def open_plotter(addr=None, I=self.waveforms[0][addr:addr+count], Q=self.waveforms[1][addr:addr+count]):
+                                w = MatplotlibWidget(I,Q)
+                                self.plotters.append(w)
+                            btn.clicked.connect(open_plotter)
+                            self.tableWidget.setCellWidget(k, l, btn)
+                        else:
+                            item = QTableWidgetItem(text)
+                            item.setFont(table_font)
+                            if color:
+                                item.setBackground(color)
+                            self.tableWidget.setItem(k, l, item)
                     if l < self.COLUMN_COUNT-1:
                         for j in range(l+1, self.COLUMN_COUNT):
                             item = QTableWidgetItem("")
@@ -1646,7 +1669,7 @@ if __name__ == '__main__':
 
                 self.tableWidget.move(0,0)
                 self.tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)
-
+        
         app = QApplication(sys.argv[:1])
         ex = App(read_instructions(sys.argv[1]), read_waveforms(sys.argv[1]))
         sys.exit(app.exec_())
