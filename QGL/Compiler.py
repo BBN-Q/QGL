@@ -236,7 +236,15 @@ def generate_waveforms(physicalWires):
     return wfs
 
 def get_clifford_type(wire, allowed_types=("RandomAC")):
-    rt_pulses = [pulse for pulse in flatten(wire) if isinstance(pulse, Pulse) and pulse.isRunTime]
+    rt_pulses = []
+    for pulse in flatten(wire):
+        if isinstance(pulse, Pulse) and pulse.isRunTime:
+            rt_pulses.append(pulse)
+        elif isinstance(pulse, PulseBlock) and pulse.isRunTime:
+            for p in pulse.pulses.values():
+                if p.isRunTime:
+                    rt_pulses.append(p)
+
     if len(rt_pulses) == 0:
         return None
     pulse_type = list(set([pulse.label for pulse in rt_pulses]))
@@ -399,7 +407,6 @@ def compile_to_IR(seqs, add_slave_trigger=True, tdm_seq=False, random_cliffords=
     if not validate_linklist_channels(wireSeqs.keys()):
         print("Compile to hardware failed")
         return
-
     logger.debug('')
     logger.debug("Now after gating constraints:")
     # apply gating constraints
@@ -672,10 +679,9 @@ def compile_sequence(seq, channels=None):
                 wires[chan] += [copy(block)]
             continue
         # control flow broadcasts to all channels if channel attribute is None
-        if isinstance(block, ControlFlow.ControlInstruction): #or
-                #isinstance(block, TdmInstructions.WriteAddrInstruction) or
-                #isinstance(block, TdmInstructions.CustomInstruction) or
-                #isinstance(block, TdmInstructions.LoadCmpVramInstruction)):
+        if (isinstance(block, ControlFlow.ControlInstruction) or
+                isinstance(block, TdmInstructions.VRAMInstruction) or
+                isinstance(block, TdmInstructions.CustomInstruction)):
             # Need to deal with attaching measurements and edges to control
             # instruction. Until we have a proper solution for that, we will
             # always broadcast control instructions to all channels
@@ -685,8 +691,8 @@ def compile_sequence(seq, channels=None):
                 wires[chan] += [copy(block)]
             continue
         #Don't propagate VRAM instructions
-        if isinstance(block, TdmInstructions.VRAMInstruction) or isinstance(block, TdmInstructions.CustomInstruction):
-            continue
+        #if isinstance(block, TdmInstructions.VRAMInstruction) or isinstance(block, TdmInstructions.CustomInstruction):
+        #    continue
         # propagate frame change from nodes to edges
         for chan in channels:
             if block.pulses[chan].frameChange == 0:

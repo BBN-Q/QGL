@@ -641,10 +641,10 @@ def inject_modulation_cmds(seqs, force_phase_update=False):
 
             #copies to avoid same object having different timestamps later
             #copy through BlockLabel
-            if isinstance(entry, BlockLabel.BlockLabel):
+            if isinstance(entry, BlockLabel.BlockLabel) or isinstance(entry, TdmInstructions.CustomInstruction):
                 mod_seq.append(copy(entry))
             #mostly copy through control-flow
-            elif isinstance(entry, ControlFlow.ControlInstruction) or isinstance(entry, TdmInstructions.LoadCmpVramInstruction) or isinstance(entry, TdmInstructions.WriteAddrInstruction):
+            elif isinstance(entry, ControlFlow.ControlInstruction) or isinstance(entry, TdmInstructions.VRAMInstruction):
                 #heuristic to insert phase reset before trigger if we have modulation commands
                 if isinstance(entry, ControlFlow.Wait):
                     if not ( no_modulation_cmds and (cur_freq == 0) and (cur_phase == 0)):
@@ -804,7 +804,6 @@ def create_seq_instructions(seqs, offsets, label = None):
 
         write_flags = [True] * len(entries)
         for ct, (entry, seq_idx) in enumerate(entries):
-
             #use first non empty sequence for control flow
             if seq_idx == first_non_empty and (
                     isinstance(entry, ControlFlow.ControlInstruction) or
@@ -844,6 +843,7 @@ def create_seq_instructions(seqs, offsets, label = None):
                     instructions.append(LoadCmpVram(entry.addr, entry.mask, label=label))
                 # some TDM instructions are ignored by the APS
                 elif isinstance(entry, TdmInstructions.CustomInstruction):
+                    print(str(entry))
                     try:
                         instructions.append(Custom(entry.in_addr, entry.out_addr,
                                                     APS2_CUSTOM[entry.instruction], label=label))

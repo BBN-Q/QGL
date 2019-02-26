@@ -47,13 +47,13 @@ APS2_CUSTOM_DECODE = {v: k for k, v in APS2_CUSTOM.items()}
 
 def RandomCliffordSetOffset(addr, offset):
     return [Invalidate(addr, 0, tdm=False),
-            WriteAddr(adrr, offset, tdm=False),
+            WriteAddr(addr, offset, tdm=False),
             LoadCmpVram(addr, 0xFFFFFFFF, tdm=False),
             CustomInstruction("APS_CLIFFORD_SET_OFFSET", addr, 0x3)]
 
 def RandomCliffordSetSpacing(addr, spacing):
     return [Invalidate(addr, 0, tdm=False),
-            WriteAddr(adrr, offset, tdm=False),
+            WriteAddr(addr, spacing, tdm=False),
             LoadCmpVram(addr, 0xFFFFFFFF, tdm=False),
             CustomInstruction("APS_CLIFFORD_SET_SPACING", addr, 0x3)]
 
