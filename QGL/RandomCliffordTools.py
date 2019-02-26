@@ -43,14 +43,14 @@ def generate_clifford_jump_table(cliff_wires, jt_label = None):
     if not isinstance(jt_label, BlockLabel.BlockLabel):
         raise ValueError("Jump table label must be a BlockLabel.")
 
-    cliff_labels = [f"C{n}" for n in range(24)]
+    cliff_labels = [BlockLabel.BlockLabel(f"C{n}") for n in range(24)]
     jump_table = [jt_label]
     for cl in cliff_labels:
         jump_table.append(ControlFlow.Call(cl))
         jump_table.append(ControlFlow.Return())
 
     for cliff, cl in zip(cliff_wires, cliff_labels):
-        cliff.insert(0, BlockLabel.BlockLabel(cl))
+        cliff.insert(0, cl)
         cliff.append(ControlFlow.Return())
 
     cliff_wires.insert(0, jump_table)
