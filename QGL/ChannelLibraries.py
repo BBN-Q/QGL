@@ -142,7 +142,10 @@ class ChannelLibrary(object):
                self.channelDatabase.receivers +
                self.channelDatabase.transceivers +
                self.channelDatabase.instruments +
-               self.channelDatabase.processors)
+               self.channelDatabase.processors +
+               self.channelDatabase.attenuators +
+               self.channelDatabase.DCSources +
+               self.channelDatabase.spectrum_analyzers)
 
     def update_channelDict(self):
         self.channelDict = {c.label: c for c in self.get_current_channels()}
@@ -315,11 +318,15 @@ class ChannelLibrary(object):
 
     @check_for_duplicates
     def new_spectrum_analzyer(self, label, address, source):
-        return Channels.SpectrumAnalyzer(label=label, model="SpectrumAnalyzer", address=address, LO_source=source)
+        sa = Channels.SpectrumAnalyzer(label=label, model="SpectrumAnalyzer", address=address, LO_source=source, channel_db=self.channelDatabase)
+        self.add_and_update_dict(sa)
+        return sa
 
     @check_for_duplicates
     def new_DC_source(self, label, address):
-        return Channels.DCSource(label=label, model="YokogawaGS200", address=address, standalone=True)
+        dcsource = Channels.DCSource(label=label, model="YokogawaGS200", address=address, standalone=True, channel_db=self.channelDatabase)
+        self.add_and_update_dict(dcsource)
+        return dcsource
 
     @check_for_duplicates
     def new_APS2_rack(self, label, ip_addresses, tdm_ip=None):
@@ -386,7 +393,7 @@ class ChannelLibrary(object):
         return thing
 
     @check_for_duplicates
-    def new_source(self, label, model, address, power=-30.0, frequency=5.0e9, reference=None):
+    def new_source(self, label, model, address, power=-30.0, frequency=5.0e9, reference='10MHz'):
         thing = Channels.Generator(label=label, model=model, address=address, power=power,
                                     frequency=frequency, reference=reference,
                                     channel_db=self.channelDatabase)
