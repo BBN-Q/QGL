@@ -1542,7 +1542,8 @@ if __name__ == '__main__':
 
         colors = {"WFM": QColor(0,200,0),
                   "GOTO": QColor(0,100,100),
-                  "MARKER": QColor(150,150,200)}
+                  "MARKER": QColor(150,150,200),
+                  "CUSTOM": QColor(200,65,200)}
 
         class MatplotlibWidget(QWidget):
             def __init__(self, I, Q, parent=None):
