@@ -1546,6 +1546,7 @@ def display_raw_file(filename):
 if __name__ == '__main__':
     if len(sys.argv) == 2:
 
+<<<<<<< HEAD
         from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QAbstractItemView, QPushButton
         from PyQt5.QtGui import QIcon, QColor, QFont
 
@@ -1553,12 +1554,23 @@ if __name__ == '__main__':
         from matplotlib.figure import Figure
 
         table_font = QFont("Arial", weight=QFont.Bold)
+=======
+        from PyQt5.QtWidgets import QApplication, QWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QAbstractItemView
+        from PyQt5.QtGui import QIcon, QColor, QFont
+
+        table_font = QFont("Arial", weight=57)
+>>>>>>> Make more pretty
 
         colors = {"WFM": QColor(0,200,0),
                   "GOTO": QColor(0,100,100),
                   "MARKER": QColor(150,150,200),
                   "CUSTOM": QColor(200,65,200),
-                  "WRITEADDR": QColor(245, 105, 65)}
+                  "WRITEADDR": QColor(245, 105, 65),
+                  "INVALIDATE": QColor(245, 105, 65),
+                  "CALL": QColor(65, 205, 245),
+                  "RET": QColor(65, 205, 245),
+                  "LOADCMP": QColor(245, 225, 65),
+                  "MODULATION": QColor(175, 255, 185)}
 
         class MatplotlibWidget(QWidget):
             def __init__(self, I, Q, parent=None):
@@ -1587,7 +1599,12 @@ if __name__ == '__main__':
         class App(QWidget):
 
             COLUMN_COUNT = 7
+<<<<<<< HEAD
             def __init__(self, instructions, waveforms):
+=======
+
+            def __init__(self, instructions):
+>>>>>>> Make more pretty
                 super().__init__()
                 self.title = 'APS2 Disassembled Instructions'
                 self.left = 100
@@ -1616,7 +1633,7 @@ if __name__ == '__main__':
                # Create table
                 self.tableWidget = QTableWidget()
                 self.tableWidget.setRowCount(len(self.instructions))
-                self.tableWidget.setColumnCount(7)
+                self.tableWidget.setColumnCount(self.COLUMN_COUNT)
 
                 for k, instr in enumerate(self.instructions):
                     fields = str(instr).replace(',','').replace(';', '').split(" ")
@@ -1628,6 +1645,7 @@ if __name__ == '__main__':
                         color = None
                     for l, f in enumerate(fields):
                         text = fields[l]
+<<<<<<< HEAD
                         if text == "GOTO":
                             btn = QPushButton(self.tableWidget)
                             btn.setText('GOTO')
@@ -1653,12 +1671,23 @@ if __name__ == '__main__':
                             if color:
                                 item.setBackground(color)
                             self.tableWidget.setItem(k, l, item)
+=======
+                        item = QTableWidgetItem(text)
+                        item.setFont(table_font)
+                        if color:
+                            item.setBackground(color)
+                        self.tableWidget.setItem(k,l, item)
+>>>>>>> Make more pretty
                     if l < self.COLUMN_COUNT-1:
                         for j in range(l+1, self.COLUMN_COUNT):
                             item = QTableWidgetItem("")
                             if color:
                                 item.setBackground(color)
                             self.tableWidget.setItem(k, j, item)
+<<<<<<< HEAD
+=======
+
+>>>>>>> Make more pretty
                 self.tableWidget.move(0,0)
                 self.tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)
 
