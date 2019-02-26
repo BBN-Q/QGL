@@ -810,7 +810,7 @@ def create_seq_instructions(seqs, offsets, label = None):
                     isinstance(entry, BlockLabel.BlockLabel) or
                     isinstance(entry, TdmInstructions.CustomInstruction) or
                     #isinstance(entry, TdmInstructions.Instruction) or ??????
-                    isinstance(entry, TdmInstructions.LoadCmpVramInstruction)):
+                    isinstance(entry, TdmInstructions.VRAMInstruction)):
                 if isinstance(entry, BlockLabel.BlockLabel):
                     # carry label forward to next entry
                     label = entry
@@ -850,8 +850,11 @@ def create_seq_instructions(seqs, offsets, label = None):
                     except KeyError as e:
                         raise Exception(f"Got unknown APS2 instruction: {e.args[0]} in {str(entry)}.")
                 elif isinstance(entry, TdmInstructions.WriteAddrInstruction):
+                    print(str(entry))
                     if entry.instruction == 'INVALIDATE' and entry.tdm == False:
                         instructions.append(Invalidate(entry.addr, entry.value, label=label))
+                    if entry.instruction == 'WRITEADDR' and entry.tdm == False:
+                        instructions.append(WriteAddr(entry.addr, entry.value, label=label))
                 label=None #Reset label to prevent it propagating in a jump table
                 continue
 
@@ -1543,7 +1546,8 @@ if __name__ == '__main__':
         colors = {"WFM": QColor(0,200,0),
                   "GOTO": QColor(0,100,100),
                   "MARKER": QColor(150,150,200),
-                  "CUSTOM": QColor(200,65,200)}
+                  "CUSTOM": QColor(200,65,200),
+                  "WRITEADDR": QColor(245, 105, 65)}
 
         class MatplotlibWidget(QWidget):
             def __init__(self, I, Q, parent=None):
