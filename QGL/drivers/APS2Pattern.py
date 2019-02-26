@@ -1525,7 +1525,7 @@ if __name__ == '__main__':
         from PyQt5.QtWidgets import QApplication, QWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QAbstractItemView
         from PyQt5.QtGui import QIcon, QColor, QFont
 
-        table_font = QFont("Arial", weight=57)
+        table_font = QFont("Arial", weight=QFont.Bold)
 
         colors = {"WFM": QColor(0,200,0),
                   "GOTO": QColor(0,100,100),
