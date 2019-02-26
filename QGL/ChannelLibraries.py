@@ -394,15 +394,17 @@ class ChannelLibrary(object):
         return thing
 
     def set_control(self, qubit_or_edge, transmitter, generator=None):
-        quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
-        markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
-
-        if isinstance(transmitter, Channels.Transmitter) and len(quads) > 1:
-            raise ValueError("In set_control the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
-        elif isinstance(transmitter, Channels.Transmitter) and len(quads) == 1:
-            phys_chan = quads[0]
+        
+        if isinstance(transmitter, Channels.Transmitter):
+            quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
+            markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
+            if len(quads) > 1:
+            	raise ValueError("In set_control the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
+            elif len(quads) == 1:
+            	phys_chan = quads[0]
         elif isinstance(transmitter, Channels.PhysicalQuadratureChannel):
             phys_chan = transmitter
+            markers = [c for c in transmitter.transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
         else:
             raise ValueError("In set_control the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
 
@@ -428,15 +430,17 @@ class ChannelLibrary(object):
         return new_edges
 
     def set_measure(self, qubit, transmitter, receivers, generator=None, trig_channel=None, gate=False, gate_channel=None, trigger_length=1e-7):
-        quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
-        markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
 
-        if isinstance(transmitter, Channels.Transmitter) and len(quads) > 1:
-            raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
-        elif isinstance(transmitter, Channels.Transmitter) and len(quads) == 1:
-            phys_chan = quads[0]
+        if isinstance(transmitter, Channels.Transmitter):
+                quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
+                markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
+                if len(quads) > 1:
+                    raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
+                elif len(quads) == 1:
+                    phys_chan = quads[0]
         elif isinstance(transmitter, Channels.PhysicalQuadratureChannel):
             phys_chan = transmitter
+            markers = [c for c in transmitter.transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
         else:
             raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
 
