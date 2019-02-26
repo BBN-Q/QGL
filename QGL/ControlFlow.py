@@ -150,15 +150,15 @@ class Goto(ControlInstruction):
 
 class Call(ControlInstruction):
     # target is a BlockLabel
-    def __init__(self, target, load_addr=False):
+    def __init__(self, target, indirect=False):
         super(Call, self).__init__("CALL", target=target)
-        self.load_addr = load_addr
+        self.indirect = indirect
 
     def __str__(self):
         if self.load_addr:
             return f"{self.instruction}({str(self.target)})"
         else:
-            return f"{self.instruction}({str(self.target)}, LOAD)"
+            return f"{self.instruction}({str(self.target)}, INDIRECT)"
 
 
 

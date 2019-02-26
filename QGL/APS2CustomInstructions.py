@@ -61,13 +61,13 @@ def RandomClifford(target, addr):
     return [Invalidate(addr, 0, tdm=False),
             CustomInstruction("APS_CLIFFORD_RAND", 0x0, addr),
             LoadCmpVram(addr, 0xFFFFFFFF, tdm=False),
-            Call(target, load_addr=True)]
+            Call(target, indirect=True)]
 
 def RandomCliffordInverse(target, addr):
     return [Invalidate(addr, 0, tdm=False),
             CustomInstruction("APS_CLIFFORD_INVERSE", 0x0, addr),
             LoadCmpVram(addr, 0xFFFFFFFF, tdm=False),
-            Call(target, load_addr=True)]
+            Call(target, indirect=True)]
 
 def RandomCliffordInverseReset(addr): #for now don't use addr
     return CustomInstruction("APS_CLIFFORD_INVERSE_RESET", 0x0, 0xF)

@@ -341,12 +341,11 @@ class Instruction(object):
         elif instrOpCode == LOADCMP:
             addr = self.payload & 0xFFFF
             mask = (self.payload >> 16) & 0xFFFF
-            use_ram = (self.payload >> 48) & 0x1
-            if self.decode_as_tdm and not use_ram:
+            if self.decode_as_tdm and not self.use_ram:
                 out += "WAITMEAS"
             else:
                 src = "EXT"
-                if use_ram:
+                if self.use_ram:
                     src = "RAM"
                 out += "LOADCMP | source={0}, addr=0x{1:0x}, read_mask=0x{2:0x}".format(src, addr, mask)
         return out
@@ -374,7 +373,17 @@ class Instruction(object):
 
     @writeFlag.setter
     def writeFlag(self, value):
-        self.header |= value & 0x1
+        self.header &= ~(0x1 << 0) #clear bit
+        self.header |= (value & 0x1) #set bit
+
+    @property
+    def use_ram(self):
+        return ((self.payload >> 48) & 0x1)
+
+    @use_ram.setter
+    def use_ram(self, value):
+        self.payload &= ~(0x1 << 48) #clear bit
+        self.payload |= ((value & 0x1) << 48)
 
     @property
     def opcode(self):
@@ -447,8 +456,10 @@ def Goto(addr, label=None):
     return Command(GOTO, addr, label=label)
 
 
-def Call(addr, load_addr=False, label=None):
-    return Command(CALL, addr, label=label, write=load_addr)
+def Call(addr, indirect=False, label=None):
+    cmd = Command(CALL, addr, label=label)
+    cmd.use_ram = indirect
+    return cmd
 
 
 def Return(label=None):
@@ -821,7 +832,7 @@ def create_seq_instructions(seqs, offsets, label = None):
                 elif isinstance(entry, ControlFlow.Goto):
                     instructions.append(Goto(entry.target, label=label))
                 elif isinstance(entry, ControlFlow.Call):
-                    instructions.append(Call(entry.target, load_addr = entry.load_addr, label=label))
+                    instructions.append(Call(entry.target, indirect = entry.indirect, label=label))
                 elif isinstance(entry, ControlFlow.Repeat):
                     instructions.append(Repeat(entry.target, label=label))
                 # value argument commands
