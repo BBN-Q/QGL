@@ -66,15 +66,26 @@ def insert_clifford_calls(seqs, jt_label=None, cliff_addr=0x3, add_inv = True,
     for idx, seq in enumerate(seqs[:]):
         if not PatternUtils.contains_runtime_pulses(seq):
             continue
+
         new_seq = []
+
         for pulse in seq:
             if isinstance(pulse, Pulse) and pulse.isRunTime \
                 and pulse.label in VALID_CLIFFORD_TYPES:
                 has_random_cliff = True
                 new_seq.extend(RandomClifford(jt_label, cliff_addr))
-                #print("Inserting clifford pulse!")
+                print("Inserting clifford pulse!")
             else:
                 new_seq.append(pulse)
+
+        info_seqs = []
+        info_seqs.extend(RandomCliffordSetOffset(0x1, 0x0))
+        info_seqs.extend(RandomCliffordSetSpacing(0x2, 0x1))
+
+        if isinstance(seq[0], BlockLabel.BlockLabel):
+            new_seq[1:1] = info_seqs
+        else:
+            new_seq[0:0] = info_seqs
 
         if add_inv:
             #insert reset after first wait
@@ -87,6 +98,7 @@ def insert_clifford_calls(seqs, jt_label=None, cliff_addr=0x3, add_inv = True,
                   new_seq.extend(RandomCliffordInverse(jt_label, inv_addr))
 
         seqs[idx] = new_seq
+
 
 def randomize_clifford_sequences(qubit, seqs, clifford_type=PulsePrimitives.RandomAC):
 

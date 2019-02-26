@@ -198,6 +198,10 @@ class CompositePulse(namedtuple("CompositePulse", ["label", "pulses"])):
     def isZero(self):
         return all(p.isZero for p in self.pulses)
 
+    @property
+    def isRunTime(self):
+        return any(hasattr(entry, 'isRunTime') and entry.isRunTime for entry in self.pulses)
+
 
 class PulseBlock(object):
     '''
