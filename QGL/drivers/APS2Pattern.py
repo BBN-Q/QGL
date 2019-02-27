@@ -1603,7 +1603,6 @@ if __name__ == '__main__':
                 self.height = 1200
                 self.instructions = instructions
                 self.waveforms = waveforms
-                print(self.waveforms)
                 self.initUI()
                 self.plotters = []
 
@@ -1642,17 +1641,19 @@ if __name__ == '__main__':
                             def scroll_to_goto_target(row=target_row, tab=self.tableWidget):
                                 tab.scrollToItem(tab.item(row, 0))
                             btn.clicked.connect(scroll_to_goto_target)
+                            btn.setStyleSheet("background-color: #006464; color: white; font-weight: bold; text-align: left;")
                             self.tableWidget.setCellWidget(k, l, btn)
                         if text == "WFM" and int(fields[4].split("=")[1])==0:
                             # Not a TA pair
                             btn = QPushButton(self.tableWidget)
-                            btn.setText('WFM')
+                            btn.setText(' WFM')
                             addr = int(fields[6].split("=")[1])
                             count = int(fields[5].split("=")[1])
                             def open_plotter(addr=None, I=self.waveforms[0][addr:addr+count], Q=self.waveforms[1][addr:addr+count]):
                                 w = MatplotlibWidget(I,Q)
                                 self.plotters.append(w)
                             btn.clicked.connect(open_plotter)
+                            btn.setStyleSheet("background-color: #00C800; color: white; font-weight: bold; text-align: left;")
                             self.tableWidget.setCellWidget(k, l, btn)
                         else:
                             item = QTableWidgetItem(text)
