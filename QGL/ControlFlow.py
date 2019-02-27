@@ -156,7 +156,7 @@ class Call(ControlInstruction):
         self.indirect = indirect
 
     def __str__(self):
-        if self.load_addr:
+        if not self.indirect:
             return f"{self.instruction}({str(self.target)})"
         else:
             return f"{self.instruction}({str(self.target)}, INDIRECT)"
