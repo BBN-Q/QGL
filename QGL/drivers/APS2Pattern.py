@@ -1513,6 +1513,23 @@ def read_instructions(filename):
     raw_instrs = raw_instructions(filename)
     return decompile_instructions(raw_instrs)
 
+def read_waveforms(filename):
+    with open(filename, 'rb') as FID:
+        target_hw    = FID.read(4).decode('utf-8')
+        file_version = struct.unpack('<f', FID.read(4))[0]
+        min_fw       = struct.unpack('<f', FID.read(4))[0]
+        num_chans    = struct.unpack('<H', FID.read(2))[0]
+
+        inst_len     = struct.unpack('<Q', FID.read(8))[0]
+        instructions = np.frombuffer(FID.read(8*inst_len), dtype=np.uint64)
+
+        wf_dat = []
+        for i in range(num_chans):
+            wf_len  = struct.unpack('<Q', FID.read(8))[0]
+            dat = ( 1.0 / MAX_WAVEFORM_VALUE) * np.frombuffer(FID.read(2*wf_len), dtype=np.int16).flatten()
+            wf_dat.append(dat)
+        return wf_dat
+
 def replace_instructions(filename, instructions, channel = 1):
     channelStr =  get_channel_instructions_string(channel)
     with h5py.File(filename, 'r+') as fid:
@@ -1539,83 +1556,3 @@ def display_raw_instructions(raw):
 def display_raw_file(filename):
     raw = raw_instructions(filename)
     display_raw_instructions(raw)
-
-if __name__ == '__main__':
-    if len(sys.argv) == 2:
-
-        from PyQt5.QtWidgets import QApplication, QWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QAbstractItemView
-        from PyQt5.QtGui import QIcon, QColor, QFont
-
-        table_font = QFont("Arial", weight=QFont.Bold)
-
-        colors = {"WFM": QColor(0,200,0),
-                  "GOTO": QColor(0,100,100),
-                  "MARKER": QColor(150,150,200),
-                  "CUSTOM": QColor(200,65,200),
-                  "WRITEADDR": QColor(245, 105, 65),
-                  "INVALIDATE": QColor(245, 105, 65),
-                  "CALL": QColor(65, 205, 245),
-                  "RET": QColor(65, 205, 245),
-                  "LOADCMP": QColor(245, 225, 65),
-                  "MODULATION": QColor(175, 255, 185)}
-
-        class App(QWidget):
-
-            COLUMN_COUNT = 7
-
-            def __init__(self, instructions):
-                super().__init__()
-                self.title = 'APS2 Disassembled Instructions'
-                self.left = 100
-                self.top = 100
-                self.width = 1000
-                self.height = 1200
-                self.instructions = instructions
-                self.initUI()
-
-            def initUI(self):
-                self.setWindowTitle(self.title)
-                self.setGeometry(self.left, self.top, self.width, self.height)
-
-                self.createTable()
-                self.layout = QVBoxLayout()
-                self.layout.addWidget(self.tableWidget)
-                self.setLayout(self.layout)
-
-                # Show widget
-                self.show()
-
-            def createTable(self):
-               # Create table
-                self.tableWidget = QTableWidget()
-                self.tableWidget.setRowCount(len(self.instructions))
-                self.tableWidget.setColumnCount(self.COLUMN_COUNT)
-
-                for k, instr in enumerate(self.instructions):
-                    fields = str(instr).replace(',','').replace(';', '').split(" ")
-                    if "|" in fields:
-                        fields.remove("|")
-                    if fields[0] in colors:
-                        color = colors[fields[0]]
-                    else:
-                        color = None
-                    for l, f in enumerate(fields):
-                        text = fields[l]
-                        item = QTableWidgetItem(text)
-                        item.setFont(table_font)
-                        if color:
-                            item.setBackground(color)
-                        self.tableWidget.setItem(k,l, item)
-                    if l < self.COLUMN_COUNT-1:
-                        for j in range(l+1, self.COLUMN_COUNT):
-                            item = QTableWidgetItem("")
-                            if color:
-                                item.setBackground(color)
-                            self.tableWidget.setItem(k, j, item)
-
-                self.tableWidget.move(0,0)
-                self.tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)
-
-        app = QApplication(sys.argv[:1])
-        ex = App(read_instructions(sys.argv[1]))
-        sys.exit(app.exec_())
