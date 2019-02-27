@@ -297,7 +297,10 @@ class Instruction(object):
 
         elif any(
             [instrOpCode == op for op in [GOTO, CALL, RET, REPEAT, PREFETCH]]):
+            if self.use_ram:
+                out += " RAM"
             out += " | target_addr={}".format(self.payload & 2**26 - 1)
+
 
         elif instrOpCode == LOAD:
             out += " | count={}".format(self.payload)
@@ -358,6 +361,9 @@ class Instruction(object):
 
     def __hash__(self):
         return hash((self.header, self.payload, self.label))
+
+    def isa(self, value):
+        return (self.header >> 4) == value
 
     @property
     def address(self):
@@ -616,7 +622,7 @@ class ModulationCommand(object):
         instr.writeFlag = write_flag
         return instr
 
-def inject_modulation_cmds(seqs, force_phase_update=False):
+def inject_modulation_cmds(seqs):
     """
     Inject modulation commands from phase, frequency and frameChange of waveforms
     in an IQ waveform sequence. Assume up to 2 NCOs for now.
@@ -634,12 +640,16 @@ def inject_modulation_cmds(seqs, force_phase_update=False):
         frame_changes = [entry.frameChange for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
         no_frame_cmds = np.all(np.less(np.abs(frame_changes), 1e-8))
         no_modulation_cmds = no_freq_cmds and no_phase_cmds and no_frame_cmds
-        #import pdb; pdb.set_trace()
         if no_modulation_cmds:
             continue
 
         mod_seq = []
         pending_frame_update = False
+
+        #check to see if we are in a subroutine by using last instruction as return as a tell
+        #if so, ensure frame updates do not get dropped
+        if isinstance(seq[-1], ControlFlow.Return):
+            force_phase_update = True
 
         for entry in seq:
 
@@ -728,7 +738,6 @@ def synchronize_clocks(seqs):
     syncInstructions = [list(filter(
         lambda s: isinstance(s, ControlFlow.ControlInstruction), seq))
                         for seq in seqs if seq]
-    #import pdb; pdb.set_trace()
     # Add length to control-flow instructions to make accumulated time match at end of CFI.
     # Keep running tally of how much each channel has been shifted so far.
     localShift = [0 for _ in syncInstructions]
@@ -847,14 +856,14 @@ def create_seq_instructions(seqs, offsets, label = None):
                     instructions.append(LoadCmpVram(entry.addr, entry.mask, label=label))
                 # some TDM instructions are ignored by the APS
                 elif isinstance(entry, TdmInstructions.CustomInstruction):
-                    print(str(entry))
+                    #print(str(entry))
                     try:
                         instructions.append(Custom(entry.in_addr, entry.out_addr,
                                                     APS2_CUSTOM[entry.instruction], label=label))
                     except KeyError as e:
                         raise Exception(f"Got unknown APS2 instruction: {e.args[0]} in {str(entry)}.")
                 elif isinstance(entry, TdmInstructions.WriteAddrInstruction):
-                    print(str(entry))
+                    #print(str(entry))
                     if entry.instruction == 'INVALIDATE' and entry.tdm == False:
                         instructions.append(Invalidate(entry.addr, entry.value, label=label))
                     if entry.instruction == 'WRITEADDR' and entry.tdm == False:
@@ -939,7 +948,6 @@ def create_instr_data(seqs, offsets, cache_lines):
         except:
             pass
         instructions += seq
-
     #if we have any subroutines then group in cache lines
     if subroutines_start >= 0:
         subroutine_instrs = []
@@ -967,12 +975,25 @@ def create_instr_data(seqs, offsets, cache_lines):
             CACHE_LINE_LENGTH))
         #inject prefetch commands before waits
         wait_idx = [idx for idx, instr in enumerate(instructions)
-                    if (instr.header >> 4) == WAIT] + [len(instructions)]
+                    if instr.isa(WAIT)] + [len(instructions)]
         instructions_with_prefetch = instructions[:wait_idx[0]]
         last_prefetch = None
+
         for start, stop in zip(wait_idx[:-1], wait_idx[1:]):
             call_targets = [instr.target for instr in instructions[start:stop]
-                            if (instr.header >> 4) == CALL]
+                           if instr.isa(CALL)]
+
+            #Check if we call into any jump tables
+            jump_tables = [label for label in call_targets if label.jump_table]
+            if len(jump_tables) > 0:
+                for jt in set(jump_tables):
+                    #Find the start of the jump table
+                    start_idx = next(j for j, instr in enumerate(subroutine_instrs)
+                                        if instr.label == jt)
+                    stop_idx = start_idx + jt.table_size
+                    call_targets.extend([instr.target for instr in
+                                            subroutine_instrs[start_idx:stop_idx]
+                                                if instr.isa(CALL)])
             needed_lines = set()
             for target in call_targets:
                 needed_lines.add(subroutine_cache_line[target])
@@ -989,8 +1010,8 @@ def create_instr_data(seqs, offsets, cache_lines):
         #pad out instruction vector to ensure circular cache never loads a subroutine
         pad_instrs = 7 * 128 + (128 - ((len(instructions) + 128) % 128))
         instructions += [NoOp()] * pad_instrs
-
         instructions += subroutine_instrs
+
 
     #turn symbols into integers addresses
     resolve_symbols(instructions)
@@ -1006,7 +1027,7 @@ def resolve_symbols(seq):
 
     labeled_entries = [(idx, entry.label) for idx, entry in enumerate(seq) if entry.label is not None]
     symbols = {label: idx for idx, label in labeled_entries}
-    print(f"Found labels: {symbols}")
+    #print(f"Found labels: {symbols}")
     for entry in seq:
         if entry.target is not None and entry.target in symbols.keys():
             entry.address = symbols[entry.target]
@@ -1207,7 +1228,7 @@ def read_sequence_file(fileName):
                 chan_select_bits = ((instr.header >> 2) & 0x1,
                                     (instr.header >> 3) & 0x1)
                 #On older firmware we broadcast by default whereas on newer we respect the engine select
-                for chan, select_bit in zip(('ch1', 'ch2'), chan_select_bits):
+                for chan, select_bit in zip(('ch1', 'ch2'), chan_select_bits):plot_pulse
                     if (file_version < 4) or select_bit:
                         if isTA:
                             seqs[chan][-1].append((count, wf_lib[chan][addr]))
