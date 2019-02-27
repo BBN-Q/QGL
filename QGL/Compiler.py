@@ -37,6 +37,7 @@ from . import ControlFlow
 from . import BlockLabel
 from . import TdmInstructions # only for APS2-TDM
 from . import APS2CustomInstructions
+from .RandomCliffordTools import default_clifford_options
 from . import RandomCliffordTools
 import gc
 
@@ -365,7 +366,8 @@ def collect_specializations(seqs):
             done.append(target)
     return funcs
 
-def compile_to_IR(seqs, add_slave_trigger=True, tdm_seq=False, random_cliffords=False):
+def compile_to_IR(seqs, add_slave_trigger=True, tdm_seq=False, random_cliffords=False,
+                    clifford_options=default_clifford_options):
 
     ChannelLibraries.channelLib.update_channelDict()
     clear_pulse_cache()
@@ -402,7 +404,7 @@ def compile_to_IR(seqs, add_slave_trigger=True, tdm_seq=False, random_cliffords=
 
     # Compile all the pulses/pulseblocks to sequences of pulses and control flow
     logger.info("Compiling sequences.")
-    wireSeqs = compile_sequences(seqs, channels, random_cliffords=random_cliffords)
+    wireSeqs = compile_sequences(seqs, channels, random_cliffords=random_cliffords, clifford_options=clifford_options)
 
     if not validate_linklist_channels(wireSeqs.keys()):
         print("Compile to hardware failed")
@@ -593,7 +595,8 @@ def compile_to_hardware(seqs,
     return metafilepath
 
 
-def compile_sequences(seqs, channels=set(), random_cliffords=False):
+def compile_sequences(seqs, channels=set(), random_cliffords=False,
+                            clifford_options=default_clifford_options):
     '''
     Main function to convert sequences to miniLL's and waveform libraries.
     '''
@@ -608,14 +611,21 @@ def compile_sequences(seqs, channels=set(), random_cliffords=False):
     seqs += subroutines
 
     if random_cliffords:
+
         qubits = [q for q in list(channels) if isinstance(q, Channels.Qubit)]
         if len(qubits) > 1:
             raise Exception("Too many qubits! Don't know how to deal with this yet.")
         #replace cliffords with
         cliffords = [[get_clifford_type(seqs)(n)] for n in range(24)]
-        RandomCliffordTools.generate_clifford_jump_table(cliffords)
-        RandomCliffordTools.insert_clifford_calls(seqs)
+        jt_label = RandomCliffordTools.generate_clifford_jump_table(cliffords)
+        RandomCliffordTools.insert_clifford_calls(seqs, jt_label=jt_label, clifford_options=clifford_options)
+
+        # if not isinstance(seqs[0][0], BlockLabel.BlockLabel):
+        #     raise Exception("Fist instruciton must be block label!")
+        # start_label = seqs[0][0]
         seqs += cliffords
+        #seqs[0:0] = cliffords
+        #seqs[0].insert(0, ControlFlow.Goto(start_label))
 
     #expand the channel definitions for anything defined in subroutines
     for func in subroutines:
@@ -701,7 +711,14 @@ def compile_sequence(seq, channels=None):
                 wires = propagate_node_frame_to_edges(
                     wires, chan, block.pulses[chan].frameChange)
         # drop length 0 blocks but push nonzero frame changes onto previous entries
-        if block.length == 0:
+
+        is_subroutine = False
+        if isinstance(seq[-1], ControlFlow.Return):
+            #Make sure we do not drop frame update instructions for subroutines that are only Z pulses
+            is_subroutine = True
+
+
+        if block.length == 0 and not is_subroutine:
             for chan in channels:
                 if block.pulses[chan].frameChange == 0:
                     continue
