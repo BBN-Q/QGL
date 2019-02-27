@@ -2,8 +2,10 @@ import string
 
 
 class BlockLabel(object):
-    def __init__(self, label):
+    def __init__(self, label, jump_table=False, table_size=0):
         self.label = label
+        self.jump_table = jump_table
+        self.table_size = table_size
 
     def __repr__(self):
         return self.__str__()
