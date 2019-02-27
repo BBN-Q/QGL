@@ -185,6 +185,9 @@ class ChannelLibrary(object):
     def meas(self):
         return self.ent_by_type(Channels.Measurement)
 
+    def markers(self):
+       return self.ent_by_type(Channels.LogicalMarkerChannel)
+
     @check_session_dirty
     def load(self, name, index=1):
         """Load the latest instance for a particular name. Specifying index = 2 will select the second most recent instance """
@@ -393,6 +396,12 @@ class ChannelLibrary(object):
         return thing
 
     @check_for_duplicates
+    def new_marker(self, label, phys_chan, **kwargs):
+        thing = Channels.LogicalMarkerChannel(label=label, phys_chan = phys_chan, channel_db=self.channelDatabase, **kwargs)
+        self.add_and_update_dict(thing)
+        return thing
+
+    @check_for_duplicates
     def new_source(self, label, model, address, power=-30.0, frequency=5.0e9, reference='10MHz'):
         thing = Channels.Generator(label=label, model=model, address=address, power=power,
                                     frequency=frequency, reference=reference,
@@ -401,7 +410,7 @@ class ChannelLibrary(object):
         return thing
 
     def set_control(self, qubit_or_edge, transmitter, generator=None):
-        
+
         if isinstance(transmitter, Channels.Transmitter):
             quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
             markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
