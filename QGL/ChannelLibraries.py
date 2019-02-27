@@ -78,7 +78,7 @@ def check_for_duplicates(f):
     @wraps(f)
     def wrapper(cls, label, *args, **kwargs):
         if label in cls.channelDict:
-            logger.warning(f"Cannot create {label}: a channel with the same name already exists.")
+            logger.info(f"A database item with the name {label} already exists. Returning this existing item instead.")
             return cls.channelDict[label]
         else:
             return f(cls, label, *args, **kwargs)
@@ -461,7 +461,7 @@ class ChannelLibrary(object):
             raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
 
         if f"M-{qubit.label}" in self.channelDict:
-            logger.warning(f"Cannot create Measurement M-{qubit.label}: a channel with the same name already exists.")
+            logger.info(f"The measurement M-{qubit.label} already exists: using this measurement.")
             meas = self.channelDict[f"M-{qubit.label}"]
         else:
             meas = Channels.Measurement(label=f"M-{qubit.label}", channel_db=self.channelDatabase)
@@ -471,9 +471,12 @@ class ChannelLibrary(object):
 
         phys_trig_channel = trig_channel if trig_channel else transmitter.get_chan("m1")
 
-        trig_chan              = Channels.LogicalMarkerChannel(label=f"ReceiverTrig-{qubit.label}", channel_db=self.channelDatabase)
-        # print(phys_trig_channel.id, trig_chan.id)
-        self.session.add(trig_chan)
+        if f"ReceiverTrig-{qubit.label}" in self.channelDict:
+            logger.info(f"The Receiver trigger ReceiverTrig-{qubit.label} already exists: using this channel.")
+            trig_chan = self.channelDict[f"ReceiverTrig-{qubit.label}"]
+        else:
+            trig_chan = Channels.LogicalMarkerChannel(label=f"ReceiverTrig-{qubit.label}", channel_db=self.channelDatabase)
+            self.session.add(trig_chan)
         trig_chan.phys_chan    = phys_trig_channel
         trig_chan.pulse_params = {"length": trigger_length, "shape_fun": "constant"}
         meas.trig_chan         = trig_chan
@@ -493,6 +496,9 @@ class ChannelLibrary(object):
 
         if gate:
             phys_gate_channel   = gate_channel if gate_channel else transmitter.get_chan("m2")
+            if f"M-{qubit.label}-gate" in self.channelDict:
+                logger.info(f"The gate channel M-{qubit.label}-gate already exists: using this channel.")
+                gate_chan = self.channelDict[f"M-{qubit.label}-gate"]
             gate_chan           = Channels.LogicalMarkerChannel(label=f"M-{qubit.label}-gate", channel_db=self.channelDatabase)
             gate_chan.phys_chan = phys_gate_channel
             meas.gate_chan      = gate_chan
@@ -508,7 +514,11 @@ class ChannelLibrary(object):
             if not isinstance(trig_channel, Channels.PhysicalMarkerChannel):
                 raise ValueError("In set_master the trigger channel must be an instance of PhysicalMarkerChannel")
 
-            st = Channels.LogicalMarkerChannel(label="slave_trig", channel_db=self.channelDatabase)
+            if "slave_trig" in self.channelDict:
+                logger.info(f"The slave trigger slave_trig already exists: using this trigger.")
+                st = self.channelDict["slave_trig"]
+            else:
+                st = Channels.LogicalMarkerChannel(label="slave_trig", channel_db=self.channelDatabase)
             st.phys_chan = trig_channel
             st.pulse_params = {"length": pulse_length, "shape_fun": "constant"}
             master_instrument.master = True
