@@ -1236,7 +1236,7 @@ def read_sequence_file(fileName):
                 chan_select_bits = ((instr.header >> 2) & 0x1,
                                     (instr.header >> 3) & 0x1)
                 #On older firmware we broadcast by default whereas on newer we respect the engine select
-                for chan, select_bit in zip(('ch1', 'ch2'), chan_select_bits):plot_pulse
+                for chan, select_bit in zip(('ch1', 'ch2'), chan_select_bits):
                     if (file_version < 4) or select_bit:
                         if isTA:
                             seqs[chan][-1].append((count, wf_lib[chan][addr]))
