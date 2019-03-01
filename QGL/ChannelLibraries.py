@@ -370,7 +370,7 @@ class ChannelLibrary(object):
         # Add a default kernel
         for chan in chans:
             if chan.stream_type is "integrated":
-                chan.kernel = np.ones(record_length, dtype=np.complex).tobytes()
+                chan.kernel = np.ones(record_length)
 
         self.add_and_update_dict(this_receiver)
         return this_receiver
@@ -490,7 +490,7 @@ class ChannelLibrary(object):
             rcv_chan = receivers
         else:
             raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
-            
+
         meas.receiver_chan = rcv_chan
         self.add_and_update_dict([meas, trig_chan])
 
