@@ -490,9 +490,7 @@ class ChannelLibrary(object):
             rcv_chan = receivers
         else:
             raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
-
-        if rcv_chan.stream_type == 'demodulated':
-            rcv_chan.if_freq = meas.autodyne_freq
+            
         meas.receiver_chan = rcv_chan
         self.add_and_update_dict([meas, trig_chan])
 
