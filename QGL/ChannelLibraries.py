@@ -332,6 +332,15 @@ class ChannelLibrary(object):
         return dcsource
 
     @check_for_duplicates
+    def new_attenuator(self,label,address,attenuation=0):
+        chan1 = Channels.AttenuatorChannel(label=f"AttenChan-{label}-1", channel=1, attenuation=attenuation, channel_db=self.channelDatabase)
+        chan2 = Channels.AttenuatorChannel(label=f"AttenChan-{label}-2", channel=2, attenuation=attenuation, channel_db=self.channelDatabase)
+        chan3 = Channels.AttenuatorChannel(label=f"AttenChan-{label}-3", channel=3, attenuation=attenuation, channel_db=self.channelDatabase)
+        thing = Channels.Attenuator(label=label,model="DigitalAttenuator",address=address,channels=[chan1, chan2, chan3], standalone=True, channel_db=self.channelDatabase)
+        self.add_and_update_dict(thing)
+        return thing
+
+    @check_for_duplicates
     def new_APS2_rack(self, label, ip_addresses, tdm_ip=None, **kwargs):
         transmitters  = [self.new_APS2(f"{label}_U{n+1}", f"{ip}") for n, ip in enumerate(ip_addresses)]
         this_transceiver = Channels.Transceiver(label=label, model="APS2Rack", transmitters=transmitters, channel_db=self.channelDatabase, **kwargs)
