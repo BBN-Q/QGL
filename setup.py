@@ -10,6 +10,5 @@ setup(name='QGL',
         "scipy >= 0.17.1",
         "networkx >= 1.11",
         "bqplot >= 0.11.5",
-        # "sqlalchemy >= 1.2.17", Rolling back 20 .15 per 27/2/2019 email
         "sqlalchemy >= 1.2.15"
     ])
