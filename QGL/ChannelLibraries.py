@@ -352,7 +352,7 @@ class ChannelLibrary(object):
 
         phys_channels = (1, 2)
         dsp_channels = (1, 2)
-        stream_types = ("raw", "demodulated", "integrated")
+        stream_types = ("raw", "demodulated", "integrated", "state")
 
         chans = []
 
@@ -364,7 +364,7 @@ class ChannelLibrary(object):
         this_receiver = Channels.Receiver(label=label, model="X6-1000M", address=address, channels=chans,
                                       record_length=record_length, channel_db=self.channelDatabase, **kwargs)
         this_receiver.trigger_source = "external"
-        this_receiver.stream_types   = "raw, demodulated, integrated"
+        this_receiver.stream_types   = "raw, demodulated, integrated, state"
         this_receiver.address        = address
 
         # Add a default kernel
