@@ -366,7 +366,7 @@ class ChannelLibrary(object):
         chans = []
 
         for p, d, s in itertools.product(phys_channels, dsp_channels, stream_types):
-            chans.append(Channels.ReceiverChannel(label=f"RecvChan-{label}-{s}-{d}-{p}",
+            chans.append(Channels.ReceiverChannel(label=f"RecvChan-{label}-{s}-{p}-{d}",
                             channel=p, dsp_channel=d, stream_type=s,
                             channel_db=self.channelDatabase))
 
