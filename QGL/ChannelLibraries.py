@@ -78,8 +78,9 @@ def check_for_duplicates(f):
     @wraps(f)
     def wrapper(cls, label, *args, **kwargs):
         if label in cls.channelDict:
-            logger.warning(f"A database item with the name {label} already exists. Returning this existing item instead.")
-            return cls.channelDict[label]
+            logger.warning(f"A database item with the name {label} already exists. Updating parameters of this existing item instead.")
+            cls.channelDict[label].__dict__.update(kwargs)
+            return cls.channelDict[label]  #should check for difference in args
         else:
             return f(cls, label, *args, **kwargs)
     return wrapper
@@ -380,6 +381,7 @@ class ChannelLibrary(object):
         for chan in chans:
             if chan.stream_type is "integrated":
                 chan.kernel = np.ones(record_length)
+
 
         self.add_and_update_dict(this_receiver)
         return this_receiver
