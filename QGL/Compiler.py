@@ -24,30 +24,34 @@ from copy import copy
 from functools import reduce
 from importlib import import_module
 import json
-
 from . import config
 from . import PatternUtils
 from .PatternUtils import flatten, has_gate
 from . import Channels
 from . import ChannelLibraries
 from . import PulseShapes
-from .PulsePrimitives import Id
+from . import PulsePrimitives
+from .PulsePrimitives import Id, clear_pulse_cache
 from .PulseSequencer import Pulse, PulseBlock, CompositePulse
 from . import ControlFlow
 from . import BlockLabel
 from . import TdmInstructions # only for APS2-TDM
+from . import APS2CustomInstructions
+from .RandomCliffordTools import default_clifford_options
+from . import RandomCliffordTools
+import gc
 
 logger = logging.getLogger(__name__)
 
 def map_logical_to_physical(wires):
-    # construct a mapping of physical channels to lists of logical channels
-    # (there will be more than one logical channel if multiple logical
-    # channels share a physical channel)
+    """construct a mapping of physical channels to lists of logical channels
+    (there will be more than one logical channel if multiple logical
+    channels share a physical channel)"""
     physicalChannels = {}
     for logicalChan in wires.keys():
         phys_chan = logicalChan.phys_chan
         if not phys_chan:
-            raise ValueError("LogicalChannel {} does not have a PhysicalChannel".format(phys_chan))
+            raise ValueError("LogicalChannel {} does not have a PhysicalChannel".format(logicalChan))
         if phys_chan not in physicalChannels:
             physicalChannels[phys_chan] = [logicalChan]
         else:
@@ -101,7 +105,7 @@ def merge_channels(wires, channels):
                 [e.amp * e.frequency for e in entries])[0]
             assert len(nonZeroSSBChan) <= 1, \
                 "Unable to handle merging more than one non-zero entry with non-zero frequency."
-            if nonZeroSSBChan:
+            if nonZeroSSBChan.size > 0:
                 frequency = entries[nonZeroSSBChan[0]].frequency
             else:
                 frequency = 0.0
@@ -221,6 +225,10 @@ def generate_waveforms(physicalWires):
         for pulse in flatten(wire):
             if not isinstance(pulse, Pulse):
                 continue
+            if pulse.isRunTime:
+                #skip run-time pulses as we need to add the set of all possible pulses to
+                #the waveform table
+                continue
             if pulse.hashshape() not in wfs[ch]:
                 if pulse.isTimeAmp:
                     wfs[ch][pulse.hashshape()] = np.ones(1, dtype=np.complex)
@@ -228,6 +236,64 @@ def generate_waveforms(physicalWires):
                     wfs[ch][pulse.hashshape()] = pulse.shape
     return wfs
 
+def get_clifford_type(wire, allowed_types=("RandomAC")):
+    rt_pulses = []
+    for pulse in flatten(wire):
+        if isinstance(pulse, Pulse) and pulse.isRunTime:
+            rt_pulses.append(pulse)
+        elif isinstance(pulse, PulseBlock) and pulse.isRunTime:
+            for p in pulse.pulses.values():
+                if p.isRunTime:
+                    rt_pulses.append(p)
+
+    if len(rt_pulses) == 0:
+        return None
+    pulse_type = list(set([pulse.label for pulse in rt_pulses]))
+    pulse_logical_chan = list(set([pulse.channel for pulse in rt_pulses]))
+    if len(pulse_type) > 1:
+        raise Exception(f"All run-time pulses must have the same label. Found: {pulse_type}.")
+    if len(pulse_logical_chan) > 1:
+        raise Exception(f"Found more than one channel per run-time pulse set: {pulse_logical_chan}.")
+    if pulse_type[0] not in allowed_types:
+        raise Exception(f"Unknown run time pulse type {pulse_type}.")
+    pulse_fn = getattr(PulsePrimitives, pulse_type[0].split('Random')[-1], None)
+    if pulse_fn is None:
+        raise Exception("Was unable to get pulse type for run-time generated pulses.")
+    return lambda x: pulse_fn(pulse_logical_chan[0], x)
+
+
+def add_runtime_pulse_set(physicalWires, wfs):
+    for ch, wire in physicalWires.items():
+        pulse_fn = get_clifford_type(wire)
+        if pulse_fn is None:
+            continue
+        all_pulses = []
+        all_cliffords = [pulse_fn(n) for n in range(24)]
+        #Some could be CompositePulses so crack into indvidual pulses
+        for cliff in all_cliffords:
+            try:
+                for p in cliff.pulses:
+                    all_pulses.append(p)
+            except AttributeError:
+                all_pulses.append(cliff)
+
+        for cp in all_pulses: #make all-pulses a set?
+            if cp.hashshape() not in wfs[ch]: #don't duplicate data
+                if cp.isTimeAmp:
+                    wfs[ch][cp.hashshape()] = np.ones(1, dtype=np.complex)
+                else:
+                    wfs[ch][cp.hashshape()] = cp.shape
+
+    return wfs
+
+def create_clifford_waveforms(physicalWires):
+    clifford_sets = {}
+    for ch, wire in physicalWires.items():
+        pulse_fn = get_clifford_type(wire)
+        if pulse_fn is None:
+            continue
+        clifford_sets[ch] = [[Waveform(pulse_fn(n))] for n in range(24)]
+    return clifford_sets
 
 def pulses_to_waveforms(physicalWires):
     logger.debug("Converting pulses_to_waveforms:")
@@ -276,7 +342,8 @@ def bundle_wires(physWires, wfs):
     awgData = setup_awg_channels(physWires.keys())
     for chan in physWires.keys():
         _, awgChan = chan.label.rsplit('-', 1)
-        awgChan = 'ch' + awgChan
+        if awgChan[0] != 'm':
+            awgChan = 'ch' + awgChan
         awgData[chan.instrument][awgChan]['linkList'] = physWires[chan]
         awgData[chan.instrument][awgChan]['wfLib'] = wfs[chan]
         if hasattr(chan, 'correctionT'):
@@ -299,30 +366,12 @@ def collect_specializations(seqs):
             done.append(target)
     return funcs
 
+def compile_to_IR(seqs, add_slave_trigger=True, tdm_seq=False, random_cliffords=False,
+                    clifford_options=default_clifford_options):
 
-def compile_to_hardware(seqs,
-                        fileName,
-                        suffix='',
-                        axis_descriptor=None,
-                        add_slave_trigger=True,
-                        extra_meta=None,
-                        tdm_seq = False):
-    '''
-    Compiles 'seqs' to a hardware description and saves it to 'fileName'.
-    Other inputs:
-        suffix (optional): string to append to end of fileName, e.g. with
-            fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5
-        axis_descriptor (optional): a list of dictionaries describing the effective
-            axes of the measurements that the sequence will yield. For instance,
-            if `seqs` generates a Ramsey experiment, axis_descriptor would describe
-            the time delays between pulses.
-        add_slave_trigger (optional): add the slave trigger(s)
-        tdm_seq (optional): compile for TDM
-    '''
+    ChannelLibraries.channelLib.update_channelDict()
+    clear_pulse_cache()
     logger.debug("Compiling %d sequence(s)", len(seqs))
-
-    # save input code to file
-    save_code(seqs, fileName + suffix)
 
     # all sequences should start with a WAIT for synchronization
     for seq in seqs:
@@ -331,11 +380,11 @@ def compile_to_hardware(seqs,
             seq.insert(0, ControlFlow.Wait())
 
     # Add the digitizer trigger to measurements
-    logger.debug("Adding digitizer trigger")
+    logger.info("Adding digitizer trigger")
     PatternUtils.add_digitizer_trigger(seqs)
 
     # Add gating/blanking pulses
-    logger.debug("Adding blanking pulses")
+    logger.info("Adding blanking pulses")
     for seq in seqs:
         PatternUtils.add_gate_pulses(seq)
 
@@ -345,23 +394,25 @@ def compile_to_hardware(seqs,
         PatternUtils.add_slave_trigger(seqs,
                                        ChannelLibraries.channelLib['slave_trig'])
     else:
-        logger.debug("Not adding slave trigger")
+        logger.info("Not adding slave trigger")
 
     # find channel set at top level to account for individual sequence channel variability
+    logger.info("Finding unique channels.")
     channels = set()
     for seq in seqs:
         channels |= find_unique_channels(seq)
 
     # Compile all the pulses/pulseblocks to sequences of pulses and control flow
-    wireSeqs = compile_sequences(seqs, channels)
+    logger.info("Compiling sequences.")
+    wireSeqs = compile_sequences(seqs, channels, random_cliffords=random_cliffords, clifford_options=clifford_options)
 
     if not validate_linklist_channels(wireSeqs.keys()):
         print("Compile to hardware failed")
         return
-
     logger.debug('')
     logger.debug("Now after gating constraints:")
     # apply gating constraints
+    logger.info("Applying gating constraints")
     for chan, seq in wireSeqs.items():
         if isinstance(chan, Channels.LogicalMarkerChannel):
             wireSeqs[chan] = PatternUtils.apply_gating_constraints(
@@ -369,6 +420,7 @@ def compile_to_hardware(seqs,
     debug_print(wireSeqs, 'Gated sequence')
 
     # save number of measurements for meta info
+    logger.info("Counting measurements.")
     num_measurements = count_measurements(wireSeqs)
     wire_measurements = count_measurements_per_wire(wireSeqs)
 
@@ -376,6 +428,7 @@ def compile_to_hardware(seqs,
     # PhysicalQuadratureChannels and PhysicalMarkerChannels
     # for the APS, the naming convention is:
     # ASPName-12, or APSName-12m1
+    logger.info("Mapping logical to physical channels.")
     physWires = map_logical_to_physical(wireSeqs)
 
     # Pave the way for composite instruments, not useful yet...
@@ -401,27 +454,66 @@ def compile_to_hardware(seqs,
             files[inst_name] = {}
 
     # construct channel delay map
+    logger.info("Constructing delay map.")
     delays = channel_delay_map(physWires)
 
     # apply delays
+    logger.info("Applying delays.")
     for chan, wire in physWires.items():
         PatternUtils.delay(wire, delays[chan])
     debug_print(physWires, 'Delayed wire')
 
     # generate wf library (base shapes)
+    logger.info("Generating waveform library.")
     wfs = generate_waveforms(physWires)
 
+    # If there are run-time pulses add these to the library
+    if random_cliffords:
+        wfs = add_runtime_pulse_set(physWires, wfs)
+
     # replace Pulse objects with Waveforms
+    logger.info("Replacing pulses with waveforms")
     physWires = pulses_to_waveforms(physWires)
 
     # bundle wires on instruments, or channels depending
     # on whether we have one sequence per channel
+    logger.info("Bundling wires.")
     awgData = bundle_wires(physWires, wfs)
+    return awgData
+
+def compile_to_hardware(seqs,
+                        fileName,
+                        library_version=None,
+                        suffix='',
+                        axis_descriptor=None,
+                        add_slave_trigger=True,
+                        extra_meta=None,
+                        tdm_seq = False):
+    '''
+    Compiles 'seqs' to a hardware description and saves it to 'fileName'.
+    Other inputs:
+        library_version (optional): string or ChannelLibrary instance to pack in the
+            metafile. This will be the version of the library loaded during program
+            execution. Default None uses the current working version.
+        suffix (optional): string to append to end of fileName, e.g. with
+            fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5
+        axis_descriptor (optional): a list of dictionaries describing the effective
+            axes of the measurements that the sequence will yield. For instance,
+            if `seqs` generates a Ramsey experiment, axis_descriptor would describe
+            the time delays between pulses.
+        add_slave_trigger (optional): add the slave trigger(s)
+        tdm_seq (optional): compile for TDM
+    '''
+    # save input code to file
+    save_code(seqs, fileName + suffix)
+
+    awgData = compile_to_IR(seqs, add_slave_trigger=add_slave_trigger, tdm_seq=tdm_seq)
 
     # convert to hardware formats
     # files = {}
     awg_metas = {}
-    for awgName, data in awgData.items():
+    for awgName in list(awgData.keys()):
+        data = awgData[awgName]
         # create the target folder if it does not exist
         targetFolder = os.path.split(os.path.normpath(os.path.join(
             config.AWGDir, fileName)))[0]
@@ -430,6 +522,7 @@ def compile_to_hardware(seqs,
         fullFileName = os.path.normpath(os.path.join(
             config.AWGDir, fileName + '-' + awgName + suffix + data[
                 'seqFileExt']))
+        logger.info("Writing sequence file for: {}".format(awgName))
         new_meta = data['translator'].write_sequence_file(data, fullFileName)
         if new_meta:
             awg_metas[awgName] = new_meta
@@ -440,6 +533,11 @@ def compile_to_hardware(seqs,
                 files[label_to_inst[awgName]][label_to_chan[awgName]] = fullFileName
         else:
             files[awgName] = fullFileName
+
+        del data
+        del awgData[awgName]
+        gc.collect()
+
     # generate TDM sequences FIXME: what's the best way to identify the need for a TDM seq.? Support for single TDM
     if tdm_seq and 'APS2Pattern' in [wire.translator for wire in physWires]:
             aps2tdm_module = import_module('QGL.drivers.APS2Pattern') # this is redundant with above
@@ -454,6 +552,12 @@ def compile_to_hardware(seqs,
     else:
         extra_meta = awg_metas
     # create meta output
+    db_info = {
+        'db_provider': ChannelLibraries.channelLib.db_provider,
+        'db_resource_name': ChannelLibraries.channelLib.db_resource_name,
+        'library_name': 'working',
+        'library_id': ChannelLibraries.channelLib.channelDatabase.id
+    }
     if not axis_descriptor:
         axis_descriptor = [{
             'name': 'segment',
@@ -466,10 +570,13 @@ def compile_to_hardware(seqs,
         if wire.receiver_chan and n>0:
             receiver_measurements[wire.receiver_chan.label] = n
     meta = {
+        'database_info': db_info,
         'instruments': files,
         'num_sequences': len(seqs),
         'num_measurements': num_measurements,
         'axis_descriptor': axis_descriptor,
+        'qubits': [c.label for c in channels if isinstance(c, Channels.Qubit)],
+        'measurements': [c.label for c in channels if isinstance(c, Channels.Measurement)],
         'receivers': receiver_measurements
     }
     if extra_meta:
@@ -488,7 +595,8 @@ def compile_to_hardware(seqs,
     return metafilepath
 
 
-def compile_sequences(seqs, channels=set()):
+def compile_sequences(seqs, channels=set(), random_cliffords=False,
+                            clifford_options=default_clifford_options):
     '''
     Main function to convert sequences to miniLL's and waveform libraries.
     '''
@@ -501,6 +609,23 @@ def compile_sequences(seqs, channels=set()):
     # append function specialization to sequences
     subroutines = collect_specializations(seqs)
     seqs += subroutines
+
+    if random_cliffords:
+
+        qubits = [q for q in list(channels) if isinstance(q, Channels.Qubit)]
+        if len(qubits) > 1:
+            raise Exception("Too many qubits! Don't know how to deal with this yet.")
+        #replace cliffords with
+        cliffords = [[get_clifford_type(seqs)(n)] for n in range(24)]
+        jt_label = RandomCliffordTools.generate_clifford_jump_table(cliffords)
+        RandomCliffordTools.insert_clifford_calls(seqs, jt_label=jt_label, clifford_options=clifford_options)
+
+        # if not isinstance(seqs[0][0], BlockLabel.BlockLabel):
+        #     raise Exception("Fist instruciton must be block label!")
+        # start_label = seqs[0][0]
+        seqs += cliffords
+        #seqs[0:0] = cliffords
+        #seqs[0].insert(0, ControlFlow.Goto(start_label))
 
     #expand the channel definitions for anything defined in subroutines
     for func in subroutines:
@@ -564,9 +689,8 @@ def compile_sequence(seq, channels=None):
             continue
         # control flow broadcasts to all channels if channel attribute is None
         if (isinstance(block, ControlFlow.ControlInstruction) or
-                isinstance(block, TdmInstructions.WriteAddrInstruction) or
-                isinstance(block, TdmInstructions.CustomInstruction) or
-                isinstance(block, TdmInstructions.LoadCmpVramInstruction)):
+                isinstance(block, TdmInstructions.VRAMInstruction) or
+                isinstance(block, TdmInstructions.CustomInstruction)):
             # Need to deal with attaching measurements and edges to control
             # instruction. Until we have a proper solution for that, we will
             # always broadcast control instructions to all channels
@@ -575,6 +699,9 @@ def compile_sequence(seq, channels=None):
             for chan in block_channels:
                 wires[chan] += [copy(block)]
             continue
+        #Don't propagate VRAM instructions
+        #if isinstance(block, TdmInstructions.VRAMInstruction) or isinstance(block, TdmInstructions.CustomInstruction):
+        #    continue
         # propagate frame change from nodes to edges
         for chan in channels:
             if block.pulses[chan].frameChange == 0:
@@ -584,7 +711,14 @@ def compile_sequence(seq, channels=None):
                 wires = propagate_node_frame_to_edges(
                     wires, chan, block.pulses[chan].frameChange)
         # drop length 0 blocks but push nonzero frame changes onto previous entries
-        if block.length == 0:
+
+        is_subroutine = False
+        if isinstance(seq[-1], ControlFlow.Return):
+            #Make sure we do not drop frame update instructions for subroutines that are only Z pulses
+            is_subroutine = True
+
+
+        if block.length == 0 and not is_subroutine:
             for chan in channels:
                 if block.pulses[chan].frameChange == 0:
                     continue
@@ -656,11 +790,29 @@ def normalize(seq, channels=None):
             block.pulses[ch] = Id(ch, blocklen)
     return seq
 
+class MemoizedObject(type):
+    """Metaclass for memoizing objects. Designed to save memory when processing
+    very long sequences. Overrides __call__ to prevent creating a new instance.
+    Idea from https://stackoverflow.com/questions/47785795/memoized-objects-still-have-their-init-invoked
+    """
+    def __init__(self, name, bases, namespace):
+        super().__init__(name, bases, namespace)
+        self.cache = {}
+    def __call__(self, pulse=None):
+        hash = pulse.hashshape()
+        if pulse is not None and hash not in self.cache:
+            self.cache[hash] = super().__call__(pulse=pulse)
+        return self.cache[hash]
+
 class Waveform(object):
     """
     Simplified channel independent version of a Pulse with a key into waveform library.
     """
 
+    #Use slots to create attributes to save on memory.
+    __slots__ = ["label", "key", "amp", "length", "phase", "frameChange",
+                    "isTimeAmp", "frequency", "logicalChan", "maddr", "startTime",
+                    "isRunTime"]
 
     def __init__(self, pulse=None):
         if pulse is None:
@@ -674,6 +826,7 @@ class Waveform(object):
             self.frequency = 0
             self.logicalChan = ""
             self.maddr = (-1, 0)
+            self.isRunTime = False
         else:
             self.label = pulse.label
             self.key = pulse.hashshape()
@@ -685,11 +838,14 @@ class Waveform(object):
             self.frequency = pulse.frequency
             self.logicalChan = pulse.channel
             self.maddr = pulse.maddr
+            self.isRunTime = pulse.isRunTime
 
     def __repr__(self):
         return self.__str__()
 
     def __str__(self):
+        if self.isRunTime:
+            return f"Hardware-Generated({self.label}, {self.length})"
         if self.isTimeAmp:
             TA = 'HIGH' if self.amp != 0 else 'LOW'
             return "Waveform-TA(" + TA + ", " + str(self.length) + ")"
@@ -698,15 +854,18 @@ class Waveform(object):
                 self.key)[:6] + ", " + str(self.length) + ")"
 
     def __eq__(self, other):
+        if self.isRunTime or other.isRunTime:
+            return False
         if isinstance(other, self.__class__):
-            return self.__dict__ == other.__dict__
+            #No __dict__ property so we check all properties.
+            return all((getattr(self, attr, None) == getattr(other, attr, None) for attr in self.__slots__))
         return False
 
     def __ne__(self, other):
         return not self == other
 
     def __hash__(self):
-        return hash(frozenset(self.__dict__.items()))
+        return hash(frozenset((attr, getattr(self, attr, None)) for attr in self.__slots__))
 
     @property
     def isZero(self):

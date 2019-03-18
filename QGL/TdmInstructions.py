@@ -36,6 +36,13 @@ class CustomInstruction(object):
     def __ne__(self, other):
         return not self == other
 
+    def __str__(self):
+        return f"{self.instruction}({hex(self.in_addr)}, {hex(self.out_addr)})"
+
+    def __repr__(self):
+        return self.__str__()
+
+
 
 def MajorityVote(in_addr, out_addr, nmeas): # alternatively, append the loadcmpvram instruction when compiling (see STOREMEAS)
     return [LoadCmpVramInstruction('LOADCMPVRAM', 1, in_addr, 2**nmeas-1, True), CustomInstruction('MAJORITY', in_addr, out_addr)]
@@ -51,7 +58,10 @@ def DecodeSetRounds(in_addr, out_addr, value):
 
 # TODO: the rest of the CUSTOM instructions
 
-class WriteAddrInstruction(object):
+class VRAMInstruction(object):
+    pass
+
+class WriteAddrInstruction(VRAMInstruction):
 
     def __init__(self, name, channel, modifier, addr, value, tdm, **kwargs):
         self.instruction = name
@@ -74,6 +84,12 @@ class WriteAddrInstruction(object):
     def __ne__(self, other):
         return not self == other
 
+    def __str__(self):
+        return f"{self.instruction}({hex(self.addr)}, {hex(self.value)})"
+
+    def __repr__(self):
+        return self.__str__()
+
 def WriteAddr(addr, value, channel=None, tdm=True):
     return WriteAddrInstruction('WRITEADDR', channel, 0, addr, value, tdm)
 
@@ -86,7 +102,7 @@ def CrossBar(addr, value, channel=None, tdm=True): # should this be a high-level
 def StoreMeas(addr, value, channel=None, tdm=True):
     return WriteAddrInstruction('STOREMEAS', channel, 5, addr, value, tdm)
 
-class LoadCmpVramInstruction(object):
+class LoadCmpVramInstruction(VRAMInstruction):
 
     def __init__(self, name, use_vram, addr, mask, tdm):
         # TODO: sanity checks on input values
@@ -108,6 +124,12 @@ class LoadCmpVramInstruction(object):
     def __ne__(self, other):
         return not self == other
 
+    def __str__(self):
+        return f"{self.instruction}({hex(self.addr)}, {hex(self.mask)})"
 
-# def LoadCmpVram(addr, mask):
-#     return LoadCmpVramInstruction('LOADCMPVRAM', 1, addr, mask)
+    def __repr__(self):
+        return self.__str__()
+
+
+def LoadCmpVram(addr, mask, tdm=True):
+    return LoadCmpVramInstruction('LOADCMPVRAM', 1, addr, mask, tdm)

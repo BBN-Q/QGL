@@ -151,8 +151,16 @@ class Goto(ControlInstruction):
 
 class Call(ControlInstruction):
     # target is a BlockLabel
-    def __init__(self, target):
+    def __init__(self, target, indirect=False):
         super(Call, self).__init__("CALL", target=target)
+        self.indirect = indirect
+
+    def __str__(self):
+        if not self.indirect:
+            return f"{self.instruction}({str(self.target)})"
+        else:
+            return f"{self.instruction}({str(self.target)}, INDIRECT)"
+
 
 
 class Return(ControlInstruction):

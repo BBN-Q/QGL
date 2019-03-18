@@ -202,12 +202,17 @@ def add_digitizer_trigger(seqs):
             #find corresponding digitizer trigger
             chanlist = list(flatten([seq[ct].channel]))
             for chan in chanlist:
-                if hasattr(chan, 'trig_chan'):
+                if hasattr(chan, 'trig_chan') and chan.trig_chan is not None:
                     trig_chan = chan.trig_chan
                     if not (hasattr(seq[ct], 'pulses') and
                             trig_chan in seq[ct].pulses.keys()):
                         seq[ct] = align('left', seq[ct], TAPulse("TRIG", trig_chan, trig_chan.pulse_params['length'], 1.0, 0.0, 0.0))
 
+def contains_runtime_pulses(seqs):
+    """
+    Determines if sequences contain run-time generated pulses.
+    """
+    return any([hasattr(entry, 'isRunTime') and entry.isRunTime for entry in flatten(seqs)])
 
 def contains_measurement(entry):
     """
@@ -334,5 +339,5 @@ def update_wf_library(pulses, path):
                 awg, [str(p) for p in ps.values()]))
             continue
         print("Updating pulses for {}".format(awg))
-        translators[awg].update_wf_library(path + "-" + awg + ".h5", ps,
+        translators[awg].update_wf_library(path + "-" + awg + ".aps", ps,
                                            offsets)
