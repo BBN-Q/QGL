@@ -8,3 +8,4 @@ from .helpers import create_cal_seqs, delay_descriptor, cal_descriptor
 from .CR import EchoCRPhase, EchoCRLen, EchoCRAmp, PiRabi
 from .AllXY import AllXY
 from .Feedback import Reset, BitFlip3, MajorityVoteN
+from .StarkShift import StarkSpectroscopy, StarkEcho, CavityPumpProbe
