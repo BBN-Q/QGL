@@ -37,12 +37,12 @@ def StarkSpectroscopy(qubit, measurement, amplitude,
         return spec_pulse*pump_pulse
 
     seqs = [[stark_shift_pulse(a), MEAS(qubit)] for a in amplitude]
-    axis_descriptor = {
+    axis_descriptor = [{
         'name': 'Stark Shift Amplitude',
         'unit': None,
         'points': list(amplitude),
         'partition': 1
-    }
+    }]
     metafile = compile_to_hardware(seqs, 'StarkSpec/StarkSpec', axis_descriptor=axis_descriptor)
 
     if showPlot:
@@ -155,7 +155,7 @@ def CavityPumpProbe(qubit, measurement, offsets, amplitude,
             return [pump_pulse, Id(qubit, length=(offset-length)), X(qubit), Id(qubit, length=wait_len)]
 
     seqs = [[cavity_probe(off), MEAS(qubit)] for off in offsets]
-    axis_descriptor = delay_descriptor(offsets)
+    axis_descriptor = [delay_descriptor(offsets)]
     metafile = compile_to_hardware(seqs, 'CavityPumpProbe/CavityPumpProbe', axis_descriptor=axis_descriptor)
 
     if showPlot:
