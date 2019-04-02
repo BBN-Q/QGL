@@ -361,27 +361,17 @@ class ChannelLibrary(object):
     def new_X6(self, label, address, dsp_channel=0, record_length=1024, **kwargs):
 
         phys_channels = (1, 2)
-        dsp_channels = (1, 2)
-        stream_types = ("raw", "demodulated", "integrated")
-
         chans = []
 
-        for p, d, s in itertools.product(phys_channels, dsp_channels, stream_types):
-            chans.append(Channels.ReceiverChannel(label=f"RecvChan-{label}-{s}-{p}-{d}",
-                            channel=p, dsp_channel=d, stream_type=s,
-                            channel_db=self.channelDatabase))
+        for phys_chan in (1,2):
+            chans.append(Channels.ReceiverChannel(label=f"RecvChan-{label}-{phys_chan}",
+                            channel=phys_chan, channel_db=self.channelDatabase))
 
         this_receiver = Channels.Receiver(label=label, model="X6-1000M", address=address, channels=chans,
                                       record_length=record_length, channel_db=self.channelDatabase, **kwargs)
         this_receiver.trigger_source = "external"
         this_receiver.stream_types   = "raw, demodulated, integrated"
         this_receiver.address        = address
-
-        # Add a default kernel
-        for chan in chans:
-            if chan.stream_type is "integrated":
-                chan.kernel = np.ones(record_length)
-
 
         self.add_and_update_dict(this_receiver)
         return this_receiver
@@ -443,8 +433,10 @@ class ChannelLibrary(object):
     def new_edge(self, source, target):
         label = f"{source.label}->{target.label}"
         if label in self.channelDict:
-            raise ValueError("Cannot construct edge {label} since it is already in the channel library.")
-        edge = Channels.Edge(label=f"{source.label}->{target.label}", source=source, target=target, channel_db=self.channelDatabase)
+            edge = self.channelDict[f"{source.label}->{target.label}"]
+            logger.warning(f"The edge {source.label}->{target.label} already exists: using this edge.")
+        else:
+            edge = Channels.Edge(label=f"{source.label}->{target.label}", source=source, target=target, channel_db=self.channelDatabase)
         self.add_and_update_dict(edge)
         return edge
 
