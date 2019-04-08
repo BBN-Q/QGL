@@ -399,8 +399,8 @@ def compile_to_hardware(seqs,
     for wire, pulses in physWires.items():
         pattern_module = import_module('QGL.drivers.' + wire.translator)
         if pattern_module.SEQFILE_PER_CHANNEL:
-            inst_name = pattern_module.get_true_inst_name(wire.label)
-            chan_name = pattern_module.get_true_chan_name(wire.label)
+            inst_name = wire.transmitter.label
+            chan_name = wire.label
             has_non_id_pulses = any([len([p for p in ps if isinstance(p,Pulse) and p.label!="Id"]) > 0 for ps in pulses])
             label_to_inst[wire.label] = inst_name
             if has_non_id_pulses:
@@ -410,7 +410,7 @@ def compile_to_hardware(seqs,
             old_wire_instrs[wire] = wire.instrument
             wire.instrument = wire.label
             wire.label = chan_name
-            files[inst_name] = {}
+            #files[inst_name] = {}
 
     # construct channel delay map
     logger.info("Constructing delay map.")
@@ -454,11 +454,12 @@ def compile_to_hardware(seqs,
         new_meta = data['translator'].write_sequence_file(data, fullFileName)
         if new_meta:
             awg_metas[awgName] = new_meta
+            ChannelLibraries.channelLib[awgName].extra_meta = new_meta
 
         # Allow for per channel and per AWG seq files
         if awgName in label_to_inst:
             if awgName in label_to_chan:
-                files[label_to_inst[awgName]][label_to_chan[awgName]] = fullFileName
+                files[label_to_chan[awgName]] = fullFileName
         else:
             files[awgName] = fullFileName
 
