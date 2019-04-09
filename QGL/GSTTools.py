@@ -131,7 +131,7 @@ def SingleQubitCliffordGST(qubit, pygsti_seq, pulse_library="Standard", randomiz
         clifford_pulse.insert(0, Id(qubit, length=0.0))
     elif pulse_library == "DIAC":
         #clifford_pulse = lambda x: DiAC(qubit, x, diac_compiled)
-        clifford_pulse = [AC(qubit, i, diac_compiled) for i in range(24)]
+        clifford_pulse = [DiAC(qubit, i, diac_compiled) for i in range(24)]
         clifford_pulse.insert(1, Id(qubit))
     elif pulse_library == "AC":
         #clifford_pulse = lambda x: AC(qubit, x)
