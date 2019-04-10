@@ -124,8 +124,8 @@ def BitFlip3(data_qs, ancilla_qs, theta=None, phi=None, nrounds=1, meas_delay=1e
         raise Exception("Wrong number of qubits")
     seqs =  [
     DecodeSetRounds(1,0,nrounds),
-    Invalidate(addr=10, mask=2*nrounds),
-    Invalidate(addr=11, mask=0x1)]
+    Invalidate(10, 2*nrounds),
+    Invalidate(11, 0x1)]
 
     # encode single-qubit state into 3 qubits
     if theta and phi:
