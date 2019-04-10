@@ -13,7 +13,7 @@ logger = logging.getLogger("QGL")
 if os.getenv('AWG_DIR'):
     AWGDir = os.getenv('AWG_DIR')
 else:
-    logger.warning("Defaulting to temporary directory for AWG sequence file outputs.")
+    logger.warning("AWG_DIR environment variable not defined. Unless otherwise specified, using temporary directory for AWG sequence file outputs.")
     AWGDir = tempfile.mkdtemp(prefix="AWG")
 
 # The db file, where the channel libraries are stored
