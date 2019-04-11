@@ -1395,7 +1395,8 @@ def tdm_instructions(seqs):
 
             elif isinstance(s, PulseSequencer.Pulse):
                 if s.label == 'MEAS' and s.maddr != (-1, 0):
-                    instructions.append(CrossBar(2**s.maddr[1], 0x1, label=label))
+                    tdm_chan = m.channel.tdm_chan if getattr(m.channel, 'tdm_chan') else 1
+                    instructions.append(CrossBar(2**s.maddr[1], 2**(tdm_chan-1), label=label))
                     instructions.append(LoadCmp(label=label))
                     instructions.append(StoreMeas(s.maddr[0], 1 << 16, label=label))
 
@@ -1409,7 +1410,8 @@ def tdm_instructions(seqs):
                     if len(set(maddr))>1:
                         raise Exception('Storing simultaneous measurements on different addresses not supported.')
                     for n,m in enumerate(sim_meas):
-                        instructions.append(CrossBar(2**m.maddr[1], 2**n))
+                        tdm_chan = m.channel.tdm_chan if getattr(m.channel, 'tdm_chan') else n+1 #default 0
+                        instructions.append(CrossBar(2**m.maddr[1], 2**(tdm_chan-1)))
                     instructions.append(LoadCmp(label=label))
                     instructions.append(StoreMeas(maddr[0], 1 << 16))
 

@@ -170,6 +170,7 @@ class Measurement(LogicalChannel):
     gate_chan = Instance((str, LogicalMarkerChannel))
     trig_chan = Instance((str, LogicalMarkerChannel))
     receiver_chan = Instance((str, ReceiverChannel))
+    tdm_chan = Int(0).tag(desc='tdm input for this digitized measurement result')
 
     def __init__(self, **kwargs):
         super(Measurement, self).__init__(**kwargs)

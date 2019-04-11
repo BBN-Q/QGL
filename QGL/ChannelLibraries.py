@@ -339,6 +339,8 @@ class ChannelLibrary(Atom):
                 params["phys_chan"]     = meas_instr + "-" + meas_chan
                 params["meas_type"]     = "autodyne"
                 params["receiver_chan"] = "RecvChan-" + qubit["measure"]["receiver"]
+                if "tdm_chan" in qubit["measure"].keys():
+                    params['tdm_chan']  = qubit["measure"]["tdm_chan"]
                 params["__module__"]   = "QGL.Channels"
                 params["__class__"]    = "Measurement"
                 channel_dict[params["label"]] = params
