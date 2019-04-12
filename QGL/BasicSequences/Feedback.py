@@ -153,7 +153,7 @@ def BitFlip3(data_qs, ancilla_qs, theta=None, phi=None, nrounds=1, meas_delay=1e
     if docals:
         seqs += create_cal_seqs(qubits,
         calRepeats)
-    metafile = compile_to_hardware(seqs, 'BitFlip/BitFlip')
+    metafile = compile_to_hardware(seqs, 'BitFlip/BitFlip', tdm_seq=True)
     return metafile
 
 def MajorityVoteN(qubits, nrounds, prep=[], meas_delay=1e-6, docals=False, calRepeats=2):
@@ -172,9 +172,9 @@ def MajorityVoteN(qubits, nrounds, prep=[], meas_delay=1e-6, docals=False, calRe
     metafile : metafile path
     """
     nqubits = len(qubits)
-    seqs = [MajorityMask(nrounds*nqubits),
-           Invalidate(addr=10, mask=nrounds*nqubits),
-           Invalidate(addr=11, mask=1)]
+    seqs = [MajorityMask(1, 0, nrounds*nqubits),
+           Invalidate(10, nrounds*nqubits),
+           Invalidate(11, 1)]
     if prep:
        seqs += [reduce(operator.mul, [X(q) for n,q in enumerate(qubits) if prep[n]])]
     for n in range(nrounds):
@@ -187,5 +187,4 @@ def MajorityVoteN(qubits, nrounds, prep=[], meas_delay=1e-6, docals=False, calRe
     if docals:
         seqs += create_cal_seqs(qubits,
         calRepeats)
-    metafile = compile_to_hardware(seqs, 'MajorityVote/MajorityVote')
-    return metafile
+    metafile = compile_to_hardware(seqs, 'MajorityVote/MajorityVote', tdm_seq=True)
