@@ -50,8 +50,6 @@ from . import Channels
 from . import PulseShapes
 from .PulsePrimitives import clear_pulse_cache
 
-from sqlalchemy.orm.session import make_transient
-from sqlalchemy.pool import StaticPool
 from IPython.display import HTML, display
 
 channelLib = None
@@ -87,35 +85,16 @@ def check_for_duplicates(f):
 
 class ChannelLibrary(object):
 
-    def __init__(self, db_resource_name=None):
+    def __init__(self, db_resource_name=":memory:", db_provider="sqlite"):
         """Create the channel library."""
 
         global channelLib
 
-        self.db_provider = "sqlite"
-        self.db_resource_name = ":memory:"
-
-        if bbndb.engine:
-            # Use current db
-            self.db = bbndb.engine
-        else:
-
-            if db_resource_name:
-                self.db_resource_name = db_resource_name
-            elif config.load_db():
-                self.db_resource_name = config.load_db()
-
-            self.db = bbndb.engine = bbndb.create_engine(f'{self.db_provider}:///{self.db_resource_name}',
-                                                            connect_args={'check_same_thread':False},
-                                                            poolclass=StaticPool,
-                                                            echo=False)
-
-        bbndb.Base.metadata.create_all(bbndb.engine)
-        bbndb.Session.configure(bind=bbndb.engine)
-        self.Session = bbndb.Session
-        bbndb.session = self.session = self.Session()
-
+        bbndb.initialize_db(f'{db_provider}:///{db_resource_name}')
+        self.session = bbndb.get_cl_session()
         self.connectivityG = nx.DiGraph()
+        self.db_provider = db_provider
+        self.db_resource_name = db_resource_name
 
         # Check to see whether there is already a temp database
         working_dbs = self.query(Channels.ChannelDatabase, label="working").all()
