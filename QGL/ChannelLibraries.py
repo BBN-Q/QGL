@@ -41,6 +41,7 @@ from functools import wraps
 import itertools
 import numpy as np
 import networkx as nx
+import logging
 
 import bbndb
 
@@ -49,11 +50,11 @@ from . import Channels
 from . import PulseShapes
 from .PulsePrimitives import clear_pulse_cache
 
-from sqlalchemy.orm.session import make_transient
-from sqlalchemy.pool import StaticPool
 from IPython.display import HTML, display
 
 channelLib = None
+
+logger = logging.getLogger("QGL")
 
 def check_session_dirty(f):
     """Since we can't mix db objects from separate sessions, re-fetch entities by their unique IDs"""
@@ -75,42 +76,25 @@ def check_for_duplicates(f):
     @wraps(f)
     def wrapper(cls, label, *args, **kwargs):
         if label in cls.channelDict:
-            raise ValueError(f"Cannot create {label}: a channel with the same name already exists.")
+            logger.warning(f"A database item with the name {label} already exists. Updating parameters of this existing item instead.")
+            cls.channelDict[label].__dict__.update(kwargs)
+            return cls.channelDict[label]  #should check for difference in args
         else:
             return f(cls, label, *args, **kwargs)
     return wrapper
 
 class ChannelLibrary(object):
 
-    def __init__(self, db_resource_name=None):
+    def __init__(self, db_resource_name=":memory:", db_provider="sqlite"):
         """Create the channel library."""
 
         global channelLib
 
-        self.db_provider = "sqlite"
-        self.db_resource_name = ":memory:"
-
-        if bbndb.engine:
-            # Use current db
-            self.db = bbndb.engine
-        else:
-
-            if db_resource_name:
-                self.db_resource_name = db_resource_name
-            elif config.load_db():
-                self.db_resource_name = config.load_db()
-
-            self.db = bbndb.engine = bbndb.create_engine(f'{self.db_provider}:///{self.db_resource_name}',
-                                                            connect_args={'check_same_thread':False},
-                                                            poolclass=StaticPool,
-                                                            echo=False)
-
-        bbndb.Base.metadata.create_all(bbndb.engine)
-        bbndb.Session.configure(bind=bbndb.engine)
-        self.Session = bbndb.Session
-        bbndb.session = self.session = self.Session()
-
+        bbndb.initialize_db(f'{db_provider}:///{db_resource_name}')
+        self.session = bbndb.get_cl_session()
         self.connectivityG = nx.DiGraph()
+        self.db_provider = db_provider
+        self.db_resource_name = db_resource_name
 
         # Check to see whether there is already a temp database
         working_dbs = self.query(Channels.ChannelDatabase, label="working").all()
@@ -138,7 +122,10 @@ class ChannelLibrary(object):
                self.channelDatabase.receivers +
                self.channelDatabase.transceivers +
                self.channelDatabase.instruments +
-               self.channelDatabase.processors)
+               self.channelDatabase.processors +
+               self.channelDatabase.attenuators +
+               self.channelDatabase.DCSources +
+               self.channelDatabase.spectrum_analyzers)
 
     def update_channelDict(self):
         self.channelDict = {c.label: c for c in self.get_current_channels()}
@@ -178,17 +165,8 @@ class ChannelLibrary(object):
     def meas(self):
         return self.ent_by_type(Channels.Measurement)
 
-    def ls_receivers(self):
-        return self.ent_by_type(Channels.Receiver, show=True)
-
-    def ls_transmitters(self):
-        return self.ent_by_type(Channels.Transmitter, show=True)
-
-    def ls_qubits(self):
-        return self.ent_by_type(Channels.Qubit, show=True)
-
-    def ls_measurements(self):
-        return self.ent_by_type(Channels.Measurement, show=True)
+    def markers(self):
+       return self.ent_by_type(Channels.LogicalMarkerChannel)
 
     @check_session_dirty
     def load(self, name, index=1):
@@ -287,14 +265,14 @@ class ChannelLibrary(object):
             self.connectivityG[chan.source][chan.target]['channel'] = chan
 
     @check_for_duplicates
-    def new_APS2(self, label, address):
+    def new_APS2(self, label, address, **kwargs):
         chan1  = Channels.PhysicalQuadratureChannel(label=f"{label}-1", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
         m1     = Channels.PhysicalMarkerChannel(label=f"{label}-m1", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
         m2     = Channels.PhysicalMarkerChannel(label=f"{label}-m2", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
         m3     = Channels.PhysicalMarkerChannel(label=f"{label}-m3", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
         m4     = Channels.PhysicalMarkerChannel(label=f"{label}-m4", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
 
-        this_transmitter = Channels.Transmitter(label=label, model="APS2", address=address, channels=[chan1, m1, m2, m3, m4], channel_db=self.channelDatabase)
+        this_transmitter = Channels.Transmitter(label=label, model="APS2", address=address, channels=[chan1, m1, m2, m3, m4], channel_db=self.channelDatabase, **kwargs)
         this_transmitter.trigger_source = "external"
         this_transmitter.address        = address
 
@@ -302,17 +280,50 @@ class ChannelLibrary(object):
         return this_transmitter
 
     @check_for_duplicates
-    def new_TDM(self, label, address):
+    def new_APS(self, label, address, **kwargs):
+        chan1  = Channels.PhysicalQuadratureChannel(label=f"{label}-12", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        chan2  = Channels.PhysicalQuadratureChannel(label=f"{label}-34", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        m1     = Channels.PhysicalMarkerChannel(label=f"{label}-1m1", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        m2     = Channels.PhysicalMarkerChannel(label=f"{label}-2m1", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        m3     = Channels.PhysicalMarkerChannel(label=f"{label}-3m1", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        m4     = Channels.PhysicalMarkerChannel(label=f"{label}-4m1", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+
+        this_transmitter = Channels.Transmitter(label=label, model="APS", address=address, channels=[chan1, chan2, m1, m2, m3, m4], channel_db=self.channelDatabase)
+        this_transmitter.trigger_source = "external"
+        this_transmitter.address        = address
+
+        self.add_and_update_dict(this_transmitter)
+        return this_transmitter
+
+    @check_for_duplicates
+    def new_TDM(self, label, address, **kwargs):
         return Channels.Processor(label=label, model="TDM", address=address, trigger_interval=250e-6)
 
     @check_for_duplicates
-    def new_spectrum_analzyer(self, label, address, source):
-        return Channels.SpectrumAnalyzer(label=label, model="SpectrumAnalyzer", address=address, LO_source=source)
+    def new_spectrum_analzyer(self, label, address, source, **kwargs):
+        sa = Channels.SpectrumAnalyzer(label=label, model="SpectrumAnalyzer", address=address, LO_source=source, channel_db=self.channelDatabase, **kwargs)
+        self.add_and_update_dict(sa)
+        return sa
 
     @check_for_duplicates
-    def new_APS2_rack(self, label, ip_addresses, tdm_ip=None):
+    def new_DC_source(self, label, address, **kwargs):
+        dcsource = Channels.DCSource(label=label, model="YokogawaGS200", address=address, standalone=True, channel_db=self.channelDatabase, **kwargs)
+        self.add_and_update_dict(dcsource)
+        return dcsource
+
+    @check_for_duplicates
+    def new_attenuator(self,label,address,attenuation=0):
+        chan1 = Channels.AttenuatorChannel(label=f"AttenChan-{label}-1", channel=1, attenuation=attenuation, channel_db=self.channelDatabase)
+        chan2 = Channels.AttenuatorChannel(label=f"AttenChan-{label}-2", channel=2, attenuation=attenuation, channel_db=self.channelDatabase)
+        chan3 = Channels.AttenuatorChannel(label=f"AttenChan-{label}-3", channel=3, attenuation=attenuation, channel_db=self.channelDatabase)
+        thing = Channels.Attenuator(label=label,model="DigitalAttenuator",address=address,channels=[chan1, chan2, chan3], standalone=True, channel_db=self.channelDatabase)
+        self.add_and_update_dict(thing)
+        return thing
+
+    @check_for_duplicates
+    def new_APS2_rack(self, label, ip_addresses, tdm_ip=None, **kwargs):
         transmitters  = [self.new_APS2(f"{label}_U{n+1}", f"{ip}") for n, ip in enumerate(ip_addresses)]
-        this_transceiver = Channels.Transceiver(label=label, model="APS2Rack", transmitters=transmitters, channel_db=self.channelDatabase)
+        this_transceiver = Channels.Transceiver(label=label, model="APS2Rack", transmitters=transmitters, channel_db=self.channelDatabase, **kwargs)
         for t in transmitters:
             t.transceiver = this_transceiver
 
@@ -326,40 +337,31 @@ class ChannelLibrary(object):
         return this_transceiver
 
     @check_for_duplicates
-    def new_X6(self, label, address, dsp_channel=0, record_length=1024):
+    def new_X6(self, label, address, dsp_channel=0, record_length=1024, **kwargs):
 
         phys_channels = (1, 2)
-        dsp_channels = (1, 2)
-        stream_types = ("raw", "demodulated", "integrated")
-
         chans = []
 
-        for p, d, s in itertools.product(phys_channels, dsp_channels, stream_types):
-            chans.append(Channels.ReceiverChannel(label=f"RecvChan-{label}-{s}-{d}-{p}",
-                            channel=p, dsp_channel=d, stream_type=s,
-                            channel_db=self.channelDatabase))
+        for phys_chan in (1,2):
+            chans.append(Channels.ReceiverChannel(label=f"RecvChan-{label}-{phys_chan}",
+                            channel=phys_chan, channel_db=self.channelDatabase))
 
         this_receiver = Channels.Receiver(label=label, model="X6-1000M", address=address, channels=chans,
-                                      record_length=record_length, channel_db=self.channelDatabase)
+                                      record_length=record_length, channel_db=self.channelDatabase, **kwargs)
         this_receiver.trigger_source = "external"
         this_receiver.stream_types   = "raw, demodulated, integrated"
         this_receiver.address        = address
-
-        # Add a default kernel
-        for chan in chans:
-            if chan.stream_type is "integrated":
-                chan.kernel = np.ones(record_length, dtype=np.complex).tobytes()
 
         self.add_and_update_dict(this_receiver)
         return this_receiver
 
     @check_for_duplicates
-    def new_Alazar(self, label, address, record_length=1024):
+    def new_Alazar(self, label, address, record_length=1024, **kwargs):
         chan1 = Channels.ReceiverChannel(label=f"RecvChan-{label}-1", channel=1, channel_db=self.channelDatabase)
         chan2 = Channels.ReceiverChannel(label=f"RecvChan-{label}-2", channel=2, channel_db=self.channelDatabase)
 
         this_receiver = Channels.Receiver(label=label, model="AlazarATS9870", address=address, channels=[chan1, chan2],
-                                      record_length=record_length, channel_db=self.channelDatabase)
+                                      record_length=record_length, channel_db=self.channelDatabase, **kwargs)
         this_receiver.trigger_source = "external"
         this_receiver.stream_types   = "raw"
         this_receiver.address        = address
@@ -374,23 +376,31 @@ class ChannelLibrary(object):
         return thing
 
     @check_for_duplicates
-    def new_source(self, label, model, address, power=-30.0, frequency=5.0e9, reference=None):
+    def new_marker(self, label, phys_chan, **kwargs):
+        thing = Channels.LogicalMarkerChannel(label=label, phys_chan = phys_chan, channel_db=self.channelDatabase, **kwargs)
+        self.add_and_update_dict(thing)
+        return thing
+
+    @check_for_duplicates
+    def new_source(self, label, model, address, power=-30.0, frequency=5.0e9, reference='10MHz', **kwargs):
         thing = Channels.Generator(label=label, model=model, address=address, power=power,
                                     frequency=frequency, reference=reference,
-                                    channel_db=self.channelDatabase)
+                                    channel_db=self.channelDatabase, **kwargs)
         self.add_and_update_dict(thing)
         return thing
 
     def set_control(self, qubit_or_edge, transmitter, generator=None):
-        quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
-        markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
 
-        if isinstance(transmitter, Channels.Transmitter) and len(quads) > 1:
-            raise ValueError("In set_control the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
-        elif isinstance(transmitter, Channels.Transmitter) and len(quads) == 1:
-            phys_chan = quads[0]
+        if isinstance(transmitter, Channels.Transmitter):
+            quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
+            markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
+            if len(quads) > 1:
+            	raise ValueError("In set_control the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
+            elif len(quads) == 1:
+            	phys_chan = quads[0]
         elif isinstance(transmitter, Channels.PhysicalQuadratureChannel):
             phys_chan = transmitter
+            markers = [c for c in transmitter.transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
         else:
             raise ValueError("In set_control the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
 
@@ -402,8 +412,10 @@ class ChannelLibrary(object):
     def new_edge(self, source, target):
         label = f"{source.label}->{target.label}"
         if label in self.channelDict:
-            raise ValueError("Cannot construct edge {label} since it is already in the channel library.")
-        edge = Channels.Edge(label=f"{source.label}->{target.label}", source=source, target=target, channel_db=self.channelDatabase)
+            edge = self.channelDict[f"{source.label}->{target.label}"]
+            logger.warning(f"The edge {source.label}->{target.label} already exists: using this edge.")
+        else:
+            edge = Channels.Edge(label=f"{source.label}->{target.label}", source=source, target=target, channel_db=self.channelDatabase)
         self.add_and_update_dict(edge)
         return edge
 
@@ -416,30 +428,37 @@ class ChannelLibrary(object):
         return new_edges
 
     def set_measure(self, qubit, transmitter, receivers, generator=None, trig_channel=None, gate=False, gate_channel=None, trigger_length=1e-7):
-        quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
-        markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
 
-        if isinstance(transmitter, Channels.Transmitter) and len(quads) > 1:
-            raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
-        elif isinstance(transmitter, Channels.Transmitter) and len(quads) == 1:
-            phys_chan = quads[0]
+        if isinstance(transmitter, Channels.Transmitter):
+                quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
+                markers = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
+                if len(quads) > 1:
+                    raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
+                elif len(quads) == 1:
+                    phys_chan = quads[0]
         elif isinstance(transmitter, Channels.PhysicalQuadratureChannel):
             phys_chan = transmitter
+            markers = [c for c in transmitter.transmitter.channels if isinstance(c, Channels.PhysicalMarkerChannel)]
         else:
             raise ValueError("In set_measure the Transmitter must have a single quadrature channel or a specific channel must be passed instead")
 
         if f"M-{qubit.label}" in self.channelDict:
-            raise ValueError(f"Cannot create Measurement M-{qubit.label}: a channel with the same name already exists.")
-        meas = Channels.Measurement(label=f"M-{qubit.label}", channel_db=self.channelDatabase)
+            logger.warning(f"The measurement M-{qubit.label} already exists: using this measurement.")
+            meas = self.channelDict[f"M-{qubit.label}"]
+        else:
+            meas = Channels.Measurement(label=f"M-{qubit.label}", channel_db=self.channelDatabase)
         meas.phys_chan = phys_chan
         if generator:
             meas.phys_chan.generator = generator
 
         phys_trig_channel = trig_channel if trig_channel else transmitter.get_chan("m1")
 
-        trig_chan              = Channels.LogicalMarkerChannel(label=f"ReceiverTrig-{qubit.label}", channel_db=self.channelDatabase)
-        # print(phys_trig_channel.id, trig_chan.id)
-        self.session.add(trig_chan)
+        if f"ReceiverTrig-{qubit.label}" in self.channelDict:
+            logger.warning(f"The Receiver trigger ReceiverTrig-{qubit.label} already exists: using this channel.")
+            trig_chan = self.channelDict[f"ReceiverTrig-{qubit.label}"]
+        else:
+            trig_chan = Channels.LogicalMarkerChannel(label=f"ReceiverTrig-{qubit.label}", channel_db=self.channelDatabase)
+            self.session.add(trig_chan)
         trig_chan.phys_chan    = phys_trig_channel
         trig_chan.pulse_params = {"length": trigger_length, "shape_fun": "constant"}
         meas.trig_chan         = trig_chan
@@ -459,6 +478,9 @@ class ChannelLibrary(object):
 
         if gate:
             phys_gate_channel   = gate_channel if gate_channel else transmitter.get_chan("m2")
+            if f"M-{qubit.label}-gate" in self.channelDict:
+                logger.warning(f"The gate channel M-{qubit.label}-gate already exists: using this channel.")
+                gate_chan = self.channelDict[f"M-{qubit.label}-gate"]
             gate_chan           = Channels.LogicalMarkerChannel(label=f"M-{qubit.label}-gate", channel_db=self.channelDatabase)
             gate_chan.phys_chan = phys_gate_channel
             meas.gate_chan      = gate_chan
@@ -474,7 +496,11 @@ class ChannelLibrary(object):
             if not isinstance(trig_channel, Channels.PhysicalMarkerChannel):
                 raise ValueError("In set_master the trigger channel must be an instance of PhysicalMarkerChannel")
 
-            st = Channels.LogicalMarkerChannel(label="slave_trig", channel_db=self.channelDatabase)
+            if "slave_trig" in self.channelDict:
+                logger.warning(f"The slave trigger slave_trig already exists: using this trigger.")
+                st = self.channelDict["slave_trig"]
+            else:
+                st = Channels.LogicalMarkerChannel(label="slave_trig", channel_db=self.channelDatabase)
             st.phys_chan = trig_channel
             st.pulse_params = {"length": pulse_length, "shape_fun": "constant"}
             master_instrument.master = True

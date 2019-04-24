@@ -1,5 +1,6 @@
 import numpy as np
 import unittest, time, os, random, sys
+import tempfile
 
 from QGL import *
 from QGL import GSTTools
@@ -103,20 +104,19 @@ class AWGTestHelper(object):
                 for name in self.qubit_names]
 
     def set_awg_dir(self, footer=""):
-        cn = self.__class__.__name__
-
-        if None == QGL.config.AWGDir:
-            logger.warning( "\n\r#----- EEE NULL QGL.config.AWGDir {%s} cited; calling load_config()...", QGL.config.AWGDir)
+        if QGL.config.AWGDir is None:
             QGL.config.load_config()
-            logger.warning( "#----- Post load-config QGL.config.AWGDir: {%s}.\n\r", QGL.config.AWGDir)
-        #else:
-        #    logger.warning( "\n\r#----- Using QGL.config.AWGDir {%s} 8-p", QGL.config.AWGDir)
+
+        if QGL.config.AWGDir is None:
+            self.temp_dir = tempfile.TemporaryDirectory()
+            QGL.config.AWGDir = self.temp_dir.name
+            logger.warning(f"Creating temporary AWG dir at {QGL.config.AWGDir}")
+
         if not hasattr(self, 'original_awg_dir'):
           self.original_awg_dir = QGL.config.AWGDir
 
-        self.awg_dir = os.path.abspath(self.original_awg_dir + os.path.sep + cn)
-        self.truth_dir = os.path.abspath(self.testFileDirectory + os.path.sep +
-                                         cn)
+        self.awg_dir = os.path.abspath(self.original_awg_dir + os.path.sep + self.__class__.__name__)
+        self.truth_dir = os.path.abspath(self.testFileDirectory + os.path.sep + self.__class__.__name__)
 
         if footer != "":
             self.awg_dir = self.awg_dir + os.path.sep + footer

@@ -4,9 +4,17 @@ import os.path
 import sys
 import re
 import importlib
+import tempfile
+import logging
+
+logger = logging.getLogger("QGL")
 
 # Where to store AWG data
-AWGDir           = None
+if os.getenv('AWG_DIR'):
+    AWGDir = os.getenv('AWG_DIR')
+else:
+    logger.warning("AWG_DIR environment variable not defined. Unless otherwise specified, using temporary directory for AWG sequence file outputs.")
+    AWGDir = tempfile.mkdtemp(prefix="AWG")
 
 # The db file, where the channel libraries are stored
 db_resource_name = None
