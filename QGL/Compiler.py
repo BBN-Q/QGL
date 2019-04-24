@@ -432,26 +432,32 @@ def compile_to_IR(seqs, add_slave_trigger=True, tdm_seq=False, random_cliffords=
     physWires = map_logical_to_physical(wireSeqs)
 
     # Pave the way for composite instruments, not useful yet...
-    files = {}
-    label_to_inst   = {}
-    label_to_chan   = {}
-    old_wire_names  = {}
-    old_wire_instrs = {}
+    extra_info = {}
+    extra_info["files"]             = {}
+    extra_info["label_to_inst"]     = {}
+    extra_info["label_to_chan"]     = {}
+    extra_info["old_wire_names"]    = {}
+    extra_info["old_wire_instrs"]   = {}
+
+    extra_info["num_measurements"] = num_measurements
+    extra_info["wire_measurements"] = wire_measurements
+    extra_info["channels"] = channels
+
     for wire, pulses in physWires.items():
         pattern_module = import_module('QGL.drivers.' + wire.translator)
         if pattern_module.SEQFILE_PER_CHANNEL:
             inst_name = wire.transmitter.label
             chan_name = wire.label
             has_non_id_pulses = any([len([p for p in ps if isinstance(p,Pulse) and p.label!="Id"]) > 0 for ps in pulses])
-            label_to_inst[wire.label] = inst_name
+            extra_info["label_to_inst"][wire.label] = inst_name
             if has_non_id_pulses:
-                label_to_chan[wire.label] = chan_name
+                extra_info["label_to_chan"][wire.label] = chan_name
             # Change the name/inst for uniqueness, but we must restore this later!
-            old_wire_names[wire] = wire.label
-            old_wire_instrs[wire] = wire.instrument
+            extra_info["old_wire_names"][wire] = wire.label
+            extra_info["old_wire_instrs"][wire] = wire.instrument
             wire.instrument = wire.label
             wire.label = chan_name
-            #files[inst_name] = {}
+            extra_info["files"][inst_name] = {}
 
     # construct channel delay map
     logger.info("Constructing delay map.")
@@ -479,7 +485,7 @@ def compile_to_IR(seqs, add_slave_trigger=True, tdm_seq=False, random_cliffords=
     # on whether we have one sequence per channel
     logger.info("Bundling wires.")
     awgData = bundle_wires(physWires, wfs)
-    return awgData
+    return awgData, extra_info
 
 def compile_to_hardware(seqs,
                         fileName,
@@ -505,9 +511,15 @@ def compile_to_hardware(seqs,
         tdm_seq (optional): compile for TDM
     '''
     # save input code to file
+
     save_code(seqs, fileName + suffix)
 
-    awgData = compile_to_IR(seqs, add_slave_trigger=add_slave_trigger, tdm_seq=tdm_seq)
+    if any([p.isRunTime for p in flatten(seqs)]):
+        random_cliffords = True
+    else:
+        random_cliffords = False
+
+    awgData, extra_info = compile_to_IR(seqs, add_slave_trigger=add_slave_trigger, tdm_seq=tdm_seq, random_cliffords=random_cliffords)
 
     # convert to hardware formats
     # files = {}
@@ -529,11 +541,11 @@ def compile_to_hardware(seqs,
             ChannelLibraries.channelLib[awgName].extra_meta = new_meta
 
         # Allow for per channel and per AWG seq files
-        if awgName in label_to_inst:
-            if awgName in label_to_chan:
-                files[label_to_chan[awgName]] = fullFileName
+        if awgName in extra_info["label_to_inst"]:
+            if awgName in extra_info["label_to_chan"]:
+                files[extra_info["label_to_inst"][awgName]][extra_info["label_to_chan"][awgName]] = fullFileName
         else:
-            files[awgName] = fullFileName
+            extra_info["files"][awgName] = fullFileName
 
         del data
         del awgData[awgName]
@@ -563,21 +575,21 @@ def compile_to_hardware(seqs,
         axis_descriptor = [{
             'name': 'segment',
             'unit': None,
-            'points': list(range(1, 1 + num_measurements)),
+            'points': list(range(1, 1 + extra_info["num_measurements"])),
             'partition': 1
         }]
     receiver_measurements = {}
-    for wire, n in wire_measurements.items():
+    for wire, n in extra_info["wire_measurements"].items():
         if wire.receiver_chan and n>0:
             receiver_measurements[wire.receiver_chan.label] = n
     meta = {
         'database_info': db_info,
-        'instruments': files,
+        'instruments': extra_info["files"],
         'num_sequences': len(seqs),
-        'num_measurements': num_measurements,
+        'num_measurements': extra_info["num_measurements"],
         'axis_descriptor': axis_descriptor,
-        'qubits': [c.label for c in channels if isinstance(c, Channels.Qubit)],
-        'measurements': [c.label for c in channels if isinstance(c, Channels.Measurement)],
+        'qubits': [c.label for c in extra_info["channels"] if isinstance(c, Channels.Qubit)],
+        'measurements': [c.label for c in extra_info["channels"] if isinstance(c, Channels.Measurement)],
         'receivers': receiver_measurements
     }
     if extra_meta:
@@ -587,10 +599,10 @@ def compile_to_hardware(seqs,
         json.dump(meta, FID, indent=2, sort_keys=True)
 
     # Restore the wire info
-    for wire in old_wire_names.keys():
-        wire.label = old_wire_names[wire]
-    for wire in old_wire_instrs.keys():
-        wire.instrument = old_wire_instrs[wire]
+    for wire in extra_info["old_wire_names"].keys():
+        wire.label = extra_info["old_wire_names"][wire]
+    for wire in extra_info["old_wire_instrs"].keys():
+        wire.instrument = extra_info["old_wire_instrs"][wire]
 
     # Return the filenames we wrote
     return metafilepath
