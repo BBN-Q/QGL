@@ -60,7 +60,7 @@ def generate_clifford_jump_table(cliff_wires, jt_label = None):
     return jt_label
 
 def insert_clifford_calls(seqs, jt_label=None, cliff_addr=0x3, add_inv = True,
-                            inv_addr=0x3, inv_values=[],
+                            inv_addr=0x4, inv_values=[],
                             clifford_options=default_clifford_options):
 
     if jt_label is None:
