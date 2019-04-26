@@ -69,8 +69,11 @@ def RandomCliffordInverse(target, addr):
             LoadCmpVram(addr, 0xFFFFFFFF, tdm=False),
             Call(target, indirect=True)]
 
-def RandomCliffordInverseReset(addr): #for now don't use addr
-    return CustomInstruction("APS_CLIFFORD_INVERSE_RESET", 0x0, 0xF)
+def RandomCliffordInverseReset(val=0x0, addr=0xD): #for now don't use addr
+    return [Invalidate(addr, 0, tdm=False),
+            WriteAddr(addr, val, tdm=False),
+            LoadCmpVram(addr, 0xFFFFFFFF, tdm=False),
+            CustomInstruction("APS_CLIFFORD_INVERSE_RESET", addr, 0xA)]
 
 def RandomCliffordSeed(seed):
     return [Invalidate(0xB, 0, tdm=False),
