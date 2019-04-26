@@ -1034,7 +1034,7 @@ def resolve_symbols(seq):
 
     labeled_entries = [(idx, entry.label) for idx, entry in enumerate(seq) if entry.label is not None]
     symbols = {label: idx for idx, label in labeled_entries}
-    #print(f"Found labels: {symbols}")
+    logger.info(f"Found labels: {symbols}")
     for entry in seq:
         if entry.target is not None and entry.target in symbols.keys():
             entry.address = symbols[entry.target]
