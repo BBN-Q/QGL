@@ -5,3 +5,5 @@
 *.h5
 *.py~
 *.py#
+*.egg-info
+QGL.egg-info/
