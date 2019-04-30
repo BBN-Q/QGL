@@ -323,7 +323,7 @@ class ChannelLibrary(object):
     @check_for_duplicates
     def new_APS2_rack(self, label, ip_addresses, tdm_ip=None, **kwargs):
         transmitters  = [self.new_APS2(f"{label}_U{n+1}", f"{ip}") for n, ip in enumerate(ip_addresses)]
-        this_transceiver = Channels.Transceiver(label=label, model="APS2Rack", master=True, address=ip_addresses[0], transmitters=transmitters, channel_db=self.channelDatabase, **kwargs)
+        this_transceiver = Channels.Transceiver(label=label, model="APS2", master=True, address=ip_addresses[0], transmitters=transmitters, channel_db=self.channelDatabase, **kwargs)
         for t in transmitters:
             t.transceiver = this_transceiver
 
