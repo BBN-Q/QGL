@@ -50,6 +50,7 @@ going to System -> Advanced Settings -> Environment variables. On Mac/Linux
 machines add the following line to your .bashrc or .bash_profile: ``` export
 PYTHONPATH=/path/to/QGL/repo:$PYTHONPATH```
 
+
 The QGL config file will be created the first time you run `import QGL` or `from QGL import *`.
 
 ## Dependencies

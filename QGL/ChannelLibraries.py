@@ -266,11 +266,11 @@ class ChannelLibrary(object):
 
     @check_for_duplicates
     def new_APS2(self, label, address, **kwargs):
-        chan1  = Channels.PhysicalQuadratureChannel(label=f"{label}-1", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
-        m1     = Channels.PhysicalMarkerChannel(label=f"{label}-m1", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
-        m2     = Channels.PhysicalMarkerChannel(label=f"{label}-m2", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
-        m3     = Channels.PhysicalMarkerChannel(label=f"{label}-m3", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
-        m4     = Channels.PhysicalMarkerChannel(label=f"{label}-m4", instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
+        chan1  = Channels.PhysicalQuadratureChannel(label=f"{label}-1", channel=0, instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
+        m1     = Channels.PhysicalMarkerChannel(label=f"{label}-m1", channel=0, instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
+        m2     = Channels.PhysicalMarkerChannel(label=f"{label}-m2", channel=1, instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
+        m3     = Channels.PhysicalMarkerChannel(label=f"{label}-m3", channel=2, instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
+        m4     = Channels.PhysicalMarkerChannel(label=f"{label}-m4", channel=3, instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
 
         this_transmitter = Channels.Transmitter(label=label, model="APS2", address=address, channels=[chan1, m1, m2, m3, m4], channel_db=self.channelDatabase, **kwargs)
         this_transmitter.trigger_source = "external"
@@ -281,12 +281,12 @@ class ChannelLibrary(object):
 
     @check_for_duplicates
     def new_APS(self, label, address, **kwargs):
-        chan1  = Channels.PhysicalQuadratureChannel(label=f"{label}-12", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
-        chan2  = Channels.PhysicalQuadratureChannel(label=f"{label}-34", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
-        m1     = Channels.PhysicalMarkerChannel(label=f"{label}-1m1", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
-        m2     = Channels.PhysicalMarkerChannel(label=f"{label}-2m1", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
-        m3     = Channels.PhysicalMarkerChannel(label=f"{label}-3m1", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
-        m4     = Channels.PhysicalMarkerChannel(label=f"{label}-4m1", instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        chan1  = Channels.PhysicalQuadratureChannel(label=f"{label}-12", channel = 0, instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        chan2  = Channels.PhysicalQuadratureChannel(label=f"{label}-34", channel = 1, instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        m1     = Channels.PhysicalMarkerChannel(label=f"{label}-1m1", channel=0, instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        m2     = Channels.PhysicalMarkerChannel(label=f"{label}-2m1", channel=1, instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        m3     = Channels.PhysicalMarkerChannel(label=f"{label}-3m1", channel=2, instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
+        m4     = Channels.PhysicalMarkerChannel(label=f"{label}-4m1", channel=3, instrument=label, translator="APSPattern", channel_db=self.channelDatabase)
 
         this_transmitter = Channels.Transmitter(label=label, model="APS", address=address, channels=[chan1, chan2, m1, m2, m3, m4], channel_db=self.channelDatabase)
         this_transmitter.trigger_source = "external"
@@ -323,7 +323,7 @@ class ChannelLibrary(object):
     @check_for_duplicates
     def new_APS2_rack(self, label, ip_addresses, tdm_ip=None, **kwargs):
         transmitters  = [self.new_APS2(f"{label}_U{n+1}", f"{ip}") for n, ip in enumerate(ip_addresses)]
-        this_transceiver = Channels.Transceiver(label=label, model="APS2Rack", transmitters=transmitters, channel_db=self.channelDatabase, **kwargs)
+        this_transceiver = Channels.Transceiver(label=label, model="APS2", master=True, address=ip_addresses[0], transmitters=transmitters, channel_db=self.channelDatabase, **kwargs)
         for t in transmitters:
             t.transceiver = this_transceiver
 
@@ -346,11 +346,12 @@ class ChannelLibrary(object):
             chans.append(Channels.ReceiverChannel(label=f"RecvChan-{label}-{phys_chan}",
                             channel=phys_chan, channel_db=self.channelDatabase))
 
-        this_receiver = Channels.Receiver(label=label, model="X6-1000M", address=address, channels=chans,
+        this_receiver = Channels.Receiver(label=label, model="X6", address=address, channels=chans,
                                       record_length=record_length, channel_db=self.channelDatabase, **kwargs)
         this_receiver.trigger_source = "external"
         this_receiver.stream_types   = "raw, demodulated, integrated"
         this_receiver.address        = address
+        this_receiver.stream_sel     = "X6StreamSelector"
 
         self.add_and_update_dict(this_receiver)
         return this_receiver
@@ -365,6 +366,7 @@ class ChannelLibrary(object):
         this_receiver.trigger_source = "external"
         this_receiver.stream_types   = "raw"
         this_receiver.address        = address
+        this_receiver.stream_sel     = "AlazarStreamSelector"
 
         self.add_and_update_dict(this_receiver)
         return this_receiver
