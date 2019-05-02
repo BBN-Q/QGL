@@ -172,11 +172,16 @@ class ChannelLibrary(object):
             if q.phys_chan.generator:
                 edges.append((q.phys_chan, q.phys_chan.generator))
 
+            # Triggers
+            if q.measure_chan.trig_chan:
+                edges.append((q.measure_chan, q.measure_chan.trig_chan))
+
+
         graph = nx.digraph.DiGraph()
         graph.add_edges_from(edges)
 
         indices   = {n: i for i, n in enumerate(graph.nodes())}
-        node_data = [{'label': str(n)} for n in graph.nodes()]
+        node_data = [{'label': str(n).replace('(','\r\n(')} for n in graph.nodes()]
         link_data = [{'source': indices[s], 'target': indices[t]} for s, t in graph.edges()]
                 
         qub_objs.sort(key=lambda x: x.label)
