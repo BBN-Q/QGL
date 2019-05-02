@@ -37,13 +37,18 @@ import traceback
 import datetime
 import importlib
 import inspect
-from functools import wraps
+import operator
+from functools import wraps, reduce
 import itertools
 import numpy as np
 import networkx as nx
 import logging
 
 import bbndb
+
+from bqplot import Figure, LinearScale
+from bqplot.marks import Graph, Lines, Label
+from ipywidgets import Layout
 
 from . import config
 from . import Channels
@@ -149,6 +154,79 @@ class ChannelLibrary(object):
                 print(f"[{i}] -> {el.label}")
         else:
             return q
+
+    def show(self, qubits=[]):
+        # nodes     = list(dgraph.nodes())
+        edges = []
+        qub_objs = qubits if not qubits == [] else self.qubits()
+        for q in qub_objs:
+            edges.append((q, q.measure_chan))
+            edges.append((q.measure_chan, q.measure_chan.phys_chan))
+            edges.append((q.measure_chan.phys_chan,q.measure_chan.phys_chan.transmitter))
+            edges.append((q, q.phys_chan))
+            edges.append((q.phys_chan, q.phys_chan.transmitter))
+
+            #Generators
+            if q.measure_chan.phys_chan.generator:
+                edges.append((q.measure_chan.phys_chan, q.measure_chan.phys_chan.generator))
+            if q.phys_chan.generator:
+                edges.append((q.phys_chan, q.phys_chan.generator))
+
+        graph = nx.digraph.DiGraph()
+        graph.add_edges_from(edges)
+
+        indices   = {n: i for i, n in enumerate(graph.nodes())}
+        node_data = [{'label': str(n)} for n in graph.nodes()]
+        link_data = [{'source': indices[s], 'target': indices[t]} for s, t in graph.edges()]
+                
+        qub_objs.sort(key=lambda x: x.label)
+        qubit_names = [q.label for q in qub_objs]
+
+        loc = {}
+        def next_level(nodes, iteration=0, offset=0, accum=[]):
+            if len(accum) == 0:
+                loc[nodes[0]] = {'x': 0, 'y': 0}
+                accum = [nodes]
+            next_gen_nodes = list(reduce(operator.add, [list(graph.successors(n)) for n in nodes]))
+            l = len(next_gen_nodes)
+            if l > 0:
+                for k,n in enumerate(next_gen_nodes):
+                    loc[n] = {'x': k, 'y': -(iteration+1)}
+                accum.append(next_gen_nodes)
+                return next_level(next_gen_nodes, iteration=iteration+1, offset=2.5*l, accum=accum)
+            else:
+                return accum
+
+        hierarchy = [next_level([q]) for q in qub_objs]
+        widest = [max([len(row) for row in qh]) for qh in hierarchy]
+        for i in range(1, len(qub_objs)):
+            offset = sum(widest[:i])
+            loc[qub_objs[i]]['x'] += offset*3
+            for n in nx.descendants(graph, qub_objs[i]):
+                loc[n]['x'] += offset*3
+
+        x = [loc[n]['x'] for n in graph.nodes()]
+        y = [loc[n]['y'] for n in graph.nodes()]
+        xs = LinearScale(min=min(x)-0.5, max=max(x)+0.6)
+        ys = LinearScale(min=min(y)-0.5, max=max(y)+0.6)
+        fig_layout = Layout(width='960px', height='500px')
+        bq_graph      = Graph(node_data=node_data, link_data=link_data, x=x, y=y, scales={'x': xs, 'y': ys},
+                            link_type='line', colors=['orange'] * len(node_data), directed=False)
+        bgs_lines = []
+        middles   = []
+        for i in range(len(qub_objs)):
+            if i==0:
+                start = -0.4
+                end = widest[0]-0.6
+            elif i == len(qub_objs):
+                start = sum(widest)-0.4
+                end = max(x)+0.4 
+            else:
+                start = sum(widest[:i])-0.4
+                end = sum(widest[:i+1])-0.6
+
+        fig        = Figure(marks=[bq_graph], layout=fig_layout)
+        return fig
 
     def receivers(self):
         return self.ent_by_type(Channels.Receiver)
