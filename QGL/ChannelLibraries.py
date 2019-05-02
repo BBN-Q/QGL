@@ -46,9 +46,9 @@ import logging
 
 import bbndb
 
-from bqplot import Figure, LinearScale
+from bqplot import Figure, LinearScale, Axis, Lines, Figure
 from bqplot.marks import Graph, Lines, Label
-from ipywidgets import Layout
+from ipywidgets import Layout, VBox, HBox
 
 from . import config
 from . import Channels
@@ -232,6 +232,35 @@ class ChannelLibrary(object):
 
         fig        = Figure(marks=[bq_graph], layout=fig_layout)
         return fig
+
+    def show_frequency_plan(self):
+        c_freqs = {}
+        m_freqs = {}
+        for qubit in self.qubits():
+            c_freqs[qubit.label] = qubit.frequency*1e-9
+            if qubit.phys_chan.generator:
+                c_freqs[qubit.label] += qubit.phys_chan.generator.frequency*1e-9
+            
+            m_freqs[qubit.label] = qubit.measure_chan.frequency*1e-9
+            if qubit.measure_chan.phys_chan.generator:
+                m_freqs[qubit.label] += qubit.measure_chan.phys_chan.generator.frequency*1e-9
+        def spike_at(f):
+            fs = np.linspace(f-0.02,f+0.02,50)
+            return fs, np.exp(-(fs-f)**2/0.01**2)
+        figs = []
+        for freqs, ss in zip([c_freqs, m_freqs],["Control","Measure"]):
+            sx   = LinearScale()
+            sy   = LinearScale()
+            ax   = Axis(scale=sx, label="Frequency (GHz)")
+            ay   = Axis(scale=sy, orientation='vertical')
+            lines = []
+            for k,f in freqs.items():
+                fs, a = spike_at(f)
+                lines.append(Lines(x=fs, y=a, scales={'x': sx, 'y': sy}))
+            labels = Label(x=list(freqs.values()), y=[1.1 for f in freqs], text=list(freqs.keys()), align='middle', scales= {'x': sx, 'y': sy},
+                        default_size=14, font_weight='bolder', colors=['#4f6367'])
+            figs.append(Figure(marks=lines+[labels], axes=[ax, ay], title=f"{ss} Frequency Plan"))
+        return HBox(figs)
 
     def receivers(self):
         return self.ent_by_type(Channels.Receiver)
