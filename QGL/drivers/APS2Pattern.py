@@ -1349,7 +1349,10 @@ def tdm_instructions(seqs):
                     print('STOREMEAS(channel=%s, addr=0x%x, mapping=0x%x)' %
                             (str(s.channel), s.addr, s.value))
                     instructions.append(StoreMeas(s.addr, s.value, label=label))
-                else: # TODO: add CrossBar (no need for explicit QGL call for TDM)
+                elif s.instruction == "CROSSBAR":
+                    print("reset CROSSBAR") #temporary
+                    instructions.append(CrossBar(s.addr,s.value,label=label))
+                else: 
                     print('UNSUPPORTED WriteAddr: %s(channel=%s, addr=0x%x, val=0x%x)' %
                             (s.instruction, str(s.channel),
                                 s.addr, s.value))
