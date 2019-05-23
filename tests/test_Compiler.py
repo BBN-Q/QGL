@@ -6,7 +6,9 @@ from QGL import *
 
 class CompileUtils(unittest.TestCase):
     def setUp(self):
+        print("Running setup")
         self.cl = ChannelLibrary(db_resource_name=":memory:")
+        self.cl.clear()
         self.q1gate = Channels.LogicalMarkerChannel(label='q1-gate', channel_db=self.cl.channelDatabase)
         self.q1gate = Channels.LogicalMarkerChannel(label='q1-gate', channel_db=self.cl.channelDatabase)
         self.q1phys = Channels.PhysicalChannel(label='q1-phys', sampling_rate=1.2e9, channel_db=self.cl.channelDatabase)

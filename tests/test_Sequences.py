@@ -454,7 +454,7 @@ class APS2Helper(AWGTestHelper):
         AWGTestHelper.__init__(self, APS2Pattern)
         for name in ['APS1', 'APS2', 'APS3', 'APS4', 'APS5', 'APS6']:
             channelName = name + '-1'
-            channel = PhysicalQuadratureChannel(label=channelName)
+            channel = PhysicalQuadratureChannel(label=channelName, channel=0)
             channel.sampling_rate = 1.2e9
             channel.instrument = name
             channel.translator = 'APS2Pattern'
@@ -462,7 +462,7 @@ class APS2Helper(AWGTestHelper):
 
             for m in range(1, 5):
                 channelName = "{0}-m{1}".format(name, m)
-                channel = PhysicalMarkerChannel(label=channelName)
+                channel = PhysicalMarkerChannel(label=channelName, channel=m-1)
                 channel.sampling_rate = 1.2e9
                 channel.instrument = name
                 channel.translator = 'APS2Pattern'
@@ -509,9 +509,9 @@ class TestAPS1(unittest.TestCase, AWGTestHelper, TestSequences):
     def setUp(self):
         AWGTestHelper.__init__(self, APSPattern)
         for name in ['APS1', 'APS2', 'APS3']:
-            for ch in ['12', '34']:
+            for i, ch in enumerate(['12', '34']):
                 channelName = name + '-' + ch
-                channel = PhysicalQuadratureChannel(label=channelName)
+                channel = PhysicalQuadratureChannel(label=channelName, channel=i)
                 channel.sampling_rate = 1.2e9
                 channel.instrument = name
                 channel.translator = 'APSPattern'
@@ -519,7 +519,7 @@ class TestAPS1(unittest.TestCase, AWGTestHelper, TestSequences):
 
             for m in range(1, 5):
                 channelName = "{0}-{1}m1".format(name, m)
-                channel = PhysicalMarkerChannel(label=channelName)
+                channel = PhysicalMarkerChannel(label=channelName, channel=m-1)
                 channel.sampling_rate = 1.2e9
                 channel.instrument = name
                 channel.translator = 'APSPattern'
