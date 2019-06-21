@@ -28,8 +28,10 @@ from .PulsePrimitives import BLANK, X
 from . import ControlFlow
 from . import BlockLabel
 from . import TdmInstructions
+from . import ChannelLibraries
 import QGL.drivers
-from . import ChannelLibrary
+from functools import reduce
+import operator
 
 def hash_pulse(shape):
     return hashlib.sha1(shape.tostring()).hexdigest()
@@ -383,7 +385,7 @@ def decouple_meas_pulses(seq, meas_qs, meas_decoupled_qs):
         if isinstance(pulse, Pulse):
             for qM in meas_qs:
                 #TODO: check if pulse block
-                if pulse.channel == ChannelLibrary.MeasFactory('M-%s' % qM.label):
+                if pulse.channel == ChannelLibraries.MeasFactory('M-%s' % qM.label):
                     #TODO: add arbitary shift of X from center
                     seq[k] = align(pulse *\
                         reduce(operator.mul, [X(q) for q in meas_decoupled_qs]))
@@ -396,7 +398,9 @@ def decouple_CR_pulses(seq, CR_qs, CR_decoupled_qs):
         #for qsCR in CR_qs:
         if isinstance(seq_el, CompoundGate):
             for (k, pulse) in enumerate(seq_el.seq):
-                if any([pulse.channel == ChannelLibrary.EdgeFactory(*qsCR) for qsCR in CR_qs]):# and pulse.channel == seq_el.seq[k+2].channel:
+                if isinstance(pulse.channel, collections.abc.KeysView) and any([ChannelLibraries.EdgeFactory(*qsCR) in pulse.channel for qsCR in CR_qs]):
+                    seq_el.seq[k+1] = reduce(operator.mul, [seq_el.seq[k+1]] + [X(q) for q in CR_decoupled_qs])
+                elif any([pulse.channel == ChannelLibraries.EdgeFactory(*qsCR) for qsCR in CR_qs]):# and pulse.channel == seq_el.seq[k+2].channel:
                     seq_el.seq[k+1] = reduce(operator.mul, [seq_el.seq[k+1]] + [X(q) for q in CR_decoupled_qs])
     return seq
 
