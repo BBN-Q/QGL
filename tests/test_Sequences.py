@@ -3,6 +3,7 @@ import numpy as np
 import unittest, time, os, random, sys
 
 from QGL import *
+from QGL import GSTTools
 import QGL
 
 from QGL.Channels import Edge, Measurement, LogicalChannel, LogicalMarkerChannel, PhysicalMarkerChannel, PhysicalQuadratureChannel
@@ -13,6 +14,11 @@ from QGL.drivers import APSPattern, APS2Pattern, TekPattern
 #
 import logging
 logger = logging.getLogger( 'sequences')
+
+import os
+istravis = os.environ.get('TRAVIS') == 'true'
+
+#Determine if tests are running in Travis
 
 class AWGTestHelper(object):
     testFileDirectory = './tests/test_data/awg/'
@@ -384,6 +390,72 @@ class TestSequences(object):
         SimultaneousRB_AC((self.q1, self.q2), (seqs1, seqs2))
         self.compare_sequences('RB')
 
+    def test_1Q_GST(self):
+
+        if istravis:
+            raise unittest.SkipTest("FIX ME -- Figure out pygsti integration for Travis.")
+
+        self.set_awg_dir('GST')
+        # list of GST gate strings
+        if GSTTools.PYGSTI_PRESENT:
+            # generate the gate gatestrings
+            import pygsti
+            from pygsti.construction import std1Q_XYI
+
+            #Create a data set
+            gs_target = std1Q_XYI.gs_target
+            fiducials = std1Q_XYI.fiducials
+            germs = std1Q_XYI.germs
+            maxLengths = [1,2,4]
+
+            listOfExperiments = pygsti.construction.make_lsgst_experiment_list(gs_target.gates.keys(), fiducials, fiducials, germs, maxLengths)
+        else:
+            listOfExperiments = list(np.load('tests/test_data/awg/TestAPS2/GST/GST/listOfExperiments.npy'))
+
+        seqs = list(GSTTools.gst_map_1Q(listOfExperiments, self.q1))
+        filenames = compile_to_hardware(seqs, 'GST/GST')
+        self.compare_sequences('GST')
+
+    def test_2Q_GST(self):
+
+        if istravis:
+            raise unittest.SkipTest("FIX ME -- Figure out pygsti integration for Travis.")
+
+        self.set_awg_dir('GST')
+        def gst_2Qgate_map(q1, q2):
+            return {"Gxi": X90(q1)*Id(q2),
+                     "Gyi": Y90(q1)*Id(q2),
+                     "Gii": Id(q1)*Id(q2),
+                     "Gix": Id(q1)*X90(q2),
+                     "Giy": Id(q1)*Y90(q2),
+                     "Gcnot": CNOT_CR(q2,q1)}
+
+        if GSTTools.PYGSTI_PRESENT:
+            import pygsti
+            from pygsti.construction import std1Q_XYI, std2Q_XYICNOT
+            from itertools import product
+            from QGL.GSTTools import SingleQubitCliffordGST, gst_map_2Q
+            # note the use of the germs_lite!
+            gs = std2Q_XYICNOT
+            gs_target = std2Q_XYICNOT.gs_target.copy()
+
+            prep_fiducials = std2Q_XYICNOT.prepStrs
+            effect_fiducials = std2Q_XYICNOT.effectStrs
+            gs_germs = std2Q_XYICNOT.germs_lite
+            #maxLengths = [1,2,4,8,16]
+            maxLengths = [1,2]
+
+            print('Creating GST sequences...')
+            listOfExperiments = pygsti.construction.make_lsgst_experiment_list(gs_target.gates.keys(), prep_fiducials, effect_fiducials, gs_germs, maxLengths)
+        else:
+            # list of GST gate strings
+            listOfExperiments = list(np.load('tests/test_data/awg/TestAPS2/GST/GST2Q/listOfExperiments.npy'))
+
+        seqs = list(GSTTools.gst_map_2Q(listOfExperiments, (self.q1, self.q2), qgl_map = gst_2Qgate_map(self.q1, self.q2), append_meas=True))
+
+        filenames = compile_to_hardware(seqs, 'GST/GST2Q')
+        self.compare_sequences('GST2Q')
+
 
 class APS2Helper(AWGTestHelper):
     def setUp(self):
@@ -700,6 +772,13 @@ class TestTek5014(unittest.TestCase, AWGTestHelper, TestSequences):
     def test_RB_SimultaneousRB_AC(self):
         TestSequences.test_RB_SimultaneousRB_AC(self)
 
+    @unittest.skip("Tek5014 unused in years")
+    def test_1Q_GST(self):
+        TestSequences.test_1Q_GST(self)
+
+    @unittest.skip("Tek5014 unused in years")
+    def test_2Q_GST(self):
+        TestSequences.test_2Q_GST(self)
 # class TestTek7000(unittest.TestCase, AWGTestHelper, TestSequences):
 
 # 	def setUp(self):

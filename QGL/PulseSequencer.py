@@ -77,6 +77,12 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
     def hashshape(self):
         return hash(frozenset(self.shapeParams.items()))
 
+    def __hash__(self):
+        d = self._asdict()
+        d['shapeParams'] = self.hashshape()
+        del d['ignoredStrParams']
+        return hash(frozenset(d.items()))
+
     def __add__(self, other):
         if self.channel != other.channel:
             raise NameError(

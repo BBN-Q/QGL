@@ -24,7 +24,6 @@ from copy import copy
 from functools import reduce
 from importlib import import_module
 import json
-
 from . import config
 from . import PatternUtils
 from .PatternUtils import flatten, has_gate
@@ -36,6 +35,7 @@ from .PulseSequencer import Pulse, PulseBlock, CompositePulse
 from . import ControlFlow
 from . import BlockLabel
 from . import TdmInstructions # only for APS2-TDM
+import gc
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,7 @@ def merge_channels(wires, channels):
                 [e.amp * e.frequency for e in entries])[0]
             assert len(nonZeroSSBChan) <= 1, \
                 "Unable to handle merging more than one non-zero entry with non-zero frequency."
-            if nonZeroSSBChan:
+            if nonZeroSSBChan.size > 0:
                 frequency = entries[nonZeroSSBChan[0]].frequency
             else:
                 frequency = 0.0
@@ -299,7 +299,6 @@ def collect_specializations(seqs):
             done.append(target)
     return funcs
 
-
 def compile_to_hardware(seqs,
                         fileName,
                         suffix='',
@@ -331,11 +330,11 @@ def compile_to_hardware(seqs,
             seq.insert(0, ControlFlow.Wait())
 
     # Add the digitizer trigger to measurements
-    logger.debug("Adding digitizer trigger")
+    logger.info("Adding digitizer trigger")
     PatternUtils.add_digitizer_trigger(seqs)
 
     # Add gating/blanking pulses
-    logger.debug("Adding blanking pulses")
+    logger.info("Adding blanking pulses")
     for seq in seqs:
         PatternUtils.add_gate_pulses(seq)
 
@@ -345,14 +344,16 @@ def compile_to_hardware(seqs,
         PatternUtils.add_slave_trigger(seqs,
                                        ChannelLibraries.channelLib['slave_trig'])
     else:
-        logger.debug("Not adding slave trigger")
+        logger.info("Not adding slave trigger")
 
     # find channel set at top level to account for individual sequence channel variability
+    logger.info("Finding unique channels.")
     channels = set()
     for seq in seqs:
         channels |= find_unique_channels(seq)
 
     # Compile all the pulses/pulseblocks to sequences of pulses and control flow
+    logger.info("Compiling sequences.")
     wireSeqs = compile_sequences(seqs, channels)
 
     if not validate_linklist_channels(wireSeqs.keys()):
@@ -362,6 +363,7 @@ def compile_to_hardware(seqs,
     logger.debug('')
     logger.debug("Now after gating constraints:")
     # apply gating constraints
+    logger.info("Applying gating constraints")
     for chan, seq in wireSeqs.items():
         if isinstance(chan, Channels.LogicalMarkerChannel):
             wireSeqs[chan] = PatternUtils.apply_gating_constraints(
@@ -369,6 +371,7 @@ def compile_to_hardware(seqs,
     debug_print(wireSeqs, 'Gated sequence')
 
     # save number of measurements for meta info
+    logger.info("Counting measurements.")
     num_measurements = count_measurements(wireSeqs)
     wire_measurements = count_measurements_per_wire(wireSeqs)
 
@@ -376,6 +379,7 @@ def compile_to_hardware(seqs,
     # PhysicalQuadratureChannels and PhysicalMarkerChannels
     # for the APS, the naming convention is:
     # ASPName-12, or APSName-12m1
+    logger.info("Mapping logical to physical channels.")
     physWires = map_logical_to_physical(wireSeqs)
 
     # Pave the way for composite instruments, not useful yet...
@@ -401,27 +405,35 @@ def compile_to_hardware(seqs,
             files[inst_name] = {}
 
     # construct channel delay map
+    logger.info("Constructing delay map.")
     delays = channel_delay_map(physWires)
 
     # apply delays
+    logger.info("Applying delays.")
     for chan, wire in physWires.items():
         PatternUtils.delay(wire, delays[chan])
     debug_print(physWires, 'Delayed wire')
 
     # generate wf library (base shapes)
+    logger.info("Generating waveform library.")
     wfs = generate_waveforms(physWires)
 
     # replace Pulse objects with Waveforms
+    logger.info("Replacing pulses with waveforms")
     physWires = pulses_to_waveforms(physWires)
 
     # bundle wires on instruments, or channels depending
     # on whether we have one sequence per channel
+    logger.info("Bundling wires.")
     awgData = bundle_wires(physWires, wfs)
+    del wireSeqs
+    gc.collect()
 
     # convert to hardware formats
     # files = {}
     awg_metas = {}
-    for awgName, data in awgData.items():
+    for awgName in list(awgData.keys()):
+        data = awgData[awgName]
         # create the target folder if it does not exist
         targetFolder = os.path.split(os.path.normpath(os.path.join(
             config.AWGDir, fileName)))[0]
@@ -430,6 +442,7 @@ def compile_to_hardware(seqs,
         fullFileName = os.path.normpath(os.path.join(
             config.AWGDir, fileName + '-' + awgName + suffix + data[
                 'seqFileExt']))
+        logger.info("Writing sequence file for: {}".format(awgName))
         new_meta = data['translator'].write_sequence_file(data, fullFileName)
         if new_meta:
             awg_metas[awgName] = new_meta
@@ -440,6 +453,11 @@ def compile_to_hardware(seqs,
                 files[label_to_inst[awgName]][label_to_chan[awgName]] = fullFileName
         else:
             files[awgName] = fullFileName
+
+        del data
+        del awgData[awgName]
+        gc.collect()
+
     # generate TDM sequences FIXME: what's the best way to identify the need for a TDM seq.? Support for single TDM
     if tdm_seq and 'APS2Pattern' in [wire.translator for wire in physWires]:
             aps2tdm_module = import_module('QGL.drivers.APS2Pattern') # this is redundant with above
@@ -656,11 +674,28 @@ def normalize(seq, channels=None):
             block.pulses[ch] = Id(ch, blocklen)
     return seq
 
+class MemoizedObject(type):
+    """Metaclass for memoizing objects. Designed to save memory when processing
+    very long sequences. Overrides __call__ to prevent creating a new instance.
+    Idea from https://stackoverflow.com/questions/47785795/memoized-objects-still-have-their-init-invoked
+    """
+    def __init__(self, name, bases, namespace):
+        super().__init__(name, bases, namespace)
+        self.cache = {}
+    def __call__(self, pulse=None):
+        hash = pulse.hashshape()
+        if pulse is not None and hash not in self.cache:
+            self.cache[hash] = super().__call__(pulse=pulse)
+        return self.cache[hash]
+
 class Waveform(object):
     """
     Simplified channel independent version of a Pulse with a key into waveform library.
     """
 
+    #Use slots to create attributes to save on memory.
+    __slots__ = ["label", "key", "amp", "length", "phase", "frameChange",
+                    "isTimeAmp", "frequency", "logicalChan", "maddr", "startTime"]
 
     def __init__(self, pulse=None):
         if pulse is None:
@@ -699,14 +734,15 @@ class Waveform(object):
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            return self.__dict__ == other.__dict__
+            #No __dict__ property so we check all properties.
+            return all((getattr(self, attr, None) == getattr(other, attr, None) for attr in self.__slots__))
         return False
 
     def __ne__(self, other):
         return not self == other
 
     def __hash__(self):
-        return hash(frozenset(self.__dict__.items()))
+        return hash(frozenset((attr, getattr(self, attr, None)) for attr in self.__slots__))
 
     @property
     def isZero(self):
