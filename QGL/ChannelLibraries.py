@@ -183,7 +183,7 @@ class ChannelLibrary(object):
         indices   = {n: i for i, n in enumerate(graph.nodes())}
         node_data = [{'label': str(n).replace('(','\r\n(')} for n in graph.nodes()]
         link_data = [{'source': indices[s], 'target': indices[t]} for s, t in graph.edges()]
-                
+
         qub_objs.sort(key=lambda x: x.label)
         qubit_names = [q.label for q in qub_objs]
 
@@ -225,7 +225,7 @@ class ChannelLibrary(object):
                 end = widest[0]-0.6
             elif i == len(qub_objs):
                 start = sum(widest)-0.4
-                end = max(x)+0.4 
+                end = max(x)+0.4
             else:
                 start = sum(widest[:i])-0.4
                 end = sum(widest[:i+1])-0.6
@@ -240,7 +240,7 @@ class ChannelLibrary(object):
             c_freqs[qubit.label] = qubit.frequency*1e-9
             if qubit.phys_chan.generator:
                 c_freqs[qubit.label] += qubit.phys_chan.generator.frequency*1e-9
-            
+
             m_freqs[qubit.label] = qubit.measure_chan.frequency*1e-9
             if qubit.measure_chan.phys_chan.generator:
                 m_freqs[qubit.label] += qubit.measure_chan.phys_chan.generator.frequency*1e-9
@@ -375,6 +375,19 @@ class ChannelLibrary(object):
         for chan in self.session.query(Channels.Edge): #select(e for e in Channels.Edge):
             self.connectivityG.add_edge(chan.source, chan.target)
             self.connectivityG[chan.source][chan.target]['channel'] = chan
+
+    @check_for_duplicates
+    def new_APS3(self, label, address, **kwargs):
+        chan1  = Channels.PhysicalQuadratureChannel(label=f"{label}-1", channel=0, instrument=label, translator="APS3Pattern", channel_db=self.channelDatabase)
+        m1     = Channels.PhysicalMarkerChannel(label=f"{label}-m1", channel=0, instrument=label, translator="APS3Pattern", channel_db=self.channelDatabase)
+
+        this_transmitter = Channels.Transmitter(label=label, model="APS3", address=address, channels=[chan1, m1], channel_db=self.channelDatabase, **kwargs)
+        this_transmitter.trigger_source = "external"
+        this_transmitter.address        = address
+
+        self.add_and_update_dict(this_transmitter)
+        return this_transmitter
+
 
     @check_for_duplicates
     def new_APS2(self, label, address, **kwargs):

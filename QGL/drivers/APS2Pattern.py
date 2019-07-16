@@ -48,6 +48,8 @@ MAX_NUM_INSTRUCTIONS = 2**26
 MAX_REPEAT_COUNT = 2**16 - 1
 MAX_TRIGGER_COUNT = 2**32 - 1
 
+MODULATION_CLOCK = 300e6
+
 # instruction encodings
 WFM = 0x0
 MARKER = 0x1
@@ -578,7 +580,6 @@ class ModulationCommand(object):
         #Modulator op codes
         MODULATOR_OP_OFFSET = 44
         NCO_SELECT_OP_OFFSET = 40
-        MODULATION_CLOCK = 300e6
 
         op_code_map = {"MODULATE": 0x0,
                        "RESET_PHASE": 0x2,
@@ -1624,7 +1625,7 @@ if __name__ == '__main__':
                             self.tableWidget.setItem(k, j, item)
                 self.tableWidget.move(0,0)
                 self.tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)
-        
+
         app = QApplication(sys.argv[:1])
         ex = App(read_instructions(sys.argv[1]), read_waveforms(sys.argv[1]))
         sys.exit(app.exec_())
