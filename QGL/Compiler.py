@@ -236,7 +236,7 @@ def generate_waveforms(physicalWires):
                     wfs[ch][pulse.hashshape()] = pulse.shape
     return wfs
 
-def get_clifford_type(wire, allowed_types=("RandomAC")):
+def get_clifford_type(wire, allowed_types=("RandomAC", "RandomClifford")):
     rt_pulses = []
     for pulse in flatten(wire):
         if isinstance(pulse, Pulse) and pulse.isRunTime:

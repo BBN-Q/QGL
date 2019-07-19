@@ -652,6 +652,7 @@ def inject_modulation_cmds(seqs):
 
         mod_seq = []
         pending_frame_update = False
+        force_phase_update = False
 
         #check to see if we are in a subroutine by using last instruction as return as a tell
         #if so, ensure frame updates do not get dropped

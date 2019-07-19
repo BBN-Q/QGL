@@ -35,7 +35,7 @@ from .Cliffords import C1, inverse_clifford, clifford_multiply
 
 default_clifford_options = {"offset": 0x0, "spacing": 0x1, "seed": 0x31}
 
-VALID_CLIFFORD_TYPES = ('RandomAC',)
+VALID_CLIFFORD_TYPES = ('RandomAC', 'RandomClifford')
 
 def generate_clifford_jump_table(cliff_wires, jt_label = None):
     """Generate the jump table that will be used to call into the clifford set"""

@@ -24,7 +24,6 @@ import numpy as np
 from .PulseSequencer import Pulse, TAPulse, CompoundGate, align
 from functools import wraps, reduce
 
-
 def overrideDefaults(chan, updateParams, ignoredStrParams=['isRunTime', 'maddr', 'moffset']):
     '''Helper function to update any parameters passed in and fill in the defaults otherwise.'''
     # The default parameter list depends on the channel type so pull out of channel
@@ -116,7 +115,7 @@ def Utheta(qubit,
         else:
             # linearly scale based upon the 'pi/2' amplitude
             amp  = (angle / (pi/2)) * qubit.pulse_params['pi2Amp']
-    return Pulse(label, qubit, params, amp, phase, 0.0, ignoredStrParams, frequency=frequency, **kwargs)
+    return Pulse(label, qubit, params, amp, phase, 0.0, ignoredStrParams, frequency=frequency)
 
 
 # generic pulses around X, Y, and Z axes
@@ -340,6 +339,10 @@ def arb_axis_drag(qubit,
     return Pulse(kwargs["label"] if "label" in kwargs else "ArbAxis", qubit,
                  params, 1.0, aziAngle, frameChange)
 
+def RandomClifford(qubit):
+    params = overrideDefaults(qubit, {})
+    return Pulse("RandomClifford", qubit, params, isRunTime=True)
+
 def RandomAC(qubit):
     params = overrideDefaults(qubit, {})
     return Pulse("RandomAC", qubit, params, isRunTime=True)
@@ -348,6 +351,11 @@ def RandomDiAC(qubit):
     params = overrideDefaults(qubit, {})
     params["length"] *= 2.0
     return Pulse("RandomDiAC", qubit, params, isRunTime=True)
+
+from . import Cliffords
+
+def Clifford(qubit, cliffNum):
+    return reduce(operator.add, [p for p in Cliffords.clifford_seq(cliffNum, qubit)])
 
 def AC(qubit, cliffNum):
     """
