@@ -14,31 +14,21 @@ notebook](https://github.com/BBN-Q/QGL/blob/master/doc/QGL-demo.ipynb).
 The most straightforward way to get up and running is to use the [Anaconda
 Python distribution](http://continuum.io/downloads). This includes nearly all
 the dependencies. The remaining dependencies can be installed from the terminal
-or Anaconda Command Prompt on Windows.
+or Anaconda Command Prompt on Windows. While QGL can be run on windows, our 
+experiment control software [Auspex](https://github.com/BBN-Q/auspex) relies on linux
+when running qubit experiments.
 
-### Python 2.7
-
-```bash
-conda install atom future
-pip install watchdog
-```
-
-### Python 3.4+
+### Python 3.6+
 
 ```bash
-conda install -c ecpy atom
 cd QGL/
 pip install .
 ```
-
-For Python 3.6+ you may need to install watchdog from conda forge:
+Alternatively, if you plan to modify the source code it will be easier to perform a
+developer install using:
+```bash
+pip install -e .
 ```
-conda install -c conda-forge watchdog
-conda install -c ecpy atom
-cd QGL/
-pip install .
-```
-
 If you'd like to use some of the built-in gate-set-tomography functionality,
 you can grab the PyGSTi package during the install:
 ```
@@ -50,14 +40,13 @@ going to System -> Advanced Settings -> Environment variables. On Mac/Linux
 machines add the following line to your .bashrc or .bash_profile: ``` export
 PYTHONPATH=/path/to/QGL/repo:$PYTHONPATH```
 
-
-The QGL config file will be created the first time you run `import QGL` or `from QGL import *`.
+## Usage
+QGL is designed to be utilized alongside Auspex, and most of the usage example, 
+including how to define a channel library, can be found in the [Auspex documentation](https://auspex.readthedocs.io/en/develop/qubits.html)
 
 ## Dependencies
-* Python 2.7 or 3.4+
+* Python 3.6+
 * Numpy/Scipy
-* h5py
-* Bokeh 0.11
 * networkx 2.0
 * iPython/Jupyter 4.0 (only for Jupyter notebooks)
 * bbndb
