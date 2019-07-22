@@ -50,20 +50,14 @@ going to System -> Advanced Settings -> Environment variables. On Mac/Linux
 machines add the following line to your .bashrc or .bash_profile: ``` export
 PYTHONPATH=/path/to/QGL/repo:$PYTHONPATH```
 
+
 The QGL config file will be created the first time you run `import QGL` or `from QGL import *`.
 
 ## Dependencies
 * Python 2.7 or 3.4+
-* JSONLibraryUtils (https://github.com/BBN-Q/JSONLibraryUtils, integrated as a Git submodule)
 * Numpy/Scipy
-* Nucleic atom (from ecpy channel for Python 3)
 * h5py
-* watchdog
 * Bokeh 0.11
 * networkx 2.0
 * iPython/Jupyter 4.0 (only for Jupyter notebooks)
-* ruamel_yaml
-
-## UnitTest data support
-This repository uses the Git Large File Storage (LFS) extension to manage a few
-UnitTest data files (see https://git-lfs.github.com/).
+* bbndb

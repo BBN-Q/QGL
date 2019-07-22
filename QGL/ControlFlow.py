@@ -94,10 +94,9 @@ def qwait(kind="TRIG", addr=None, channels=None):
         return LoadCmp(channels)
     elif kind == "RAM":
         if addr is None:
-            raise ValueError('Please specify addr')
+            raise Exception('Please specify address')
         return [WriteAddrInstruction('INVALIDATE', None, 1, addr, 0xffffffff, False), LoadCmpVramInstruction('LOADCMPVRAM', 1, addr, 0xff, False)]
 
-    raise ValueError('Unknown kind parameter [%s]' % str(kind))
 
 
 def qsync(channels=None):

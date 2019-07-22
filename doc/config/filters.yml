@@ -1,4 +1,0 @@
-q1-RawSS:
-  type: X6StreamSelector
-  source: X6-1
-  channel: '1'

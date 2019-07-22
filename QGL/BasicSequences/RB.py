@@ -87,7 +87,7 @@ def SingleQubitRB(qubit, seqs, purity=False, showPlot=False, add_cals=True):
     return metafile
 
 
-def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix="", add_cals=True, measChans = None):
+def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix="", add_cals=True):
     """Two qubit randomized benchmarking using 90 and 180 single qubit generators and ZX90
 
     Parameters
@@ -97,18 +97,14 @@ def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix="", add_cals=True, measChans
     showPlot : whether to plot (boolean)
     suffix : suffix to apply to sequence file names
     """
-    if measChans is None:
-        measChans = (q1,q2)
-
     seqsBis = []
     for seq in seqs:
         seqsBis.append(reduce(operator.add, [clifford_seq(c, q2, q1)
                                              for c in seq]))
 
-    measBlock = reduce(operator.mul, [MEAS(q) for q in measChans])
     #Add the measurement to all sequences
     for seq in seqsBis:
-        seq.append(measBlock)
+        seq.append(MEAS(q1) * MEAS(q2))
 
     axis_descriptor = [{
         'name': 'length',
@@ -119,8 +115,8 @@ def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix="", add_cals=True, measChans
 
     #Tack on the calibration sequences
     if add_cals:
-        seqsBis += create_cal_seqs(measChans, 2)
-        axis_descriptor.append(cal_descriptor(measChans, 2))
+        seqsBis += create_cal_seqs((q1, q2), 2)
+        axis_descriptor.append(cal_descriptor((q1, q2), 2))
 
     metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor, suffix = suffix, extra_meta = {'sequences':seqs})
 

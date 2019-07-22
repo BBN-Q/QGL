@@ -7,12 +7,12 @@ from QGL.BlockLabel import label, endlabel
 
 class ControlFlowTest(unittest.TestCase):
     def setUp(self):
-        self.q1 = Qubit(label='q1')
-        self.q2 = Qubit(label='q2')
-        
-        ChannelLibrary(blank=True) # Create a blank ChannelLibrary
-        ChannelLibraries.channelLib.channelDict = {'q1': self.q1, 'q2': self.q2}
-        ChannelLibraries.channelLib.build_connectivity_graph()
+        cl = ChannelLibrary(db_resource_name=":memory:")
+        self.q1 = cl.new_qubit(label='q1')
+        self.q2 = cl.new_qubit(label='q2')
+        self.q3 = cl.new_qubit(label='q3')
+        self.q4 = cl.new_qubit(label='q4')
+        cl.update_channelDict()
 
     def test_qif(self):
         q1 = self.q1
@@ -20,8 +20,6 @@ class ControlFlowTest(unittest.TestCase):
         seq2 = [X(q1), Y(q1), Z(q1)]
         label(seq1)
         label(seq2)
-        # print qif(0, seq1, seq2)
-        # print ([CmpEq(0), Goto(label(seq1))] + seq2 + [Goto(endlabel(seq1))] + seq1
         assert (qif(0, seq1, seq2) == [CmpEq("m", 0), Goto(label(seq1))] + seq2 +
                 [Goto(endlabel(seq1))] + seq1)
 
@@ -89,23 +87,6 @@ class ControlFlowTest(unittest.TestCase):
         assert (isinstance(seq1[1], ControlFlow.LoadCmp))
         assert (isinstance(seq1[2][0], TdmInstructions.WriteAddrInstruction))
         assert (isinstance(seq1[2][1], TdmInstructions.LoadCmpVramInstruction))
-
-    def test_qwait_err(self):
-        q1 = self.q1
-        with self.assertRaises(ValueError) as exc:
-            seq1 = [qwait(kind='FOO')]
-        exc_str = str(exc.exception)
-        assert (exc_str == 'Unknown kind parameter [FOO]')
-
-        with self.assertRaises(ValueError) as exc:
-            seq1 = [qwait(kind='RAM')]
-        exc_str = str(exc.exception)
-        assert (exc_str == 'Please specify addr')
-
-        # test the legal values
-        seq1 = [qwait(kind='TRIG')]
-        seq1 = [qwait(kind='CMP')]
-        seq1 = [qwait(kind='RAM', addr=0xff)]
 
     def test_compile(self):
         q1 = self.q1

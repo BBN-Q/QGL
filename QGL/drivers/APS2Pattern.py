@@ -20,10 +20,11 @@ import os
 import logging
 from warnings import warn
 from copy import copy
-from future.moves.itertools import zip_longest
+from itertools import zip_longest
 import pickle
 
-import h5py
+import struct
+import sys
 import numpy as np
 
 from QGL import Compiler, ControlFlow, BlockLabel, PatternUtils
@@ -46,7 +47,6 @@ MAX_WAVEFORM_VALUE = 2**13 - 1  #maximum waveform value i.e. 14bit DAC
 MAX_NUM_INSTRUCTIONS = 2**26
 MAX_REPEAT_COUNT = 2**16 - 1
 MAX_TRIGGER_COUNT = 2**32 - 1
-NUM_NCO = 4
 
 # instruction encodings
 WFM = 0x0
@@ -107,19 +107,15 @@ SAVE_WF_OFFSETS = False
 SEQFILE_PER_CHANNEL = False
 
 def get_empty_channel_set():
-    return {'ch12': {}, 'ch12m1': {}, 'ch12m2': {}, 'ch12m3': {}, 'ch12m4': {}}
-
+    return {'ch1': {}, 'm1': {}, 'm2': {}, 'm3': {}, 'm4': {}}
 
 def get_seq_file_extension():
-    return '.h5'
-
+    return '.aps2'
 
 def is_compatible_file(filename):
-    with h5py.File(filename, 'r') as FID:
-        target = FID['/'].attrs['target hardware']
-        if isinstance(target, str):
-            target = target.encode('utf-8')
-        if target == b'APS2':
+    with open(filename, 'rb') as FID:
+        byte = FID.read(4)
+        if byte == b'APS2':
             return True
     return False
 
@@ -164,7 +160,7 @@ def create_wf_vector(wfLib, seqs):
 
     else:
         #otherwise fill in one cache line at a time
-        CACHE_LINE_LENGTH = WAVEFORM_CACHE_SIZE / 2
+        CACHE_LINE_LENGTH = int(np.round(WAVEFORM_CACHE_SIZE / 2)) - 1
         wfVec = np.zeros(CACHE_LINE_LENGTH, dtype=np.int16)
         offsets = [{}]
         cache_lines = []
@@ -182,7 +178,7 @@ def create_wf_vector(wfLib, seqs):
                 idx = int(CACHE_LINE_LENGTH * (
                     (idx + CACHE_LINE_LENGTH) // CACHE_LINE_LENGTH))
                 wfVec = np.append(wfVec,
-                                  np.zeros(CACHE_LINE_LENGTH,
+                                  np.zeros(int(CACHE_LINE_LENGTH),
                                            dtype=np.int16))
                 offsets.append({})
 
@@ -263,9 +259,9 @@ class Instruction(object):
             wfOpCode = (self.payload >> 46) & 0x3
             wfOpCodes = ["PLAY", "TRIG", "SYNC", "PREFETCH"]
             out += wfOpCodes[wfOpCode]
-            out += "; TA bit={}".format((self.payload >> 45) & 0x1)
-            out += ", count = {}".format((self.payload >> 24) & 2**21 - 1)
-            out += ", addr = {}".format(self.payload & 2**24 - 1)
+            out += "; TA_bit={}".format((self.payload >> 45) & 0x1)
+            out += ", count={}".format((self.payload >> 24) & 2**21 - 1)
+            out += ", addr={}".format(self.payload & 2**24 - 1)
 
             # # APS3/TDM modifier to use VRAM output
             # if self.payload & (1 << 48):
@@ -276,7 +272,7 @@ class Instruction(object):
             mrkOpCodes = ["PLAY", "TRIG", "SYNC"]
             out += mrkOpCodes[mrkOpCode]
             out += "; state={}".format((self.payload >> 32) & 0x1)
-            out += ", count = {}".format(self.payload & 2**32 - 1)
+            out += ", count={}".format(self.payload & 2**32 - 1)
 
         elif instrOpCode == MODULATION:
             modulatorOpCode = (self.payload >> 45) & 0x7
@@ -298,21 +294,21 @@ class Instruction(object):
             cmpCodes = ["EQUAL", "NOTEQUAL", "GREATERTHAN", "LESSTHAN"]
             cmpCode = (self.payload >> 8) & 0x3
             out += " | " + cmpCodes[cmpCode]
-            out += ", value = {}".format(self.payload & 0xff)
+            out += ", value={}".format(self.payload & 0xff)
 
         elif any(
             [instrOpCode == op for op in [GOTO, CALL, RET, REPEAT, PREFETCH]]):
-            out += " | target addr = {}".format(self.payload & 2**26 - 1)
+            out += " | target_addr={}".format(self.payload & 2**26 - 1)
 
         elif instrOpCode == LOAD:
-            out += " | count = {}".format(self.payload)
+            out += " | count={}".format(self.payload)
 
         elif instrOpCode == CUSTOM:
             store_addr = self.payload & 0xFFFF
             load_addr = (self.payload >> 16) & 0xFFFF
             instruction = (self.payload >> 32) & 0xFF
             instructionAPS = TDM_CUSTOM_DECODE[instruction]
-            out += " | instruction = {0} ({1}), load_addr = 0x{2:0x}, store_addr = 0x{3:0x}".format(instruction, instructionAPS, load_addr, store_addr)
+            out += " | instruction={0} ({1}), load_addr=0x{2:0x}, store_addr=0x{3:0x}".format(instruction, instructionAPS, load_addr, store_addr)
 
         elif instrOpCode == WRITEADDR:
             addr = self.payload & 0xFFFF
@@ -338,7 +334,7 @@ class Instruction(object):
                 addr = (self.payload >> 16) & 0xFFFF
                 value = (self.payload >> 32) & 0xFFFF
 
-            out += "{0} | addr = 0x{1:0x}, {2} = 0x{3:0x}".format(instrStr, addr, valueType, value)
+            out += "{0} | addr=0x{1:0x}, {2}=0x{3:0x}".format(instrStr, addr, valueType, value)
 
         elif instrOpCode == LOADCMP:
             addr = self.payload & 0xFFFF
@@ -350,7 +346,7 @@ class Instruction(object):
                 src = "EXT"
                 if use_ram:
                     src = "RAM"
-                out += "LOADCMP | source = {0}, addr = 0x{1:0x}, read_mask = 0x{2:0x}".format(src, addr, mask)
+                out += "LOADCMP | source={0}, addr=0x{1:0x}, read_mask=0x{2:0x}".format(src, addr, mask)
         return out
 
     def __eq__(self, other):
@@ -584,19 +580,13 @@ class ModulationCommand(object):
         NCO_SELECT_OP_OFFSET = 40
         MODULATION_CLOCK = 300e6
 
-        nco_select_bits = {1 : 0b0001,
-                           2 : 0b0010,
-                           3 : 0b0100,
-                           4 : 0b1000,
-                           15: 0b1111}[self.nco_select]
-
         op_code_map = {"MODULATE": 0x0,
                        "RESET_PHASE": 0x2,
                        "SET_FREQ": 0x6,
                        "SET_PHASE": 0xa,
                        "UPDATE_FRAME": 0xe}
         payload = (op_code_map[self.instruction] << MODULATOR_OP_OFFSET) | (
-            (nco_select_bits) << NCO_SELECT_OP_OFFSET)
+            self.nco_select << NCO_SELECT_OP_OFFSET)
         if self.instruction == "MODULATE":
             #zero-indexed quad count
             payload |= np.uint32(self.length / ADDRESS_UNIT - 1)
@@ -624,9 +614,9 @@ def inject_modulation_cmds(seqs):
     for ct,seq in enumerate(seqs):
         #check whether we have modulation commands
         freqs = np.unique([entry.frequency for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)])
-        if len(freqs) > NUM_NCO:
-            raise Exception("Max {} frequencies on the same channel allowed.".format(NUM_NCO))
-        no_freq_cmds = np.allclose(freqs, 0)
+        if len(freqs) > 2:
+            raise Exception("Max 2 frequencies on the same channel allowed.")
+        no_freq_cmds = np.all(np.less(np.abs(freqs), 1e-8))
         phases = [entry.phase for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
         no_phase_cmds = np.all(np.less(np.abs(phases), 1e-8))
         frame_changes = [entry.frameChange for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
@@ -650,7 +640,7 @@ def inject_modulation_cmds(seqs):
                 #heuristic to insert phase reset before trigger if we have modulation commands
                 if isinstance(entry, ControlFlow.Wait):
                     if not ( no_modulation_cmds and (cur_freq == 0) and (cur_phase == 0)):
-                        mod_seq.append(ModulationCommand("RESET_PHASE", 0xF))
+                        mod_seq.append(ModulationCommand("RESET_PHASE", 0x3))
                         for nco_ind, freq in enumerate(freqs):
                             mod_seq.append( ModulationCommand("SET_FREQ", nco_ind + 1, frequency = -freq) )
                 elif isinstance(entry, ControlFlow.Return):
@@ -1031,11 +1021,11 @@ def write_sequence_file(awgData, fileName):
     Main function to pack channel sequences into an APS2 h5 file.
     '''
     # Convert QGL IR into a representation that is closer to the hardware.
-    awgData['ch12']['linkList'], wfLib = preprocess(
-        awgData['ch12']['linkList'], awgData['ch12']['wfLib'])
+    awgData['ch1']['linkList'], wfLib = preprocess(
+        awgData['ch1']['linkList'], awgData['ch1']['wfLib'])
 
     # compress marker data
-    for field in ['ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']:
+    for field in ['m1', 'm2', 'm3', 'm4']:
         if 'linkList' in awgData[field].keys():
             PatternUtils.convert_lengths_to_samples(awgData[field]['linkList'],
                                                     SAMPLING_RATE, 1,
@@ -1048,10 +1038,10 @@ def write_sequence_file(awgData, fileName):
     wfInfo = []
     wfInfo.append(create_wf_vector({key: wf.real
                                     for key, wf in wfLib.items()}, awgData[
-                                        'ch12']['linkList']))
+                                        'ch1']['linkList']))
     wfInfo.append(create_wf_vector({key: wf.imag
                                     for key, wf in wfLib.items()}, awgData[
-                                        'ch12']['linkList']))
+                                        'ch1']['linkList']))
 
     if SAVE_WF_OFFSETS:
         #create a set of all waveform signatures in offset dictionaries
@@ -1062,7 +1052,7 @@ def write_sequence_file(awgData, fileName):
             wf_sigs |= set(offset_dict.keys())
         #create dictionary linking entry labels (that's what we'll have later) with offsets
         offsets = {}
-        for seq in awgData['ch12']['linkList']:
+        for seq in awgData['ch1']['linkList']:
             for entry in seq:
                 if len(wf_sigs) == 0:
                     break
@@ -1086,45 +1076,42 @@ def write_sequence_file(awgData, fileName):
 
     # build instruction vector
     seq_data = [awgData[s]['linkList']
-                for s in ['ch12', 'ch12m1', 'ch12m2', 'ch12m3', 'ch12m4']]
+                for s in ['ch1', 'm1', 'm2', 'm3', 'm4']]
     instructions = create_instr_data(seq_data, wfInfo[0][1], wfInfo[0][2])
 
-    #Open the HDF5 file
+    #Open the binary file
     if os.path.isfile(fileName):
         os.remove(fileName)
-    with h5py.File(fileName, 'w') as FID:
-        FID['/'].attrs['Version'] = 4.0
-        FID['/'].attrs['target hardware'] = 'APS2'
-        FID['/'].attrs['minimum firmware version'] = 4.0
-        FID['/'].attrs['channelDataFor'] = np.uint16([1, 2])
+
+    with open(fileName, 'wb') as FID:
+        FID.write(b'APS2')                     # target hardware
+        FID.write(np.float32(4.0).tobytes())   # Version
+        FID.write(np.float32(4.0).tobytes())   # minimum firmware version
+        FID.write(np.uint16(2).tobytes())      # number of channels
+        # FID.write(np.uint16([1, 2]).tobytes()) # channelDataFor
+        FID.write(np.uint64(instructions.size).tobytes()) # instructions length
+        FID.write(instructions.tobytes()) # instructions in uint64 form
 
         #Create the groups and datasets
         for chanct in range(2):
-            chanStr = '/chan_{0}'.format(chanct + 1)
-            chanGroup = FID.create_group(chanStr)
             #Write the waveformLib to file
             if wfInfo[chanct][0].size == 0:
                 #If there are no waveforms, ensure that there is some element
                 #so that the waveform group gets written to file.
                 #TODO: Fix this in libaps2
-                data = np.array([0], dtype=np.uint16)
+                data = np.array([0], dtype=np.int16)
             else:
                 data = wfInfo[chanct][0]
-            FID.create_dataset(chanStr + '/waveforms', data=data)
-
-            #Write the instructions to channel 1
-            if np.mod(chanct, 2) == 0:
-                FID.create_dataset(chanStr + '/instructions',
-                                   data=instructions)
-
+            FID.write(np.uint64(data.size).tobytes()) # waveform data length for channel
+            FID.write(data.tobytes())
 
 def read_sequence_file(fileName):
     """
     Reads a HDF5 sequence file and returns a dictionary of lists.
-    Dictionary keys are channel strings such as ch1, ch12m1
+    Dictionary keys are channel strings such as ch1, m1
     Lists are or tuples of time-amplitude pairs (time, output)
     """
-    chanStrs = ['ch1', 'ch2', 'ch12m1', 'ch12m2', 'ch12m3', 'ch12m4',
+    chanStrs = ['ch1', 'ch2', 'm1', 'm2', 'm3', 'm4',
                 'mod_phase']
     seqs = {ch: [] for ch in chanStrs}
 
@@ -1137,16 +1124,22 @@ def read_sequence_file(fileName):
                 #marker channel
                 seqs[ch].append([])
 
-    with h5py.File(fileName, 'r') as FID:
-        file_version = FID["/"].attrs["Version"]
+    with open(fileName, 'rb') as FID:
+        target_hw    = FID.read(4).decode('utf-8')
+        file_version = struct.unpack('<f', FID.read(4))[0]
+        min_fw       = struct.unpack('<f', FID.read(4))[0]
+        num_chans    = struct.unpack('<H', FID.read(2))[0]
+
+        inst_len     = struct.unpack('<Q', FID.read(8))[0]
+        instructions = np.frombuffer(FID.read(8*inst_len), dtype=np.uint64)
+
         wf_lib = {}
-        wf_lib['ch1'] = (
-            1.0 /
-            MAX_WAVEFORM_VALUE) * FID['/chan_1/waveforms'].value.flatten()
-        wf_lib['ch2'] = (
-            1.0 /
-            MAX_WAVEFORM_VALUE) * FID['/chan_2/waveforms'].value.flatten()
-        instructions = FID['/chan_1/instructions'].value.flatten()
+        for i in range(num_chans):
+            wf_len  = struct.unpack('<Q', FID.read(8))[0]
+            wf_dat  = np.frombuffer(FID.read(2*wf_len), dtype=np.int16)
+            wf_lib[f'ch{i+1}'] = ( 1.0 / MAX_WAVEFORM_VALUE) * wf_dat.flatten()
+
+        NUM_NCO = 2
         freq = np.zeros(NUM_NCO)  #radians per timestep
         phase = np.zeros(NUM_NCO)
         frame = np.zeros(NUM_NCO)
@@ -1195,7 +1188,7 @@ def read_sequence_file(fileName):
                                 seqs[chan][-1].append((1, sample))
 
             elif instr.opcode == MARKER:
-                chan = 'ch12m' + str(((instr.header >> 2) & 0x3) + 1)
+                chan = 'm' + str(((instr.header >> 2) & 0x3) + 1)
                 count = instr.payload & 0xffffffff
                 count = (count + 1) * ADDRESS_UNIT
                 state = (instr.payload >> 32) & 0x1
@@ -1273,6 +1266,7 @@ def read_sequence_file(fileName):
                 seqs['ch2'][ct] = mod_ch2
 
         del seqs['mod_phase']
+
     return seqs
 
 
@@ -1395,8 +1389,7 @@ def tdm_instructions(seqs):
 
             elif isinstance(s, PulseSequencer.Pulse):
                 if s.label == 'MEAS' and s.maddr != (-1, 0):
-                    tdm_chan = m.channel.tdm_chan if getattr(m.channel, 'tdm_chan') else 1
-                    instructions.append(CrossBar(2**s.maddr[1], 2**(tdm_chan-1), label=label))
+                    instructions.append(CrossBar(2**s.maddr[1], 0x1, label=label))
                     instructions.append(LoadCmp(label=label))
                     instructions.append(StoreMeas(s.maddr[0], 1 << 16, label=label))
 
@@ -1410,8 +1403,7 @@ def tdm_instructions(seqs):
                     if len(set(maddr))>1:
                         raise Exception('Storing simultaneous measurements on different addresses not supported.')
                     for n,m in enumerate(sim_meas):
-                        tdm_chan = m.channel.tdm_chan if getattr(m.channel, 'tdm_chan') else n+1 #default 0
-                        instructions.append(CrossBar(2**m.maddr[1], 2**(tdm_chan-1)))
+                        instructions.append(CrossBar(2**m.maddr[1], 2**n))
                     instructions.append(LoadCmp(label=label))
                     instructions.append(StoreMeas(maddr[0], 1 << 16))
 
@@ -1454,14 +1446,16 @@ def write_tdm_seq(seq, tdm_fileName):
 
 # Utility Functions for displaying programs
 
-def get_channel_instructions_string(channel):
-    return '/chan_{}/instructions'.format(channel)
+def raw_instructions(fileName):
+    with open(fileName, 'rb') as FID:
+        target_hw    = FID.read(4).decode('utf-8')
+        file_version = struct.unpack('<f', FID.read(4))[0]
+        min_fw       = struct.unpack('<f', FID.read(4))[0]
+        num_chans    = struct.unpack('<H', FID.read(2))[0]
 
-def raw_instructions(filename, channel = 1):
-    channelStr =  get_channel_instructions_string(channel)
-    with h5py.File(filename, 'r') as fid:
-        raw_instrs = fid[channelStr].value.flatten()
-        return raw_instrs
+        inst_len     = struct.unpack('<Q', FID.read(8))[0]
+        instructions = np.frombuffer(FID.read(8*inst_len), dtype=np.uint64)
+    return instructions
 
 def decompile_instructions(instructions, tdm = False):
     return [Instruction.unflatten(x, decode_as_tdm = tdm) for x in instructions]
@@ -1469,6 +1463,23 @@ def decompile_instructions(instructions, tdm = False):
 def read_instructions(filename):
     raw_instrs = raw_instructions(filename)
     return decompile_instructions(raw_instrs)
+
+def read_waveforms(filename):
+    with open(filename, 'rb') as FID:
+        target_hw    = FID.read(4).decode('utf-8')
+        file_version = struct.unpack('<f', FID.read(4))[0]
+        min_fw       = struct.unpack('<f', FID.read(4))[0]
+        num_chans    = struct.unpack('<H', FID.read(2))[0]
+
+        inst_len     = struct.unpack('<Q', FID.read(8))[0]
+        instructions = np.frombuffer(FID.read(8*inst_len), dtype=np.uint64)
+
+        wf_dat = []
+        for i in range(num_chans):
+            wf_len  = struct.unpack('<Q', FID.read(8))[0]
+            dat = ( 1.0 / MAX_WAVEFORM_VALUE) * np.frombuffer(FID.read(2*wf_len), dtype=np.int16).flatten()
+            wf_dat.append(dat)
+        return wf_dat
 
 def replace_instructions(filename, instructions, channel = 1):
     channelStr =  get_channel_instructions_string(channel)
@@ -1496,3 +1507,124 @@ def display_raw_instructions(raw):
 def display_raw_file(filename):
     raw = raw_instructions(filename)
     display_raw_instructions(raw)
+
+if __name__ == '__main__':
+    if len(sys.argv) == 2:
+
+        from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QAbstractItemView, QPushButton
+        from PyQt5.QtGui import QIcon, QColor, QFont
+
+        from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg
+        from matplotlib.figure import Figure
+
+        table_font = QFont("Arial", weight=QFont.Bold)
+
+        colors = {"WFM": QColor(0,200,0),
+                  "GOTO": QColor(0,100,100),
+                  "MARKER": QColor(150,150,200)}
+
+        class MatplotlibWidget(QWidget):
+            def __init__(self, I, Q, parent=None):
+                super(MatplotlibWidget, self).__init__(parent)
+                self.title = 'Waveform'
+                self.left = 100
+                self.top = 100
+                self.width = 800
+                self.height = 600
+                self.setWindowTitle(self.title)
+                self.setGeometry(self.left, self.top, self.width, self.height)
+
+                self.figure = Figure()
+                self.canvas = FigureCanvasQTAgg(self.figure)
+
+                self.axis = self.figure.add_subplot(111)
+                self.axis.plot(I)
+                self.axis.plot(Q)
+                self.layout = QVBoxLayout(self)
+                self.layout.addWidget(self.canvas)
+                self.setLayout(self.layout)
+                self.canvas.draw()
+                self.show()
+
+
+        class App(QWidget):
+
+            COLUMN_COUNT = 7
+            def __init__(self, instructions, waveforms):
+                super().__init__()
+                self.title = 'APS2 Disassembled Instructions'
+                self.left = 100
+                self.top = 100
+                self.width = 1000
+                self.height = 1200
+                self.instructions = instructions
+                self.waveforms = waveforms
+                print(self.waveforms)
+                self.initUI()
+                self.plotters = []
+
+            def initUI(self):
+                self.setWindowTitle(self.title)
+                self.setGeometry(self.left, self.top, self.width, self.height)
+
+                self.createTable()
+                self.layout = QVBoxLayout()
+                self.layout.addWidget(self.tableWidget)
+                self.setLayout(self.layout)
+
+                # Show widget
+                self.show()
+
+            def createTable(self):
+               # Create table
+                self.tableWidget = QTableWidget()
+                self.tableWidget.setRowCount(len(self.instructions))
+                self.tableWidget.setColumnCount(7)
+
+                for k, instr in enumerate(self.instructions):
+                    fields = str(instr).replace(',','').replace(';', '').split(" ")
+                    if "|" in fields:
+                        fields.remove("|")
+                    if fields[0] in colors:
+                        color = colors[fields[0]]
+                    else:
+                        color = None
+                    for l, f in enumerate(fields):
+                        text = fields[l]
+                        if text == "GOTO":
+                            btn = QPushButton(self.tableWidget)
+                            btn.setText('GOTO')
+                            target_row = int(fields[1].split("=")[1])
+                            def scroll_to_goto_target(row=target_row, tab=self.tableWidget):
+                                tab.scrollToItem(tab.item(row, 0))
+                            btn.clicked.connect(scroll_to_goto_target)
+                            self.tableWidget.setCellWidget(k, l, btn)
+                        if text == "WFM" and int(fields[4].split("=")[1])==0:
+                            # Not a TA pair
+                            btn = QPushButton(self.tableWidget)
+                            btn.setText('WFM')
+                            addr = int(fields[6].split("=")[1])
+                            count = int(fields[5].split("=")[1])
+                            def open_plotter(addr=None, I=self.waveforms[0][addr:addr+count], Q=self.waveforms[1][addr:addr+count]):
+                                w = MatplotlibWidget(I,Q)
+                                self.plotters.append(w)
+                            btn.clicked.connect(open_plotter)
+                            self.tableWidget.setCellWidget(k, l, btn)
+                        else:
+                            item = QTableWidgetItem(text)
+                            item.setFont(table_font)
+                            if color:
+                                item.setBackground(color)
+                            self.tableWidget.setItem(k, l, item)
+                    if l < self.COLUMN_COUNT-1:
+                        for j in range(l+1, self.COLUMN_COUNT):
+                            item = QTableWidgetItem("")
+                            if color:
+                                item.setBackground(color)
+                            self.tableWidget.setItem(k, j, item)
+                self.tableWidget.move(0,0)
+                self.tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)
+        
+        app = QApplication(sys.argv[:1])
+        ex = App(read_instructions(sys.argv[1]), read_waveforms(sys.argv[1]))
+        sys.exit(app.exec_())

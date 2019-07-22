@@ -91,6 +91,10 @@ def Utheta(qubit,
         del params["amp"]
     if "phase" in params:
         del params["phase"]
+    if "frequency" in kwargs:
+        frequency = kwargs["frequency"]
+    else:
+        frequency = None
     # allow override of angle -> amplitude lookup if the user provides an "amp"
     # keyword argument
     if "amp" in kwargs:
@@ -109,7 +113,7 @@ def Utheta(qubit,
         else:
             # linearly scale based upon the 'pi/2' amplitude
             amp  = (angle / (pi/2)) * qubit.pulse_params['pi2Amp']
-    return Pulse(label, qubit, params, amp, phase, 0.0, ignoredStrParams)
+    return Pulse(label, qubit, params, amp, phase, 0.0, ignoredStrParams, frequency=frequency)
 
 
 # generic pulses around X, Y, and Z axes

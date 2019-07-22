@@ -30,7 +30,7 @@ from .PatternUtils import flatten, has_gate
 from . import Channels
 from . import ChannelLibraries
 from . import PulseShapes
-from .PulsePrimitives import Id
+from .PulsePrimitives import Id, clear_pulse_cache
 from .PulseSequencer import Pulse, PulseBlock, CompositePulse
 from . import ControlFlow
 from . import BlockLabel
@@ -40,14 +40,14 @@ import gc
 logger = logging.getLogger(__name__)
 
 def map_logical_to_physical(wires):
-    # construct a mapping of physical channels to lists of logical channels
-    # (there will be more than one logical channel if multiple logical
-    # channels share a physical channel)
+    """construct a mapping of physical channels to lists of logical channels
+    (there will be more than one logical channel if multiple logical
+    channels share a physical channel)"""
     physicalChannels = {}
     for logicalChan in wires.keys():
         phys_chan = logicalChan.phys_chan
         if not phys_chan:
-            raise ValueError("LogicalChannel {} does not have a PhysicalChannel".format(phys_chan))
+            raise ValueError("LogicalChannel {} does not have a PhysicalChannel".format(logicalChan))
         if phys_chan not in physicalChannels:
             physicalChannels[phys_chan] = [logicalChan]
         else:
@@ -276,7 +276,8 @@ def bundle_wires(physWires, wfs):
     awgData = setup_awg_channels(physWires.keys())
     for chan in physWires.keys():
         _, awgChan = chan.label.rsplit('-', 1)
-        awgChan = 'ch' + awgChan
+        if awgChan[0] != 'm':
+            awgChan = 'ch' + awgChan
         awgData[chan.instrument][awgChan]['linkList'] = physWires[chan]
         awgData[chan.instrument][awgChan]['wfLib'] = wfs[chan]
         if hasattr(chan, 'correctionT'):
@@ -301,6 +302,7 @@ def collect_specializations(seqs):
 
 def compile_to_hardware(seqs,
                         fileName,
+                        library_version=None,
                         suffix='',
                         axis_descriptor=None,
                         add_slave_trigger=True,
@@ -309,6 +311,9 @@ def compile_to_hardware(seqs,
     '''
     Compiles 'seqs' to a hardware description and saves it to 'fileName'.
     Other inputs:
+        library_version (optional): string or ChannelLibrary instance to pack in the
+            metafile. This will be the version of the library loaded during program
+            execution. Default None uses the current working version.
         suffix (optional): string to append to end of fileName, e.g. with
             fileNames = 'test' and suffix = 'foo' might save to test-APSfoo.h5
         axis_descriptor (optional): a list of dictionaries describing the effective
@@ -318,6 +323,9 @@ def compile_to_hardware(seqs,
         add_slave_trigger (optional): add the slave trigger(s)
         tdm_seq (optional): compile for TDM
     '''
+    ChannelLibraries.channelLib.update_channelDict()
+    clear_pulse_cache()
+
     logger.debug("Compiling %d sequence(s)", len(seqs))
 
     # save input code to file
@@ -391,8 +399,8 @@ def compile_to_hardware(seqs,
     for wire, pulses in physWires.items():
         pattern_module = import_module('QGL.drivers.' + wire.translator)
         if pattern_module.SEQFILE_PER_CHANNEL:
-            inst_name = pattern_module.get_true_inst_name(wire.label)
-            chan_name = pattern_module.get_true_chan_name(wire.label)
+            inst_name = wire.transmitter.label
+            chan_name = wire.label
             has_non_id_pulses = any([len([p for p in ps if isinstance(p,Pulse) and p.label!="Id"]) > 0 for ps in pulses])
             label_to_inst[wire.label] = inst_name
             if has_non_id_pulses:
@@ -402,7 +410,7 @@ def compile_to_hardware(seqs,
             old_wire_instrs[wire] = wire.instrument
             wire.instrument = wire.label
             wire.label = chan_name
-            files[inst_name] = {}
+            #files[inst_name] = {}
 
     # construct channel delay map
     logger.info("Constructing delay map.")
@@ -446,11 +454,12 @@ def compile_to_hardware(seqs,
         new_meta = data['translator'].write_sequence_file(data, fullFileName)
         if new_meta:
             awg_metas[awgName] = new_meta
+            ChannelLibraries.channelLib[awgName].extra_meta = new_meta
 
         # Allow for per channel and per AWG seq files
         if awgName in label_to_inst:
             if awgName in label_to_chan:
-                files[label_to_inst[awgName]][label_to_chan[awgName]] = fullFileName
+                files[label_to_chan[awgName]] = fullFileName
         else:
             files[awgName] = fullFileName
 
@@ -472,6 +481,12 @@ def compile_to_hardware(seqs,
     else:
         extra_meta = awg_metas
     # create meta output
+    db_info = {
+        'db_provider': ChannelLibraries.channelLib.db_provider,
+        'db_resource_name': ChannelLibraries.channelLib.db_resource_name,
+        'library_name': 'working',
+        'library_id': ChannelLibraries.channelLib.channelDatabase.id
+    }
     if not axis_descriptor:
         axis_descriptor = [{
             'name': 'segment',
@@ -484,10 +499,13 @@ def compile_to_hardware(seqs,
         if wire.receiver_chan and n>0:
             receiver_measurements[wire.receiver_chan.label] = n
     meta = {
+        'database_info': db_info,
         'instruments': files,
         'num_sequences': len(seqs),
         'num_measurements': num_measurements,
         'axis_descriptor': axis_descriptor,
+        'qubits': [c.label for c in channels if isinstance(c, Channels.Qubit)],
+        'measurements': [c.label for c in channels if isinstance(c, Channels.Measurement)],
         'receivers': receiver_measurements
     }
     if extra_meta:

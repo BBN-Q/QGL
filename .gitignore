@@ -5,5 +5,3 @@
 *.h5
 *.py~
 *.py#
-*.egg-info
-*.egg

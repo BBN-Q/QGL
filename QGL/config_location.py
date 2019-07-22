@@ -50,7 +50,7 @@ import os.path
 
 CONFIG_PATH = None
 
-_CONFIG_FILE_NAME = 'config.json'
+_CONFIG_FILE_NAME = 'BBN_config.py'
 
 def _set_default_config_path():
     """

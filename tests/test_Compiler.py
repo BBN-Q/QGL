@@ -1,4 +1,3 @@
-import h5py
 import unittest
 import numpy as np
 
@@ -7,23 +6,28 @@ from QGL import *
 
 class CompileUtils(unittest.TestCase):
     def setUp(self):
-        self.q1gate = Channels.LogicalMarkerChannel(label='q1-gate')
-        self.q1 = Qubit(label='q1', gate_chan=self.q1gate)
+        print("Running setup")
+        self.cl = ChannelLibrary(db_resource_name=":memory:")
+        self.cl.clear()
+        self.q1gate = Channels.LogicalMarkerChannel(label='q1-gate', channel_db=self.cl.channelDatabase)
+        self.q1gate = Channels.LogicalMarkerChannel(label='q1-gate', channel_db=self.cl.channelDatabase)
+        self.q1phys = Channels.PhysicalChannel(label='q1-phys', sampling_rate=1.2e9, channel_db=self.cl.channelDatabase)
+        self.q1 = Qubit(label='q1', gate_chan=self.q1gate, channel_db=self.cl.channelDatabase)
+        self.q1.phys_chan = self.q1phys
         self.q1.pulse_params['length'] = 30e-9
 
-        self.q2gate = Channels.LogicalMarkerChannel(label='q2-gate')
-        self.q2 = Qubit(label='q2', gate_chan=self.q2gate)
+        self.q2gate = Channels.LogicalMarkerChannel(label='q2-gate', channel_db=self.cl.channelDatabase)
+        self.q2phys = Channels.PhysicalChannel(label='q2-phys', sampling_rate=1.2e9, channel_db=self.cl.channelDatabase)
+        self.q2 = Qubit(label='q2', gate_chan=self.q2gate, channel_db=self.cl.channelDatabase)
+        self.q2.phys_chan = self.q2phys
         self.q2.pulse_params['length'] = 30e-9
 
-        self.trigger = Channels.LogicalMarkerChannel(label='trigger')
-        self.measq1 = Channels.Measurement(label='M-q1', meas_type='autodyne')
+        self.trigger = Channels.LogicalMarkerChannel(label='trigger', channel_db=self.cl.channelDatabase)
+        self.measq1 = Channels.Measurement(label='M-q1', meas_type='autodyne', channel_db=self.cl.channelDatabase)
         self.measq1.trig_chan = self.trigger
-
-        ChannelLibrary(blank=True) # Create a blank ChannelLibrary
-        ChannelLibraries.channelLib.channelDict = {'q1': self.q1,
-                                                 'q2': self.q2,
-                                                 'M-q1': self.measq1}
-        ChannelLibraries.channelLib.build_connectivity_graph()
+        self.measq2 = Channels.Measurement(label='M-q2', meas_type='autodyne', channel_db=self.cl.channelDatabase)
+        self.measq2.trig_chan = self.trigger
+        self.cl.update_channelDict()
 
     def test_add_digitizer_trigger(self):
         q1 = self.q1

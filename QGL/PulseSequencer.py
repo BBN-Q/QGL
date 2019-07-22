@@ -36,8 +36,10 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
                                  "maddr", "moffset"])):
     __slots__ = ()
 
-    def __new__(cls, label, channel, shapeParams, amp=1.0, phase=0, frameChange=0, ignoredStrParams=[], maddr=-1, moffset=0):
-        if hasattr(channel, 'frequency'):
+    def __new__(cls, label, channel, shapeParams, amp=1.0, phase=0, frameChange=0, ignoredStrParams=[], maddr=-1, moffset=0, frequency=None):
+        if frequency:
+            frequency = frequency
+        elif hasattr(channel, 'frequency'):
             frequency = channel.frequency
         else:
             frequency = 0
@@ -113,7 +115,10 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
         params = copy(self.shapeParams)
         params['sampling_rate'] = self.channel.phys_chan.sampling_rate
         params.pop('shape_fun')
-        return self.shapeParams['shape_fun'](**params)
+        if isinstance(self.shapeParams['shape_fun'],str):
+            return getattr(PulseShapes, self.shapeParams['shape_fun'])(**params)
+        else:
+            return self.shapeParams['shape_fun'](**params)
 
 
 def TAPulse(label,
@@ -277,7 +282,14 @@ def align(mode="center", *pulses):
             for pulse in obj.pulses.values():
                 yield from flatten_to_pulses(pulse)
 
+    def rec_length(obj):
+        if hasattr(obj, "length"):
+            return obj.length
+        else:
+            return rec_length(obj[0])
+
     pulse_lengths = np.array([pulse.length for pulse in pulses])
+    # pulse_lengths = np.array([rec_length(pulse) for pulse in pulses])
     pad_lengths = max(pulse_lengths) - pulse_lengths
     pulse_list = []
     for k,pulse in enumerate(pulses):

@@ -1,9 +1,9 @@
-import h5py
 import unittest
 import numpy as np
 import time
 import os.path
-
+import struct
+from bbndb.qgl import PhysicalChannel, LogicalChannel, Measurement
 from QGL import *
 
 # Waveform numpy assert_allclose Test for QGL
@@ -33,7 +33,7 @@ class SequenceTestCases(object):
         # all available sequences (which are defined in subclasses)
         self.generate()
         self.compile()
-        self.load()
+        self.load()  
 
     def generate(self):
         # this function should be overridden in a subclass to define
@@ -55,28 +55,29 @@ class SequenceTestCases(object):
 
     def build_filename(self, name):
         # utility for reading and writing
-        return self.testFileDirectory + self.fileHeader + '-' + name + '.h5'
+        return self.testFileDirectory + self.fileHeader + '-' + name + '.aps2'
 
     def write(self):
         # writes each sequence to a file in the test data directory a file header
         # which may be overridden in the subclasses
         for name, waveform in self.waveforms.items():
+
             fileName = self.build_filename(name)
-            #Open the HDF5 file
             if os.path.isfile(fileName):
                 os.remove(fileName)
-            with h5py.File(fileName, 'w') as FID:
-                FID['/'].attrs['Type'] = 'test_case'
-                FID['/'].attrs['Version'] = 1.0
+            with open(fileName, 'wb') as FID:
+                FID.write(b'TEST')                     # target 
+                FID.write(np.float32(1.0).tobytes())   # Version
+                FID.write(np.float32(1.0).tobytes())   # minimum firmware version
+                FID.write(np.uint16(len(waveform)).tobytes())      # number of channels
 
-                #Create the groups and datasets
                 channels = waveform.keys()
-                chanStr = '/channels'
-                chanGroup = FID.create_group(chanStr)
                 for channel in channels:
-                    channelStr = channel.label
-                    FID.create_dataset('/' + chanStr + '/' + channelStr,
-                                       data=waveform[channel])
+                    channel.label.ljust(32,"#").encode("utf-8")
+                    FID.write(channel.label.ljust(32,"#").encode("utf-8"))
+                    FID.write(np.uint64(waveform[channel].size).tobytes())
+                    FID.write(np.complex128(waveform[channel]).tobytes()) # waveform data length for channel
+
 
     def load(self):
         # attempts to load valid waveforms for each of the sequences test cases
@@ -89,22 +90,30 @@ class SequenceTestCases(object):
                         caseName, fileName))
                 continue
             # -----
-            # print( "\n\rDBG::Calling \"with h5py.File( {0}, 'r')\"...".format( fileName) )
+            # print( "\n\rDBG::Calling \"with open({0}, 'wb')\"...".format( fileName) )
             # -----
             # The following pulls in Git Large File Storage (LFS) data files
-            # from cached signature references;  if the h5py.File call fails
+            # from cached signature references;  if the open call fails
             # with an OSError, double-check git-lfs library installation (in
             # addition to git) -- <https://git-lfs.github.com/>
             #
-            # Where git-lfs was NOT installed the h5py.File() call was observed
+            # Where git-lfs was NOT installed the open call was observed
             # returning:
             #
             # OSError: Unable to open file (file signature not found))
             #
-            with h5py.File(fileName, 'r') as FID:
-                # print( "DBG::FID: {0}".format( FID))
-                for name, waveform in FID['/channels'].items():
-                    validWaveform[name] = waveform[:]
+            with open(fileName, 'rb') as FID:
+                target_hw    = FID.read(4).decode('utf-8')
+                file_version = struct.unpack('<f', FID.read(4))[0]
+                min_fw       = struct.unpack('<f', FID.read(4))[0]
+                num_chans    = struct.unpack('<H', FID.read(2))[0]
+                assert target_hw=="TEST", f"Cannot compare to file type {target_hw}. Expecting TEST"
+
+                for i in range(num_chans):
+                    wf_name = FID.read(32).decode('utf-8').replace('#','')
+                    wf_len  = struct.unpack('<Q', FID.read(8))[0]
+                    wf_dat  = np.frombuffer(FID.read(16*wf_len), dtype=np.complex128)
+                    validWaveform[wf_name] = wf_dat
             self.validWaveforms[caseName] = validWaveform
 
     def validate(self):
@@ -118,6 +127,7 @@ class SequenceTestCases(object):
         for channel, waveform in self.waveforms[caseName].items():
             print('Validating {0} Case {1} Channel {2}'.format(
                 self.__class__.__name__, caseName, str(channel)))
+            
             assert (channel.label in validWaveform)
             np.testing.assert_allclose(waveform,
                                        validWaveform[channel.label],
@@ -131,9 +141,13 @@ class SingleQubitTestCases(SequenceTestCases):
     fileHeader = 'single'
 
     def newQ1(self):
-        q1 = Qubit(label='q1')
+        cl = ChannelLibrary(db_resource_name=":memory:")
+        cl.clear()
+        q1 = cl.new_qubit("q1")
         q1.pulse_params['length'] = 30e-9
-        q1.phys_chan.sampling_rate = 1.2e9
+        q1.measure_chan = Measurement(label="test_meas")
+        q1.phys_chan = PhysicalChannel(label="test_phys_c", sampling_rate=1.2e9) 
+        q1.measure_chan.phys_chan = PhysicalChannel(label="test_phys", sampling_rate=1.2e9)
         return q1
 
     def generate(self):
@@ -143,25 +157,27 @@ class SingleQubitTestCases(SequenceTestCases):
 
         self.sequences['repeat'] = [X90(q1)] + repeat(5, Y(q1)) + [X90(q1)]
 
-
 class MultiQubitTestCases(SequenceTestCases):
     # Multi Qubit Sequence Test Cases
 
     fileHeader = 'multi'
 
     def newQubits(self):
-        q1 = Qubit(label='q1')
+        # Create an in-memory blank channel library
+        cl = ChannelLibrary(db_resource_name=":memory:")
+        cl.clear()
+        q1 = cl.new_qubit("q1")
+        q2 = cl.new_qubit("q2")
         q1.pulse_params['length'] = 30e-9
-        q1.phys_chan.sampling_rate = 1.2e9
-        q2 = Qubit(label='q2')
+        q1.measure_chan = Measurement(label="test_meas1")
+        q1.phys_chan = PhysicalChannel(label="test_phys_c1", sampling_rate=1.2e9) 
+        q1.measure_chan.phys_chan = PhysicalChannel(label="test_phys1", sampling_rate=1.2e9) 
         q2.pulse_params['length'] = 30e-9
-        q2.phys_chan.sampling_rate = 1.2e9
-        q1q2 = Edge(label='q1q2', source=q1, target=q2)
-        ChannelLibrary(blank=True) # Create a blank ChannelLibrary
-        ChannelLibraries.channelLib.channelDict['q1'] = q1
-        ChannelLibraries.channelLib.channelDict['q2'] = q2
-        ChannelLibraries.channelLib.channelDict['q1q2'] = q1q2
-        ChannelLibraries.channelLib.build_connectivity_graph()
+        q2.measure_chan = Measurement(label="test_meas2")
+        q2.phys_chan = PhysicalChannel(label="test_phys_c2", sampling_rate=1.2e9) 
+        q2.measure_chan.phys_chan = PhysicalChannel(label="test_phys2", sampling_rate=1.2e9) 
+        q1q2 =cl.new_edge(q1, q2)
+        q1q2.phys_chan = PhysicalChannel(label="test_phys_12", sampling_rate=1.2e9) 
         return (q1, q2)
 
     def generate(self):

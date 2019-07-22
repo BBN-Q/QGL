@@ -108,6 +108,8 @@ def RabiAmp_NQubits(qubits,
 
     if docals:
         seqs += create_cal_seqs(qubits, calRepeats, measChans=measChans)
+    else:
+        calRepeats = 0
 
     axis_descriptor = [
         {
