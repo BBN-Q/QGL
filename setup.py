@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='QGL',
-      version='2019.1.2',
+      version='2019.1',
       packages=find_packages(exclude=["tests"]),
       url='https://github.com/BBN-Q/QGL',
       download_url='https://github.com/BBN-Q/QGL',
