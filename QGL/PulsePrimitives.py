@@ -339,9 +339,9 @@ def arb_axis_drag(qubit,
     return Pulse(kwargs["label"] if "label" in kwargs else "ArbAxis", qubit,
                  params, 1.0, aziAngle, frameChange)
 
-def RandomClifford(qubit):
+def RandomCliff(qubit):
     params = overrideDefaults(qubit, {})
-    return Pulse("RandomClifford", qubit, params, isRunTime=True)
+    return Pulse("RandomCliff", qubit, params, isRunTime=True)
 
 def RandomAC(qubit):
     params = overrideDefaults(qubit, {})

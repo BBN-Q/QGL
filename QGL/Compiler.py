@@ -37,7 +37,7 @@ from . import ControlFlow
 from . import BlockLabel
 from . import TdmInstructions # only for APS2-TDM
 from . import APS2CustomInstructions
-from .RandomCliffordTools import default_clifford_options
+from .RandomCliffordTools import default_clifford_options, VALID_CLIFFORD_TYPES
 from . import RandomCliffordTools
 import gc
 
@@ -236,7 +236,7 @@ def generate_waveforms(physicalWires):
                     wfs[ch][pulse.hashshape()] = pulse.shape
     return wfs
 
-def get_clifford_type(wire, allowed_types=("RandomAC", "RandomClifford")):
+def get_clifford_type(wire, allowed_types=VALID_CLIFFORD_TYPES):
     rt_pulses = []
     for pulse in flatten(wire):
         if isinstance(pulse, Pulse) and pulse.isRunTime:
