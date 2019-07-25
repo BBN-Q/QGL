@@ -28,7 +28,7 @@ from random import choices
 
 PYGSTI_PRESENT = False
 try:
-   from pygsti.objects import GateString
+   from pygsti.objects.circuit import Circuit
    PYGSTI_PRESENT = True
 except:
    pass
@@ -51,11 +51,11 @@ def gst_map_1Q(gst_list, qubit, qgl_map=gst_gate_map, append_meas=True):
     Returns:
         QGL sequences, preserving the input list nesting (as a generator)
     """
-    if isinstance(gst_list, GateString):
+    if isinstance(gst_list, Circuit):
         gst_list = [gst_list]
     for item in gst_list:
-        if isinstance(item, GateString):
-            mapped = map(lambda x: qgl_map[x](qubit), item.tup)
+        if isinstance(item, Circuit):
+            mapped = map(lambda x: qgl_map[str(x)](qubit), item.tup)
             if append_meas:
                 yield list(chain(mapped, [MEAS(qubit)]))
             else:
