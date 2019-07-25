@@ -1,5 +1,5 @@
 '''
-Module for writing hdf5 APS2 files from sequences and patterns
+Module for writing .aps APS2 files from sequences and patterns
 
 Copyright 2014 Raytheon BBN Technologies
 
@@ -1158,7 +1158,7 @@ def write_sequence_file(awgData, fileName):
 
 def read_sequence_file(fileName):
     """
-    Reads a HDF5 sequence file and returns a dictionary of lists.
+    Reads a .aps sequence file and returns a dictionary of lists.
     Dictionary keys are channel strings such as ch1, m1
     Lists are or tuples of time-amplitude pairs (time, output)
     """
