@@ -1188,7 +1188,7 @@ def read_sequence_file(fileName):
         for i in range(num_chans):
             wf_len = struct.unpack('<Q', FID.read(8))[0]
             wf_dat = np.frombuffer(FID.read(2*wf_len), dtype=np.int16)
-            wf_lif[f'ch{i+1}'] = ( 1.0 / MAX_WAVEFORM_VALUE) * wf_dat.flatten()
+            wf_lib[f'ch{i+1}'] = ( 1.0 / MAX_WAVEFORM_VALUE) * wf_dat.flatten()
 
         NUM_NCO = 2
         freq = np.zeros(NUM_NCO)  #radians per timestep
