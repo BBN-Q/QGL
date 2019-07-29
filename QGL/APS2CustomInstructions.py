@@ -49,13 +49,15 @@ def RandomCliffordSetOffset(addr, offset):
     return [Invalidate(addr, 0, tdm=False),
             WriteAddr(addr, offset, tdm=False),
             LoadCmpVram(addr, 0xFFFFFFFF, tdm=False), #
-            CustomInstruction("APS_CLIFFORD_SET_OFFSET", addr, 0xA)]
+            CustomInstruction("APS_CLIFFORD_SET_OFFSET", addr, 0xA),
+            LoadCmpVram(0xA, 0xFFFFFFFF, tdm=False)]
 
 def RandomCliffordSetSpacing(addr, spacing):
     return [Invalidate(addr, 0, tdm=False),
             WriteAddr(addr, spacing, tdm=False),
             LoadCmpVram(addr, 0xFFFFFFFF, tdm=False),
-            CustomInstruction("APS_CLIFFORD_SET_SPACING", addr, 0xA)]
+            CustomInstruction("APS_CLIFFORD_SET_SPACING", addr, 0xA),
+            LoadCmpVram(0xA, 0xFFFFFFFF, tdm=False)]
 
 def RandomClifford(target, addr):
     return [Invalidate(addr, 0, tdm=False),
@@ -73,10 +75,12 @@ def RandomCliffordInverseReset(val=0x0, addr=0xD): #for now don't use addr
     return [Invalidate(addr, 0, tdm=False),
             WriteAddr(addr, val, tdm=False),
             LoadCmpVram(addr, 0xFFFFFFFF, tdm=False),
-            CustomInstruction("APS_CLIFFORD_INVERSE_RESET", addr, 0xA)]
+            CustomInstruction("APS_CLIFFORD_INVERSE_RESET", addr, 0xA),
+            LoadCmpVram(0xA, 0xFFFFFFFF, tdm=False)]
 
 def RandomCliffordSeed(seed):
     return [Invalidate(0xB, 0, tdm=False),
         WriteAddr(0xB, seed, tdm=False),
         LoadCmpVram(0xB, 0xFFFFFFFF, tdm=False),
-        CustomInstruction("APS_CLIFFORD_SET_SEED", 0xB, 0xA)]
+        CustomInstruction("APS_CLIFFORD_SET_SEED", 0xB, 0xA),
+        LoadCmpVram(0xA, 0xFFFFFFFF, tdm=False)]
