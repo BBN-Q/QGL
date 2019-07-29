@@ -352,9 +352,23 @@ def RandomDiAC(qubit):
     params["length"] *= 2.0
     return Pulse("RandomDiAC", qubit, params, isRunTime=True)
 
+def RandomInverse(qubit):
+    params = overrideDefaults(qubit, {})
+    return Pulse("RandomInverse", qubit, params, isRunTime=True)
+
 from . import Cliffords
 
-def Clifford(qubit, cliffNum):
+def RandomTestCliff(qubit):
+    params = overrideDefaults(qubit, {})
+    return Pulse("RandomTestCliff", qubit, params, isRunTime=True)
+
+def TestCliff(qubit, cliffNum):
+    params = overrideDefaults(qubit, {'shape_fun': 'constant'})
+    amp = cliffNum * (1.0/24.0) + (1.0/24.0)
+    return Pulse("TCPulse", qubit, params, amp, 0.0, 0.0, frequency=0.0)
+
+
+def Cliff(qubit, cliffNum):
     return reduce(operator.add, [p for p in Cliffords.clifford_seq(cliffNum, qubit)])
 
 def AC(qubit, cliffNum):
