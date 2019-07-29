@@ -35,7 +35,7 @@ from .Cliffords import C1, inverse_clifford, clifford_multiply
 
 default_clifford_options = {"offset": 0x0, "spacing": 0x1, "seed": 0x31}
 
-VALID_CLIFFORD_TYPES = ('RandomAC', 'RandomCliff')
+VALID_CLIFFORD_TYPES = ('RandomAC', 'RandomCliff', 'RandomTestCliff')
 
 def generate_clifford_jump_table(cliff_wires, jt_label = None):
     """Generate the jump table that will be used to call into the clifford set"""
@@ -80,10 +80,14 @@ def insert_clifford_calls(seqs, jt_label=None, cliff_addr=0x3, add_inv = True,
         new_seq = []
 
         for pulse in seq:
-            if isinstance(pulse, Pulse) and pulse.isRunTime \
-                and pulse.label in VALID_CLIFFORD_TYPES:
-                has_random_cliff = True
-                new_seq.extend(RandomClifford(jt_label, cliff_addr))
+            if isinstance(pulse, Pulse) and pulse.isRunTime:
+                if pulse.label in VALID_CLIFFORD_TYPES:
+                    has_random_cliff = True
+                    new_seq.extend(RandomClifford(jt_label, cliff_addr))
+                elif pulse.label == 'RandomInverse':
+                    new_seq.extend(RandomCliffordInverse(jt_label, inv_addr))
+                else:
+                    raise Exception(f"Unhandled run-time pulse: {pulse.label}")
                 #print("Inserting clifford pulse!")
             else:
                 new_seq.append(pulse)
@@ -94,14 +98,14 @@ def insert_clifford_calls(seqs, jt_label=None, cliff_addr=0x3, add_inv = True,
         #     new_seq[0:0] = info_seqs
 
         if add_inv:
-            #insert reset after first wait
+            #insert reset before first wait
             w_idx = next(i for i, v in enumerate(new_seq) if isinstance(v, ControlFlow.Wait))
-            new_seq.insert(w_idx+1, RandomCliffordInverseReset(0x0))
+            new_seq.insert(w_idx, RandomCliffordInverseReset(0x0))
             #insert at end of sequence or before last GOTO
-            if isinstance(new_seq[-1], ControlFlow.Goto):
-                  new_seq[-1:-1] = RandomCliffordInverse(jt_label, inv_addr)
-            else:
-                  new_seq.extend(RandomCliffordInverse(jt_label, inv_addr))
+            #if isinstance(new_seq[-1], ControlFlow.Goto):
+            #      new_seq[-1:-1] = RandomCliffordInverse(jt_label, inv_addr)
+            #else:
+            #      new_seq.extend(RandomCliffordInverse(jt_label, inv_addr))
 
         seqs[idx] = new_seq
 
