@@ -78,6 +78,7 @@ def insert_clifford_calls(seqs, jt_label=None, cliff_addr=0x3, add_inv = True,
             continue
 
         new_seq = []
+        inverse_val = 0
 
         for pulse in seq:
             if isinstance(pulse, Pulse) and pulse.isRunTime:
@@ -86,29 +87,20 @@ def insert_clifford_calls(seqs, jt_label=None, cliff_addr=0x3, add_inv = True,
                     new_seq.extend(RandomClifford(jt_label, cliff_addr))
                 elif pulse.label == 'RandomInverse':
                     new_seq.extend(RandomCliffordInverse(jt_label, inv_addr))
+                elif pulse.label == 'RandomInverseReset':
+                    inverse_val = pulse.maddr
                 else:
                     raise Exception(f"Unhandled run-time pulse: {pulse.label}")
                 #print("Inserting clifford pulse!")
             else:
                 new_seq.append(pulse)
 
-        # if isinstance(seq[0], BlockLabel.BlockLabel):
-        #     new_seq[1:1] = info_seqs
-        # else:
-        #     new_seq[0:0] = info_seqs
-
         if add_inv:
-            #insert reset before first wait
             w_idx = next(i for i, v in enumerate(new_seq) if isinstance(v, ControlFlow.Wait))
-            new_seq.insert(w_idx, RandomCliffordInverseReset(0x0))
-            #insert at end of sequence or before last GOTO
-            #if isinstance(new_seq[-1], ControlFlow.Goto):
-            #      new_seq[-1:-1] = RandomCliffordInverse(jt_label, inv_addr)
-            #else:
-            #      new_seq.extend(RandomCliffordInverse(jt_label, inv_addr))
-
+            new_seq.insert(w_idx, RandomCliffordInverseReset(val=inverse_val))
         seqs[idx] = new_seq
 
+    #Helper "sequence" to set the random clifford settings.
     info_seqs = []
     info_seqs.extend(RandomCliffordSetOffset(0x1, clifford_options["offset"]))
     info_seqs.extend(RandomCliffordSetSpacing(0x2, clifford_options["spacing"]))

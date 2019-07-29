@@ -249,8 +249,11 @@ def get_clifford_type(wire, allowed_types=VALID_CLIFFORD_TYPES):
     if len(rt_pulses) == 0:
         return None
     pulse_type = list(set([pulse.label for pulse in rt_pulses]))
-    if 'RandomInverse' in pulse_type:
-        pulse_type.remove('RandomInverse')
+    #Remove pulses that are not the actual cliffords we want to play.
+    #We assume the RandomInverse is of the same type as the RandomCliffords!
+    for p in ('RandomInverse', 'RandomInverseReset'):
+        if p in pulse_type:
+            pulse_type.remove(p)
     pulse_logical_chan = list(set([pulse.channel for pulse in rt_pulses]))
     if len(pulse_type) > 1:
         raise Exception(f"All run-time pulses must have the same label. Found: {pulse_type}.")
