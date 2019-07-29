@@ -108,8 +108,14 @@ def insert_clifford_calls(seqs, jt_label=None, cliff_addr=0x3, add_inv = True,
     seqs.insert(0, info_seqs)
 
 
-def randomize_clifford_sequences(qubit, seqs, clifford_type=PulsePrimitives.RandomAC):
-
-    c_seqs = [[clifford_type(qubit) for _ in seq] for seq in seqs]
-    inverses = [inverse_clifford(C1[reduce(clifford_multiply, seq)]) for seq in seqs]
-    return c_seqs, inverses
+def randomize_clifford_sequences(qubit, seqs, clifford_type=PulsePrimitives.RandomCliff):
+    """Randomize a sequence of cliffords (given as integers).
+    """
+    rseqs = []
+    for seq in seqs:
+        inverse = reduce(clifford_multiply, seq)
+        rseq = ([PulsePrimitives.RandomCliffordInverse(qubit, reset_value=inverse)] +
+                [clifford_type(qubit)]*len(seq) +
+                [RandomInverse(qubit), MEAS(qubit)])
+        rseqs.append(rseq)
+    return rseqs
