@@ -53,7 +53,7 @@ def is_compatible_file(filename):
         if byte == b'APS3':
             return True
     return False
-    
+
 def preprocess(seqs, shapeLib):
     seqs = PatternUtils.convert_lengths_to_samples(
         seqs, SAMPLING_RATE, ADDRESS_UNIT, Compiler.Waveform)
@@ -223,7 +223,7 @@ def read_sequence_file(fileName):
         del seqs['mod_phase']
 
     return seqs
-    
+
 def update_wf_library(filename, pulses, offsets):
     """
     Update a H5 waveform library in place give an iterable of (pulseName, pulse)
@@ -266,7 +266,7 @@ def read_waveforms(filename):
             dat = ( 1.0 / MAX_WAVEFORM_VALUE) * np.frombuffer(FID.read(2*wf_len), dtype=np.int16).flatten()
             wf_dat.append(dat)
         return wf_dat
-    
+
 def write_sequence_file(awgData, fileName):
     '''
     Main function to pack channel sequences into an APS2 h5 file.
@@ -346,6 +346,7 @@ def write_sequence_file(awgData, fileName):
         #Create the groups and datasets
         for chanct in range(2):
             #Write the waveformLib to file
+            print('Channel ' + str(chanct) + ' with size ' + str(wfInfo[chanct][0].size))
             if wfInfo[chanct][0].size == 0:
                 #If there are no waveforms, ensure that there is some element
                 #so that the waveform group gets written to file.
@@ -355,7 +356,7 @@ def write_sequence_file(awgData, fileName):
                 data = wfInfo[chanct][0]
             FID.write(np.uint64(data.size).tobytes()) # waveform data length for channel
             FID.write(data.tobytes())
-            
+
 def create_wf_vector(wfLib, seqs):
     '''
     Helper function to create the wf vector and offsets into it.
@@ -441,7 +442,7 @@ def create_wf_vector(wfLib, seqs):
             cache_lines.append(int(idx // CACHE_LINE_LENGTH))
 
     return wfVec, offsets, cache_lines
-    
+
 class ModulationCommand(object):
     """docstring for ModulationCommand"""
 
