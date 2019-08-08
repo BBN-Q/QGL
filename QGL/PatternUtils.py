@@ -275,6 +275,7 @@ def convert_lengths_to_samples(instructions, sampling_rate, quantization=1, wf_t
             entry.length = int(round(entry.length * sampling_rate))
             # TODO: warn when truncating?
             entry.length -= entry.length % quantization
+
     return instructions
 
 def convert_length_to_samples(wf_length, sampling_rate, quantization=1):
