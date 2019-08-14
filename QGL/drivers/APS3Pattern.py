@@ -340,7 +340,7 @@ class Instruction(object):
 
         elif instrOpCode == LOADCMP:
             addr = self.payload & 0xFFFF
-            mask = (self.payload >> 16) & 0xFFFF
+            mask = (self.payload >> 16) & 0xFFFF7
             use_ram = (self.payload >> 48) & 0x1
             if self.decode_as_tdm and not use_ram:
                 out += "WAITMEAS"
@@ -405,7 +405,7 @@ def Marker(sel, state, count, write=False, label=None):
     header = (MARKER << 4) | ((sel & 0x3) << 2) | (write & 0x1)
     count = int(count)
     four_count = ((count // ADDRESS_UNIT) - 1) & 0xffffffff  # 32 bit count
-    count_rem = count % ADDRESS_UNIT
+    count_rem = 0#count % ADDRESS_UNIT
     if state == 0:
         transitionWords = {0: 0b0000, 1: 0b1000, 2: 0b1100, 3: 0b1110}
         transition = transitionWords[count_rem]
@@ -592,14 +592,14 @@ class ModulationCommand(object):
             #zero-indexed quad count
             payload |= np.uint32(self.length / ADDRESS_UNIT - 1)
         elif self.instruction == "SET_FREQ":
-            # frequencies can span -2 to 2 or 0 to 4 in unsigned
+            # frequencies can span -4 to 4 or 0 to 8 in unsigned
             payload |= np.uint32(
                 (self.frequency / MODULATION_CLOCK if self.frequency > 0 else
-                 self.frequency / MODULATION_CLOCK + 4) * 2**28)
+                 self.frequency / MODULATION_CLOCK + 8) * 2**27)
         elif (self.instruction == "SET_PHASE") | (
                 self.instruction == "UPDATE_FRAME"):
             #phases can span -0.5 to 0.5 or 0 to 1 in unsigned
-            payload |= np.uint32(np.mod(self.phase / (2 * np.pi), 1) * 2**28)
+            payload |= np.uint32(np.mod(self.phase / (2 * np.pi), 1) * 2**27)
 
         instr = Instruction(MODULATION << 4, payload, label)
         instr.writeFlag = write_flag
@@ -1211,7 +1211,7 @@ def read_sequence_file(fileName):
                     accumulated_phase += count * freq
                 else:
                     phase_rad = 2 * np.pi * (instr.payload &
-                                             0xffffffff) / 2**28
+                                             0xffffffff) / 2**27
                     for ct in range(NUM_NCO):
                         if (nco_select_bits >> ct) & 0x1:
                             if modulator_opcode == 0x2:
