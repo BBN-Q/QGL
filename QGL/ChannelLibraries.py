@@ -635,7 +635,7 @@ class ChannelLibrary(object):
             self.add_and_update_dict([st])
 
         else:
-            raise ValueError(f"Could not determine which transmitter to set as master for {transmitter}:{trig_channel}")
+            raise ValueError(f"Could not determine which transmitter to set as master for {master_instrument}:{trig_channel}")
 
 def QubitFactory(label):
     ''' Return a saved qubit channel'''
