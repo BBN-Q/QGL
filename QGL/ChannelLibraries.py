@@ -138,14 +138,14 @@ class ChannelLibrary(object):
 
     def ls(self):
         cdb = Channels.ChannelDatabase
-        q = self.session.query(cdb.label, cdb.time, cdb.id).\
-            order_by(Channels.ChannelDatabase.id, Channels.ChannelDatabase.label).all()
+        q = self.session.query(cdb.label, cdb.time, cdb.id, cdb.notes).\
+            order_by(Channels.ChannelDatabase.id, Channels.ChannelDatabase.label, Channels.ChannelDatabase.notes).all()
         table_code = ""
-        for i, (label, time, id) in enumerate(q):
+        for i, (label, time, id, notes) in enumerate(q):
             y, d, t = map(time.strftime, ["%Y", "%b. %d", "%I:%M:%S %p"])
             # t = time.strftime("(%Y) %b. %d @ %I:%M:%S %p")
-            table_code += f"<tr><td>{id}</td><td>{y}</td><td>{d}</td><td>{t}</td><td>{label}</td></tr>"
-        display(HTML(f"<table><tr><th>id</th><th>Year</th><th>Date</th><th>Time</th><th>Name</th></tr><tr>{table_code}</tr></table>"))
+            table_code += f"<tr><td>{id}</td><td>{y}</td><td>{d}</td><td>{t}</td><td>{label}</td><td>{notes}</td></tr>"
+        display(HTML(f"<table><tr><th>id</th><th>Year</th><th>Date</th><th>Time</th><th>Name</th><th>Notes</th></tr><tr>{table_code}</tr></table>"))
 
     def ent_by_type(self, obj_type, show=False):
         q = self.session.query(obj_type).filter(obj_type.channel_db.has(label="working")).order_by(obj_type.label).all()
@@ -183,7 +183,7 @@ class ChannelLibrary(object):
         indices   = {n: i for i, n in enumerate(graph.nodes())}
         node_data = [{'label': str(n).replace('(','\r\n(')} for n in graph.nodes()]
         link_data = [{'source': indices[s], 'target': indices[t]} for s, t in graph.edges()]
-                
+
         qub_objs.sort(key=lambda x: x.label)
         qubit_names = [q.label for q in qub_objs]
 
@@ -225,7 +225,7 @@ class ChannelLibrary(object):
                 end = widest[0]-0.6
             elif i == len(qub_objs):
                 start = sum(widest)-0.4
-                end = max(x)+0.4 
+                end = max(x)+0.4
             else:
                 start = sum(widest[:i])-0.4
                 end = sum(widest[:i+1])-0.6
@@ -240,7 +240,7 @@ class ChannelLibrary(object):
             c_freqs[qubit.label] = qubit.frequency*1e-9
             if qubit.phys_chan.generator:
                 c_freqs[qubit.label] += qubit.phys_chan.generator.frequency*1e-9
-            
+
             m_freqs[qubit.label] = qubit.measure_chan.frequency*1e-9
             if qubit.measure_chan.phys_chan.generator:
                 m_freqs[qubit.label] += qubit.measure_chan.phys_chan.generator.frequency*1e-9
@@ -333,13 +333,14 @@ class ChannelLibrary(object):
         self.session.rollback()
 
     @check_session_dirty
-    def save_as(self, name):
+    def save_as(self, name, notes = ''):
         if name == "working":
             raise ValueError("Cannot save as `working` since that is the default working environment name...")
         self.commit()
         new_channelDatabase = bbndb.deepcopy_sqla_object(self.channelDatabase, self.session)
         new_channelDatabase.label = name
         new_channelDatabase.time = datetime.datetime.now()
+        new_channelDatabase.notes = notes
         self.commit()
 
     def add_and_update_dict(self, el):
