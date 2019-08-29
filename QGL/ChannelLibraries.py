@@ -378,6 +378,19 @@ class ChannelLibrary(object):
             self.connectivityG[chan.source][chan.target]['channel'] = chan
 
     @check_for_duplicates
+    def new_APS3(self, label, address, serial_port, **kwargs):
+        chan1  = Channels.PhysicalQuadratureChannel(label=f"{label}-1", channel=0, instrument=label, translator="APS3Pattern", sampling_rate=2.5e9, channel_db=self.channelDatabase)
+        chan2  = Channels.PhysicalQuadratureChannel(label=f"{label}-2", channel=1, instrument=label, translator="APS3Pattern", sampling_rate=2.5e9, channel_db=self.channelDatabase)
+        m1     = Channels.PhysicalMarkerChannel(label=f"{label}-m1", channel=0, instrument=label, translator="APS3Pattern", sampling_rate=2.5e9, channel_db=self.channelDatabase)
+
+        this_transmitter = Channels.Transmitter(label=label, model="APS3", address=address, serial_port=serial_port, channels=[chan1, chan2, m1], channel_db=self.channelDatabase, **kwargs)
+        this_transmitter.trigger_source = 'external' if 'trigger_source' not in kwargs else kwargs['trigger_source']
+
+        self.add_and_update_dict(this_transmitter)
+        return this_transmitter
+
+
+    @check_for_duplicates
     def new_APS2(self, label, address, **kwargs):
         chan1  = Channels.PhysicalQuadratureChannel(label=f"{label}-1", channel=0, instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
         m1     = Channels.PhysicalMarkerChannel(label=f"{label}-m1", channel=0, instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
@@ -623,7 +636,7 @@ class ChannelLibrary(object):
             self.add_and_update_dict([st])
 
         else:
-            raise ValueError(f"Could not determine which transmitter to set as master for {transmitter}:{trig_channel}")
+            raise ValueError(f"Could not determine which transmitter to set as master for {master_instrument}:{trig_channel}")
 
 def QubitFactory(label):
     ''' Return a saved qubit channel'''

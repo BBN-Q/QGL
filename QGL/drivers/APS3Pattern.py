@@ -38,17 +38,17 @@ from builtins import int
 logger = logging.getLogger(__name__)
 
 #Some constants
-SAMPLING_RATE = 1.2e9
-ADDRESS_UNIT = 4  #everything is done in units of 4 timesteps
+SAMPLING_RATE = 2.5e9
+ADDRESS_UNIT = 8  #everything is done in units of 4 timesteps
 MIN_ENTRY_LENGTH = 8
 MAX_WAVEFORM_PTS = 2**28  #maximum size of waveform memory
 WAVEFORM_CACHE_SIZE = 2**17
-MAX_WAVEFORM_VALUE = 2**13 - 1  #maximum waveform value i.e. 14bit DAC
+MAX_WAVEFORM_VALUE = 2**15 - 1  #maximum waveform value i.e. 14bit DAC
 MAX_NUM_INSTRUCTIONS = 2**26
 MAX_REPEAT_COUNT = 2**16 - 1
 MAX_TRIGGER_COUNT = 2**32 - 1
 
-MODULATION_CLOCK = 300e6
+MODULATION_CLOCK = 312.5e6
 
 # instruction encodings
 WFM = 0x0
@@ -109,15 +109,15 @@ SAVE_WF_OFFSETS = False
 SEQFILE_PER_CHANNEL = False
 
 def get_empty_channel_set():
-    return {'ch1': {}, 'm1': {}, 'm2': {}, 'm3': {}, 'm4': {}}
+    return {'ch1': {}, 'm1': {}}
 
 def get_seq_file_extension():
-    return '.aps2'
+    return '.aps3'
 
 def is_compatible_file(filename):
     with open(filename, 'rb') as FID:
         byte = FID.read(4)
-        if byte == b'APS2':
+        if byte == b'APS3':
             return True
     return False
 
@@ -340,7 +340,7 @@ class Instruction(object):
 
         elif instrOpCode == LOADCMP:
             addr = self.payload & 0xFFFF
-            mask = (self.payload >> 16) & 0xFFFF
+            mask = (self.payload >> 16) & 0xFFFF7
             use_ram = (self.payload >> 48) & 0x1
             if self.decode_as_tdm and not use_ram:
                 out += "WAITMEAS"
@@ -405,7 +405,7 @@ def Marker(sel, state, count, write=False, label=None):
     header = (MARKER << 4) | ((sel & 0x3) << 2) | (write & 0x1)
     count = int(count)
     four_count = ((count // ADDRESS_UNIT) - 1) & 0xffffffff  # 32 bit count
-    count_rem = count % ADDRESS_UNIT
+    count_rem = 0#count % ADDRESS_UNIT
     if state == 0:
         transitionWords = {0: 0b0000, 1: 0b1000, 2: 0b1100, 3: 0b1110}
         transition = transitionWords[count_rem]
@@ -592,14 +592,14 @@ class ModulationCommand(object):
             #zero-indexed quad count
             payload |= np.uint32(self.length / ADDRESS_UNIT - 1)
         elif self.instruction == "SET_FREQ":
-            # frequencies can span -2 to 2 or 0 to 4 in unsigned
+            # frequencies can span -4 to 4 or 0 to 8 in unsigned
             payload |= np.uint32(
                 (self.frequency / MODULATION_CLOCK if self.frequency > 0 else
-                 self.frequency / MODULATION_CLOCK + 4) * 2**28)
+                 self.frequency / MODULATION_CLOCK + 8) * 2**27)
         elif (self.instruction == "SET_PHASE") | (
                 self.instruction == "UPDATE_FRAME"):
             #phases can span -0.5 to 0.5 or 0 to 1 in unsigned
-            payload |= np.uint32(np.mod(self.phase / (2 * np.pi), 1) * 2**28)
+            payload |= np.uint32(np.mod(self.phase / (2 * np.pi), 1) * 2**27)
 
         instr = Instruction(MODULATION << 4, payload, label)
         instr.writeFlag = write_flag
@@ -643,7 +643,7 @@ def inject_modulation_cmds(seqs):
                     if not ( no_modulation_cmds and (cur_freq == 0) and (cur_phase == 0)):
                         mod_seq.append(ModulationCommand("RESET_PHASE", 0x3))
                         for nco_ind, freq in enumerate(freqs):
-                            mod_seq.append( ModulationCommand("SET_FREQ", nco_ind + 1, frequency = -freq) )
+                            mod_seq.append( ModulationCommand("SET_FREQ", nco_ind + 1, frequency = freq) )
                 elif isinstance(entry, ControlFlow.Return):
                     cur_freq = 0 #makes sure that the frequency is set in the first sequence after the definition of subroutines
                 mod_seq.append(copy(entry))
@@ -868,7 +868,7 @@ def create_seq_instructions(seqs, offsets, label = None):
                     state = not entry.isZero
                     instructions.append(Marker(markerSel,
                                                state,
-                                               entry.length,
+                                               entry.length ,
                                                write=write_flags[ct],
                                                label=label))
 
@@ -1026,7 +1026,7 @@ def write_sequence_file(awgData, fileName):
         awgData['ch1']['linkList'], awgData['ch1']['wfLib'])
 
     # compress marker data
-    for field in ['m1', 'm2', 'm3', 'm4']:
+    for field in ['m1']:
         if 'linkList' in awgData[field].keys():
             PatternUtils.convert_lengths_to_samples(awgData[field]['linkList'],
                                                     SAMPLING_RATE, 1,
@@ -1077,7 +1077,7 @@ def write_sequence_file(awgData, fileName):
 
     # build instruction vector
     seq_data = [awgData[s]['linkList']
-                for s in ['ch1', 'm1', 'm2', 'm3', 'm4']]
+                for s in ['ch1', 'm1']]
     instructions = create_instr_data(seq_data, wfInfo[0][1], wfInfo[0][2])
 
     #Open the binary file
@@ -1085,7 +1085,7 @@ def write_sequence_file(awgData, fileName):
         os.remove(fileName)
 
     with open(fileName, 'wb') as FID:
-        FID.write(b'APS2')                     # target hardware
+        FID.write(b'APS3')                     # target hardware
         FID.write(np.float32(4.0).tobytes())   # Version
         FID.write(np.float32(4.0).tobytes())   # minimum firmware version
         FID.write(np.uint16(2).tobytes())      # number of channels
@@ -1112,8 +1112,7 @@ def read_sequence_file(fileName):
     Dictionary keys are channel strings such as ch1, m1
     Lists are or tuples of time-amplitude pairs (time, output)
     """
-    chanStrs = ['ch1', 'ch2', 'm1', 'm2', 'm3', 'm4',
-                'mod_phase']
+    chanStrs = ['ch1', 'ch2', 'm1', 'mod_phase']
     seqs = {ch: [] for ch in chanStrs}
 
     def start_new_seq():
@@ -1212,7 +1211,7 @@ def read_sequence_file(fileName):
                     accumulated_phase += count * freq
                 else:
                     phase_rad = 2 * np.pi * (instr.payload &
-                                             0xffffffff) / 2**28
+                                             0xffffffff) / 2**27
                     for ct in range(NUM_NCO):
                         if (nco_select_bits >> ct) & 0x1:
                             if modulator_opcode == 0x2:
@@ -1432,7 +1431,7 @@ def write_tdm_seq(seq, tdm_fileName):
         os.remove(tdm_fileName)
     with h5py.File(tdm_fileName, 'w') as FID:
         FID['/'].attrs['Version'] = 5.0
-        FID['/'].attrs['target hardware'] = 'APS2'
+        FID['/'].attrs['target hardware'] = 'APS3'
         FID['/'].attrs['minimum firmware version'] = 5.0
         FID['/'].attrs['channelDataFor'] = np.uint16([1, 2])
 
@@ -1553,7 +1552,7 @@ if __name__ == '__main__':
             COLUMN_COUNT = 7
             def __init__(self, instructions, waveforms):
                 super().__init__()
-                self.title = 'APS2 Disassembled Instructions'
+                self.title = 'APS3 Disassembled Instructions'
                 self.left = 100
                 self.top = 100
                 self.width = 1000
