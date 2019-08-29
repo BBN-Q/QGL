@@ -35,7 +35,7 @@ from .Cliffords import C1, inverse_clifford, clifford_multiply
 
 default_clifford_options = {"offset": 0x0, "spacing": 0x1, "seed": 0x31}
 
-VALID_CLIFFORD_TYPES = ('RandomAC', 'RandomCliff', 'RandomTestCliff')
+VALID_CLIFFORD_TYPES = ('RandomAC', 'RandomCliff', 'RandomTestCliff', 'RandomDiAC')
 
 def generate_clifford_jump_table(cliff_wires, jt_label = None):
     """Generate the jump table that will be used to call into the clifford set"""
@@ -114,7 +114,7 @@ def randomize_clifford_sequences(qubit, seqs, clifford_type=PulsePrimitives.Rand
     rseqs = []
     for seq in seqs:
         inverse = reduce(clifford_multiply, seq)
-        rseq = ([PulsePrimitives.RandomCliffordInverse(qubit, reset_value=inverse)] +
+        rseq = ([PulsePrimitives.RandomInverse(qubit, reset_value=inverse)] +
                 [clifford_type(qubit)]*len(seq) +
                 [RandomInverse(qubit), MEAS(qubit)])
         rseqs.append(rseq)
