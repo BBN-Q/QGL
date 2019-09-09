@@ -808,6 +808,26 @@ def MEASA(qubit, maddr, **kwargs):
 
     return _MEAS(qubit, maddr=maddr, **kwargs)
 
+@_memoize
+def MEASCLEAR(qubit, **kwargs):
+    """A 'CLEAR' measurement pulse designed to deplete the cavity after a measurement.
+        Supply the keyword arguments `amp1`, `amp2` and `step_length` to control the
+        amplitude and length of the two CLEAR pulses."""
+    params = overrideDefaults(qubit.measure_chan, kwargs)
+    if qubit.measure_chan.meas_type == "autodyne":
+        params['frequency'] = qubit.measure_chan.autodyne_freq
+    params['shape_fun'] = "CLEAR"
+    ignoredStrParams = ['phase', 'frameChange']
+    amp = params.pop('amp')
+    if 'amp' not in kwargs:
+        ignoredStrParams.append('amp')
+    if 'maddr' in kwargs:
+        maddr = kwargs['maddr']
+    else:
+        maddr = (-1, 0)
+    return Pulse("MEAS_CLEAR", qubit.measure_chan, params,
+            amp, 0.0, 0.0, ignoredStrParams, maddr=maddr)
+    
 #MEAS and ring-down time on one qubit, echo on every other
 def MeasEcho(qM, qD, delay, piShift=None, phase=0):
     '''
