@@ -423,7 +423,12 @@ class ChannelLibrary(object):
 
     @check_for_duplicates
     def new_TDM(self, label, address, **kwargs):
-        return Channels.Processor(label=label, model="TDM", address=address, trigger_interval=250e-6)
+        chans = []
+        for k in range(7): # TDM has 7 digital inputs
+            chans.append(Channels.DigitalInput(label=f"DigitalInput-{label}-{k}", channel=k, channel_db=self.channelDatabase))
+        tdm = Channels.Processor(label=label, model="TDM", address=address, trigger_interval=250e-6, channels=chans, channel_db=self.channelDatabase)
+        self.add_and_update_dict(tdm)
+        return tdm
 
     @check_for_duplicates
     def new_spectrum_analzyer(self, label, address, source, **kwargs):
@@ -555,7 +560,7 @@ class ChannelLibrary(object):
         self.add_and_update_dict(new_edges)
         return new_edges
 
-    def set_measure(self, qubit, transmitter, receivers, generator=None, trig_channel=None, gate=False, gate_channel=None, trigger_length=1e-7):
+    def set_measure(self, qubit, transmitter, receivers, generator=None, trig_channel=None, gate=False, gate_channel=None, trigger_length=1e-7, tdm_chan=None):
 
         if isinstance(transmitter, Channels.Transmitter):
                 quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
@@ -613,6 +618,20 @@ class ChannelLibrary(object):
             gate_chan.phys_chan = phys_gate_channel
             meas.gate_chan      = gate_chan
             self.add_and_update_dict([gate_chan])
+
+        if tdm_chan:
+            if isinstance(tdm_chan, Channels.DigitalInput):
+                phys_tdm_channel = tdm_chan
+            else:
+                if not hasattr(self.channelDatabase, 'processors') or not self.channelDatabase.processors:
+                    raise ValueError(f"No processor is defined")
+                elif len(self.channelDatabase.processors) > 1:
+                    raise ValueError(f"Multiple processors are defined. Please specify digital input channel.")
+                else:
+                    tdm = self.channelDatabase.processors[0]
+            phys_tdm_channel  =  tdm.get_chan(tdm_chan)
+            meas.processor_chan = phys_tdm_channel
+            self.add_and_update_dict([meas, phys_tdm_channel])
 
     def set_master(self, master_instrument, trig_channel=None, pulse_length=1e-7):
 
