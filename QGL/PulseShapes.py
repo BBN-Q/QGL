@@ -11,6 +11,10 @@ def gaussian(amp=1, length=0, cutoff=2, sampling_rate=1e9, **params):
     A simple gaussian shaped pulse.
     cutoff is how many sigma the pulse goes out
     '''
+    if length == 0:
+        raise ValueError("gaussian() got 0 length")
+    if sampling_rate == 0:
+        raise ValueError("gaussian() got 0 sampling_rate")
     #Round to how many points we need
     numPts = int(np.round(length * sampling_rate))
     xPts = np.linspace(-cutoff, cutoff, numPts)
