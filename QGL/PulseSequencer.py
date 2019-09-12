@@ -66,7 +66,11 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
             if (n not in self.ignoredStrParams and
                     n in self.channel.pulse_params and
                     self.channel.pulse_params[n] != v):
-                kwvals.append("{0}={1}".format(n, v))
+                # Hack to make certain printouts prettier...
+                if callable(v) and v.__module__ == 'QGL.PulseShapes':
+                    kwvals.append("{0}=<{1}>".format(n, v.__name__))
+                else:
+                    kwvals.append("{0}={1}".format(n, v))
         if kwvals:
             kwstr = ", " + ", ".join(kwvals)
         else:
