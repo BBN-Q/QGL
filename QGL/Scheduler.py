@@ -59,9 +59,17 @@ def get_channels(instr, channel_set=None):
     elif isinstance(instr, list):
         # This is a bug I think
         warn("Supposed instruction is actually a %d item list" % len(instr))
-        if len(instr) < 3:
-            for i in instr:
-                print(f"   {i}")
+
+        # For debugging, could print these, but this can be verbose
+        # if len(instr) < 3:
+        #     outstr = ""
+        #     for i in instr:
+        #         outstr += "   " + str(i) + "\n"
+        #         if len(outstr) > 160:
+        #             outstr += "...\n"
+        #             break
+        #     print(outstr, end='')
+
         return find_all_channels(instr)
         # return None
     elif not hasattr(instr, 'channel'):
