@@ -9,6 +9,19 @@ dipole-coupled qubits in a rotating frame. In such systems, the rotation axis in
 the X-Y plane is determined by the pulse phase, and Z-axis rotations may be
 achieved through *frame updates*.
 
+## Installation
+
+QGL can be cloned from GitHub:
+
+git clone https://github.com/BBN-Q/qgl.git
+
+And subsequently installed using pip:
+
+cd QGL
+pip install -e .
+
+Which will automatically fetch and install all of the requirements. If you are using an anaconda python distribution, some of the requirements should be installed with conda install (like xxx for example). The packages enumerated in xxx.txt are required by QGL.
+
 ## Channels
 
 Many early quantum processors require non-uniform control parameters to achieve
