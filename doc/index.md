@@ -17,7 +17,7 @@ git clone https://github.com/BBN-Q/qgl.git
 
 And subsequently installed using pip:
 
-cd QGL
+cd QGL    
 pip install -e .
 
 Which will automatically fetch and install all of the requirements. If you are using an anaconda python distribution, some of the requirements should be installed with conda install (like xxx for example). The packages enumerated in xxx.txt are required by QGL.
