@@ -29,7 +29,7 @@ QGL can be cloned from GitHub:
 And subsequently installed using pip:
 
 ```cd QGL    
-pip install -e .```   
+pip install -e . ```    
 
 which will automatically fetch and install all of the requirements. If you are using an anaconda python distribution, some of the requirements should be installed with "conda install" (like xxx for example). The packages enumerated in xxx.txt are required by QGL.   
 
