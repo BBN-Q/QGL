@@ -14,7 +14,7 @@ achieved through *frame updates*.
 
 QGL is embedded in the python programming language. Currently, it is dependent on python version 3.7. QGL programming constructs look very similar to python programming constructs.    
 
-QGL relies on the concept of a channel to represent a qubit. 
+QGL relies on the concept of a "channel" to represent a qubit. The channel embodies the physical realization of the qubit in an experimental configuration or a simulation configuration. These characteristic can include physical qubit attributes, simulation or equipment mappings, and physical couplings between qubits. This configuration information is specified and maintained in an associated database, bbndb, which is necessary for compiling the QGL program into inputs for physically systems (such as realizable signals/pulses) or simulation inputs (native instruction set). 
 
 Auspex is an experiment control framework which greatly facilitates executing QPL programs on laboratory hardware. Auspex provides constructs for abstracting (defining) instruments, connectivity, and post processing to enable "hands off" experimental control of sophiscated experiments on a variety of laboratory equipment including AWGs, digitizers, current sources, etc.    
 
@@ -24,14 +24,14 @@ Auspex is an experiment control framework which greatly facilitates executing QP
 
 QGL can be cloned from GitHub:
 
-'''git clone https://github.com/BBN-Q/qgl.git'''
+```git clone https://github.com/BBN-Q/qgl.git```   
 
 And subsequently installed using pip:
 
-'''cd QGL    
-pip install -e .'''
+```cd QGL    
+pip install -e .```   
 
-Which will automatically fetch and install all of the requirements. If you are using an anaconda python distribution, some of the requirements should be installed with "conda install" (like xxx for example). The packages enumerated in xxx.txt are required by QGL.   
+which will automatically fetch and install all of the requirements. If you are using an anaconda python distribution, some of the requirements should be installed with "conda install" (like xxx for example). The packages enumerated in xxx.txt are required by QGL.   
 
 How do you install QGL without cloning the repository? [Rich to do] This would be preferable for many users.    
 
