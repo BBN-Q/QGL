@@ -7,21 +7,20 @@ import numpy as np
 from collections.abc import Iterable
 from itertools import product
 
-def StarkSpectroscopy(qubit, measurement, amplitude, 
-                            delay=200e-9, length=1e-6, showPlot=False):
+def StarkSpectroscopy(qubit, amplitude, delay=200e-9, length=1e-6, showPlot=False, meas_chan=None):
     """Stark shift spectroscopy experiment. Applies a coherent displacement
         to the qubit readout cavity while doing pulsed spectroscopy.
 
         Args:
             qubit: Qubit channel to apply spectroscopy pulse to.
 
-            measurement: Measurement channel to apply displacement pulse to.
-
             amplitude: Measurement pulse amplitude(s)
 
-            delay: Delay between end of spectroscopy pulse and start of MEAS(qubit).
+            delay: Delay between end of spectroscopy pulse and start of MEAS(qubit). Default 200 ns.
 
-            length: Total length of cavity displacement pulse.
+            length: Total length of cavity displacement pulse. Default 1 us.
+
+            meas_chan: Measurement channel. If None, assumes qubit's measurement channel.
 
         Returns:
             metafile: Path to compiled sequence metafile.
@@ -30,8 +29,11 @@ def StarkSpectroscopy(qubit, measurement, amplitude,
     if not isinstance(amplitude, Iterable):
         amplitude = [amplitude]
 
+    if meas_chan is None:
+        meas_chan = qubit.measure_chan
+
     def stark_shift_pulse(amp):
-        pump_pulse = Utheta(measurement, amp=amp, length=length)
+        pump_pulse = Utheta(meas_chan, amp=amp, length=length)
         l1 = length - delay - qubit.pulse_params["length"] - delay
         spec_pulse = Id(qubit, length=l1)+X(qubit)+Id(qubit,length=delay)
         return spec_pulse*pump_pulse
@@ -50,8 +52,7 @@ def StarkSpectroscopy(qubit, measurement, amplitude,
 
     return metafile
 
-def StarkEcho(qubit, measurement, amplitudes, delays, 
-                            wait=200e-9, periods=4, showPlot=False):
+def StarkEcho(qubit, amplitudes, delays, wait=200e-9, periods=4, showPlot=False, meas_chan=None):
     """Hahn echo sequence with a coherent displacement of the qubit measurement cavity.
         Used to measure photon-induced dephasing. This sequence can cause a lot of cache pressure
         so number of points may be limited.
@@ -61,15 +62,16 @@ def StarkEcho(qubit, measurement, amplitudes, delays,
         Args:
             qubit: Qubit channel for Hahn echo.
 
-            measurement: Measurement channel of qubit.
-            
-            amplitudes: Amplitude(s) of cavity displacement pulse. 
+            amplitudes: Amplitude(s) of cavity displacement pulse.
 
-            delays: Hahn echo delays - the t in 90-t-180-t-180. 
+            delays: Hahn echo delays - the t in 90-t-180-t-180.
 
             wait: Delay between end of cavity displacement pulse and start of MEAS(qubit).
 
             periods: Number of artificial oscillations.
+
+            meas_chan: Measurement channel. If None, assumes qubit's measurement channel.
+
 
         Returns:
             metafile: Path to compiled sequence metafile.
@@ -81,23 +83,26 @@ def StarkEcho(qubit, measurement, amplitudes, delays,
     if not isinstance(delays, Iterable):
         delays = [delays]
 
+    if meas_chan is None:
+        meas_chan = qubit.measure_chan
+
     def echo_phase(n):
         return 2*np.pi*periods/len(delays)*n
 
     def echo_stark(n, amp, max_delay, meas_delay=200e-9):
         x_len = qubit.pulse_params["length"]
         max_len = 3*x_len + 2*max_delay + meas_delay
-        echo_wait = max_len - (3*x_len + 2*delays[n]) 
+        echo_wait = max_len - (3*x_len + 2*delays[n])
 
         echo_seq = Id(qubit, echo_wait) + X90(qubit) + Id(qubit, delays[n]) + \
                         Y(qubit) + Id(qubit, delays[n]) + U90(qubit, echo_phase(n))
 
-        meas_seq = Utheta(measurement, amp=amp, length=max_len)
+        meas_seq = Utheta(meas_chan, amp=amp, length=max_len)
 
         return echo_seq*meas_seq
 
 
-    seqs = [[echo_stark(n, amp, np.max(delays)), Id(measurement, length=wait), MEAS(qubit)] 
+    seqs = [[echo_stark(n, amp, np.max(delays)), Id(measurement, length=wait), MEAS(qubit)]
                 for n, amp in product(range(len(delays)), amplitudes)]
 
     axis_descriptor = [delay_descriptor(delays)] * len(amplitudes)
@@ -110,8 +115,7 @@ def StarkEcho(qubit, measurement, amplitudes, delays,
     return metafile
 
 
-def CavityPumpProbe(qubit, measurement, offsets, amplitude, 
-                            length=1e-6, wait=1e-6, showPlot=False):
+def CavityPumpProbe(qubit, offsets, amplitude, length=1e-6, wait=1e-6, showPlot=False, meas_chan=None):
     """Time resolved cavity spectroscopy. Applies a coherent displacement to qubit
         readout cavity while sweeping qubit spectroscopy pulse delay. Useful to measure
         cavity kappa and cavity population.
@@ -119,8 +123,6 @@ def CavityPumpProbe(qubit, measurement, offsets, amplitude,
         Args:
             qubit: Qubit channel for spectroscopy.
 
-            measurement: Measurement channel of qubit.
-            
             offsets: Spectroscopy pulse offset relative to start of cavity displacement pulse.
 
             amplitude: Measurement pulse amplitude.
@@ -129,6 +131,8 @@ def CavityPumpProbe(qubit, measurement, offsets, amplitude,
 
             wait: Delay between end of cavity displacement pulse and start of MEAS(qubit).
 
+            meas_chan: Measurement channel. If None, assumes qubit's measurement channel.
+
         Returns:
             metafile: Path to compiled sequence metafile.
     """
@@ -136,8 +140,11 @@ def CavityPumpProbe(qubit, measurement, offsets, amplitude,
     if not isinstance(offsets, Iterable):
         offsets = [offsets]
 
+    if meas_chan is None:
+        meas_chan = qubit.measure_chan
+
     def cavity_probe(offset):
-        pump_pulse = Utheta(measurement, amp=amplitude, length=length)
+        pump_pulse = Utheta(meas_chan, amp=amplitude, length=length)
         x_len = qubit.pulse_params["length"]
         if offset < -1*x_len:
             return [X(qubit), Id(qubit, length=(-x_len-offset)), pump_pulse, Id(qubit, length=wait)]
@@ -163,5 +170,51 @@ def CavityPumpProbe(qubit, measurement, offsets, amplitude,
 
     return metafile
 
+def StarkRamsey(qubit, relax_delays, ramsey_delays, tppi_freq=4e6, meas_amp=0.05, wait_time=100e-9, meas_chan=None,
+                prep_state=0, showPlot=False):
+    """Measure photon decay in qubit cavity using Ramsey sequence. The sequence is:
+        PREP - MEAS --- relax_delay ---- X90 --- ramsey_delay --- X90 --- wait_time --- MEAS
+        You can use auspex.analysis.qubit_fits.PhotonNumberFit to fit this data.
+        See: D.T. McClure, "Rapid Driven Reset of a Qubit Readout Resonator". PRA 5, 011001 (2016)
 
+        Args:
+            qubit: Qubit channel for spectroscopy.
 
+            relax_delays: Delay to wait before start of ramsey sequence.
+
+            ramsey_delays: Delays for Ramsey sequence.
+
+            tppi_freq: Artificial detuning of Ramsey sequence.
+
+            wait_time: Wait time between end of Ramsey and start of final measurement.
+
+            meas_chan: Measurement channel. If None, assumes qubit's measurement channel.
+
+            prep_state: Prepare qubit in ground or excited state.
+
+        Returns:
+            metafile: Path to compiled sequence metafile.
+    """
+    if meas_chan is None:
+        meas_chan = qubit.measure_chan
+
+    if prep_state == 1:
+        prep = X(qubit)
+    else:
+        prep = Id(qubit)
+
+    seqs = [[prep, MEAS(qubit, amp=meas_amp, dig_trig=False), Id(qubit, tw), X90(qubit), Id(qubit,tr),
+                U90(qubit,phase = 2*np.pi*tppi_freq*tr), Id(qubit, wait_time), MEAS(qubit)]
+                    for tw, tr in product(relax_delays, ramsey_delays)]
+
+    seqs += create_cal_seqs((qubit,), 2)
+
+    ## TODO: Fix this.
+    #axis_descriptor = [delay_descriptor(ramsey_delays)]*len(relax_delays) + [cal_descriptor((qubit,), 2)]
+
+    metafile = compile_to_hardware(seqs, 'StarkRamsey/StarkRamsey')
+
+    if showPlot:
+        plot_pulse_files(metafile)
+
+    return metafile
