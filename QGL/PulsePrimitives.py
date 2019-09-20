@@ -816,7 +816,8 @@ def MEASCLEAR(qubit, **kwargs):
     params = overrideDefaults(qubit.measure_chan, kwargs)
     if qubit.measure_chan.meas_type == "autodyne":
         params['frequency'] = qubit.measure_chan.autodyne_freq
-    params['shape_fun'] = "CLEAR"
+        params['baseShape'] = 'CLEAR'
+        params['shape_fun'] = PulseShapes.autodyne
     ignoredStrParams = ['phase', 'frameChange']
     amp = params.pop('amp')
     if 'amp' not in kwargs:
@@ -827,7 +828,7 @@ def MEASCLEAR(qubit, **kwargs):
         maddr = (-1, 0)
     return Pulse("MEAS_CLEAR", qubit.measure_chan, params,
             amp, 0.0, 0.0, ignoredStrParams, maddr=maddr)
-    
+
 #MEAS and ring-down time on one qubit, echo on every other
 def MeasEcho(qM, qD, delay, piShift=None, phase=0):
     '''
