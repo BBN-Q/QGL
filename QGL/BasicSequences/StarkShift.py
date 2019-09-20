@@ -186,6 +186,8 @@ def StarkRamsey(qubit, relax_delays, ramsey_delays, tppi_freq=4e6, meas_amp=0.05
 
             tppi_freq: Artificial detuning of Ramsey sequence.
 
+            meas_amp: Measurement amplitudes.
+
             wait_time: Wait time between end of Ramsey and start of final measurement.
 
             meas_chan: Measurement channel. If None, assumes qubit's measurement channel.
@@ -198,14 +200,23 @@ def StarkRamsey(qubit, relax_delays, ramsey_delays, tppi_freq=4e6, meas_amp=0.05
     if meas_chan is None:
         meas_chan = qubit.measure_chan
 
+    if not (isinstance(relax_delays, Iterable) ^ isinstance(meas_amp, Iterable)):
+        raise ValueError("Either `relax_delays` or `meas_amp` must be an iterable to sweep over!")
+
     if prep_state == 1:
         prep = X(qubit)
     else:
         prep = Id(qubit)
 
-    seqs = [[prep, MEAS(qubit, amp=meas_amp, dig_trig=False), Id(qubit, tw), X90(qubit), Id(qubit,tr),
-                U90(qubit,phase = 2*np.pi*tppi_freq*tr), Id(qubit, wait_time), MEAS(qubit)]
-                    for tw, tr in product(relax_delays, ramsey_delays)]
+    if isinstance(relax_delays, Iterable):
+        seqs = [[prep, MEAS(qubit, amp=meas_amp, dig_trig=False), Id(qubit, tw), X90(qubit), Id(qubit,tr),
+                    U90(qubit,phase = 2*np.pi*tppi_freq*tr), Id(qubit, wait_time), MEAS(qubit)]
+                        for tw, tr in product(relax_delays, ramsey_delays)]
+
+    elif isinstance(meas_amp, Iterable):
+        seqs = [[prep, MEAS(qubit, amp=ma, dig_trig=False), Id(qubit, relax_delays), X90(qubit), Id(qubit,tr),
+                    U90(qubit,phase = 2*np.pi*tppi_freq*tr), Id(qubit, wait_time), MEAS(qubit)]
+                        for ma, tr in product(meas_amp, ramsey_delays)]
 
     seqs += create_cal_seqs((qubit,), 2)
 
