@@ -1,6 +1,6 @@
 # Getting Started with QGL
 
-Quantum Gate Language (QGL) is a domain specific language embedded in python for
+Quantum Gate Language (QGL) is a domain specific programming language embedded in python for
 specifying gate sequences on quantum processors. It is a low-level language in
 the sense that users write programs at the level of gates on physical qubits.
 While the QGL developers pay particular attention to the requirements of
@@ -9,18 +9,31 @@ dipole-coupled qubits in a rotating frame. In such systems, the rotation axis in
 the X-Y plane is determined by the pulse phase, and Z-axis rotations may be
 achieved through *frame updates*.
 
+
+## Dependencies
+
+QGL is embedded in the python programming language. Currently, it is dependent on python version 3.7. QGL programming constructs look very similar to python programming constructs.    
+
+QGL relies on the concept of a channel to represent a qubit. 
+
+Auspex is an experiment control framework which greatly facilitates executing QPL programs on laboratory hardware. Auspex provides constructs for abstracting (defining) instruments, connectivity, and post processing to enable "hands off" experimental control of sophiscated experiments on a variety of laboratory equipment including AWGs, digitizers, current sources, etc.    
+
+
+
 ## Installation
 
 QGL can be cloned from GitHub:
 
-git clone https://github.com/BBN-Q/qgl.git
+'''git clone https://github.com/BBN-Q/qgl.git'''
 
 And subsequently installed using pip:
 
-cd QGL    
-pip install -e .
+'''cd QGL    
+pip install -e .'''
 
-Which will automatically fetch and install all of the requirements. If you are using an anaconda python distribution, some of the requirements should be installed with conda install (like xxx for example). The packages enumerated in xxx.txt are required by QGL.
+Which will automatically fetch and install all of the requirements. If you are using an anaconda python distribution, some of the requirements should be installed with "conda install" (like xxx for example). The packages enumerated in xxx.txt are required by QGL.   
+
+How do you install QGL without cloning the repository? [Rich to do] This would be preferable for many users.    
 
 ## Channels
 
