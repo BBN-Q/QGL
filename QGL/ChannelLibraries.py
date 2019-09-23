@@ -664,8 +664,8 @@ def QubitFactory(label):
     if channelLib is None:
         raise Exception("No channel library initialized")
     channelLib.update_channelDict()
-    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
-#    cs = [c for c in channelLib.channelDatabase.channels if c.label==label and isinstance(c, Channels.Qubit)]
+#    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
+    cs = [c for c in channelLib.channelDatabase.channels if c.label==label and isinstance(c, Channels.Qubit)]
     # q = channelLib.session.query(Channels.Qubit).filter(Channels.Qubit.label==label and Channels.Qubit.channel_db==channelLib.channelDatabase).all()
     if len(cs) == 1:
         return cs[0]
@@ -677,8 +677,8 @@ def MeasFactory(label):
     if channelLib is None:
         raise Exception("No channel library initialized")
     channelLib.update_channelDict()
-    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
-#    cs = [c for c in channelLib.channelDatabase.channels if c.label==label and isinstance(c, Channels.Measurement)]
+#    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
+    cs = [c for c in channelLib.channelDatabase.channels if c.label==label and isinstance(c, Channels.Measurement)]
     # q = channelLib.session.query(Channels.Qubit).filter(Channels.Qubit.label==label and Channels.Qubit.channel_db==channelLib.channelDatabase).all()
     if len(cs) == 1:
         return cs[0]
@@ -689,8 +689,8 @@ def MarkerFactory(label):
     ''' Return a saved Marker channel with this label. '''
     if channelLib is None:
         raise Exception("No channel library initialized")
-    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
-#    cs = [c for c in channelLib.channelDatabase.channels if c.label==label and isinstance(c, Channels.LogicalMarkerChannel)]
+#    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
+    cs = [c for c in channelLib.channelDatabase.channels if c.label==label and isinstance(c, Channels.LogicalMarkerChannel)]
     channelLib.update_channelDict()
     # q = channelLib.session.query(Channels.Qubit).filter(Channels.Qubit.label==label and Channels.Qubit.channel_db==channelLib.channelDatabase).all()
     if len(cs) == 1:
