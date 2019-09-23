@@ -16,13 +16,17 @@ QGL is embedded in the python programming language. Currently, it is dependent o
 
 QGL relies on the concept of a "channel" to represent a qubit. The channel embodies the physical realization of the qubit in an experimental configuration or a simulation configuration. These characteristic can include physical qubit attributes, simulation or equipment mappings, and physical couplings between qubits. This configuration information is specified and maintained in an associated database, `bbndb <https://github.com/BBN-Q/bbndb>`, which is necessary for compiling the QGL program into inputs for physically systems (such as realizable signals/pulses) or simulation inputs (native instruction set). 
 
-Auspex is an experiment control framework which greatly facilitates executing QPL programs on laboratory hardware. Auspex provides constructs for abstracting (defining) instruments, connectivity, and post processing to enable "hands off" experimental control of sophiscated experiments on a variety of laboratory equipment including AWGs, digitizers, current sources, etc.    
+While QGL is *not* dependent on Auspex, `bbndb <https://github.com/BBN-Q/auspex>`, Auspex is an experiment control framework which greatly facilitates executing QGL programs on laboratory hardware. Auspex provides constructs for abstracting (defining) instruments, connectivity, and post processing to enable "hands off" experimental control of sophiscated experiments on a variety of laboratory equipment including AWGs, digitizers, current sources, etc.    
 
 
 
 ## Installation
 
-QGL can be cloned from GitHub:
+QGL can be downloaded from GitHub:
+
+```https://github.com/BBN-Q/QGL/archive/master.zip```   
+
+Or QGL can be cloned from GitHub:
 
 ```git clone https://github.com/BBN-Q/qgl.git```   
 
@@ -34,8 +38,7 @@ pip install -e .
 ```
 
 which will automatically fetch and install all of the requirements. If you are using an anaconda python distribution, some of the requirements should be installed with "conda install" (like xxx for example). The packages enumerated in xxx.txt are required by QGL.   
-
-How do you install QGL without cloning the repository? [Rich to do] This would be preferable for many users.    
+   
 
 ## Channels
 
