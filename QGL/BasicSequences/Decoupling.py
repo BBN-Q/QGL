@@ -69,7 +69,9 @@ def CPMG(qubit, numPulses, pulseSpacing, calRepeats=2, showPlot=False):
 
     metafile = compile_to_hardware(seqs, 'CPMG/CPMG',
         axis_descriptor=[
-            delay_descriptor(pulseSpacing * numPulses),
+            # NOTE: numPulses is often not a numpy array, so cannot multiply by a float.
+            # But thankfully, np.array(np.array) = np.array so this is always a good move here.
+            delay_descriptor(pulseSpacing * np.array(numPulses)),
             cal_descriptor((qubit,), calRepeats)
         ])
 

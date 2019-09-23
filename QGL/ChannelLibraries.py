@@ -657,37 +657,50 @@ class ChannelLibrary(object):
         else:
             raise ValueError(f"Could not determine which transmitter to set as master for {master_instrument}:{trig_channel}")
 
+# Used by QGL2, which needs a non-class member function to
+# retrieve a Qubit from the CL without accessing the CL directly
 def QubitFactory(label):
     ''' Return a saved qubit channel'''
+    if channelLib is None:
+        raise Exception("No channel library initialized")
     channelLib.update_channelDict()
-    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
+#    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
+    cs = [c for c in channelLib.channelDatabase.channels if c.label==label and isinstance(c, Channels.Qubit)]
     # q = channelLib.session.query(Channels.Qubit).filter(Channels.Qubit.label==label and Channels.Qubit.channel_db==channelLib.channelDatabase).all()
     if len(cs) == 1:
         return cs[0]
     else:
-        raise Exception(f"Expected to find a single qubit {label} but found {len(cs)} qubits with the same label instead.")
+        raise Exception(f"Expected to find a single qubit '{label}' but found {len(cs)} qubits with the same label instead.")
 
 def MeasFactory(label):
-    ''' Return a saved measurement channel or create a new one. '''
+    ''' Return a saved measurement channel.'''
+    if channelLib is None:
+        raise Exception("No channel library initialized")
     channelLib.update_channelDict()
-    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
+#    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
+    cs = [c for c in channelLib.channelDatabase.channels if c.label==label and isinstance(c, Channels.Measurement)]
     # q = channelLib.session.query(Channels.Qubit).filter(Channels.Qubit.label==label and Channels.Qubit.channel_db==channelLib.channelDatabase).all()
     if len(cs) == 1:
         return cs[0]
     else:
-        raise Exception(f"Expected to find a single measurement {label} but found {len(cs)} measurements with the same label instead.")
+        raise Exception(f"Expected to find a single measurement '{label}' but found {len(cs)} measurements with the same label instead.")
 
 def MarkerFactory(label):
-    ''' Return a saved Marker channel or create a new one. '''
-    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
+    ''' Return a saved Marker channel with this label. '''
+    if channelLib is None:
+        raise Exception("No channel library initialized")
+#    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
+    cs = [c for c in channelLib.channelDatabase.channels if c.label==label and isinstance(c, Channels.LogicalMarkerChannel)]
     channelLib.update_channelDict()
     # q = channelLib.session.query(Channels.Qubit).filter(Channels.Qubit.label==label and Channels.Qubit.channel_db==channelLib.channelDatabase).all()
     if len(cs) == 1:
         return cs[0]
     else:
-        raise Exception(f"Expected to find a single marker {label} but found {len(cs)} markers with the same label instead.")
+        raise Exception(f"Expected to find a single marker '{label}' but found {len(cs)} markers with the same label instead.")
 
 def EdgeFactory(source, target):
+    if channelLib is None:
+        raise Exception("No channel library initialized")
     channelLib.update_channelDict()
     if channelLib.connectivityG.has_edge(source, target):
         return channelLib.connectivityG[source][target]['channel']
