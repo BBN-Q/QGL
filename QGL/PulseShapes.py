@@ -142,7 +142,10 @@ def tanh(amp=1, length=0, sigma=0, cutoff=2, sampling_rate=1e9, **params):
         xPts = np.linspace(-length / 2, length / 2, numPts)
         x1 = -length / 2 + cutoff * sigma
         x2 = +length / 2 - cutoff * sigma
-        assert x1 < 0 and x2 > 0, (f'Pulse length must be greater than 2 * cutoff (={cutoff}) * sigma (={sigma}s).  Consider using a Gaussian pulse instead.')
+        assert x1 < 0 and x2 > 0, (f'Pulse length must be greater than'
+                                   '2 * cutoff (={cutoff}) * sigma '
+                                   '(={sigma}s).  Consider '
+                                   'using a Gaussian pulse instead.')
         return amp * 0.5 * (np.tanh((xPts - x1) / sigma) + np.tanh(
             (x2 - xPts) / sigma)).astype(np.complex)
 
