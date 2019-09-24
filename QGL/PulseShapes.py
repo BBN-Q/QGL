@@ -143,9 +143,9 @@ def tanh(amp=1, length=0, sigma=0, cutoff=2, sampling_rate=1e9, **params):
         x1 = -length / 2 + cutoff * sigma
         x2 = +length / 2 - cutoff * sigma
         assert x1 < 0 and x2 > 0, (f'Pulse length must be greater than'
-                                   '2 * cutoff (={cutoff}) * sigma '
-                                   '(={sigma}s).  Consider '
-                                   'using a Gaussian pulse instead.')
+                                   f'2 * cutoff (={cutoff}) * sigma '
+                                   f'(={sigma}s).  Consider '
+                                   f'using a Gaussian pulse instead.')
         return amp * 0.5 * (np.tanh((xPts - x1) / sigma) + np.tanh(
             (x2 - xPts) / sigma)).astype(np.complex)
 
