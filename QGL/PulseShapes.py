@@ -139,12 +139,17 @@ def tanh(amp=1, length=0, sigma=0, cutoff=2, sampling_rate=1e9, **params):
     '''
     A rounded constant shape from the sum of two tanh shapes.
     '''
-    numPts = int(np.round(length * sampling_rate))
-    xPts = np.linspace(-length / 2, length / 2, numPts)
-    x1 = -length / 2 + cutoff * sigma
-    x2 = +length / 2 - cutoff * sigma
-    return amp * 0.5 * (np.tanh((xPts - x1) / sigma) + np.tanh(
-        (x2 - xPts) / sigma)).astype(np.complex)
+    if length == 0.0:
+        return np.empty(shape=(0,)).astype(np.complex)
+    else:
+        numPts = int(np.round(length * sampling_rate))
+        xPts = np.linspace(-length / 2, length / 2, numPts)
+        x1 = -length / 2 + cutoff * sigma
+        x2 = +length / 2 - cutoff * sigma
+        assert x1 < 0 and x2 > 0, ("Pulse length must be greater than 2 * "
+         "cuttoff * sigma.  Consider using a Gaussian pulse instead.")
+        return amp * 0.5 * (np.tanh((xPts - x1) / sigma) + np.tanh(
+            (x2 - xPts) / sigma)).astype(np.complex)
 
 
 def exp_decay(amp=1, length=0, sigma=0, sampling_rate=1e9, steady_state=0.4, **params):
