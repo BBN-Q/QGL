@@ -6,3 +6,6 @@
 *.py~
 *.py#
 *.json~
+*.coverage
+*.ipynb_checkpoints
+*.egg-info
