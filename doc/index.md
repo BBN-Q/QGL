@@ -14,9 +14,9 @@ achieved through *frame updates*.
 
 QGL is embedded in the python programming language. Currently, it is dependent on python version 3.7. QGL programming constructs look very similar to python programming constructs.    
 
-QGL relies on the concept of a "channel" to represent a qubit. The channel embodies the physical realization of the qubit in an experimental configuration or a simulation configuration. These characteristic can include physical qubit attributes, simulation or equipment mappings, and physical couplings between qubits. This configuration information is specified and maintained in an associated database, `bbndb <https://github.com/BBN-Q/bbndb>`, which is necessary for compiling the QGL program into inputs for physically systems (such as realizable signals/pulses) or simulation inputs (native instruction set). 
+QGL relies on the concept of a "channel" to represent a qubit. The channel embodies the physical realization of the qubit in an experimental configuration or a simulation configuration. These characteristic can include physical qubit attributes, simulation or equipment mappings, and physical couplings between qubits. This configuration information is specified and maintained in an associated database, [bbndb](https://github.com/BBN-Q/bbndb), which is necessary for compiling the QGL program into inputs for physically systems (such as realizable signals/pulses) or simulation inputs (native instruction set). 
 
-While QGL is *not* dependent on Auspex, `bbndb <https://github.com/BBN-Q/auspex>`, Auspex is an experiment control framework which greatly facilitates executing QGL programs on laboratory hardware. Auspex provides constructs for abstracting (defining) instruments, connectivity, and post processing to enable "hands off" experimental control of sophiscated experiments on a variety of laboratory equipment including AWGs, digitizers, current sources, etc.    
+While QGL is *not* dependent on [Auspex](https://github.com/BBN-Q/auspex), Auspex is an experiment control framework which greatly facilitates executing QGL programs on laboratory hardware. Auspex provides constructs for abstracting (defining) instruments, connectivity, and post processing to enable "hands off" experimental control of sophiscated experiments on a variety of laboratory equipment including AWGs, digitizers, current sources, etc.    
 
 
 
@@ -37,12 +37,28 @@ cd QGL
 pip install -e .       
 ```
 
-which will automatically fetch and install all of the requirements. If you are using an anaconda python distribution, some of the requirements should be installed with "conda install" (like xxx for example). The packages enumerated in xxx.txt are required by QGL.   
+which will automatically fetch and install all of the requirements. If you are using 
+an anaconda python distribution, some of the requirements should be installed with 
+"conda install" (like xxx for example). The packages enumerated in xxx.txt are required by QGL.   
    
+## Examples: where to start
+
+QGL comes with a number of example jupyter notebook files that illustrate most of the basic
+QGL programming concepts (in the QGL/doc directory):
+
+* ex1_basic_QGL.ipynb: Basic setup of 'qubit' objects, defining sequences of pulses on qubits, 
+and visualizing these pulse sequences.
+* ex2_single_qubit_sequences.ipynb: Simple spectroscopy and coherence experiments on a single qubit.
+* ex3_two_qubit_sequences.ipynb: Examples of two-qubit sequences, including CR gates.
+
+In addition to these example notebooks for manipulating qubits, `channel_libriary.ipynb` provides a 
+basic Channel Library that is used by `ex2_single_qubit_sequences` and `ex3_two_qubit_sequences` 
+example notebooks. 
+
 
 ## Channels
 
-Many early quantum processors require non-uniform control parameters to achieve
+Many quantum processors require non-uniform control parameters to achieve
 high-fidelity gates across all qubits in the device. To support this need, QGL
 provides a number of *channel* objects to store the *individual* parameters
 needed to control or measure particular qubits.
@@ -87,7 +103,7 @@ interact with various pre-defined one- and two-qubit primitives.
 ### Single-Qubit Operations
 
 QGL provides the following single-qubit gates:
-```python
+```
 # generic rotation angle and phase
 Utheta(q, angle, phase)
 
@@ -126,7 +142,7 @@ MEAS(q)
 Due to the utility of Clifford-group operations in characterizing gate
 performance, QGL also directly provides a primitive to implement the 24-element
 single-qubit Clifford group:
-```python
+```
 # atomic Clifford operation on 1-qubit
 AC(q, n)
 ```
@@ -168,28 +184,25 @@ constructs waveforms from `Pulse` objects.
 
 ## Sequences and Simultaneous Operations
 
-Programs in QGL are specified using python lists. For example,
-```python
-q1 = QubitFactory("q1")
-seq = [X90(q1), X(q1), Y(q1), X90(q1), MEAS(q1)]
-```
+Programs in QGL are specified using python lists. For example,    
+```seq = [[X90(q1), X(q1), Y(q1), X90(q1), MEAS(q1)]]```
 
 The elements of the list provide a time-ordered sequence of pulses to execute.
 Using the python list to describe sequences allows for the use of python's
 powerful list comprehension syntax to describe sequence variations. For
 instance, you can concisely write a scan over a rotation angle or delay in a
 list comprehension such as:
-```python
+```
 seq = [[X90(q1), Id(q1, length=d), X90(q1), MEAS(q1)] for d in np.linspace(0, 10e-6, 11)]
 ```
 QGL's compiler assumes that such lists of lists represent a series of related
 experiments and schedules them to occur sequentially in the AWG output.
 
-Users express simultaneity in QGL using the `*` operator. For instance,
-```python
-q1 = QubitFactory("q1")
-q2 = QubitFactory("q2")
-seq = [X90(q1)*X90(q2), MEAS(q1)*MEAS(q2)]
+Users express concurrent operation in QGL using the `*` operator. For instance,
+```
+q1 = cl.new_qubit("q1")
+q2 = cl.new_qubit("q2")
+seq = [[X90(q1)*X90(q2), MEAS(q1)*MEAS(q2)]]
 ```
 
 would execute the same sequence on `Qubit`s `q1` and `q2`. If the gate durations
@@ -199,7 +212,7 @@ the leading pulse edges are aligned and padding delays are injected on the
 trailing edge. However, the user may change this behavior with the `align`
 method:
 ```python
-seq = [align(X90(q1)*X90(q2)), align(MEAS(q1)*MEAS(q2), mode="right")]
+seq = [[align(X90(q1)*X90(q2)), align(MEAS(q1)*MEAS(q2), mode="right")][
 ```
 
 `align` takes a `mode` argument ("left", "right", or default "center") to
@@ -210,7 +223,7 @@ specify a particular pulse alignment within a `PulseBlock`.
 Occasionally one wants to construct a sequence of pulses and treat them as if
 the entire sequence were a single pulse. For this, QGL allows pulses to be
 joined with the `+` operator. This allows, for example, us to define
-```python
+```
 def hadamard(q):
     return Y90(q) + X(q)
 ```
@@ -235,18 +248,18 @@ The default pulse shape is determined by properties in the [channel
 library](config.md#channel-library-setup). However, the QGL programmer may
 override the default shape with a keyword argument. For example, to force the
 use of square pulse shape we may write:
-```python
-seq = [X(q1, shape_fun=PulseShapes.constant), MEAS(q1)]
+```
+seq = [[X(q1, shape_fun=PulseShapes.constant), MEAS(q1)]]
 ```
 
 One common use case for specifying a shape function is in the construction of
 composite pulses. For instance, you may want a square pulse shape with Gaussian
 edges rather than those given by the `tanh` function. To do this you might write:
 ```python
-seq = [X(q1, shape_fun=PulseShapes.gaussOn) +\
+seq = [[X(q1, shape_fun=PulseShapes.gaussOn) +\
        X(q1, shape_fun=PulseShapes.constant) +\
        X(q1, shape_fun=PulseShapes.gaussOff),
-       MEAS(q1)]
+       MEAS(q1)]]
 ```
 
 Shape functions can be an arbitrary piece of python code that returns a NumPy
@@ -256,35 +269,37 @@ as keyword arguments. The only arguments that are guaranteed to exist are
 seconds; it is up to the shape function to use the passed sampling rate to
 convert from time into number of points/samples. As an example, we could define
 a ramp shape with
-```python
+```
 def ramp(length=0, sampling_rate=1e9, **kwargs):
     numPts = int(np.round(length * sampling_rate))
     return np.linspace(0, 1, numPts)
 ```
 
 Then use it with any pulse primitive, e.g.:
-```python
-seq = [X(q1, shape_fun=ramp)]
+```
+seq = [[X(q1, shape_fun=ramp)]]
 ```
 
 If your custom shape function requires additional arguments, you must either
 arrange for these parameters to exist in the `LogicalChannel`'s `shapeParams`
 dictionary, or pass them at the call site. For instance,
-```python
+```
 def foo(length=0, sampling_rate=1e9, bar=1, **kwargs):
     numPts = int(np.round(length * sampling_rate))
     # something involving bar...
 
-seq = [X(q1, bar=0.5, shape_fun=foo)] # bar is passed as a keyword arg
+seq = [[X(q1, bar=0.5, shape_fun=foo)]] # bar is passed as a keyword arg
 ```
 
 See the `PulseShapes` module for further examples.
 
 ## Compiling and Plotting
 
-To reduce a pulse sequence to AWG vendor-specific hardware instructions, use the
+To compile the QGL gate and pulse primitives to waveform and 
+AWG vendor-specific hardware instructions, use the
 `compile_to_hardware()` method, e.g.:
-```python
+
+```
 seq = [[X90(q1), Id(q1, length=d), X90(q1), MEAS(q1)] for d in np.linspace(0, 10e-6, 11)]
 meta_info = compile_to_hardware(seq, 'test/ramsey')
 ```
@@ -303,21 +318,10 @@ path to this meta info file.
 
 The `plot_pulse_files()` creates a visual representation of the pulse sequence
 created by a QGL program. For example,
-```python
+```
 plot_pulse_files(meta_info)
 ```
 will create an interactive plot where each line represents a physical output
 channel of an AWG referenced by the QGL program.
 
-You may also view a QGL program prior to the logical -> physical mapping with
-`show()`. For example,
-```python
-seq = [X90(q1), Id(q1, length=100e-9), X90(q1), MEAS(q1)]
-show(seq)
-```
-will create a plot grid where each subplot shows the operations on individual
-`LogicalChannels`.
 
-## Axis Descriptors
-
-TODO
