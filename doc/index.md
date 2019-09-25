@@ -26,7 +26,7 @@ QGL can be downloaded from GitHub:
 
 ```https://github.com/BBN-Q/QGL/archive/master.zip```   
 
-Or QGL can be cloned from GitHub:
+Or QGL can be cloned for develop purposes from GitHub:
 
 ```git clone https://github.com/BBN-Q/qgl.git```   
 
@@ -43,33 +43,38 @@ which will automatically fetch and install all of the requirements. If you are u
 ## Channels
 
 Many early quantum processors require non-uniform control parameters to achieve
-high-fidelity gates across all qubits in the device. To deal with this, QGL
+high-fidelity gates across all qubits in the device. To support this need, QGL
 provides a number of *channel* objects to store the *individual* parameters
-needed to control or measure the qubits.
+needed to control or measure particular qubits.
 
-Gates in QGL operate on resources known as `LogicalChannels`. For control, these
-channels are either `Qubits` or `Edges`. The `Qubit` channels encode properties
+Gates in QGL operate on resources known as `logical channels`. For control, these
+channels are either `Qubits` or `Edges`. The `qubit` channels encode properties
 specific to manipulating individual qubits in quantum processor, while `Edges`
 encode the connectivity of the device. Since some 2-qubit gates have a preferred
-directionality due to the physical parameters of the device, `Edges` correspond
+directionality due to the physical parameters of the device, `edges` correspond
 to a *directed* edge in the qubit connectivity graph. Qubit measurements instead
-act upon a third `LogicalChannel` type which is the `Measurement` channel. A
-final logical resource type is the `LogicalMarkerChannel` which is used to carry
+act upon a third `logical channel` type which is the `measurement` channel. A
+final logical resource type is the `logical marker channel` which is used to carry
 ancillary pulse information for things such as event triggers.
 
-All `LogicalChannels` must be mapped to `PhysicalChannels` in order for the QGL
-compiler to produce sequence files for the target hardware. The setup of this
-mapping is [described later](config.md#channel-library-setup).
+All `logical channels` are associated with `physical channels` through a Channel 
+Library database in order for the QGL
+compiler to produce pulse files for the target hardware. The setup of this
+mapping is briefly described in the QGL example notebooks in this folder 
+and a more detailed description is provide with the Auspex tools. 
 
 While setup of these channels is important for final sequence compilation, QGL
 programs typically refer only to `Qubit` channels. Actions on other channel
 types may be implied by the operation. For example, to create a `Qubit` object
 in QGL, one can write:
-```python
-q1 = QubitFactory("q1")
 ```
+cl = ChannelLibrary(db_resource_name=":memory:")
+q1 = cl.new_qubit("q1")
+```
+where the Channel Library contains the "physical" information for the logical "qubit" 
+channel. 
 
-The `QubitFactory` method returns a `Qubit` object with the properties defined
+The `new_qubit` method returns a `Qubit` object with the properties defined
 by the name `q1` if found in the channel library. If the name is not found, then
 the users gets a `Qubit` object with the default properties.
 
