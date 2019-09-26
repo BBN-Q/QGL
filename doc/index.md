@@ -56,7 +56,7 @@ basic Channel Library that is used by `ex2_single_qubit_sequences` and `ex3_two_
 example notebooks. 
 
 
-## Channels
+## Channels and Qubits
 
 Many quantum processors require non-uniform control parameters to achieve
 high-fidelity gates across all qubits in the device. To support this need, QGL
@@ -99,6 +99,8 @@ the users gets a `Qubit` object with the default properties.
 The underlying representation of all QGL operations is a `Pulse` object.
 However, users are not expected to create `Pulses` directly, but instead
 interact with various pre-defined one- and two-qubit primitives.
+
+
 
 ### Single-Qubit Operations
 
@@ -182,7 +184,7 @@ the length of the resulting operation. These additional parameters are passed to
 the [shape function](#pulse-shapes-and-waveforms) when the QGL compiler
 constructs waveforms from `Pulse` objects.
 
-## Sequences and Simultaneous Operations
+## Sequences and Concurrent Operations
 
 Programs in QGL are specified using python lists. For example,    
 ```seq = [[X90(q1), X(q1), Y(q1), X90(q1), MEAS(q1)]]```
