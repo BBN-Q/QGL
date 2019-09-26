@@ -307,16 +307,16 @@ meta_info = compile_to_hardware(seq, 'test/ramsey')
 ```
 
 This code snippet will create a folder called `test` inside
-[`AWGDir`](config.md#configuration-options) and produce sequence files for each
+[`AWGDir`] (if defined) or a temp directory and produce sequence files for each
 AWG targeted by the `PhysicalChannels` associated with the QGL program. For
 instance, if the `q1` channel targeted an AWG named `APS1` and the `M-q1`
 channel targeted `APS2`, then the above call to `compile_to_hardware` would
-produce two files: `ramsey-APS1.h5` and `ramsey-APS2.h5` in the `test` folder.
+produce two files: `ramsey-APS1.aps2` and `ramsey-APS2.aps2` in the `test` folder.
 It would also produce a *meta information* file `ramsey-meta.json` which
 contains data about the QGL program that may be useful for executing the
 program in an instrument control platform such as
 [Auspex](https://github.com/BBN-Q/Auspex). `compile_to_hardware` returns the
-path to this meta info file.
+path to this "meta info" file.
 
 The `plot_pulse_files()` creates a visual representation of the pulse sequence
 created by a QGL program. For example,
