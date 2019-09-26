@@ -326,4 +326,41 @@ plot_pulse_files(meta_info)
 will create an interactive plot where each line represents a physical output
 channel of an AWG referenced by the QGL program.
 
+## Built-in Basic Sequences
+
+QGL provides many pre-defined methods for sequences commonly used to characterize a quantum device. These methods are defined in QGL's BasicSequences package and include:    
+•	RabiAmp   
+•	RabiWidth   
+•	PulsedSpec   
+•	InversionRecovery   
+•	Ramsey   
+•	HahnEcho   
+•	CPMG   
+•	SingleQubitRB   
+•	TwoQubitRB   
+
+Usage of each is defined in its respective doc string. For instance, at an ipython prompt, you may type
+```?RabiAmp```
+to learn about the RabiAmp function. This will return information on the function usage and return types 
+as illustrated below:
+```
+Signature: RabiAmp(qubit, amps, phase=0, showPlot=False)
+Docstring:
+Variable amplitude Rabi nutation experiment.
+
+Parameters
+----------
+qubit : logical channel to implement sequence (LogicalChannel)
+amps : pulse amplitudes to sweep over (iterable)
+phase : phase of the pulse (radians)
+showPlot : whether to plot (boolean)
+
+Returns
+-------
+plotHandle : handle to plot window to prevent destruction
+File:      ~/Repos/QGL/QGL/BasicSequences/Rabi.py
+Type:      function
+```
+
+We encourage users to peruse the methods defined in BasicSequences for templates that may be useful in writing their own QGL programs.
 
