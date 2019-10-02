@@ -139,7 +139,7 @@ class ChannelLibrary(object):
     def ls(self):
         cdb = Channels.ChannelDatabase
         q = self.session.query(cdb.label, cdb.time, cdb.id, cdb.notes).\
-            order_by(Channels.ChannelDatabase.id, Channels.ChannelDatabase.label, Channels.ChannelDatabase.notes).all()
+            order_by(-Channels.ChannelDatabase.id, Channels.ChannelDatabase.label, Channels.ChannelDatabase.notes).all()
         table_code = ""
         for i, (label, time, id, notes) in enumerate(q):
             y, d, t = map(time.strftime, ["%Y", "%b. %d", "%I:%M:%S %p"])
