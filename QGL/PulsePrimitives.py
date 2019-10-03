@@ -760,7 +760,7 @@ def _MEAS(qubit, **kwargs):
     if measChan.meas_type == 'autodyne':
         params['frequency'] = measChan.autodyne_freq
         params['baseShape'] = params.pop('shape_fun')
-        params['shape_fun'] = PulseShapes.autodyne
+        params['shape_fun'] = "autodyne"#PulseShapes.autodyne
     amp = params.pop('amp')
     ignoredStrParams = ['phase', 'frameChange']
     if 'amp' not in kwargs:
