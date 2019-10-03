@@ -1,5 +1,21 @@
 # Getting Started with QGL
 
+## Table of Contents
+
+1. [What is QGL](#What-is-QGL)
+1. [Dependencies](#Dependencies)
+1. [Installation](#Installation)
+1. [Examples](#Examples)
+1. [Channels and Qubits](#Channels-and-Qubits)
+1. [Gate Primitives](#Gate-Primitives)
+1. [Sequences and Concurrent Operations](#Sequences-and-Concurrent-Operations)
+1. [Pulse Shapes and Waveforms](#Pulse-Shapes-and-Waveforms)
+1. [Compiling and Plotting](#Compiling-and-Plotting)
+1. [Built-in Basic Sequences](#Built-in-Basic-Sequences)
+
+
+## What is QGL <a name="What-is-QGL"></a>
+
 Quantum Gate Language (QGL) is a domain specific programming language embedded in python for
 specifying gate sequences on quantum processors. It is a low-level language in
 the sense that users write programs at the level of gates on physical qubits.
@@ -10,7 +26,7 @@ the X-Y plane is determined by the pulse phase, and Z-axis rotations may be
 achieved through *frame updates*.
 
 
-## Dependencies
+## Dependencies <a name="Dependencies"></a>
 
 QGL is embedded in the python programming language. Currently, it is dependent on python version 3.7. QGL programming constructs look very similar to python programming constructs.    
 
@@ -20,7 +36,7 @@ While QGL is *not* dependent on [Auspex](https://github.com/BBN-Q/auspex), Auspe
 
 
 
-## Installation
+## Installation <a name="Installation"></a>
 
 QGL can be downloaded from GitHub:
 
@@ -41,7 +57,7 @@ which will automatically fetch and install all of the requirements. If you are u
 an anaconda python distribution, some of the requirements should be installed with 
 "conda install" (like xxx for example). The packages enumerated in xxx.txt are required by QGL.   
    
-## Examples: where to start
+## Examples: where to start <a name="Examples"></a>
 
 QGL comes with a number of example jupyter notebook files that illustrate most of the basic
 QGL programming concepts (in the QGL/doc directory):
@@ -56,7 +72,7 @@ basic Channel Library that is used by `ex2_single_qubit_sequences` and `ex3_two_
 example notebooks. 
 
 
-## Channels and Qubits
+## Channels and Qubits <a name="Channels-and-Qubits"></a>
 
 Many quantum processors require non-uniform control parameters to achieve
 high-fidelity gates across all qubits in the device. To support this need, QGL
@@ -94,7 +110,7 @@ The `new_qubit` method returns a `Qubit` object with the properties defined
 by the name `q1` if found in the channel library. If the name is not found, then
 the users gets a `Qubit` object with the default properties.
 
-## Gate Primitives
+## Gate Primitives <a name="Gate-Primitives"></a>
 
 The underlying representation of all QGL operations is a `Pulse` object.
 However, users are not expected to create `Pulses` directly, but instead
@@ -176,7 +192,19 @@ ZX90_CR(q1, q2)     # a ZX90 on Edge(q1, q2) implemented with "echoed"
 echoCR(q1, q2)  # A "echoed" cross-resonance pulse
 ```
 
-### Additional Parameters
+### Composite Pulses 
+
+Occasionally one wants to construct a sequence of pulses and treat them as if
+the entire sequence were a single pulse. For this, QGL allows pulses to be
+joined with the `+` operator. This allows, for example, us to define
+```
+def hadamard(q):
+    return Y90(q) + X(q)
+```
+and then use `hadmard(q)` just like any other pulse primitive, even though it is
+composed of a sequence of two pulses.
+
+### Additional Pulse Parameters
 
 All QGL pulse primitives accept an arbitrary number of additional keyword
 arguments. In particular, any QGL primitive accepts a `length` keyword to modify
@@ -184,7 +212,7 @@ the length of the resulting operation. These additional parameters are passed to
 the [shape function](#pulse-shapes-and-waveforms) when the QGL compiler
 constructs waveforms from `Pulse` objects.
 
-## Sequences and Concurrent Operations
+## Sequences and Concurrent Operations <a name="Sequences-and-Concurrent-Operations"></a>
 
 Programs in QGL are specified using python lists. For example,    
 ```seq = [[X90(q1), X(q1), Y(q1), X90(q1), MEAS(q1)]]```
@@ -220,19 +248,8 @@ seq = [[align(X90(q1)*X90(q2)), align(MEAS(q1)*MEAS(q2), mode="right")][
 `align` takes a `mode` argument ("left", "right", or default "center") to
 specify a particular pulse alignment within a `PulseBlock`.
 
-## Composite Pulses
 
-Occasionally one wants to construct a sequence of pulses and treat them as if
-the entire sequence were a single pulse. For this, QGL allows pulses to be
-joined with the `+` operator. This allows, for example, us to define
-```
-def hadamard(q):
-    return Y90(q) + X(q)
-```
-and then use `hadmard(q)` just like any other pulse primitive, even though it is
-composed of a sequence of two pulses.
-
-## Pulse Shapes and Waveforms
+## Pulse Shapes and Waveforms <a name="Pulse-Shapes-and-Waveforms"></a>
 
 The QGL compiler constructs waveforms to implement the desired quantum
 operations. To do this, each pulse has a `shape_fun` (shape function) that is
@@ -295,7 +312,7 @@ seq = [[X(q1, bar=0.5, shape_fun=foo)]] # bar is passed as a keyword arg
 
 See the `PulseShapes` module for further examples.
 
-## Compiling and Plotting
+## Compiling and Plotting <a name="Compiling-and-Plotting"></a>
 
 To compile the QGL gate and pulse primitives to waveform and 
 AWG vendor-specific hardware instructions, use the
@@ -326,7 +343,7 @@ plot_pulse_files(meta_info)
 will create an interactive plot where each line represents a physical output
 channel of an AWG referenced by the QGL program.
 
-## Built-in Basic Sequences
+## Built-in Basic Sequences <a name="Built-in-Basic-Sequences"></a>
 
 QGL provides many pre-defined methods for sequences commonly used to characterize a quantum device. These methods are defined in QGL's BasicSequences package and include:    
 •	RabiAmp   
