@@ -1,4 +1,4 @@
-# Quantum Gate Language
+# Quantum Gate Language (QGL)  
 
 [![Build Status](https://travis-ci.org/BBN-Q/QGL.svg?branch=master)](https://travis-ci.org/BBN-Q/QGL) [![Coverage Status](https://coveralls.io/repos/BBN-Q/QGL/badge.svg?branch=master)](https://coveralls.io/r/BBN-Q/QGL)
 
@@ -24,37 +24,12 @@ sections:
 In addtion, there are a numbers of QGL example jupyer notebooks in the 
 [folder](https://github.com/BBN-Q/QGL/blob/master/doc/):
 
+1. ex1_basic_QGL.ipynb: Basic setup of 'qubit' objects, defining sequences of pulses on qubits, and visualizing these pulse sequences.
+1. ex2_single_qubit_sequences.ipynb: Simple spectroscopy and coherence experiments on a single qubit.
+1. ex3_two_qubit_sequences.ipynb: Examples of two-qubit sequences, including CR gates.
 
-## Setup instructions
+Obviously, we suggest that you start with ex1_basic_QGL.   
 
-The most straightforward way to get up and running is to use the [Anaconda
-Python distribution](http://continuum.io/downloads). This includes nearly all
-the dependencies. The remaining dependencies can be installed from the terminal
-or Anaconda Command Prompt on Windows. While QGL can be run on windows, our 
-experiment control software [Auspex](https://github.com/BBN-Q/auspex) relies on linux
-when running qubit experiments.
-
-### Python 3.6+
-
-```bash
-cd QGL/
-pip install .
-```
-Alternatively, if you plan to modify the source code it will be easier to perform a
-developer install using:
-```bash
-pip install -e .
-```
-If you'd like to use some of the built-in gate-set-tomography functionality,
-you can grab the PyGSTi package during the install:
-```
-pip install '.[gst]'
-```
-If the `QGL` module is not installed, the repository path needs to be in the
-`PYTHONPATH`. On Windows machines, you add/modify this environment variable by
-going to System -> Advanced Settings -> Environment variables. On Mac/Linux
-machines add the following line to your .bashrc or .bash_profile: ``` export
-PYTHONPATH=/path/to/QGL/repo:$PYTHONPATH```
 
 ## Usage
 QGL is designed to be utilized alongside Auspex, and most of the usage example, 
