@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.org/BBN-Q/QGL.svg?branch=master)](https://travis-ci.org/BBN-Q/QGL) [![Coverage Status](https://coveralls.io/repos/BBN-Q/QGL/badge.svg?branch=master)](https://coveralls.io/r/BBN-Q/QGL)
 
+# Overview
+
 Quantum Gate Language (QGL) is a domain specific language embedded in python for
 specifying pulse sequences.
 
@@ -32,6 +34,7 @@ Obviously, we suggest that you start with ex1_basic_QGL.
 
 
 ## Usage
+
 QGL is designed to be utilized alongside Auspex, and most of the usage example, 
 including how to define a channel library, can be found in the [Auspex documentation](https://auspex.readthedocs.io/en/develop/qubits.html)
 
