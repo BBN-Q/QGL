@@ -28,9 +28,9 @@ achieved through *frame updates*.
 
 ## Dependencies <a name="Dependencies"></a>
 
-QGL is embedded in the python programming language. Currently, it is dependent on python version 3.7. QGL programming constructs look very similar to python programming constructs.    
+QGL is embedded in the python programming language. Currently, it is dependent on python versions 3.6+. QGL programming constructs look very similar to python programming constructs.    
 
-QGL relies on the concept of a "channel" to represent a qubit. The channel embodies the physical realization of the qubit in an experimental configuration or a simulation configuration. These characteristic can include physical qubit attributes, simulation or equipment mappings, and physical couplings between qubits. This configuration information is specified and maintained in an associated database, [bbndb](https://github.com/BBN-Q/bbndb), which is necessary for compiling the QGL program into inputs for physically systems (such as realizable signals/pulses) or simulation inputs (native instruction set). 
+QGL relies on the concept of a "channel" to represent a qubit. The channel embodies the physical realization of the qubit in an experimental configuration or a simulation configuration. These characteristic can include physical qubit attributes, simulation or equipment mappings, and physical couplings between qubits. This configuration information is specified and maintained in an associated database, [bbndb](https://github.com/BBN-Q/bbndb), which is necessary for compiling the QGL program into inputs for physical systems (such as realizable signals/pulses) or simulation inputs (native instruction set). 
 
 While QGL is *not* dependent on [Auspex](https://github.com/BBN-Q/auspex), Auspex is an experiment control framework which greatly facilitates executing QGL programs on laboratory hardware. Auspex provides constructs for abstracting (defining) instruments, connectivity, and post processing to enable "hands off" experimental control of sophiscated experiments on a variety of laboratory equipment including AWGs, digitizers, current sources, etc.    
 
@@ -42,7 +42,7 @@ QGL can be downloaded from GitHub:
 
 ```https://github.com/BBN-Q/QGL/archive/master.zip```   
 
-Or QGL can be cloned for develop purposes from GitHub:
+Or QGL can be cloned from GitHub to participate in QGL development:
 
 ```git clone https://github.com/BBN-Q/qgl.git```   
 
@@ -55,7 +55,7 @@ pip install -e .
 
 which will automatically fetch and install all of the requirements. If you are using 
 an anaconda python distribution, some of the requirements should be installed with 
-"conda install" (like xxx for example). The packages enumerated in xxx.txt are required by QGL.   
+"conda install".  
    
 ## Examples: where to start <a name="Examples"></a>
 
@@ -160,6 +160,7 @@ MEAS(q)
 Due to the utility of Clifford-group operations in characterizing gate
 performance, QGL also directly provides a primitive to implement the 24-element
 single-qubit Clifford group:
+
 ```
 # atomic Clifford operation on 1-qubit
 AC(q, n)
@@ -174,7 +175,7 @@ definition of `C1` in `Cliffords.py` to find our enumeration of the group.
 
 ### Two-qubit Operations
 
-QGL provides only one high-level two-qubit primitives, `CNOT`. The implementation
+QGL provides only one high-level two-qubit primitive, `CNOT`. The implementation
 of CNOT may be chosen by specifying the `cnot_implementation` key in QGL's
 [config file](config.md#configuration-options).
 
@@ -201,7 +202,7 @@ joined with the `+` operator. This allows, for example, us to define
 def hadamard(q):
     return Y90(q) + X(q)
 ```
-and then use `hadmard(q)` just like any other pulse primitive, even though it is
+and then use `hadamard(q)` just like any other pulse primitive, even though it is
 composed of a sequence of two pulses.
 
 ### Additional Pulse Parameters
@@ -263,10 +264,11 @@ the `PulseShapes` module including:
 * `gaussOn` - the first half of a truncated Gaussian shape
 * `gaussOff` - the second half of a truncated Gaussian shape
 
-The default pulse shape is determined by properties in the [channel
-library](config.md#channel-library-setup). However, the QGL programmer may
+The default pulse shape is determined by properties in the Channel
+Library. However, the QGL programmer may
 override the default shape with a keyword argument. For example, to force the
 use of square pulse shape we may write:
+
 ```
 seq = [[X(q1, shape_fun=PulseShapes.constant), MEAS(q1)]]
 ```
@@ -284,7 +286,7 @@ seq = [[X(q1, shape_fun=PulseShapes.gaussOn) +\
 Shape functions can be an arbitrary piece of python code that returns a NumPy
 array of complex values. Shape functions must accept **all** of their arguments
 as keyword arguments. The only arguments that are guaranteed to exist are
-`sampling_rate` and `length`. The pulse length is always assumed to be units of
+`sampling_rate` and `length`. The pulse length is always assumed to be in units of
 seconds; it is up to the shape function to use the passed sampling rate to
 convert from time into number of points/samples. As an example, we could define
 a ramp shape with
