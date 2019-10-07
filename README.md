@@ -7,7 +7,7 @@
 Quantum Gate Language (QGL) is a domain specific language embedded in python for
 specifying pulse sequences.
 
-You can find "getting started" documentation [online](https://bbn-q.github.io/QGL/) or in the 
+Our "getting started" documentation is published [online](https://bbn-q.github.io/QGL/) from the local 
 [file](https://github.com/BBN-Q/QGL/blob/develop/doc/index.md). This documentation includes dependency, 
 installation and basic programming information. The documentation is organized into the following
 sections:
@@ -23,7 +23,9 @@ sections:
 1. Compiling and Plotting
 1. Built-in Basic Sequences
 
-In addtion, there are a numbers of QGL example jupyer notebooks in the 
+## Usage
+
+There are a number of QGL example Jupyer notebooks in the 
 [folder](https://github.com/BBN-Q/QGL/blob/develop/doc/):
 
 1. ex1_basic_QGL.ipynb: Basic setup of 'qubit' objects, defining sequences of pulses on qubits, and visualizing these pulse sequences.
@@ -32,15 +34,15 @@ In addtion, there are a numbers of QGL example jupyer notebooks in the
 
 Obviously, we suggest that you start with ex1_basic_QGL.   
 
+QGL requires the installation and use of [bbndb](https://github.com/BBN-Q/bbndb). bbndb is a 
+shared, versioned, means of storing instrument, qubit, and other configuration information. 
+It is based on the SQLAlchemy framework.
 
-## Usage
-
-QGL is designed to be utilized alongside Auspex, and most of the usage example, 
-including how to define a channel library, can be found in the [Auspex documentation](https://auspex.readthedocs.io/en/develop/qubits.html)
+QGL is typically used with Auspex -- an experiment management framework. More sophisticated channel library
+usage examples can be found in the 
+[Auspex documentation](https://auspex.readthedocs.io/en/develop/qubits.html)
 
 ## Dependencies
+
 * Python 3.6+
-* Numpy/Scipy
-* networkx 2.0
-* iPython/Jupyter 4.0 (only for Jupyter notebooks)
-* bbndb
+* [bbndb](https://github.com/BBN-Q/bbndb)
