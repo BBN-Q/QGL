@@ -38,8 +38,8 @@ QGL requires the installation and use of [bbndb](https://github.com/BBN-Q/bbndb)
 shared, versioned, means of storing instrument, qubit, and other configuration information. 
 It is based on the SQLAlchemy framework.
 
-QGL is typically used with Auspex -- an experiment management framework. More sophisticated channel library
-usage examples can be found in the 
+QGL is typically used with Auspex -- an experiment management framework. More sophisticated uses of bbndb, 
+especially usage of a channel library, can be found in the 
 [Auspex documentation](https://auspex.readthedocs.io/en/develop/qubits.html)
 
 ## Dependencies
