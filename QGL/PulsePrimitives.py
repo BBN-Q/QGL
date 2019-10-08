@@ -736,7 +736,13 @@ def CNOT_simple(source, target, **kwargs):
 
 @_memoize
 def CNOT(source, target, **kwargs):
-    cnot_impl = globals()[config.cnot_implementation]
+    channel = ChannelLibraries.EdgeFactory(source, target)
+    if hasattr(channel, 'cnot_impl'):
+        cnot_impl_name = channel.cnot_impl
+        #print(f'Chosen CNOT implementation: {cnot_impl_name}')
+    else:
+        cnot_impl_name = config.cnot_implementation
+    cnot_impl = globals()[cnot_impl_name]
     return cnot_impl(source, target, **kwargs)
 
 # The worker method for MEAS and MEASA

@@ -542,13 +542,13 @@ class ChannelLibrary(object):
             qubit_or_edge.phys_chan.generator = generator
         self.update_channelDict()
 
-    def new_edge(self, source, target):
+    def new_edge(self, source, target, cnot_impl=config.cnot_implementation):
         label = f"{source.label}->{target.label}"
         if label in self.channelDict:
             edge = self.channelDict[f"{source.label}->{target.label}"]
             logger.warning(f"The edge {source.label}->{target.label} already exists: using this edge.")
         else:
-            edge = Channels.Edge(label=f"{source.label}->{target.label}", source=source, target=target, channel_db=self.channelDatabase)
+            edge = Channels.Edge(label=f"{source.label}->{target.label}", source=source, target=target, cnot_impl = cnot_impl, channel_db=self.channelDatabase)
         self.add_and_update_dict(edge)
         return edge
 
