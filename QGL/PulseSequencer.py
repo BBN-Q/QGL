@@ -25,6 +25,7 @@ import operator
 from collections import OrderedDict
 from functools import reduce
 from builtins import str
+import hashlib, pickle
 
 from . import PulseShapes
 
@@ -81,13 +82,13 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
         p.text(str(self))
 
     def hashshape(self):
-        return hash(frozenset(self.shapeParams.items()))
+        return hashlib.sha256(pickle.dumps(frozenset(self.shapeParams.items()))).hexdigest()
 
     def __hash__(self):
         d = self._asdict()
         d['shapeParams'] = self.hashshape()
         del d['ignoredStrParams']
-        return hash(frozenset(d.items()))
+        return hashlib.sha256(pickle.dumps(frozenset(d.items()))).hexdigest()
 
     def __add__(self, other):
         if self.channel != other.channel:
