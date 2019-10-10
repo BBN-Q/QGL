@@ -12,6 +12,9 @@ Our "getting started" documentation is published [online](https://bbn-q.github.i
 installation and basic programming information. The documentation is organized into the following
 sections:
 
+does this work:
+[file](doc/index.md)
+
 1. What is QGL
 1. Dependencies
 1. Installation
