@@ -176,7 +176,7 @@ definition of `C1` in `Cliffords.py` to find our enumeration of the group.
 
 QGL provides only one high-level two-qubit primitive, `CNOT`. The implementation
 of CNOT may be chosen by specifying the `cnot_implementation` key in QGL's
-[config.py](./QGL/config.py) file.
+[config.py](../QGL/config.py) file.
 
 ```python
 # high-level primitives
