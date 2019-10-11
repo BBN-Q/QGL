@@ -472,8 +472,7 @@ def compile_to_hardware(seqs,
             aps2tdm_module = import_module('QGL.drivers.APS2Pattern') # this is redundant with above
             tdm_instr = aps2tdm_module.tdm_instructions(seqs)
             files['TDM'] = os.path.normpath(os.path.join(
-                config.AWGDir, fileName + '-' + 'TDM' + suffix + data[
-                    'seqFileExt']))
+                config.AWGDir, fileName + '-' + 'TDM' + suffix + '.aps2'))
             aps2tdm_module.write_tdm_seq(tdm_instr, files['TDM'])
 
     if extra_meta:
