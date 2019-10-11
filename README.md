@@ -25,7 +25,7 @@ sections:
 
 ## Usage
 
-There are a number of QGL example Jupyer notebooks in the 
+There are a number of QGL example Jupyer notebooks in the QGL/doc 
 [folder](doc/):
 
 1. ex1_basic_QGL.ipynb: Basic setup of 'qubit' objects, defining sequences of pulses on qubits, and visualizing these pulse sequences.
