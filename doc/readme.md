@@ -382,5 +382,5 @@ Type:      function
 
 We encourage users to peruse the methods defined in BasicSequences for templates that may be useful in writing their own QGL programs.
 
-For additional information into how the QGL compiler works and various compilation settings (such as type of 2-qubit gate), please reveiw [config.py](../QGL/config.py). 
+For additional information into QGL settings and compiler customizations (such as type of 2-qubit gate), please reveiw [config.py](../QGL/config.py). 
 
