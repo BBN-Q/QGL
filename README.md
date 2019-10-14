@@ -46,3 +46,5 @@ especially usage of a channel library, can be found in the
 
 * Python 3.6+
 * [bbndb](https://github.com/BBN-Q/bbndb)
+
+Note additional setup information in [setup.py](setup.py). This file is typically used by pip and other package managers. 
