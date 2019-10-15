@@ -41,6 +41,7 @@ import operator
 from functools import wraps, reduce
 import itertools
 import numpy as np
+from scipy.interpolate import interp1d
 import networkx as nx
 import logging
 
@@ -541,6 +542,19 @@ class ChannelLibrary(object):
         if generator:
             qubit_or_edge.phys_chan.generator = generator
         self.update_channelDict()
+
+    def set_bias(self, qubit, bias=None, frequency=None):
+        if not isinstance(qubit, Channels.Qubit):
+            raise ValueError("Set DC bias for a qubit only")
+        if not qubit.bias_pairs:
+            raise ValueError("Bias - frequency pairs not defined")
+            if bool(bias) and bool(frequency):
+                raise ValueError("Choose either DC bias or source frequency")
+        bias_pairs = sorted(qubit.bias_pairs.items())
+        biases = [k[0] for k in bias_pairs]
+        frequencies = [k[1] for k in bias_pairs]
+        qubit.phys_chan.generator.frequency = freq if freq else interp1d(biases, frequencies)([bias])[0]
+        qubit.bias_source.level = bias if bias else interp1d(frequencies, biases)([freq])[0]
 
     def new_edge(self, source, target):
         label = f"{source.label}->{target.label}"
