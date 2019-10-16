@@ -30,7 +30,8 @@ gridColor      = None
 pulse_primitives_lib = "standard"
 
 # select a CNOT implementation (a name of a Pulse function that implements
-# CNOT in your gate set, e.g. CNOT_simple or CNOT_CR)
+# CNOT in your gate set, e.g. CNOT_simple or CNOT_CR).
+# This default can be overridden on a per-Edge case as a channel property
 cnot_implementation  = "CNOT_CR"
 
 def load_config():

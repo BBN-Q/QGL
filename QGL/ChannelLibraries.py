@@ -556,13 +556,19 @@ class ChannelLibrary(object):
         qubit.phys_chan.generator.frequency = freq if freq else interp1d(biases, frequencies)([bias])[0]
         qubit.bias_source.level = bias if bias else interp1d(frequencies, biases)([freq])[0]
 
-    def new_edge(self, source, target):
+    def new_edge(self, source, target, cnot_impl=None):
+        """
+            Create a new edge connecting two qubits
+            source (Qubit): logical channel for source qubit
+            target (Qubit): logical channel for target qubit
+            cnot_impl (string, optional): function name for CNOT implementation, overriding the default in QGL/config.py
+        """
         label = f"{source.label}->{target.label}"
         if label in self.channelDict:
             edge = self.channelDict[f"{source.label}->{target.label}"]
             logger.warning(f"The edge {source.label}->{target.label} already exists: using this edge.")
         else:
-            edge = Channels.Edge(label=f"{source.label}->{target.label}", source=source, target=target, channel_db=self.channelDatabase)
+            edge = Channels.Edge(label=f"{source.label}->{target.label}", source=source, target=target, channel_db=self.channelDatabase, cnot_impl=cnot_impl)
         self.add_and_update_dict(edge)
         return edge
 
