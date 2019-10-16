@@ -8,9 +8,9 @@ Quantum Gate Language (QGL) is a domain specific language embedded in python for
 specifying pulse sequences.
 
 Our "getting started" documentation is published [online](https://bbn-q.github.io/QGL/) from the local 
-[file](https://github.com/BBN-Q/QGL/blob/develop/doc/index.md). This documentation includes dependency, 
+[file](doc/index.md). This documentation includes dependency, 
 installation and basic programming information. The documentation is organized into the following
-sections:
+sections:   
 
 1. What is QGL
 1. Dependencies
@@ -25,8 +25,8 @@ sections:
 
 ## Usage
 
-There are a number of QGL example Jupyer notebooks in the 
-[folder](https://github.com/BBN-Q/QGL/blob/develop/doc/):
+There are a number of QGL example Jupyer notebooks in the QGL/doc 
+[folder](doc/):
 
 1. ex1_basic_QGL.ipynb: Basic setup of 'qubit' objects, defining sequences of pulses on qubits, and visualizing these pulse sequences.
 1. ex2_single_qubit_sequences.ipynb: Simple spectroscopy and coherence experiments on a single qubit.
@@ -46,3 +46,5 @@ especially usage of a channel library, can be found in the
 
 * Python 3.6+
 * [bbndb](https://github.com/BBN-Q/bbndb)
+
+Note additional setup information in [setup.py](setup.py). This file is typically used by pip and other package managers. 

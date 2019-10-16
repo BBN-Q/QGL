@@ -53,9 +53,8 @@ cd QGL
 pip install -e .       
 ```
 
-which will automatically fetch and install all of the requirements. If you are using 
-an anaconda python distribution, some of the requirements should be installed with 
-"conda install".  
+which will automatically fetch and install all of the requirement packages. As typical with package managers,
+this process will execute the package requirements enumerated in [setup.py.](../setup.py).   
    
 ## Examples: where to start <a name="Examples"></a>
 
@@ -177,7 +176,7 @@ definition of `C1` in `Cliffords.py` to find our enumeration of the group.
 
 QGL provides only one high-level two-qubit primitive, `CNOT`. The implementation
 of CNOT may be chosen by specifying the `cnot_implementation` key in QGL's
-[config file](config.md#configuration-options).
+[config.py](../QGL/config.py) file.
 
 ```python
 # high-level primitives
@@ -382,4 +381,6 @@ Type:      function
 ```
 
 We encourage users to peruse the methods defined in BasicSequences for templates that may be useful in writing their own QGL programs.
+
+For additional information into QGL settings and compiler customizations (such as type of 2-qubit gate), please reveiw [config.py](../QGL/config.py). 
 

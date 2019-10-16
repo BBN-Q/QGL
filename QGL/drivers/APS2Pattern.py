@@ -1431,23 +1431,17 @@ def tdm_instructions(seqs):
                        len(instructions))
 
 def write_tdm_seq(seq, tdm_fileName):
-    #Open the HDF5 file
+    #Open the binary file
     if os.path.isfile(tdm_fileName):
         os.remove(tdm_fileName)
-    with h5py.File(tdm_fileName, 'w') as FID:
-        FID['/'].attrs['Version'] = 5.0
-        FID['/'].attrs['target hardware'] = 'APS2'
-        FID['/'].attrs['minimum firmware version'] = 5.0
-        FID['/'].attrs['channelDataFor'] = np.uint16([1, 2])
 
-        #Create the groups and datasets
-        for chanct in range(2):
-            chanStr = '/chan_{0}'.format(chanct + 1)
-            chanGroup = FID.create_group(chanStr)
-            FID.create_dataset(chanStr + '/waveforms', data=np.uint16([]))
-            #Write the instructions to channel 1
-            if np.mod(chanct, 2) == 0:
-                FID.create_dataset(chanStr + '/instructions', data=seq)
+    with open(tdm_fileName, 'wb') as FID:
+        FID.write(b'TDM')                     # target hardware
+        FID.write(np.float32(2.0).tobytes())   # Version
+        FID.write(np.float32(2.0).tobytes())   # minimum firmware version
+        FID.write(np.uint16(0).tobytes())      # number of channels
+        FID.write(np.uint64(seq.size).tobytes()) # instructions length
+        FID.write(seq.tobytes()) # instructions in uint64 form
 
 # Utility Functions for displaying programs
 
