@@ -1436,7 +1436,7 @@ def write_tdm_seq(seq, tdm_fileName):
         os.remove(tdm_fileName)
 
     with open(tdm_fileName, 'wb') as FID:
-        FID.write(b'TDM')                     # target hardware
+        FID.write(b'TDM1')                     # target hardware
         FID.write(np.float32(2.0).tobytes())   # Version
         FID.write(np.float32(2.0).tobytes())   # minimum firmware version
         FID.write(np.uint16(0).tobytes())      # number of channels
@@ -1459,9 +1459,9 @@ def raw_instructions(fileName):
 def decompile_instructions(instructions, tdm = False):
     return [Instruction.unflatten(x, decode_as_tdm = tdm) for x in instructions]
 
-def read_instructions(filename):
+def read_instructions(filename, tdm = False):
     raw_instrs = raw_instructions(filename)
-    return decompile_instructions(raw_instrs)
+    return decompile_instructions(raw_instrs, tdm = tdm)
 
 def read_waveforms(filename):
     with open(filename, 'rb') as FID:
