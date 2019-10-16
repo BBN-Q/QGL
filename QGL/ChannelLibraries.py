@@ -562,7 +562,7 @@ class ChannelLibrary(object):
             edge = self.channelDict[f"{source.label}->{target.label}"]
             logger.warning(f"The edge {source.label}->{target.label} already exists: using this edge.")
         else:
-            edge = Channels.Edge(label=f"{source.label}->{target.label}", source=source, target=target, cnot_impl = cnot_impl, channel_db=self.channelDatabase)
+            edge = Channels.Edge(label=f"{source.label}->{target.label}", source=source, target=target, channel_db=self.channelDatabase)
         self.add_and_update_dict(edge)
         return edge
 
