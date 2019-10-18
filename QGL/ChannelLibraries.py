@@ -140,13 +140,24 @@ class ChannelLibrary(object):
     def ls(self):
         cdb = Channels.ChannelDatabase
         q = self.session.query(cdb.label, cdb.time, cdb.id, cdb.notes).\
-            order_by(Channels.ChannelDatabase.id, Channels.ChannelDatabase.label, Channels.ChannelDatabase.notes).all()
+            order_by(-Channels.ChannelDatabase.id, Channels.ChannelDatabase.label, Channels.ChannelDatabase.notes).all()
         table_code = ""
         for i, (label, time, id, notes) in enumerate(q):
             y, d, t = map(time.strftime, ["%Y", "%b. %d", "%I:%M:%S %p"])
             # t = time.strftime("(%Y) %b. %d @ %I:%M:%S %p")
             table_code += f"<tr><td>{id}</td><td>{y}</td><td>{d}</td><td>{t}</td><td>{label}</td><td>{notes}</td></tr>"
         display(HTML(f"<table><tr><th>id</th><th>Year</th><th>Date</th><th>Time</th><th>Name</th><th>Notes</th></tr><tr>{table_code}</tr></table>"))
+
+    def cal_ls(self):
+        ''' List of auspex.pulse_calibration results '''
+        caldb = bbndb.calibration.Calibration
+        c = self.session.query(caldb.sample_id, caldb.name, caldb.value, caldb.date).order_by(-Channels.ChannelDatabase.id).all()
+        table_code = ""
+        for i, (id, sample_id, name, value, time) in enumerate(c):
+            d,t  = str(time).split()
+            sample = self.session.query(bbndb.calibration.Sample).filter_by(id=sample_id).first()
+            table_code += f"<tr><td>{id}</td><td>{d}</td><td>{t.split('.')[0]}</td><td>{sample.name}</td><td>{name}</td><td>{round(value,9)}</td></tr>"
+        display(HTML(f"<table><tr><th>id</th><th>Date</th><th>Time</th><th>Sample</th><th>Name</th><th>Value</th></tr><tr>{table_code}</tr></table>"))
 
     def ent_by_type(self, obj_type, show=False):
         q = self.session.query(obj_type).filter(obj_type.channel_db.has(label="working")).order_by(obj_type.label).all()
