@@ -54,7 +54,6 @@ from ipywidgets import Layout, VBox, HBox
 from . import config
 from . import Channels
 from . import PulseShapes
-from .PulsePrimitives import clear_pulse_cache
 
 from IPython.display import HTML, display
 
@@ -553,8 +552,8 @@ class ChannelLibrary(object):
         bias_pairs = sorted(qubit.bias_pairs.items())
         biases = [k[0] for k in bias_pairs]
         frequencies = [k[1] for k in bias_pairs]
-        qubit.phys_chan.generator.frequency = freq if freq else interp1d(biases, frequencies)([bias])[0]
-        qubit.bias_source.level = bias if bias else interp1d(frequencies, biases)([freq])[0]
+        qubit.phys_chan.generator.frequency = frequency if frequency else interp1d(biases, frequencies)([bias])[0]
+        qubit.bias_source.level = bias if bias else interp1d(frequencies, biases)([frequency])[0]
 
     def new_edge(self, source, target):
         label = f"{source.label}->{target.label}"
