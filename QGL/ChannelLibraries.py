@@ -423,11 +423,11 @@ class ChannelLibrary(object):
         return this_transmitter
 
     @check_for_duplicates
-    def new_TDM(self, label, address, **kwargs):
+    def new_TDM(self, label, address, trigger_interval=250e-6, **kwargs):
         chans = []
         for k in range(7): # TDM has 7 digital inputs
             chans.append(Channels.DigitalInput(label=f"DigitalInput-{label}-{k}", channel=k, channel_db=self.channelDatabase))
-        tdm = Channels.Processor(label=label, model="TDM", address=address, trigger_interval=250e-6, channels=chans, channel_db=self.channelDatabase)
+        tdm = Channels.Processor(label=label, model="TDM", address=address, trigger_interval=trigger_interval, channels=chans, channel_db=self.channelDatabase)
         self.add_and_update_dict(tdm)
         return tdm
 
