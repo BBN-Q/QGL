@@ -394,9 +394,29 @@ class ChannelLibrary(object):
         chan2  = Channels.PhysicalQuadratureChannel(label=f"{label}-2", channel=1, instrument=label, translator="APS3Pattern", sampling_rate=2.5e9, channel_db=self.channelDatabase)
         m1     = Channels.PhysicalMarkerChannel(label=f"{label}-m1", channel=0, instrument=label, translator="APS3Pattern", sampling_rate=2.5e9, channel_db=self.channelDatabase)
 
-        this_transmitter = Channels.Transmitter(label=label, model="APS3", address=address, serial_port=serial_port, channels=[chan1, chan2, m1], channel_db=self.channelDatabase, **kwargs)
+        this_transmitter = Channels.Transmitter(label=label, model="APS3", address=address, channels=[chan1, chan2, m1], channel_db=self.channelDatabase, **kwargs)
         this_transmitter.trigger_source = 'external' if 'trigger_source' not in kwargs else kwargs['trigger_source']
 
+        this_transmitter.tx_params = {
+            'serial_port'      : serial_port,
+            'dac'              : 1,
+            'soft_trigger'     : False,
+            'bypass_modulator' : False,
+            'bypass_nco'       : False,
+            'dac_output_mux'   : True,
+            'trigger_output_select' :False,
+            'trigger_input_select' : False,
+            'csr0_master' : False,
+            'marker_delay'    : 0,
+            'marker_mode'      : False,
+            'dac_switch_mode'  : 'MIX',
+            'dac_full_scale_current' : 40.0,
+            'dac_nco_enable'  : False,
+            'dac_FIR85_enable' : False,
+            'dac_nco_frequency' : 0.0,
+            'dac_pll_reference' : 'REF IN',
+            'dac_shuffle_mode' : 0
+        }
         self.add_and_update_dict(this_transmitter)
         return this_transmitter
 
