@@ -144,7 +144,6 @@ def extract_waveforms(fileNames, nameDecorator='', time=False):
         translator = resolve_translator(fileName, translators)
         wfs = translator.read_sequence_file(fileName)
         sample_time = 1.0/translator.SAMPLING_RATE if time else 1
-
         for (k, seqs) in sorted(wfs.items()):
             if all_zero_seqs(seqs):
                 continue

@@ -41,6 +41,7 @@ import operator
 from functools import wraps, reduce
 import itertools
 import numpy as np
+from scipy.interpolate import interp1d
 import networkx as nx
 import logging
 
@@ -53,7 +54,6 @@ from ipywidgets import Layout, VBox, HBox
 from . import config
 from . import Channels
 from . import PulseShapes
-from .PulsePrimitives import clear_pulse_cache
 
 from IPython.display import HTML, display
 
@@ -138,14 +138,25 @@ class ChannelLibrary(object):
 
     def ls(self):
         cdb = Channels.ChannelDatabase
-        q = self.session.query(cdb.label, cdb.time, cdb.id).\
-            order_by(Channels.ChannelDatabase.id, Channels.ChannelDatabase.label).all()
+        q = self.session.query(cdb.label, cdb.time, cdb.id, cdb.notes).\
+            order_by(-Channels.ChannelDatabase.id, Channels.ChannelDatabase.label, Channels.ChannelDatabase.notes).all()
         table_code = ""
-        for i, (label, time, id) in enumerate(q):
+        for i, (label, time, id, notes) in enumerate(q):
             y, d, t = map(time.strftime, ["%Y", "%b. %d", "%I:%M:%S %p"])
             # t = time.strftime("(%Y) %b. %d @ %I:%M:%S %p")
-            table_code += f"<tr><td>{id}</td><td>{y}</td><td>{d}</td><td>{t}</td><td>{label}</td></tr>"
-        display(HTML(f"<table><tr><th>id</th><th>Year</th><th>Date</th><th>Time</th><th>Name</th></tr><tr>{table_code}</tr></table>"))
+            table_code += f"<tr><td>{id}</td><td>{y}</td><td>{d}</td><td>{t}</td><td>{label}</td><td>{notes}</td></tr>"
+        display(HTML(f"<table><tr><th>id</th><th>Year</th><th>Date</th><th>Time</th><th>Name</th><th>Notes</th></tr><tr>{table_code}</tr></table>"))
+
+    def cal_ls(self):
+        ''' List of auspex.pulse_calibration results '''
+        caldb = bbndb.calibration.Calibration
+        c = self.session.query(caldb.sample_id, caldb.name, caldb.value, caldb.date).order_by(-Channels.ChannelDatabase.id).all()
+        table_code = ""
+        for i, (id, sample_id, name, value, time) in enumerate(c):
+            d,t  = str(time).split()
+            sample = self.session.query(bbndb.calibration.Sample).filter_by(id=sample_id).first()
+            table_code += f"<tr><td>{id}</td><td>{d}</td><td>{t.split('.')[0]}</td><td>{sample.name}</td><td>{name}</td><td>{round(value,9)}</td></tr>"
+        display(HTML(f"<table><tr><th>id</th><th>Date</th><th>Time</th><th>Sample</th><th>Name</th><th>Value</th></tr><tr>{table_code}</tr></table>"))
 
     def ent_by_type(self, obj_type, show=False):
         q = self.session.query(obj_type).filter(obj_type.channel_db.has(label="working")).order_by(obj_type.label).all()
@@ -183,7 +194,7 @@ class ChannelLibrary(object):
         indices   = {n: i for i, n in enumerate(graph.nodes())}
         node_data = [{'label': str(n).replace('(','\r\n(')} for n in graph.nodes()]
         link_data = [{'source': indices[s], 'target': indices[t]} for s, t in graph.edges()]
-                
+
         qub_objs.sort(key=lambda x: x.label)
         qubit_names = [q.label for q in qub_objs]
 
@@ -225,7 +236,7 @@ class ChannelLibrary(object):
                 end = widest[0]-0.6
             elif i == len(qub_objs):
                 start = sum(widest)-0.4
-                end = max(x)+0.4 
+                end = max(x)+0.4
             else:
                 start = sum(widest[:i])-0.4
                 end = sum(widest[:i+1])-0.6
@@ -240,7 +251,7 @@ class ChannelLibrary(object):
             c_freqs[qubit.label] = qubit.frequency*1e-9
             if qubit.phys_chan.generator:
                 c_freqs[qubit.label] += qubit.phys_chan.generator.frequency*1e-9
-            
+
             m_freqs[qubit.label] = qubit.measure_chan.frequency*1e-9
             if qubit.measure_chan.phys_chan.generator:
                 m_freqs[qubit.label] += qubit.measure_chan.phys_chan.generator.frequency*1e-9
@@ -333,13 +344,14 @@ class ChannelLibrary(object):
         self.session.rollback()
 
     @check_session_dirty
-    def save_as(self, name):
+    def save_as(self, name, notes = ''):
         if name == "working":
             raise ValueError("Cannot save as `working` since that is the default working environment name...")
         self.commit()
         new_channelDatabase = bbndb.deepcopy_sqla_object(self.channelDatabase, self.session)
         new_channelDatabase.label = name
         new_channelDatabase.time = datetime.datetime.now()
+        new_channelDatabase.notes = notes
         self.commit()
 
     def add_and_update_dict(self, el):
@@ -377,6 +389,19 @@ class ChannelLibrary(object):
             self.connectivityG[chan.source][chan.target]['channel'] = chan
 
     @check_for_duplicates
+    def new_APS3(self, label, address, serial_port, **kwargs):
+        chan1  = Channels.PhysicalQuadratureChannel(label=f"{label}-1", channel=0, instrument=label, translator="APS3Pattern", sampling_rate=2.5e9, channel_db=self.channelDatabase)
+        chan2  = Channels.PhysicalQuadratureChannel(label=f"{label}-2", channel=1, instrument=label, translator="APS3Pattern", sampling_rate=2.5e9, channel_db=self.channelDatabase)
+        m1     = Channels.PhysicalMarkerChannel(label=f"{label}-m1", channel=0, instrument=label, translator="APS3Pattern", sampling_rate=2.5e9, channel_db=self.channelDatabase)
+
+        this_transmitter = Channels.Transmitter(label=label, model="APS3", address=address, serial_port=serial_port, channels=[chan1, chan2, m1], channel_db=self.channelDatabase, **kwargs)
+        this_transmitter.trigger_source = 'external' if 'trigger_source' not in kwargs else kwargs['trigger_source']
+
+        self.add_and_update_dict(this_transmitter)
+        return this_transmitter
+
+
+    @check_for_duplicates
     def new_APS2(self, label, address, **kwargs):
         chan1  = Channels.PhysicalQuadratureChannel(label=f"{label}-1", channel=0, instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
         m1     = Channels.PhysicalMarkerChannel(label=f"{label}-m1", channel=0, instrument=label, translator="APS2Pattern", channel_db=self.channelDatabase)
@@ -408,8 +433,13 @@ class ChannelLibrary(object):
         return this_transmitter
 
     @check_for_duplicates
-    def new_TDM(self, label, address, **kwargs):
-        return Channels.Processor(label=label, model="TDM", address=address, trigger_interval=250e-6)
+    def new_TDM(self, label, address, trigger_interval=250e-6, **kwargs):
+        chans = []
+        for k in range(7): # TDM has 7 digital inputs
+            chans.append(Channels.DigitalInput(label=f"DigitalInput-{label}-{k}", channel=k, channel_db=self.channelDatabase))
+        tdm = Channels.Processor(label=label, model="TDM", address=address, trigger_interval=trigger_interval, channels=chans, channel_db=self.channelDatabase)
+        self.add_and_update_dict(tdm)
+        return tdm
 
     @check_for_duplicates
     def new_spectrum_analzyer(self, label, address, source, **kwargs):
@@ -523,13 +553,32 @@ class ChannelLibrary(object):
             qubit_or_edge.phys_chan.generator = generator
         self.update_channelDict()
 
-    def new_edge(self, source, target):
+    def set_bias(self, qubit, bias=None, frequency=None):
+        if not isinstance(qubit, Channels.Qubit):
+            raise ValueError("Set DC bias for a qubit only")
+        if not qubit.bias_pairs:
+            raise ValueError("Bias - frequency pairs not defined")
+            if bool(bias) and bool(frequency):
+                raise ValueError("Choose either DC bias or source frequency")
+        bias_pairs = sorted(qubit.bias_pairs.items())
+        biases = [k[0] for k in bias_pairs]
+        frequencies = [k[1] for k in bias_pairs]
+        qubit.phys_chan.generator.frequency = frequency if frequency else interp1d(biases, frequencies)([bias])[0]
+        qubit.bias_source.level = bias if bias else interp1d(frequencies, biases)([frequency])[0]
+
+    def new_edge(self, source, target, cnot_impl=None):
+        """
+            Create a new edge connecting two qubits
+            source (Qubit): logical channel for source qubit
+            target (Qubit): logical channel for target qubit
+            cnot_impl (string, optional): function name for CNOT implementation, overriding the default in QGL/config.py
+        """
         label = f"{source.label}->{target.label}"
         if label in self.channelDict:
             edge = self.channelDict[f"{source.label}->{target.label}"]
             logger.warning(f"The edge {source.label}->{target.label} already exists: using this edge.")
         else:
-            edge = Channels.Edge(label=f"{source.label}->{target.label}", source=source, target=target, channel_db=self.channelDatabase)
+            edge = Channels.Edge(label=f"{source.label}->{target.label}", source=source, target=target, channel_db=self.channelDatabase, cnot_impl=cnot_impl)
         self.add_and_update_dict(edge)
         return edge
 
@@ -541,7 +590,7 @@ class ChannelLibrary(object):
         self.add_and_update_dict(new_edges)
         return new_edges
 
-    def set_measure(self, qubit, transmitter, receivers, generator=None, trig_channel=None, gate=False, gate_channel=None, trigger_length=1e-7):
+    def set_measure(self, qubit, transmitter, receivers, generator=None, trig_channel=None, gate=False, gate_channel=None, trigger_length=1e-7, tdm_chan=None):
 
         if isinstance(transmitter, Channels.Transmitter):
                 quads   = [c for c in transmitter.channels if isinstance(c, Channels.PhysicalQuadratureChannel)]
@@ -600,6 +649,20 @@ class ChannelLibrary(object):
             meas.gate_chan      = gate_chan
             self.add_and_update_dict([gate_chan])
 
+        if tdm_chan:
+            if isinstance(tdm_chan, Channels.DigitalInput):
+                phys_tdm_channel = tdm_chan
+            else:
+                if not hasattr(self.channelDatabase, 'processors') or not self.channelDatabase.processors:
+                    raise ValueError(f"No processor is defined")
+                elif len(self.channelDatabase.processors) > 1:
+                    raise ValueError(f"Multiple processors are defined. Please specify digital input channel.")
+                else:
+                    tdm = self.channelDatabase.processors[0]
+            phys_tdm_channel  =  tdm.get_chan(tdm_chan)
+            meas.processor_chan = phys_tdm_channel
+            self.add_and_update_dict([meas, phys_tdm_channel])
+
     def set_master(self, master_instrument, trig_channel=None, pulse_length=1e-7):
 
         if isinstance(master_instrument, Channels.Processor):
@@ -622,39 +685,52 @@ class ChannelLibrary(object):
             self.add_and_update_dict([st])
 
         else:
-            raise ValueError(f"Could not determine which transmitter to set as master for {transmitter}:{trig_channel}")
+            raise ValueError(f"Could not determine which transmitter to set as master for {master_instrument}:{trig_channel}")
 
+# Used by QGL2, which needs a non-class member function to
+# retrieve a Qubit from the CL without accessing the CL directly
 def QubitFactory(label):
     ''' Return a saved qubit channel'''
+    if channelLib is None:
+        raise Exception("No channel library initialized")
     channelLib.update_channelDict()
-    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
+#    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
+    cs = [c for c in channelLib.channelDatabase.channels if c.label==label and isinstance(c, Channels.Qubit)]
     # q = channelLib.session.query(Channels.Qubit).filter(Channels.Qubit.label==label and Channels.Qubit.channel_db==channelLib.channelDatabase).all()
     if len(cs) == 1:
         return cs[0]
     else:
-        raise Exception(f"Expected to find a single qubit {label} but found {len(cs)} qubits with the same label instead.")
+        raise Exception(f"Expected to find a single qubit '{label}' but found {len(cs)} qubits with the same label instead.")
 
 def MeasFactory(label):
-    ''' Return a saved measurement channel or create a new one. '''
+    ''' Return a saved measurement channel.'''
+    if channelLib is None:
+        raise Exception("No channel library initialized")
     channelLib.update_channelDict()
-    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
+#    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
+    cs = [c for c in channelLib.channelDatabase.channels if c.label==label and isinstance(c, Channels.Measurement)]
     # q = channelLib.session.query(Channels.Qubit).filter(Channels.Qubit.label==label and Channels.Qubit.channel_db==channelLib.channelDatabase).all()
     if len(cs) == 1:
         return cs[0]
     else:
-        raise Exception(f"Expected to find a single measurement {label} but found {len(cs)} measurements with the same label instead.")
+        raise Exception(f"Expected to find a single measurement '{label}' but found {len(cs)} measurements with the same label instead.")
 
 def MarkerFactory(label):
-    ''' Return a saved Marker channel or create a new one. '''
-    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
+    ''' Return a saved Marker channel with this label. '''
+    if channelLib is None:
+        raise Exception("No channel library initialized")
+#    cs = [c for c in channelLib.channelDatabase.channels if c.label==label]
+    cs = [c for c in channelLib.channelDatabase.channels if c.label==label and isinstance(c, Channels.LogicalMarkerChannel)]
     channelLib.update_channelDict()
     # q = channelLib.session.query(Channels.Qubit).filter(Channels.Qubit.label==label and Channels.Qubit.channel_db==channelLib.channelDatabase).all()
     if len(cs) == 1:
         return cs[0]
     else:
-        raise Exception(f"Expected to find a single marker {label} but found {len(cs)} markers with the same label instead.")
+        raise Exception(f"Expected to find a single marker '{label}' but found {len(cs)} markers with the same label instead.")
 
 def EdgeFactory(source, target):
+    if channelLib is None:
+        raise Exception("No channel library initialized")
     channelLib.update_channelDict()
     if channelLib.connectivityG.has_edge(source, target):
         return channelLib.connectivityG[source][target]['channel']

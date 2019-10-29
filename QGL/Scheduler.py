@@ -28,6 +28,8 @@ def schedule(seq):
             continue
 
         channels = get_channels(instr, channel_set)
+        if channels is None:
+            raise Exception("No channels found from 'get_channels(%s, channel_set)'" % instr)
         # find the most advanced counter in the channel set
         idx = max(counters.get(ch, 0) for ch in channels)
 
@@ -54,8 +56,24 @@ def get_channels(instr, channel_set=None):
         return channel_set
     elif isinstance(instr, Barrier):
         return chanlist
+    elif isinstance(instr, list):
+        # This is a bug I think
+        warn("Supposed instruction is actually a %d item list" % len(instr))
+
+        # For debugging, could print these, but this can be verbose
+        # if len(instr) < 3:
+        #     outstr = ""
+        #     for i in instr:
+        #         outstr += "   " + str(i) + "\n"
+        #         if len(outstr) > 160:
+        #             outstr += "...\n"
+        #             break
+        #     print(outstr, end='')
+
+        return find_all_channels(instr)
+        # return None
     elif not hasattr(instr, 'channel'):
-        warn("instruction %s does not have a 'channel' property", instr)
+        warn("instruction '%s' does not have a 'channel' property" % instr)
         return None
     elif isinstance(instr.channel, Edge):
         return (instr.channel.source, instr.channel.target)

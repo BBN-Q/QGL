@@ -1,10 +1,12 @@
 # coding=utf-8
 
+from functools import reduce
 from itertools import product
+import numpy as np
 import operator
+
 from ..PulsePrimitives import Id, X, MEAS
 from ..ControlFlow import qwait
-from functools import reduce
 
 def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False, delay=None):
     """
@@ -59,7 +61,8 @@ def delay_descriptor(delays, desired_units="us"):
     axis_descriptor = {
         'name': 'delay',
         'unit': desired_units,
-        'points': list(scale * delays),
+        # Make sure delays is a numpy array so can multiply it by a float safely
+        'points': list(scale * np.array(delays)),
         'partition': 1
     }
     return axis_descriptor
