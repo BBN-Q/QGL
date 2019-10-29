@@ -1,4 +1,4 @@
-bbndb >= 0.1
+bbndb >= 2019.2
 numpy >= 1.11.1
 scipy >= 0.17.1
 networkx >= 1.11
