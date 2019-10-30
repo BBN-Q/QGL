@@ -1,13 +1,13 @@
 from setuptools import setup, find_packages
 
 setup(name='QGL',
-      version='2019.1',
+      version='2019.2',
       packages=find_packages(exclude=["tests"]),
       url='https://github.com/BBN-Q/QGL',
       download_url='https://github.com/BBN-Q/QGL',
       license="Apache 2.0 License",
       install_requires=[
-        "bbndb >= 2019.1",
+        "bbndb >= 2019.2",
         "numpy >= 1.11.1",
         "scipy >= 0.17.1",
         "networkx >= 1.11",
