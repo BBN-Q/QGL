@@ -152,7 +152,7 @@ class ChannelLibrary(object):
         caldb = bbndb.calibration.Calibration
         c = self.session.query(caldb.id, caldb.sample_id, caldb.name, caldb.value, caldb.date).order_by(-caldb.id).all()
         table_code = ""
-        for i, (id, sample_id, name, value, time) in enumerate(c):
+        for i, (sample_id, name, value, time) in enumerate(c):
             d,t  = str(time).split()
             sample = self.session.query(bbndb.calibration.Sample).filter_by(id=sample_id).first()
             table_code += f"<tr><td>{id}</td><td>{d}</td><td>{t.split('.')[0]}</td><td>{sample.name}</td><td>{name}</td><td>{round(value,9)}</td></tr>"
