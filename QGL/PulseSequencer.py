@@ -47,7 +47,11 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
         for param in requiredParams:
             if param not in shapeParams.keys():
                 raise NameError("shapeParams must include {0}".format(param))
-        isTimeAmp = (shapeParams['shape_fun'] == PulseShapes.constant)
+        if isinstance(shapeParams['shape_fun'],str):
+            shape = getattr(PulseShapes, shapeParams['shape_fun'])
+        else:
+            shape = shapeParams['shape_fun']
+        isTimeAmp = (shape == PulseShapes.constant)
         isZero = (amp == 0)
         return super(cls, Pulse).__new__(cls, label, channel,
                                          shapeParams['length'], amp, phase,
