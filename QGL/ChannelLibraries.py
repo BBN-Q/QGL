@@ -150,7 +150,7 @@ class ChannelLibrary(object):
     def cal_ls(self):
         ''' List of auspex.pulse_calibration results '''
         caldb = bbndb.calibration.Calibration
-        c = self.session.query(caldb.sample_id, caldb.name, caldb.value, caldb.date).order_by(-caldb.sample_id).all()
+        c = self.session.query(caldb.id, caldb.sample_id, caldb.name, caldb.value, caldb.date).order_by(-caldb.id).all()
         table_code = ""
         for i, (sample_id, name, value, time) in enumerate(c):
             d,t  = str(time).split()
