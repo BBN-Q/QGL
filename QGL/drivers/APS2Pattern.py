@@ -1142,13 +1142,10 @@ def read_sequence_file(fileName):
         instructions = np.frombuffer(FID.read(8*inst_len), dtype=np.uint64)
 
         wf_lib = {}
-        wf_lib['ch1'] = (
-            1.0 /
-            MAX_WAVEFORM_VALUE) * FID['/chan_1/waveforms'].value.flatten()
-        wf_lib['ch2'] = (
-            1.0 /
-            MAX_WAVEFORM_VALUE) * FID['/chan_2/waveforms'].value.flatten()
-        instructions = FID['/chan_1/instructions'].value.flatten()
+        for i in range(num_chans):
+            wf_len  = struct.unpack('<Q', FID.read(8))[0]
+            wf_dat  = np.frombuffer(FID.read(2*wf_len), dtype=np.int16)
+            wf_lib[f'ch{i+1}'] = ( 1.0 / MAX_WAVEFORM_VALUE) * wf_dat.flatten()
         freq = np.zeros(NUM_NCO)  #radians per timestep
         phase = np.zeros(NUM_NCO)
         frame = np.zeros(NUM_NCO)
