@@ -313,7 +313,6 @@ class ChannelLibrary(object):
             this_dict = value.__dict__
             ct = 0
             iter_diff(this_dict, dict_2[chan].__dict__, ct, chan)
-        return db1, db2, copied_db1, copied_db2
 
     def receivers(self):
         return self.ent_by_type(Channels.Receiver)
