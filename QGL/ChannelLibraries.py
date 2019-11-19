@@ -305,7 +305,7 @@ class ChannelLibrary(object):
                 if isinstance(cmp1, dict) or isinstance(cmp1, list) or isinstance(cmp1, bbndb.qgl.DatabaseItem) or isinstance(cmp1, bbndb.qgl.Channel):
                     if ct<1: # up to 2 recursion levels for now, to avoid infinite loops for bidirectional relations
                         ct+=1
-                        iter_diff(cmp1, cmp2, ct, label=label)
+                        table_code += iter_diff(cmp1, cmp2, ct, label=label)
                     break
                 if cmp1 != cmp2:
                     table_code += f"<tr><td>{label}</td><td>{key}</td><td>{cmp1}</td><td>{cmp2}</td></tr>"
