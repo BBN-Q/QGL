@@ -279,40 +279,44 @@ class ChannelLibrary(object):
         dict_2 = {c.label: c for c in copied_db2.channels}
 
         def iter_diff(value_iter1, value_iter2, ct, label=''):
-             for key, key2 in zip(value_iter1, value_iter2):
-                    if key in ['_sa_instance_state', 'channel_db']:
-                        continue
-                    if isinstance(value_iter1, dict):
-                        cmp1 = value_iter1[key]
-                        cmp2 = value_iter2[key]
-                        if label in value_iter1:
-                            label = value_iter1['label']
-                    elif isinstance(value_iter1, list):
-                        cmp1 = key
-                        cmp2 = key2
-                    else:
-                        cmp1 = getattr(value_iter1, key)
-                        cmp2 = getattr(value_iter2, key)
-                    if (cmp1 == None) ^ (cmp2 == None):
-                        print(f'Difference found {label} {key} : 1st {cmp1} 2nd: {cmp2}')
-                        continue
-                    if (cmp1 == None) or (cmp2 == None) or ((isinstance(cmp1, dict) or isinstance(cmp1, list)) and len(cmp1) == 0):
-                        continue
-                    if isinstance(cmp1, bbndb.qgl.DatabaseItem) or isinstance(cmp1, bbndb.qgl.Channel):
-                        cmp1 = cmp1.__dict__
-                        cmp2 = cmp2.__dict__
-                    if isinstance(cmp1, dict) or isinstance(cmp1, list) or isinstance(cmp1, bbndb.qgl.DatabaseItem) or isinstance(cmp1, bbndb.qgl.Channel):
-                        if ct<1: # up to 2 recursion levels for now, to avoid infinite loops for bidirectional relations
-                            ct+=1
-                            iter_diff(cmp1, cmp2, ct, label=label)
-                        break
-                    if cmp1 != cmp2:
-                        print(f'Difference found {label} {key} : 1st {cmp1} 2nd: {cmp2}')
+            table_code = ''
+            for key, key2 in zip(value_iter1, value_iter2):
+                if key in ['_sa_instance_state', 'channel_db']:
+                    continue
+                if isinstance(value_iter1, dict):
+                    cmp1 = value_iter1[key]
+                    cmp2 = value_iter2[key]
+                    if label in value_iter1:
+                        label = value_iter1['label']
+                elif isinstance(value_iter1, list):
+                    cmp1 = key
+                    cmp2 = key2
+                else:
+                    cmp1 = getattr(value_iter1, key)
+                    cmp2 = getattr(value_iter2, key)
+                if (cmp1 == None) ^ (cmp2 == None):
+                    table_code += f"<tr><td>{label}</td><td>{key}</td><td>{cmp1}</td><td>{cmp2}</td></tr>"
+                    continue
+                if (cmp1 == None) or (cmp2 == None) or ((isinstance(cmp1, dict) or isinstance(cmp1, list)) and len(cmp1) == 0):
+                    continue
+                if isinstance(cmp1, bbndb.qgl.DatabaseItem) or isinstance(cmp1, bbndb.qgl.Channel):
+                    cmp1 = cmp1.__dict__
+                    cmp2 = cmp2.__dict__
+                if isinstance(cmp1, dict) or isinstance(cmp1, list) or isinstance(cmp1, bbndb.qgl.DatabaseItem) or isinstance(cmp1, bbndb.qgl.Channel):
+                    if ct<1: # up to 2 recursion levels for now, to avoid infinite loops for bidirectional relations
+                        ct+=1
+                        iter_diff(cmp1, cmp2, ct, label=label)
+                    break
+                if cmp1 != cmp2:
+                    table_code += f"<tr><td>{label}</td><td>{key}</td><td>{cmp1}</td><td>{cmp2}</td></tr>"
+            return table_code
 
+        table_code = ''
         for chan, value in dict_1.items():
             this_dict = value.__dict__
             ct = 0
-            iter_diff(this_dict, dict_2[chan].__dict__, ct, chan)
+            table_code += iter_diff(this_dict, dict_2[chan].__dict__, ct, chan)
+        display(HTML(f"<table><tr><th>Object</th><th>Parameter</th><th>{name1}</th><th>{name2}</th></tr><tr>{table_code}</tr></table>"))
 
     def receivers(self):
         return self.ent_by_type(Channels.Receiver)
