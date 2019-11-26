@@ -47,7 +47,7 @@ MAX_WAVEFORM_VALUE = 2**13 - 1  #maximum waveform value i.e. 14bit DAC
 MAX_NUM_INSTRUCTIONS = 2**26
 MAX_REPEAT_COUNT = 2**16 - 1
 MAX_TRIGGER_COUNT = 2**32 - 1
-MAX_VRAM_ADDRESS = 2**12-1
+MAX_VRAM_ADDRESS = 2**(12-2)-1
 MODULATION_CLOCK = 300e6
 
 # instruction encodings
