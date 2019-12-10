@@ -271,13 +271,12 @@ class ChannelLibrary(object):
             index1, index2: by default, loading the most recent instances for the given names. Specifying index1/2 = 2 will select the second most recent instance etc."""
         '''
         cdb = Channels.ChannelDatabase
-        db1 = self.session.query(cdb).filter(cdb.label==name1)[-1*index1]
-        db2 = self.session.query(cdb).filter(cdb.label==name2)[-1*index2]
+        db1 = self.session.query(cdb).filter(cdb.label==name1).order_by(cdb.time.desc())[-1*index1]
+        db2 = self.session.query(cdb).filter(cdb.label==name2).order_by(cdb.time.desc())[-1*index2]
         copied_db1 = bbndb.deepcopy_sqla_object(db1)
         copied_db2 = bbndb.deepcopy_sqla_object(db2)
-        dict_1 = {c.label: c for c in copied_db1.channels}
-        dict_2 = {c.label: c for c in copied_db2.channels}
-
+        dict_1 = {c.label: c for c in copied_db1.channels + copied_db1.all_instruments()}
+        dict_2 = {c.label: c for c in copied_db2.channels + copied_db2.all_instruments()}
         def iter_diff(value_iter1, value_iter2, ct, label=''):
             table_code = ''
             for key, key2 in zip(value_iter1, value_iter2):
@@ -299,10 +298,10 @@ class ChannelLibrary(object):
                     continue
                 if (cmp1 == None) or (cmp2 == None) or ((isinstance(cmp1, dict) or isinstance(cmp1, list)) and len(cmp1) == 0):
                     continue
-                if isinstance(cmp1, bbndb.qgl.DatabaseItem) or isinstance(cmp1, bbndb.qgl.Channel):
+                if isinstance(cmp1, (bbndb.qgl.DatabaseItem, bbndb.qgl.Channel, bbndb.qgl.Instrument)):
                     cmp1 = cmp1.__dict__
                     cmp2 = cmp2.__dict__
-                if isinstance(cmp1, dict) or isinstance(cmp1, list) or isinstance(cmp1, bbndb.qgl.DatabaseItem) or isinstance(cmp1, bbndb.qgl.Channel):
+                if isinstance(cmp1, (dict, list, bbndb.qgl.DatabaseItem, bbndb.qgl.Channel, bbndb.qgl.Instrument)):
                     if ct<1: # up to 2 recursion levels for now, to avoid infinite loops for bidirectional relations
                         ct+=1
                         table_code += iter_diff(cmp1, cmp2, ct, label=label)
