@@ -289,7 +289,7 @@ class ChannelLibrary(object):
                         label = value_iter1['label']
                 elif isinstance(value_iter1, list):
                     cmp1 = key
-                    cmp2 = key2
+                    cmp2 = key2 #TODO fix. why would they be in any order?
                 else:
                     cmp1 = getattr(value_iter1, key)
                     cmp2 = getattr(value_iter2, key)
@@ -305,7 +305,7 @@ class ChannelLibrary(object):
                     if ct<1: # up to 2 recursion levels for now, to avoid infinite loops for bidirectional relations
                         ct+=1
                         table_code += iter_diff(cmp1, cmp2, ct, label=label)
-                    break
+                    continue
                 if cmp1 != cmp2:
                     table_code += f"<tr><td>{label}</td><td>{key}</td><td>{cmp1}</td><td>{cmp2}</td></tr>"
             return table_code
