@@ -271,8 +271,8 @@ class ChannelLibrary(object):
             index1, index2: by default, loading the most recent instances for the given names. Specifying index1/2 = 2 will select the second most recent instance etc."""
         '''
         cdb = Channels.ChannelDatabase
-        db1 = self.session.query(cdb).filter(cdb.label==name1).order_by(cdb.time.desc())[-1*index1]
-        db2 = self.session.query(cdb).filter(cdb.label==name2).order_by(cdb.time.desc())[-1*index2]
+        db1 = self.session.query(cdb).filter(cdb.label==name1).order_by(cdb.time.asc())[-1*index1]
+        db2 = self.session.query(cdb).filter(cdb.label==name2).order_by(cdb.time.asc())[-1*index2]
         copied_db1 = bbndb.deepcopy_sqla_object(db1)
         copied_db2 = bbndb.deepcopy_sqla_object(db2)
         dict_1 = {c.label: c for c in copied_db1.channels + copied_db1.all_instruments()}
@@ -342,7 +342,7 @@ class ChannelLibrary(object):
     def load(self, name, index=1):
         """Load the latest instance for a particular name. Specifying index = 2 will select the second most recent instance """
         cdb = Channels.ChannelDatabase
-        items = self.session.query(cdb).filter(cdb.label==name).order_by(cdb.time.desc()).all()
+        items = self.session.query(cdb).filter(cdb.label==name).order_by(cdb.time.asc()).all()
         self.load_obj(items[-index])
 
     @check_session_dirty
