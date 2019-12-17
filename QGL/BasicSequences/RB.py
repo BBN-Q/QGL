@@ -86,6 +86,56 @@ def SingleQubitRB(qubit, seqs, purity=False, showPlot=False, add_cals=True):
         plot_pulse_files(metafile)
     return metafile
 
+def SingleQubitLeakageRB(qubit, seqs, pi2args, showPlot=False):
+    """Single qubit randomized benchmarking using 90 and 180 generators to
+       measure leakage outside the qubit subspace.
+       See https://journals.aps.org/prl/supplemental/10.1103/PhysRevLett.123.120502/Rol_SOM.pdf
+       for description of algorithm.
+
+    Parameters
+    ----------
+    qubit : logical channel to implement sequence (LogicalChannel)
+    seqs : list of lists of Clifford group integers
+    pi2args: arguments passed to the X90 gate for the 1 <-> 2 transition during calibration
+    showPlot : whether to plot (boolean)
+    """
+
+    seqsBis = []
+    for seq in seqs:
+        combined_seq = reduce(operator.add, [clifford_seq(c, qubit) for c in seq])
+
+        # Append sequence with tomography ids and measurement
+        seqsBis.append(combined_seq + [Id(qubit), Id(qubit), MEAS(qubit)])
+
+        # Append sequence with tomography pulses and measurement
+        seqsBis.append(combined_seq + [X90(qubit), X90(qubit), MEAS(qubit)])
+
+    # Add the calibration sequences
+    seqsBis.append([Id(qubit), Id(qubit), Id(qubit), Id(qubit), MEAS(qubit)])
+    seqsBis.append([X90(qubit), X90(qubit), Id(qubit), Id(qubit), MEAS(qubit)])
+    seqsBis.append([X90(qubit), X90(qubit), X90(qubit, **pi2args), X90(qubit, **pi2args), MEAS(qubit)])
+
+    axis_descriptor = [
+    {
+        'name': 'length',
+        'unit': None,
+        'points': [len(s) for s in seqs for i in range(2)],
+        'partition': 1
+    },
+    {
+        'name': 'calibration',
+        'unit': 'state',
+        'partition': 2,
+        'points': ['0', '1', '2']
+    }]
+
+    metafile = compile_to_hardware(seqsBis, 'RB/LRB', axis_descriptor = axis_descriptor, extra_meta = {'sequences':seqs})
+
+    if showPlot:
+        plot_pulse_files(metafile)
+    return metafile
+
+
 
 def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix="", add_cals=True):
     """Two qubit randomized benchmarking using 90 and 180 single qubit generators and ZX90
@@ -119,6 +169,53 @@ def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix="", add_cals=True):
         axis_descriptor.append(cal_descriptor((q1, q2), 2))
 
     metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor, suffix = suffix, extra_meta = {'sequences':seqs})
+
+    if showPlot:
+        plot_pulse_files(metafile)
+    return metafile
+
+def TwoQubitLeakageRB(q1, q2, meas_qubit, seqs, pi2args, showPlot=False):
+    """Two qubit randomized benchmarking using 90 and 180 single qubit generators and ZX90 to
+       measure leakage outside the qubit subspace.
+       See https://journals.aps.org/prl/supplemental/10.1103/PhysRevLett.123.120502/Rol_SOM.pdf
+       for description of algorithm.
+        Parameters
+            ----------
+            qubit : logical channel to implement sequence (LogicalChannel)
+            seqs : list of lists of Clifford group integers
+            showPlot : whether to plot (boolean)
+            suffix : suffix to apply to sequence file names
+    """
+    seqsBis = []
+    for seq in seqs:
+        combined_seq = reduce(operator.add, [clifford_seq(c, q2, q1) for c in seq])
+
+        # Append sequence with tomography ids and measurement
+        seqsBis.append(combined_seq + [Id(meas_qubit), Id(meas_qubit), MEAS(meas_qubit)])
+
+        # Append sequence with tomography pulses and measurement
+        seqsBis.append(combined_seq + [X90(meas_qubit), X90(meas_qubit), MEAS(meas_qubit)])
+
+    # Add the calibration sequences
+    seqsBis.append([Id(meas_qubit), Id(meas_qubit), Id(meas_qubit), Id(meas_qubit), MEAS(meas_qubit)])
+    seqsBis.append([X90(meas_qubit), X90(meas_qubit), Id(meas_qubit), Id(meas_qubit), MEAS(meas_qubit)])
+    seqsBis.append([X90(meas_qubit), X90(meas_qubit), X90(meas_qubit, **pi2args), X90(meas_qubit, **pi2args), MEAS(meas_qubit)])
+
+    axis_descriptor = [
+    {
+        'name': 'length',
+        'unit': None,
+        'points': [len(s) for s in seqs for i in range(2)],
+        'partition': 1
+    },
+    {
+        'name': 'calibration',
+        'unit': 'state',
+        'partition': 2,
+        'points': ['0', '1', '2']
+    }]
+
+    metafile = compile_to_hardware(seqsBis, 'RB/LRB', axis_descriptor = axis_descriptor, extra_meta = {'sequences':seqs})
 
     if showPlot:
         plot_pulse_files(metafile)
