@@ -147,17 +147,6 @@ class ChannelLibrary(object):
             table_code += f"<tr><td>{id}</td><td>{y}</td><td>{d}</td><td>{t}</td><td>{label}</td><td>{notes}</td></tr>"
         display(HTML(f"<table><tr><th>id</th><th>Year</th><th>Date</th><th>Time</th><th>Name</th><th>Notes</th></tr><tr>{table_code}</tr></table>"))
 
-    def cal_ls(self):
-        ''' List of auspex.pulse_calibration results '''
-        caldb = bbndb.calibration.Calibration
-        c = self.session.query(caldb.sample_id, caldb.name, caldb.value, caldb.date).order_by(-Channels.ChannelDatabase.id).all()
-        table_code = ""
-        for i, (id, sample_id, name, value, time) in enumerate(c):
-            d,t  = str(time).split()
-            sample = self.session.query(bbndb.calibration.Sample).filter_by(id=sample_id).first()
-            table_code += f"<tr><td>{id}</td><td>{d}</td><td>{t.split('.')[0]}</td><td>{sample.name}</td><td>{name}</td><td>{round(value,9)}</td></tr>"
-        display(HTML(f"<table><tr><th>id</th><th>Date</th><th>Time</th><th>Sample</th><th>Name</th><th>Value</th></tr><tr>{table_code}</tr></table>"))
-
     def ent_by_type(self, obj_type, show=False):
         q = self.session.query(obj_type).filter(obj_type.channel_db.has(label="working")).order_by(obj_type.label).all()
         if show:
@@ -273,6 +262,61 @@ class ChannelLibrary(object):
             figs.append(Figure(marks=lines+[labels], axes=[ax, ay], title=f"{ss} Frequency Plan"))
         return HBox(figs)
 
+    def diff(self, name1, name2, index1=1, index2=1):
+        '''
+        Compare 2 channel library versions. Print the difference between 2 libraries, including parameter values and channel allocations. It requires both versions to be saved in the same sqlite database.
+        Args
+            name1: name of first version to compare
+            name2: name of second version to compare
+            index1, index2: by default, loading the most recent instances for the given names. Specifying index1/2 = 2 will select the second most recent instance etc."""
+        '''
+        cdb = Channels.ChannelDatabase
+        db1 = self.session.query(cdb).filter(cdb.label==name1).order_by(cdb.time.desc())[-1*index1]
+        db2 = self.session.query(cdb).filter(cdb.label==name2).order_by(cdb.time.desc())[-1*index2]
+        copied_db1 = bbndb.deepcopy_sqla_object(db1)
+        copied_db2 = bbndb.deepcopy_sqla_object(db2)
+        dict_1 = {c.label: c for c in copied_db1.channels + copied_db1.all_instruments()}
+        dict_2 = {c.label: c for c in copied_db2.channels + copied_db2.all_instruments()}
+        def iter_diff(value_iter1, value_iter2, ct, label=''):
+            table_code = ''
+            for key, key2 in zip(value_iter1, value_iter2):
+                if key in ['_sa_instance_state', 'channel_db']:
+                    continue
+                if isinstance(value_iter1, dict):
+                    cmp1 = value_iter1[key]
+                    cmp2 = value_iter2[key]
+                    if label in value_iter1:
+                        label = value_iter1['label']
+                elif isinstance(value_iter1, list):
+                    cmp1 = key
+                    cmp2 = key2
+                else:
+                    cmp1 = getattr(value_iter1, key)
+                    cmp2 = getattr(value_iter2, key)
+                if (cmp1 == None) ^ (cmp2 == None):
+                    table_code += f"<tr><td>{label}</td><td>{key}</td><td>{cmp1}</td><td>{cmp2}</td></tr>"
+                    continue
+                if (cmp1 == None) or (cmp2 == None) or ((isinstance(cmp1, dict) or isinstance(cmp1, list)) and len(cmp1) == 0):
+                    continue
+                if isinstance(cmp1, (bbndb.qgl.DatabaseItem, bbndb.qgl.Channel, bbndb.qgl.Instrument)):
+                    cmp1 = cmp1.__dict__
+                    cmp2 = cmp2.__dict__
+                if isinstance(cmp1, (dict, list, bbndb.qgl.DatabaseItem, bbndb.qgl.Channel, bbndb.qgl.Instrument)):
+                    if ct<1: # up to 2 recursion levels for now, to avoid infinite loops for bidirectional relations
+                        ct+=1
+                        table_code += iter_diff(cmp1, cmp2, ct, label=label)
+                    break
+                if cmp1 != cmp2:
+                    table_code += f"<tr><td>{label}</td><td>{key}</td><td>{cmp1}</td><td>{cmp2}</td></tr>"
+            return table_code
+
+        table_code = ''
+        for chan, value in dict_1.items():
+            this_dict = value.__dict__
+            ct = 0
+            table_code += iter_diff(this_dict, dict_2[chan].__dict__, ct, chan)
+        display(HTML(f"<table><tr><th>Object</th><th>Parameter</th><th>{name1}</th><th>{name2}</th></tr><tr>{table_code}</tr></table>"))
+
     def receivers(self):
         return self.ent_by_type(Channels.Receiver)
 
@@ -284,6 +328,9 @@ class ChannelLibrary(object):
 
     def qubits(self):
         return self.ent_by_type(Channels.Qubit)
+
+    def edges(self):
+        return self.ent_by_type(Channels.Edge)
 
     def meas(self):
         return self.ent_by_type(Channels.Measurement)

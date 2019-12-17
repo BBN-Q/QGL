@@ -47,8 +47,9 @@ MAX_WAVEFORM_VALUE = 2**13 - 1  #maximum waveform value i.e. 14bit DAC
 MAX_NUM_INSTRUCTIONS = 2**26
 MAX_REPEAT_COUNT = 2**16 - 1
 MAX_TRIGGER_COUNT = 2**32 - 1
-
+MAX_VRAM_ADDRESS = 2**(12-2)-1
 MODULATION_CLOCK = 300e6
+NUM_NCO = 4
 
 # instruction encodings
 WFM = 0x0
@@ -581,13 +582,19 @@ class ModulationCommand(object):
         MODULATOR_OP_OFFSET = 44
         NCO_SELECT_OP_OFFSET = 40
 
+        nco_select_bits = {1 : 0b0001,
+                           2 : 0b0010,
+                           3 : 0b0100,
+                           4 : 0b1000,
+                           15: 0b1111}[self.nco_select]
+
         op_code_map = {"MODULATE": 0x0,
                        "RESET_PHASE": 0x2,
                        "SET_FREQ": 0x6,
                        "SET_PHASE": 0xa,
                        "UPDATE_FRAME": 0xe}
         payload = (op_code_map[self.instruction] << MODULATOR_OP_OFFSET) | (
-            self.nco_select << NCO_SELECT_OP_OFFSET)
+            (nco_select_bits) << NCO_SELECT_OP_OFFSET)
         if self.instruction == "MODULATE":
             #zero-indexed quad count
             payload |= np.uint32(self.length / ADDRESS_UNIT - 1)
@@ -615,9 +622,9 @@ def inject_modulation_cmds(seqs):
     for ct,seq in enumerate(seqs):
         #check whether we have modulation commands
         freqs = np.unique([entry.frequency for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)])
-        if len(freqs) > 2:
-            raise Exception("Max 2 frequencies on the same channel allowed.")
-        no_freq_cmds = np.all(np.less(np.abs(freqs), 1e-8))
+        if len(freqs) > NUM_NCO:
+            raise Exception("Max {} frequencies on the same channel allowed.".format(NUM_NCO))
+        no_freq_cmds = np.allclose(freqs, 0)
         phases = [entry.phase for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
         no_phase_cmds = np.all(np.less(np.abs(phases), 1e-8))
         frame_changes = [entry.frameChange for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
@@ -641,7 +648,7 @@ def inject_modulation_cmds(seqs):
                 #heuristic to insert phase reset before trigger if we have modulation commands
                 if isinstance(entry, ControlFlow.Wait):
                     if not ( no_modulation_cmds and (cur_freq == 0) and (cur_phase == 0)):
-                        mod_seq.append(ModulationCommand("RESET_PHASE", 0x3))
+                        mod_seq.append(ModulationCommand("RESET_PHASE", 0xF))
                         for nco_ind, freq in enumerate(freqs):
                             mod_seq.append( ModulationCommand("SET_FREQ", nco_ind + 1, frequency = -freq) )
                 elif isinstance(entry, ControlFlow.Return):
@@ -1139,8 +1146,6 @@ def read_sequence_file(fileName):
             wf_len  = struct.unpack('<Q', FID.read(8))[0]
             wf_dat  = np.frombuffer(FID.read(2*wf_len), dtype=np.int16)
             wf_lib[f'ch{i+1}'] = ( 1.0 / MAX_WAVEFORM_VALUE) * wf_dat.flatten()
-
-        NUM_NCO = 2
         freq = np.zeros(NUM_NCO)  #radians per timestep
         phase = np.zeros(NUM_NCO)
         frame = np.zeros(NUM_NCO)
@@ -1267,7 +1272,6 @@ def read_sequence_file(fileName):
                 seqs['ch2'][ct] = mod_ch2
 
         del seqs['mod_phase']
-
     return seqs
 
 
