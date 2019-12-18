@@ -311,10 +311,13 @@ class ChannelLibrary(object):
             return table_code
 
         table_code = ''
-        for chan, value in dict_1.items():
-            this_dict = value.__dict__
+        for chan in set(list(dict_1.keys()) + list(dict_2.keys())):
+            if chan not in dict_1 or chan not in dict_2: # don't display differences of unique channels
+                continue
+            this_dict1 = dict_1[chan].__dict__
+            this_dict2 = dict_2[chan].__dict__
             ct = 0
-            table_code += iter_diff(this_dict, dict_2[chan].__dict__, ct, chan)
+            table_code += iter_diff(this_dict1, this_dict2, ct, chan)
         display(HTML(f"<table><tr><th>Object</th><th>Parameter</th><th>{name1}</th><th>{name2}</th></tr><tr>{table_code}</tr></table>"))
 
     def receivers(self):
