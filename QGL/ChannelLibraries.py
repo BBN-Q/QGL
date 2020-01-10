@@ -47,7 +47,7 @@ import logging
 
 import bbndb
 
-from bqplot import Figure, LinearScale, Axis, Lines, Figure
+from bqplot import Figure, LinearScale, ColorScale, Axis, Lines, Figure
 from bqplot.marks import Graph, Lines, Label
 from ipywidgets import Layout, VBox, HBox
 
@@ -141,10 +141,10 @@ class ChannelLibrary(object):
         cdb = Channels.ChannelDatabase
         q = self.session.query(cdb.label, cdb.time, cdb.id, cdb.notes).\
             order_by(-Channels.ChannelDatabase.id, Channels.ChannelDatabase.label, Channels.ChannelDatabase.notes).all()
+
         table_code = ""
         for i, (label, time, id, notes) in enumerate(q):
             y, d, t = map(time.strftime, ["%Y", "%b. %d", "%I:%M:%S %p"])
-            # t = time.strftime("(%Y) %b. %d @ %I:%M:%S %p")
             table_code += f"<tr><td>{id}</td><td>{y}</td><td>{d}</td><td>{t}</td><td>{label}</td><td>{notes}</td></tr>"
         display(IPHTML(f"<table><tr><th>id</th><th>Year</th><th>Date</th><th>Time</th><th>Name</th><th>Notes</th></tr><tr>{table_code}</tr></table>"))
 
@@ -234,7 +234,7 @@ class ChannelLibrary(object):
         fig        = Figure(marks=[bq_graph], layout=fig_layout)
         return fig
 
-    def show_connectivity(self):
+    def show_connectivity(self, verbose=False):
             graph_edges = []
             qub_objs = self.qubits()
             edges = self.edges()
@@ -258,7 +258,9 @@ class ChannelLibrary(object):
             graph.add_edges_from(graph_edges)
 
             indices   = {n: i for i, n in enumerate(graph.nodes())}
-            node_data = [{'label': n, 'data': v['node_obj'].print(False)} for n,v in graph.nodes(True)] # fix node visualization
+
+            node_data = [{'label': n, 'data': v['node_obj'].print(show=False, verbose=verbose), 'edge_data': v['node_obj'].print_edges(show=False, verbose=verbose, edges = [e for e in self.edges() if e.source.label == n or e.target.label == n]
+            )} for n,v in graph.nodes(True)] # fix edges
             link_data = [{'source': indices[s], 'target': indices[t]} for s, t in graph.edges()]
 
             qub_objs.sort(key=lambda x: x.label)
@@ -278,15 +280,23 @@ class ChannelLibrary(object):
                     hovered_symbol = symbol
                     table.value = symbol['data']
 
+            def click_handler(self, content, hovered_symbol=hovered_symbol, table=table):
+                symbol = content.get('data', '')
+                if(symbol != hovered_symbol):
+                    hovered_symbol = symbol
+                    table.value = symbol['edge_data']
+
             xs = LinearScale(min=min(x)-0.5, max=max(x)+0.6)
             ys = LinearScale(min=min(y)-0.5, max=max(y)+0.6)
             fig_layout = Layout(width='500px', height='500px')
-            bq_graph      = Graph(node_data=node_data, link_data=link_data, x=x, y=y,scales={'x':xs, 'y':ys},
-                                link_type='line', colors=['blue'] * len(node_data), directed=True)
+            cs = ColorScale(scheme = 'PuBuGn')
+            bq_graph      = Graph(node_data=node_data, link_data=link_data, x=x, y=y,scales={'x':xs, 'y':ys, 'color': cs},
+                                link_type='line', color=np.linspace(0,1,len(node_data)), directed=True)
             bgs_lines = []
             middles   = []
             bq_graph.tooltip = table
             bq_graph.on_hover(hover_handler)
+            bq_graph.on_element_click(click_handler)
             fig        = Figure(marks=[bq_graph], layout=fig_layout)
             return fig
 
