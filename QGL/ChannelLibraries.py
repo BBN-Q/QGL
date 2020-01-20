@@ -47,7 +47,7 @@ import logging
 
 import bbndb
 
-from bqplot import Figure, LinearScale, Axis, Lines, Figure
+from bqplot import Figure, LinearScale, ColorScale, Axis, Lines, Figure
 from bqplot.marks import Graph, Lines, Label
 from ipywidgets import Layout, VBox, HBox
 
@@ -55,7 +55,8 @@ from . import config
 from . import Channels
 from . import PulseShapes
 
-from IPython.display import HTML, display
+from ipywidgets import Layout, HTML
+from IPython.display import HTML as IPHTML, display
 
 channelLib = None
 
@@ -140,12 +141,12 @@ class ChannelLibrary(object):
         cdb = Channels.ChannelDatabase
         q = self.session.query(cdb.label, cdb.time, cdb.id, cdb.notes).\
             order_by(-Channels.ChannelDatabase.id, Channels.ChannelDatabase.label, Channels.ChannelDatabase.notes).all()
+
         table_code = ""
         for i, (label, time, id, notes) in enumerate(q):
             y, d, t = map(time.strftime, ["%Y", "%b. %d", "%I:%M:%S %p"])
-            # t = time.strftime("(%Y) %b. %d @ %I:%M:%S %p")
             table_code += f"<tr><td>{id}</td><td>{y}</td><td>{d}</td><td>{t}</td><td>{label}</td><td>{notes}</td></tr>"
-        display(HTML(f"<table><tr><th>id</th><th>Year</th><th>Date</th><th>Time</th><th>Name</th><th>Notes</th></tr><tr>{table_code}</tr></table>"))
+        display(IPHTML(f"<table><tr><th>id</th><th>Year</th><th>Date</th><th>Time</th><th>Name</th><th>Notes</th></tr><tr>{table_code}</tr></table>"))
 
     def ent_by_type(self, obj_type, show=False):
         q = self.session.query(obj_type).filter(obj_type.channel_db.has(label="working")).order_by(obj_type.label).all()
@@ -232,6 +233,72 @@ class ChannelLibrary(object):
 
         fig        = Figure(marks=[bq_graph], layout=fig_layout)
         return fig
+
+    def show_connectivity(self, verbose=False):
+            graph_edges = []
+            qub_objs = self.qubits()
+            edges = self.edges()
+            for e in edges:
+                graph_edges.append((e.source.label, e.target.label))
+
+            table = HTML("<b>Re-evaluate this plot to see information about qubits. Otherwise it will be stale.</b>")
+            table.add_class("hover_tooltip")
+            display(IPHTML("""
+            <style>
+                .hover_tooltip table { border-collapse: collapse; padding: 8px; }
+                .hover_tooltip th, .hover_tooltip td { text-align: left; padding: 8px; }
+                .hover_tooltip tr:nth-child(even) { background-color: #cccccc; padding: 8px; }
+            </style>
+            """))
+
+            graph = nx.digraph.DiGraph()
+            for q in qub_objs:
+                graph.add_node(q.label, node_obj = q)
+
+            graph.add_edges_from(graph_edges)
+
+            indices   = {n: i for i, n in enumerate(graph.nodes())}
+
+            node_data = [{'label': n, 'data': v['node_obj'].print(show=False, verbose=verbose), 'edge_data': v['node_obj'].print_edges(show=False, verbose=verbose, edges = [e for e in self.edges() if e.source.label == n or e.target.label == n]
+            )} for n,v in graph.nodes(True)] # fix edges
+            link_data = [{'source': indices[s], 'target': indices[t]} for s, t in graph.edges()]
+
+            qub_objs.sort(key=lambda x: x.label)
+            qubit_names = [q.label for q in qub_objs]
+
+            loc = {}
+
+            nqubits = len(qub_objs)
+            dtheta = 2*np.pi/nqubits
+            rho = 4
+            x = [rho*np.cos(dtheta*ind) for ind,n in enumerate(qub_objs)]
+            y = [rho*np.sin(dtheta*ind) for ind,n in enumerate(qub_objs)]
+            hovered_symbol = ''
+            def hover_handler(self, content, hovered_symbol=hovered_symbol, table=table):
+                symbol = content.get('data', '')
+                if(symbol != hovered_symbol):
+                    hovered_symbol = symbol
+                    table.value = symbol['data']
+
+            def click_handler(self, content, hovered_symbol=hovered_symbol, table=table):
+                symbol = content.get('data', '')
+                if(symbol != hovered_symbol):
+                    hovered_symbol = symbol
+                    table.value = symbol['edge_data']
+
+            xs = LinearScale(min=min(x)-0.5, max=max(x)+0.6)
+            ys = LinearScale(min=min(y)-0.5, max=max(y)+0.6)
+            fig_layout = Layout(width='500px', height='500px')
+            cs = ColorScale(scheme = 'PuBuGn')
+            bq_graph      = Graph(node_data=node_data, link_data=link_data, x=x, y=y,scales={'x':xs, 'y':ys, 'color': cs},
+                                link_type='line', color=np.linspace(0,1,len(node_data)), directed=True)
+            bgs_lines = []
+            middles   = []
+            bq_graph.tooltip = table
+            bq_graph.on_hover(hover_handler)
+            bq_graph.on_element_click(click_handler)
+            fig        = Figure(marks=[bq_graph], layout=fig_layout)
+            return fig
 
     def show_frequency_plan(self):
         c_freqs = {}
@@ -532,7 +599,7 @@ class ChannelLibrary(object):
     def new_transceiver(self, model, label, address, numtx=1, numrx=1, nummark=4, record_length = 1024, **kwargs):
         translator = model+"Pattern"
         stream_sel = model+"StreamSelector"
-        
+
         chans = []
         for i in range(numtx):
             chan = Channels.PhysicalQuadratureChannel(label=f"{label}-Tx{i+1}-1", instrument=label, channel=i, translator=translator, channel_db=self.channelDatabase)
@@ -540,11 +607,11 @@ class ChannelLibrary(object):
         for i in range(nummark):
             chan = Channels.PhysicalMarkerChannel(label=f"{label}-Tx{i+1}-M", channel=i, instrument=label, translator=translator, channel_db=self.channelDatabase)
             chans.append(chan)
-        
+
         transmitter = Channels.Transmitter(label=f"{label}-Tx", model=model, address=address, channels=chans, channel_db=self.channelDatabase)
         transmitter.trigger_source = "external"
         transmitter.address = address
-        
+
         chans = []
         for i in range(numrx):
             chan = Channels.ReceiverChannel(label=f"RecvChan-{label}-{i+1}", channel=i, channel_db=self.channelDatabase)
@@ -559,8 +626,8 @@ class ChannelLibrary(object):
         transceiver = Channels.Transceiver(label=label, address=address, model=model, transmitters=[transmitter], receivers = [receiver], initialize_separately=False, channel_db=self.channelDatabase)
         transmitter.transceiver = transceiver
         receiver.transceiver    = transceiver
-        
-        self.add_and_update_dict(transceiver) 
+
+        self.add_and_update_dict(transceiver)
         return transceiver
 
 
