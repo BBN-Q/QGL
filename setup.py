@@ -1,17 +1,17 @@
 from setuptools import setup, find_packages
 
 setup(name='QGL',
-      version='2019.2',
+      version='2020.1',
       packages=find_packages(exclude=["tests"]),
       url='https://github.com/BBN-Q/QGL',
       download_url='https://github.com/BBN-Q/QGL',
       license="Apache 2.0 License",
       install_requires=[
-        "bbndb >= 2019.2",
+        "bbndb >= 2020.1",
         "numpy >= 1.11.1",
         "scipy >= 0.17.1",
         "networkx >= 1.11",
-        "bqplot >= 0.11.5",
+        "bqplot >= 0.12.2",
         "sqlalchemy >= 1.2.15"
       ],
       description="Quantum Gate Language (QGL) is a domain specific language embedded in python for specifying pulse sequences.",
