@@ -638,9 +638,12 @@ def flat_top_gaussian(chan,
     """
     A constant pulse with rising and falling gaussian shape
     """
-    p =  Utheta(chan, length=riseFall, amp=amp, phase=phase, shape_fun=PulseShapes.gaussOn, label=label+"_rise") + \
-         Utheta(chan, length=length, amp=amp, phase=phase, shape_fun=PulseShapes.constant, label=label+"_top") + \
-         Utheta(chan, length=riseFall, amp=amp, phase=phase, shape_fun=PulseShapes.gaussOff, label=label+"_fall")
+    if riseFall == 0:
+        p = Utheta(chan, length=length, amp=amp, phase=phase, shape_fun=PulseShapes.constant, label=label+"_top")
+    else:
+        p =  Utheta(chan, length=riseFall, amp=amp, phase=phase, shape_fun=PulseShapes.gaussOn, label=label+"_rise") + \
+             Utheta(chan, length=length, amp=amp, phase=phase, shape_fun=PulseShapes.constant, label=label+"_top") + \
+             Utheta(chan, length=riseFall, amp=amp, phase=phase, shape_fun=PulseShapes.gaussOff, label=label+"_fall")
     return p._replace(label=label)
 
 

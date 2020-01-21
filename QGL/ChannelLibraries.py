@@ -47,7 +47,7 @@ import logging
 
 import bbndb
 
-from bqplot import Figure, LinearScale, Axis, Lines, Figure
+from bqplot import Figure, LinearScale, ColorScale, Axis, Lines, Figure
 from bqplot.marks import Graph, Lines, Label
 from ipywidgets import Layout, VBox, HBox
 
@@ -55,7 +55,8 @@ from . import config
 from . import Channels
 from . import PulseShapes
 
-from IPython.display import HTML, display
+from ipywidgets import Layout, HTML
+from IPython.display import HTML as IPHTML, display
 
 channelLib = None
 
@@ -140,23 +141,12 @@ class ChannelLibrary(object):
         cdb = Channels.ChannelDatabase
         q = self.session.query(cdb.label, cdb.time, cdb.id, cdb.notes).\
             order_by(-Channels.ChannelDatabase.id, Channels.ChannelDatabase.label, Channels.ChannelDatabase.notes).all()
+
         table_code = ""
         for i, (label, time, id, notes) in enumerate(q):
             y, d, t = map(time.strftime, ["%Y", "%b. %d", "%I:%M:%S %p"])
-            # t = time.strftime("(%Y) %b. %d @ %I:%M:%S %p")
             table_code += f"<tr><td>{id}</td><td>{y}</td><td>{d}</td><td>{t}</td><td>{label}</td><td>{notes}</td></tr>"
-        display(HTML(f"<table><tr><th>id</th><th>Year</th><th>Date</th><th>Time</th><th>Name</th><th>Notes</th></tr><tr>{table_code}</tr></table>"))
-
-    def cal_ls(self):
-        ''' List of auspex.pulse_calibration results '''
-        caldb = bbndb.calibration.Calibration
-        c = self.session.query(caldb.sample_id, caldb.name, caldb.value, caldb.date).order_by(-caldb.sample_id).all()
-        table_code = ""
-        for i, (sample_id, name, value, time) in enumerate(c):
-            d,t  = str(time).split()
-            sample = self.session.query(bbndb.calibration.Sample).filter_by(id=sample_id).first()
-            table_code += f"<tr><td>{id}</td><td>{d}</td><td>{t.split('.')[0]}</td><td>{sample.name}</td><td>{name}</td><td>{round(value,9)}</td></tr>"
-        display(HTML(f"<table><tr><th>id</th><th>Date</th><th>Time</th><th>Sample</th><th>Name</th><th>Value</th></tr><tr>{table_code}</tr></table>"))
+        display(IPHTML(f"<table><tr><th>id</th><th>Year</th><th>Date</th><th>Time</th><th>Name</th><th>Notes</th></tr><tr>{table_code}</tr></table>"))
 
     def ent_by_type(self, obj_type, show=False):
         q = self.session.query(obj_type).filter(obj_type.channel_db.has(label="working")).order_by(obj_type.label).all()
@@ -244,6 +234,72 @@ class ChannelLibrary(object):
         fig        = Figure(marks=[bq_graph], layout=fig_layout)
         return fig
 
+    def show_connectivity(self, verbose=False):
+            graph_edges = []
+            qub_objs = self.qubits()
+            edges = self.edges()
+            for e in edges:
+                graph_edges.append((e.source.label, e.target.label))
+
+            table = HTML("<b>Re-evaluate this plot to see information about qubits. Otherwise it will be stale.</b>")
+            table.add_class("hover_tooltip")
+            display(IPHTML("""
+            <style>
+                .hover_tooltip table { border-collapse: collapse; padding: 8px; }
+                .hover_tooltip th, .hover_tooltip td { text-align: left; padding: 8px; }
+                .hover_tooltip tr:nth-child(even) { background-color: #cccccc; padding: 8px; }
+            </style>
+            """))
+
+            graph = nx.digraph.DiGraph()
+            for q in qub_objs:
+                graph.add_node(q.label, node_obj = q)
+
+            graph.add_edges_from(graph_edges)
+
+            indices   = {n: i for i, n in enumerate(graph.nodes())}
+
+            node_data = [{'label': n, 'data': v['node_obj'].print(show=False, verbose=verbose), 'edge_data': v['node_obj'].print_edges(show=False, verbose=verbose, edges = [e for e in self.edges() if e.source.label == n or e.target.label == n]
+            )} for n,v in graph.nodes(True)] # fix edges
+            link_data = [{'source': indices[s], 'target': indices[t]} for s, t in graph.edges()]
+
+            qub_objs.sort(key=lambda x: x.label)
+            qubit_names = [q.label for q in qub_objs]
+
+            loc = {}
+
+            nqubits = len(qub_objs)
+            dtheta = 2*np.pi/nqubits
+            rho = 4
+            x = [rho*np.cos(dtheta*ind) for ind,n in enumerate(qub_objs)]
+            y = [rho*np.sin(dtheta*ind) for ind,n in enumerate(qub_objs)]
+            hovered_symbol = ''
+            def hover_handler(self, content, hovered_symbol=hovered_symbol, table=table):
+                symbol = content.get('data', '')
+                if(symbol != hovered_symbol):
+                    hovered_symbol = symbol
+                    table.value = symbol['data']
+
+            def click_handler(self, content, hovered_symbol=hovered_symbol, table=table):
+                symbol = content.get('data', '')
+                if(symbol != hovered_symbol):
+                    hovered_symbol = symbol
+                    table.value = symbol['edge_data']
+
+            xs = LinearScale(min=min(x)-0.5, max=max(x)+0.6)
+            ys = LinearScale(min=min(y)-0.5, max=max(y)+0.6)
+            fig_layout = Layout(width='500px', height='500px')
+            cs = ColorScale(scheme = 'PuBuGn')
+            bq_graph      = Graph(node_data=node_data, link_data=link_data, x=x, y=y,scales={'x':xs, 'y':ys, 'color': cs},
+                                link_type='line', color=np.linspace(0,1,len(node_data)), directed=True)
+            bgs_lines = []
+            middles   = []
+            bq_graph.tooltip = table
+            bq_graph.on_hover(hover_handler)
+            bq_graph.on_element_click(click_handler)
+            fig        = Figure(marks=[bq_graph], layout=fig_layout)
+            return fig
+
     def show_frequency_plan(self):
         c_freqs = {}
         m_freqs = {}
@@ -273,6 +329,64 @@ class ChannelLibrary(object):
             figs.append(Figure(marks=lines+[labels], axes=[ax, ay], title=f"{ss} Frequency Plan"))
         return HBox(figs)
 
+    def diff(self, name1, name2, index1=1, index2=1):
+        '''
+        Compare 2 channel library versions. Print the difference between 2 libraries, including parameter values and channel allocations. It requires both versions to be saved in the same sqlite database.
+        Args
+            name1: name of first version to compare
+            name2: name of second version to compare
+            index1, index2: by default, loading the most recent instances for the given names. Specifying index1/2 = 2 will select the second most recent instance etc."""
+        '''
+        cdb = Channels.ChannelDatabase
+        db1 = self.session.query(cdb).filter(cdb.label==name1).order_by(cdb.time.asc())[-1*index1]
+        db2 = self.session.query(cdb).filter(cdb.label==name2).order_by(cdb.time.asc())[-1*index2]
+        copied_db1 = bbndb.deepcopy_sqla_object(db1)
+        copied_db2 = bbndb.deepcopy_sqla_object(db2)
+        dict_1 = {c.label: c for c in copied_db1.channels + copied_db1.all_instruments()}
+        dict_2 = {c.label: c for c in copied_db2.channels + copied_db2.all_instruments()}
+        def iter_diff(value_iter1, value_iter2, ct, label=''):
+            table_code = ''
+            for key, key2 in zip(value_iter1, value_iter2):
+                if key in ['_sa_instance_state', 'channel_db']:
+                    continue
+                if isinstance(value_iter1, dict):
+                    cmp1 = value_iter1[key]
+                    cmp2 = value_iter2[key]
+                    if label in value_iter1:
+                        label = value_iter1['label']
+                elif isinstance(value_iter1, list):
+                    cmp1 = key
+                    cmp2 = key2 #TODO fix. why would they be in any order?
+                else:
+                    cmp1 = getattr(value_iter1, key)
+                    cmp2 = getattr(value_iter2, key)
+                if (cmp1 == None) ^ (cmp2 == None):
+                    table_code += f"<tr><td>{label}</td><td>{key}</td><td>{cmp1}</td><td>{cmp2}</td></tr>"
+                    continue
+                if (cmp1 == None) or (cmp2 == None) or ((isinstance(cmp1, dict) or isinstance(cmp1, list)) and len(cmp1) == 0):
+                    continue
+                if isinstance(cmp1, (bbndb.qgl.DatabaseItem, bbndb.qgl.Channel, bbndb.qgl.Instrument)):
+                    cmp1 = cmp1.__dict__
+                    cmp2 = cmp2.__dict__
+                if isinstance(cmp1, (dict, list, bbndb.qgl.DatabaseItem, bbndb.qgl.Channel, bbndb.qgl.Instrument)):
+                    if ct<1: # up to 2 recursion levels for now, to avoid infinite loops for bidirectional relations
+                        ct+=1
+                        table_code += iter_diff(cmp1, cmp2, ct, label=label)
+                    continue
+                if cmp1 != cmp2:
+                    table_code += f"<tr><td>{label}</td><td>{key}</td><td>{cmp1}</td><td>{cmp2}</td></tr>"
+            return table_code
+
+        table_code = ''
+        for chan in set(list(dict_1.keys()) + list(dict_2.keys())):
+            if chan not in dict_1 or chan not in dict_2: # don't display differences of unique channels
+                continue
+            this_dict1 = dict_1[chan].__dict__
+            this_dict2 = dict_2[chan].__dict__
+            ct = 0
+            table_code += iter_diff(this_dict1, this_dict2, ct, chan)
+        display(HTML(f"<table><tr><th>Object</th><th>Parameter</th><th>{name1}</th><th>{name2}</th></tr><tr>{table_code}</tr></table>"))
+
     def receivers(self):
         return self.ent_by_type(Channels.Receiver)
 
@@ -285,6 +399,9 @@ class ChannelLibrary(object):
     def qubits(self):
         return self.ent_by_type(Channels.Qubit)
 
+    def edges(self):
+        return self.ent_by_type(Channels.Edge)
+
     def meas(self):
         return self.ent_by_type(Channels.Measurement)
 
@@ -295,7 +412,7 @@ class ChannelLibrary(object):
     def load(self, name, index=1):
         """Load the latest instance for a particular name. Specifying index = 2 will select the second most recent instance """
         cdb = Channels.ChannelDatabase
-        items = self.session.query(cdb).filter(cdb.label==name).order_by(cdb.time.desc()).all()
+        items = self.session.query(cdb).filter(cdb.label==name).order_by(cdb.time.asc()).all()
         self.load_obj(items[-index])
 
     @check_session_dirty
@@ -477,6 +594,42 @@ class ChannelLibrary(object):
 
         self.add_and_update_dict(this_transceiver)
         return this_transceiver
+
+    @check_for_duplicates
+    def new_transceiver(self, model, label, address, numtx=1, numrx=1, nummark=4, record_length = 1024, **kwargs):
+        translator = model+"Pattern"
+        stream_sel = model+"StreamSelector"
+
+        chans = []
+        for i in range(numtx):
+            chan = Channels.PhysicalQuadratureChannel(label=f"{label}-Tx{i+1}-1", instrument=label, channel=i, translator=translator, channel_db=self.channelDatabase)
+            chans.append(chan)
+        for i in range(nummark):
+            chan = Channels.PhysicalMarkerChannel(label=f"{label}-Tx{i+1}-M", channel=i, instrument=label, translator=translator, channel_db=self.channelDatabase)
+            chans.append(chan)
+
+        transmitter = Channels.Transmitter(label=f"{label}-Tx", model=model, address=address, channels=chans, channel_db=self.channelDatabase)
+        transmitter.trigger_source = "external"
+        transmitter.address = address
+
+        chans = []
+        for i in range(numrx):
+            chan = Channels.ReceiverChannel(label=f"RecvChan-{label}-{i+1}", channel=i, channel_db=self.channelDatabase)
+            chans.append(chan)
+
+        receiver = Channels.Receiver(label=f"{label}-Rx", model=model, address=address, channels=chans, record_length=record_length, channel_db=self.channelDatabase)
+        receiver.trigger_source = "external"
+        receiver.stream_types   = "raw"
+        receiver.address    = address
+        receiver.stream_sel = stream_sel
+
+        transceiver = Channels.Transceiver(label=label, address=address, model=model, transmitters=[transmitter], receivers = [receiver], initialize_separately=False, channel_db=self.channelDatabase)
+        transmitter.transceiver = transceiver
+        receiver.transceiver    = transceiver
+
+        self.add_and_update_dict(transceiver)
+        return transceiver
+
 
     @check_for_duplicates
     def new_X6(self, label, address, dsp_channel=0, record_length=1024, **kwargs):
