@@ -78,6 +78,10 @@ and visualizing these pulse sequences.
 * ex2_single_qubit_sequences.ipynb: Simple spectroscopy and coherence experiments on a single qubit.
 * ex3_two_qubit_sequences.ipynb: Examples of two-qubit sequences, including CR gates.
 
+Note that running _Ex1_ will generate a channel library database, _example.sqlite_. _Ex2_ and _Ex3_ rely on 
+this database, so _Ex1_ must be run before _Ex2_ and _Ex3_. If the database schema changes, _example.sqlite_
+must be regenerated. So, make sure to remove _example.sqlite_ whenever updating QGL versions. 
+
 In addition to these example notebooks for manipulating qubits, `channel_libriary.ipynb` provides a 
 basic Channel Library that is used by `ex2_single_qubit_sequences` and `ex3_two_qubit_sequences` 
 example notebooks. 
