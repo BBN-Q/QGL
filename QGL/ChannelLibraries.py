@@ -707,6 +707,12 @@ class ChannelLibrary(object):
         self.update_channelDict()
 
     def set_bias(self, qubit, bias=None, frequency=None):
+        """
+            Set either qubit frequency or DC bias given the other, reading the values or interpolating from qubit.bias_pairs.
+            qubit: qubit bias/frequency to be set
+            bias (option 1): set the DC bias of the associated qubit.DCsource and the qubit control generator to the corresponding frequency
+            frequency (option 2): set the qubit control generator (accounting for SSB) and the associated DCsource to the corresponding value
+        """
         if not isinstance(qubit, Channels.Qubit):
             raise ValueError("Set DC bias for a qubit only")
         if not qubit.bias_pairs:
