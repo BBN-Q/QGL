@@ -711,13 +711,17 @@ class ChannelLibrary(object):
             raise ValueError("Set DC bias for a qubit only")
         if not qubit.bias_pairs:
             raise ValueError("Bias - frequency pairs not defined")
-            if bool(bias) and bool(frequency):
-                raise ValueError("Choose either DC bias or source frequency")
+        if bool(bias) and bool(frequency):
+            raise ValueError("Choose either DC bias or qubit frequency")
         bias_pairs = sorted(qubit.bias_pairs.items())
         biases = [k[0] for k in bias_pairs]
-        frequencies = [k[1] for k in bias_pairs]
-        qubit.phys_chan.generator.frequency = frequency if frequency else interp1d(biases, frequencies)([bias])[0]
-        qubit.bias_source.level = bias if bias else interp1d(frequencies, biases)([frequency])[0]
+        freqs_q = [k[1]['freq_q'] for k in bias_pairs]
+        freqs_r = [k[1]['freq_r'] for k in bias_pairs]
+        qubit.phys_chan.generator.frequency = frequency if frequency else interp1d(biases, freqs_q)([bias])[0]
+        qubit.phys_chan.generator.frequency -= qubit.frequency
+        qubit.bias_source.level = bias if bias else interp1d(freqs_q, biases)([frequency])[0]
+        qubit.measure_chan.phys_chan.generator.frequency = interp1d(biases, freqs_r)([qubit.bias_source.level])[0]
+        qubit.measure_chan.phys_chan.generator.frequency -= qubit.measure_chan.autodyne_freq
 
     def new_edge(self, source, target, cnot_impl=None):
         """
