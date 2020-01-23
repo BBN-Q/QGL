@@ -66,7 +66,7 @@ pip install -e .
 ```
 
 which will automatically fetch and install all of the requirement packages. As typical with package managers,
-this process will execute the package requirements enumerated in [setup.py.](../setup.py).   
+this process will execute the package requirements enumerated in [setup.py](../setup.py).   
    
 ## Examples: where to start <a name="Examples"></a>
 
