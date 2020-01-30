@@ -174,6 +174,44 @@ def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix="", add_cals=True):
         plot_pulse_files(metafile)
     return metafile
 
+def TwoQubitRB_DiAC(q1, q2, seqs, showPlot=False, suffix="", add_cals=True):
+    """Two qubit randomized benchmarking using 90 and 180 single qubit generators and ZX90
+
+    Parameters
+    ----------
+    qubit : logical channel to implement sequence (LogicalChannel)
+    seqs : list of lists of Clifford group integers
+    showPlot : whether to plot (boolean)
+    suffix : suffix to apply to sequence file names
+    """
+    seqsBis = []
+    for seq in seqs:
+        seqsBis.append(reduce(operator.add, [clifford_seq_diatomic(c, q2, q1)
+                                             for c in seq]))
+
+    #Add the measurement to all sequences
+    for seq in seqsBis:
+        seq.append(MEAS(q1) * MEAS(q2))
+
+    axis_descriptor = [{
+        'name': 'length',
+        'unit': None,
+        'points': list(map(len, seqs)),
+        'partition': 1
+    }]
+
+    #Tack on the calibration sequences
+    if add_cals:
+        seqsBis += create_cal_seqs((q1, q2), 2)
+        axis_descriptor.append(cal_descriptor((q1, q2), 2))
+
+    metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor, suffix = suffix, extra_meta = {'sequences':seqs})
+
+    if showPlot:
+        plot_pulse_files(metafile)
+    return metafile
+
+
 def TwoQubitLeakageRB(q1, q2, meas_qubit, seqs, pi2args, showPlot=False):
     """Two qubit randomized benchmarking using 90 and 180 single qubit generators and ZX90 to
        measure leakage outside the qubit subspace.

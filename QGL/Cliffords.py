@@ -222,6 +222,16 @@ def clifford_seq(c, q1, q2=None):
             seq += [Cx2(c[2][0], c[2][1], q1, q2)]
         return seq
 
+def clifford_seq_diatomic(c, q1, q2):
+    c = C2Seqs[c]
+
+    seq = [DiAC(q1, c[0][0], compiled=False)*DiAC(q2, c[0][1], compiled=False)]
+    if c[1]:
+        seq += entangling_seq(c[1], q1, q2)
+    if c[2]:
+        seq += [DiAC(q1, c[2][0], compiled=False)*DiAC(q2, c[2][1], compiled=False)]
+    return seq
+
 
 @memoize
 def clifford_mat(c, numQubits):
