@@ -34,19 +34,31 @@ QGL relies on the concept of a "channel" to represent a qubit. The channel embod
 
 While QGL is *not* dependent on [Auspex](https://github.com/BBN-Q/auspex), Auspex is an experiment control framework which greatly facilitates executing QGL programs on laboratory hardware. Auspex provides constructs for abstracting (defining) instruments, connectivity, and post processing to enable "hands off" experimental control of sophiscated experiments on a variety of laboratory equipment including AWGs, digitizers, current sources, etc.    
 
+For plotting pulse waveforms within jupyter notebooks, QGL uses the bqplot library (which should be installed automatically when using the methods detailed below) and should not require any additional infrastructure. **For Jupyter Lab compatibility** additional steps are required:
 
+```
+conda install nodejs
+jupyter labextension install @jupyter-widgets/jupyterlab-manager
+jupyter labextension install bqplot
+```
 
 ## Installation <a name="Installation"></a>
 
-QGL can be downloaded from GitHub:
+There are a number of ways to obtain QGL:
 
-```https://github.com/BBN-Q/QGL/archive/master.zip```   
+Directly from the pypi, which will get the most recent master release, e.g. 2019.2:
 
-Or QGL can be cloned from GitHub to participate in QGL development:
+```pip install qgl```
+
+QGL can be cloned from GitHub to participate in QGL development:
 
 ```git clone https://github.com/BBN-Q/qgl.git```   
 
-And subsequently installed using pip:
+Or the source tree can be downloaded from GitHub. For the master branch:
+
+```https://github.com/BBN-Q/QGL/archive/master.zip```   
+
+For downloaded or cloned repositories, one most subsequently install the package using pip:
 
 ```
 cd QGL    
@@ -54,7 +66,7 @@ pip install -e .
 ```
 
 which will automatically fetch and install all of the requirement packages. As typical with package managers,
-this process will execute the package requirements enumerated in [setup.py.](../setup.py).   
+this process will execute the package requirements enumerated in [setup.py](../setup.py).   
    
 ## Examples: where to start <a name="Examples"></a>
 
@@ -65,6 +77,10 @@ QGL programming concepts (in the QGL/doc directory):
 and visualizing these pulse sequences.
 * ex2_single_qubit_sequences.ipynb: Simple spectroscopy and coherence experiments on a single qubit.
 * ex3_two_qubit_sequences.ipynb: Examples of two-qubit sequences, including CR gates.
+
+Note that running _Ex1_ will generate a channel library database, _example.sqlite_. _Ex2_ and _Ex3_ rely on 
+this database, so _Ex1_ must be run before _Ex2_ and _Ex3_. If the database schema changes, _example.sqlite_
+must be regenerated. So, make sure to remove _example.sqlite_ whenever updating QGL versions. 
 
 In addition to these example notebooks for manipulating qubits, `channel_libriary.ipynb` provides a 
 basic Channel Library that is used by `ex2_single_qubit_sequences` and `ex3_two_qubit_sequences` 
