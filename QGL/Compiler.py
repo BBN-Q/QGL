@@ -634,6 +634,14 @@ def compile_sequence(seq, channels=None):
                         updated_frameChange = wires[chan][-ct].frameChange + block.pulses[chan].frameChange
                         wires[chan][-ct] = wires[chan][-ct]._replace(frameChange=updated_frameChange)
                         break
+                    # if no non-TA entry, add frame change at first available opportunity, from the start moving forward
+                    if ct == len(wires[chan]):
+                        for ct2 in range(len(wires[chan])):
+                            if hasattr(wires[chan][ct2], 'frameChange'):
+                                if hasattr(wires[chan][ct2], 'isTimeAmp') and  wires[chan][ct2].isTimeAmp:
+                                    updated_frameChange = wires[chan][ct2].frameChange + block.pulses[chan].frameChange
+                                    wires[chan][ct2] = wires[chan][ct2]._replace(frameChange=updated_frameChange)
+                                break # if the first pulse is not an Id left, it should have already been updated
             continue
         # add the pulses per channel
         for chan in channels:
