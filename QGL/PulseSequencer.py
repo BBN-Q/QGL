@@ -51,8 +51,8 @@ class Pulse(namedtuple("Pulse", ["label", "channel", "length", "amp", "phase", "
             shape = getattr(PulseShapes, shapeParams['shape_fun'])
         else:
             shape = shapeParams['shape_fun']
-        isTimeAmp = (shape == PulseShapes.constant)
         isZero = (amp == 0)
+        isTimeAmp = (shape == PulseShapes.constant) or isZero
         return super(cls, Pulse).__new__(cls, label, channel,
                                          shapeParams['length'], amp, phase,
                                          frequency, frameChange, shapeParams,
