@@ -56,6 +56,7 @@ class WriteAddrInstruction(object):
     def __init__(self, name, channel, modifier, addr, value, tdm, **kwargs):
         self.instruction = name
         self.channel = channel
+        #self.channels = None
         self.invalid = modifier
         self.addr = addr
         self.value = value
@@ -96,6 +97,7 @@ class LoadCmpVramInstruction(object):
         self.addr = addr
         self.tdm = tdm
         self.length = 0
+        self.channel = None
 
     def promote(self, ptype):
         return self

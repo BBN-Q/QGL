@@ -2,6 +2,7 @@
 from .Channels import Edge, Measurement
 from .PulseSequencer import PulseBlock
 from .ControlFlow import Barrier, ControlInstruction
+from .TdmInstructions import LoadCmpVramInstruction, WriteAddrInstruction, CustomInstruction
 from .BlockLabel import BlockLabel
 from .PatternUtils import flatten
 from .ChannelLibraries import QubitFactory
@@ -13,6 +14,7 @@ def schedule(seq):
     packs those operations in a maximally concurrent fashion. The user inserts
     `Barrier()` operations to prevent the scheduler from moving operations "earlier"
     than the barrier.
+    TOFIX: schedule w. branches
     '''
 
     # dictionary of per-qubit time counters
@@ -33,7 +35,8 @@ def schedule(seq):
         # find the most advanced counter in the channel set
         idx = max(counters.get(ch, 0) for ch in channels)
 
-        if (idx >= len(out_seq)) or isinstance(out_seq[idx], ControlInstruction):
+        ctrl_types = (ControlInstruction, WriteAddrInstruction, LoadCmpVramInstruction, CustomInstruction)
+        if (idx >= len(out_seq)) or isinstance(out_seq[idx], ctrl_types) or isinstance(instr, ctrl_types):
             out_seq.append(instr)
         else:
             out_seq[idx] *= instr
@@ -51,7 +54,7 @@ def get_channels(instr, channel_set=None):
     '''
     if isinstance(instr, PulseBlock):
         return tuple(instr.channel)
-    elif isinstance(instr, (ControlInstruction, BlockLabel)):
+    elif isinstance(instr, (ControlInstruction, BlockLabel, WriteAddrInstruction, LoadCmpVramInstruction, CustomInstruction)):
         # these instruction types are assumed to broadcast
         return channel_set
     elif isinstance(instr, Barrier):
