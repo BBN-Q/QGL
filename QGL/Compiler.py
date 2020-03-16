@@ -344,6 +344,7 @@ def compile_to_hardware(seqs,
     # Add gating/blanking pulses
     logger.info("Adding blanking pulses")
     for seq in seqs:
+        PatternUtils.add_parametric_pulses(seq)
         PatternUtils.add_gate_pulses(seq)
 
     if add_slave_trigger and 'slave_trig' in ChannelLibraries.channelLib:
