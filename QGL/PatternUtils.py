@@ -21,7 +21,7 @@ import pickle
 from copy import copy
 
 from .PulseSequencer import Pulse, TAPulse, PulseBlock, CompositePulse, CompoundGate, align
-from .PulsePrimitives import BLANK
+from .PulsePrimitives import BLANK, X
 from . import ControlFlow
 from . import BlockLabel
 from . import TdmInstructions
@@ -101,9 +101,35 @@ def add_gate_pulses(seq):
             if has_gate(chan) and not seq[ct].isZero:
                 seq[ct] *= BLANK(chan, seq[ct].length)
 
+def add_parametric_pulses(seq):
+    '''
+    add parametric pulses linked to predetermined channels, e.g. for parametric readout
+    '''
+
+    for ct in range(len(seq)):
+        if isinstance(seq[ct], CompoundGate):
+            add_parametric_pulses(seq[ct].seq)
+        elif isinstance(seq[ct], PulseBlock):
+            pb = None
+            for chan, pulse in seq[ct].pulses.items():
+                if has_parametric(chan) and not pulse.isZero and not (
+                        chan.parametric_chan in seq[ct].pulses.keys()):
+                    if pb:
+                        pb *= X(chan.parametric_chan, length = pulse.length)
+                    else:
+                        pb = X(chan.parametric_chan, length = pulse.length)
+            if pb:
+                seq[ct] *= pb
+        elif hasattr(seq[ct], 'channel'):
+            chan = seq[ct].channel
+            if has_parametric(chan) and not seq[ct].isZero:
+                seq[ct] *= X(chan.parametric_chan, length = seq[ct].length)
 
 def has_gate(channel):
     return hasattr(channel, 'gate_chan') and channel.gate_chan
+
+def has_parametric(channel):
+    return hasattr(channel, 'parametric_chan') and channel.parametric_chan
 
 def update_pulse_length(pulse, new_length):
     """Return new Pulse with modified length"""

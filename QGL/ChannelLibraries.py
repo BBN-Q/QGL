@@ -673,6 +673,12 @@ class ChannelLibrary(object):
         return thing
 
     @check_for_duplicates
+    def new_logical_channel(self, label, **kwargs):
+        thing = Channels.LogicalChannel(label=label, channel_db=self.channelDatabase, **kwargs)
+        self.add_and_update_dict(thing)
+        return thing
+
+    @check_for_duplicates
     def new_marker(self, label, phys_chan, **kwargs):
         thing = Channels.LogicalMarkerChannel(label=label, phys_chan = phys_chan, channel_db=self.channelDatabase, **kwargs)
         self.add_and_update_dict(thing)
