@@ -7,7 +7,7 @@ import numpy as np
 from collections.abc import Iterable
 from itertools import product
 
-def StarkSpectroscopy(qubit, measurement, amplitude, 
+def StarkSpectroscopy(qubit, measurement, amplitude,
                             delay=200e-9, length=1e-6, showPlot=False):
     """Stark shift spectroscopy experiment. Applies a coherent displacement
         to the qubit readout cavity while doing pulsed spectroscopy.
@@ -24,7 +24,7 @@ def StarkSpectroscopy(qubit, measurement, amplitude,
             length: Total length of cavity displacement pulse.
 
         Returns:
-            metafile: Path to compiled sequence metafile.
+            metafile : path to a json metafile with details about the sequences and paths to compiled machine files
     """
 
     if not isinstance(amplitude, Iterable):
@@ -50,7 +50,7 @@ def StarkSpectroscopy(qubit, measurement, amplitude,
 
     return metafile
 
-def StarkEcho(qubit, measurement, amplitudes, delays, 
+def StarkEcho(qubit, measurement, amplitudes, delays,
                             wait=200e-9, periods=4, showPlot=False):
     """Hahn echo sequence with a coherent displacement of the qubit measurement cavity.
         Used to measure photon-induced dephasing. This sequence can cause a lot of cache pressure
@@ -62,17 +62,17 @@ def StarkEcho(qubit, measurement, amplitudes, delays,
             qubit: Qubit channel for Hahn echo.
 
             measurement: Measurement channel of qubit.
-            
-            amplitudes: Amplitude(s) of cavity displacement pulse. 
 
-            delays: Hahn echo delays - the t in 90-t-180-t-180. 
+            amplitudes: Amplitude(s) of cavity displacement pulse.
+
+            delays: Hahn echo delays - the t in 90-t-180-t-180.
 
             wait: Delay between end of cavity displacement pulse and start of MEAS(qubit).
 
             periods: Number of artificial oscillations.
 
         Returns:
-            metafile: Path to compiled sequence metafile.
+            metafile : path to a json metafile with details about the sequences and paths to compiled machine files
     """
 
     if not isinstance(amplitudes, Iterable):
@@ -87,7 +87,7 @@ def StarkEcho(qubit, measurement, amplitudes, delays,
     def echo_stark(n, amp, max_delay, meas_delay=200e-9):
         x_len = qubit.pulse_params["length"]
         max_len = 3*x_len + 2*max_delay + meas_delay
-        echo_wait = max_len - (3*x_len + 2*delays[n]) 
+        echo_wait = max_len - (3*x_len + 2*delays[n])
 
         echo_seq = Id(qubit, echo_wait) + X90(qubit) + Id(qubit, delays[n]) + \
                         Y(qubit) + Id(qubit, delays[n]) + U90(qubit, echo_phase(n))
@@ -97,7 +97,7 @@ def StarkEcho(qubit, measurement, amplitudes, delays,
         return echo_seq*meas_seq
 
 
-    seqs = [[echo_stark(n, amp, np.max(delays)), Id(measurement, length=wait), MEAS(qubit)] 
+    seqs = [[echo_stark(n, amp, np.max(delays)), Id(measurement, length=wait), MEAS(qubit)]
                 for n, amp in product(range(len(delays)), amplitudes)]
 
     axis_descriptor = [delay_descriptor(delays)] * len(amplitudes)
@@ -110,7 +110,7 @@ def StarkEcho(qubit, measurement, amplitudes, delays,
     return metafile
 
 
-def CavityPumpProbe(qubit, measurement, offsets, amplitude, 
+def CavityPumpProbe(qubit, measurement, offsets, amplitude,
                             length=1e-6, wait=1e-6, showPlot=False):
     """Time resolved cavity spectroscopy. Applies a coherent displacement to qubit
         readout cavity while sweeping qubit spectroscopy pulse delay. Useful to measure
@@ -120,7 +120,7 @@ def CavityPumpProbe(qubit, measurement, offsets, amplitude,
             qubit: Qubit channel for spectroscopy.
 
             measurement: Measurement channel of qubit.
-            
+
             offsets: Spectroscopy pulse offset relative to start of cavity displacement pulse.
 
             amplitude: Measurement pulse amplitude.
@@ -130,7 +130,7 @@ def CavityPumpProbe(qubit, measurement, offsets, amplitude,
             wait: Delay between end of cavity displacement pulse and start of MEAS(qubit).
 
         Returns:
-            metafile: Path to compiled sequence metafile.
+            metafile : path to a json metafile with details about the sequences and paths to compiled machine files
     """
 
     if not isinstance(offsets, Iterable):
@@ -162,6 +162,3 @@ def CavityPumpProbe(qubit, measurement, offsets, amplitude,
         plot_pulse_files(metafile)
 
     return metafile
-
-
-

@@ -13,14 +13,14 @@ def SPAM(qubit, angleSweep, maxSpamBlocks=10, showPlot=False):
 
 	Parameters
 	----------
-	qubit : logical channel to implement sequence (LogicalChannel) 
+	qubit : logical channel to implement sequence (LogicalChannel)
 	angleSweep : angle shift to sweep over
 	maxSpamBlocks : maximum number of XYXY block to do
 	showPlot : whether to plot (boolean)
 
 	Returns
 	-------
-	plotHandle : handle to plot window to prevent destruction
+	metafile : path to a json metafile with details about the sequences and paths to compiled machine files
 	"""
 
     def spam_seqs(angle):

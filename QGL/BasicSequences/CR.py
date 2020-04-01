@@ -26,6 +26,10 @@ def PiRabi(controlQ,
 	amp : amplitude of the CR pulse
 	phase : phase of the CR pulse (rad)
 	showPlot : whether to plot (boolean)
+
+    Returns
+    -------
+    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
 	"""
 
     CRchan = EdgeFactory(controlQ, targetQ)
@@ -71,6 +75,10 @@ def EchoCRLen(controlQ,
 	phase : phase of the CR pulse (rad)
 	calRepeats : number of repetitions of readout calibrations for each 2-qubit state
 	showPlot : whether to plot (boolean)
+
+    Returns
+    -------
+    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
 	"""
     seqs = [[Id(controlQ),
              echoCR(controlQ, targetQ, length=l, phase=phase, amp=amp, riseFall=riseFall, canc_amp=canc_amp, canc_phase=canc_phase),
@@ -117,6 +125,10 @@ def EchoCRPhase(controlQ,
 	length : duration of each of the two flat parts of the CR pulse (s)
 	calRepeats : number of repetitions of readout calibrations for each 2-qubit state
 	showPlot : whether to plot (boolean)
+
+    Returns
+    -------
+    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
 	"""
     seqs = [[Id(controlQ),
              echoCR(controlQ, targetQ, length=length, phase=ph, amp=amp, riseFall=riseFall, canc_amp=canc_amp, canc_phase=canc_phase),
@@ -168,6 +180,10 @@ def EchoCRAmp(controlQ,
 	phase : phase of the CR pulse (rad)
 	calRepeats : number of repetitions of readout calibrations for each 2-qubit state
 	showPlot : whether to plot (boolean)
+
+    Returns
+    -------
+    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
 	"""
     seqs = [[Id(controlQ),
              echoCR(controlQ, targetQ, length=length, phase=phase, riseFall=riseFall,amp=a),
@@ -207,6 +223,10 @@ def CRtomo_seq(controlQ, targetQ, lengths, ph, amp=0.8, riseFall=20e-9):
     lengths : pulse lengths of the CR pulse to sweep over (iterable)
     riseFall : rise/fall time of the CR pulse (s)
     ph : phase of the CR pulse (rad)
+
+    Returns
+    -------
+    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
     """
     CRchan = ChannelLibraries.EdgeFactory(controlQ, targetQ)
     tomo_pulses = [Y90m, X90, Id]

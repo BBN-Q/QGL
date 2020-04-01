@@ -69,7 +69,7 @@ def Reset(qubits,
 
     Returns
     -------
-    plotHandle : handle to plot window to prevent destruction
+    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
     """
     if measChans is None:
         measChans = qubits
@@ -118,7 +118,7 @@ def BitFlip3(data_qs, ancilla_qs, theta=None, phi=None, nrounds=1, meas_delay=1e
 
     Returns
     -------
-    metafile : metafile path
+    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
     """
     if len(data_qs) != 3 or len(ancilla_qs) != 2:
         raise Exception("Wrong number of qubits")

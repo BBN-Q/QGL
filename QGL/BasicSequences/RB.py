@@ -55,6 +55,10 @@ def SingleQubitRB(qubit, seqs, purity=False, showPlot=False, add_cals=True):
     qubit : logical channel to implement sequence (LogicalChannel)
     seqs : list of lists of Clifford group integers
     showPlot : whether to plot (boolean)
+
+    Returns
+    -------
+    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
     """
 
     seqsBis = []
@@ -98,6 +102,10 @@ def SingleQubitLeakageRB(qubit, seqs, pi2args, showPlot=False):
     seqs : list of lists of Clifford group integers
     pi2args: arguments passed to the X90 gate for the 1 <-> 2 transition during calibration
     showPlot : whether to plot (boolean)
+
+    Returns
+    -------
+    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
     """
 
     seqsBis = []
@@ -146,6 +154,10 @@ def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix="", add_cals=True):
     seqs : list of lists of Clifford group integers
     showPlot : whether to plot (boolean)
     suffix : suffix to apply to sequence file names
+
+    Returns
+    -------
+    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
     """
     seqsBis = []
     for seq in seqs:
@@ -185,6 +197,10 @@ def TwoQubitLeakageRB(q1, q2, meas_qubit, seqs, pi2args, showPlot=False):
             seqs : list of lists of Clifford group integers
             showPlot : whether to plot (boolean)
             suffix : suffix to apply to sequence file names
+
+            Returns
+            -------
+            metafile : path to a json metafile with details about the sequences and paths to compiled machine files
     """
     seqsBis = []
     for seq in seqs:
@@ -229,6 +245,10 @@ def SingleQubitRB_AC(qubit, seqs, purity=False, showPlot=False, add_cals=True):
     qubit : logical channel to implement sequence (LogicalChannel)
     seqFile : file containing sequence strings
     showPlot : whether to plot (boolean)
+
+    Returns
+    -------
+    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
     """
     seqsBis = []
     op = [Id(qubit, length=0), Y90m(qubit), X90(qubit)]
@@ -269,6 +289,10 @@ def SingleQubitRB_DiAC(qubit, seqs, compiled=True, purity=False, showPlot=False,
     purity : measure <Z>,<X>,<Y> of final state, to measure purity. See J.J.
         Wallman et al., New J. Phys. 17, 113020 (2015)
     showPlot : whether to plot (boolean)
+
+    Returns
+    -------
+    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
     """
     seqsBis = []
     op = [Id(qubit, length=0), Y90m(qubit), X90(qubit)]
@@ -306,6 +330,10 @@ def SingleQubitIRB_AC(qubit, seqFile, showPlot=False):
     qubit : logical channel to implement sequence (LogicalChannel)
     seqFile : file containing sequence strings
     showPlot : whether to plot (boolean)
+
+    Returns
+    -------
+    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
     """
     #Setup a pulse library
     pulseLib = [AC(qubit, cliffNum) for cliffNum in range(24)]
@@ -355,6 +383,10 @@ def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False, add_cals=Tr
     seqFile : file containing sequence strings
     analyzedPulse : specific pulse to analyze
     showPlot : whether to plot (boolean)
+
+    Returns
+    -------
+    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
     """
     #Setup a pulse library
     pulseLib = [AC(qubit, cliffNum) for cliffNum in range(24)]
@@ -403,6 +435,10 @@ def SimultaneousRB_AC(qubits, seqs, showPlot=False, add_cals=True):
     qubits : iterable of logical channels to implement seqs on (list or tuple)
     seqs : a tuple of sequences created for each qubit in qubits
     showPlot : whether to plot (boolean)
+
+    Returns
+    -------
+    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
 
     Example
     -------

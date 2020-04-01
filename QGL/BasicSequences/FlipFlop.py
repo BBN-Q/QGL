@@ -11,14 +11,14 @@ def FlipFlop(qubit, dragParamSweep, maxNumFFs=10, showPlot=False):
 
 	Parameters
 	----------
-	qubit : logical channel to implement sequence (LogicalChannel) 
+	qubit : logical channel to implement sequence (LogicalChannel)
 	dragParamSweep : drag parameter values to sweep over (iterable)
 	maxNumFFs : maximum number of flip-flop pairs to do
 	showPlot : whether to plot (boolean)
 
 	Returns
 	-------
-	plotHandle : handle to plot window to prevent destruction
+	metafile : path to a json metafile with details about the sequences and paths to compiled machine files
 	"""
 
     def flipflop_seqs(drag_scaling):
@@ -42,7 +42,7 @@ def FlipFlop(qubit, dragParamSweep, maxNumFFs=10, showPlot=False):
         seq.append(measBlock)
 
     metafile = compile_to_hardware(seqs, 'FlipFlop/FlipFlop')
-    
+
     if showPlot:
         plot_pulse_files(metafile)
 

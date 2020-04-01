@@ -22,7 +22,7 @@ def InversionRecovery(qubit,
 
     Returns
     -------
-    plotHandle : handle to plot window to prevent destruction
+    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
     """
 
     #Create the basic sequences
@@ -62,7 +62,7 @@ def Ramsey(qubit,
 
     Returns
     -------
-    plotHandle : handle to plot window to prevent destruction
+    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
     """
 
     #Create the phases for the TPPI

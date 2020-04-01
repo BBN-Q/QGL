@@ -18,7 +18,7 @@ def HahnEcho(qubit, pulseSpacings, periods=0, calRepeats=2, showPlot=False):
 
 	Returns
 	-------
-	plotHandle : handle to plot window to prevent destruction
+	metafile : path to a json metafile with details about the sequences and paths to compiled machine files
 	"""
     seqs = []
     for k in range(len(pulseSpacings)):
@@ -54,7 +54,7 @@ def CPMG(qubit, numPulses, pulseSpacing, calRepeats=2, showPlot=False):
 
 	Returns
 	-------
-	plotHandle : handle to plot window to prevent destruction
+	metafile : path to a json metafile with details about the sequences and paths to compiled machine files
 	"""
     #First setup the t-180-t block
     CPMGBlock = [Id(qubit, (pulseSpacing - qubit.pulse_params['length']) / 2),

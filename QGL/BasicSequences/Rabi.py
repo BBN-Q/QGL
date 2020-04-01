@@ -20,7 +20,7 @@ def RabiAmp(qubit, amps, phase=0, showPlot=False):
 
 	Returns
 	-------
-	plotHandle : handle to plot window to prevent destruction
+	metafile : path to a json metafile with details about the sequences and paths to compiled machine files
 	"""
     seqs = [[Utheta(qubit, amp=amp, phase=phase), MEAS(qubit)] for amp in amps]
 
@@ -58,7 +58,7 @@ def RabiWidth(qubit,
 
 	Returns
 	-------
-	plotHandle : handle to plot window to prevent destruction
+	metafile : path to a json metafile with details about the sequences and paths to compiled machine files
 	"""
     seqs = [[Utheta(qubit,
                     length=l,
@@ -96,7 +96,7 @@ def RabiAmp_NQubits(qubits,
 
 	Returns
 	-------
-	plotHandle : handle to plot window to prevent destruction
+	metafile : path to a json metafile with details about the sequences and paths to compiled machine files
 	"""
     if measChans is None:
         measChans = qubits
@@ -143,7 +143,7 @@ def RabiAmpPi(qubit, mqubit, amps, phase=0, showPlot=False):
 
 	Returns
 	-------
-	plotHandle : handle to plot window to prevent destruction
+	metafile : path to a json metafile with details about the sequences and paths to compiled machine files
 	"""
     seqs = [[X(mqubit), Utheta(qubit, amp=amp, phase=phase), X(mqubit),
              MEAS(mqubit)] for amp in amps]
