@@ -7,13 +7,26 @@ from ..Compiler import compile_to_hardware
 
 def sweep_gateDelay(qubit, sweepPts):
     """
-    Sweep the gate delay associated with a qubit channel using a simple Id, Id, X90, X90
-    seqeuence.
-    
+    Sweep the gate delay associated with a qubit channel using a simple Id, Id,
+    X90, X90 seqeuence.
+
     Parameters
     ---------
-    qubit : logical qubit to create sequences for
-    sweepPts : iterable to sweep the gate delay over.
+    qubit : Channels.LogicalChannel
+        Qubit channel for which to create sequences
+    sweepPts : int/float iterable
+        Iterable to sweep the gate delay over (seconds)
+
+    Returns
+    -------
+    void : string
+        This functions produces a set of files enumerating the sweepPts
+        given in the parameters and returns nothing.  This function is currently
+        not used and will be depricated in the future.
+
+    Examples
+    --------
+    >>> sweepgateDelay(q1, np.linspace(20.0e-9, 220.0e-9, 101))
     """
 
     generator = qubit.phys_chan.generator

@@ -6,6 +6,27 @@ from .helpers import create_cal_seqs
 
 
 def AllXY(q, showPlot=False):
+    '''
+    Produce a sequence with all possible combinations of
+    {Id, X, Y, X90, Y90} * 2.  This is currently only used in testing.
+
+    Parameters
+    ----------
+    qubit : LogicalChannel
+        Logical channel on which to implement sequence
+    showPlot : boolean, optional
+        Whether to produce a plot
+
+    Returns
+    -------
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files (for APS2, Tektronics, etc...)
+
+    Examples
+    --------
+    >>> AllXY(q1)
+    '''
     firstPulses = [Id(q)] + 2 * [X(q), Y(q)] + 3 * [X90(q), Y90(q)] + [
         X(q), Y(q), X90(q), X(q), Y90(q), Y(q), X(q), Y(q), X90(q), Y90(q)
     ]

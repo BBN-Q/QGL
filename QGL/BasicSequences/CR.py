@@ -17,19 +17,35 @@ def PiRabi(controlQ,
     """
 	Variable length CX experiment.
 
-	Parameters
-	----------
-	controlQ : logical channel for the control qubit (LogicalChannel)
-	targetQ: logical channel for the target qubit (LogicalChannel)
-	lengths : pulse lengths of the CR pulse to sweep over (iterable)
-	riseFall : rise/fall time of the CR pulse (s)
-	amp : amplitude of the CR pulse
-	phase : phase of the CR pulse (rad)
-	showPlot : whether to plot (boolean)
+    Parameters
+    ----------
+    controlQ : Channels.LogicalChannel
+        Logical channel for the control qubit
+    targetQ: Channels.LogicalChannel
+        Logical channel for the target qubit
+    lengths : int/float iterable
+        Pulse lengths of the CR pulse to sweep over (seconds).  4 ns minimum.
+    riseFall : float, optional
+        Rise/fall time of the CR pulse (seconds)
+    amp : float, optional
+        Amplitude of the CR pulse. Valid range: [0.0, 1.0].
+    phase : float, optional
+        Phase of the CR pulse (radians)
+    showPlot : boolean, optional
+        Whether to plot
 
     Returns
     -------
-    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files.
+
+    Examples
+    --------
+    >>> mf = PiRabi(q1, q2, np.linspace(20.0e-9, 200.02e-6, 101));
+    Compiled 210 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
 	"""
 
     CRchan = EdgeFactory(controlQ, targetQ)
@@ -63,22 +79,41 @@ def EchoCRLen(controlQ,
               calRepeats=2,
               showPlot=False, canc_amp=0, canc_phase=np.pi/2):
     """
-	Variable length CX experiment, with echo pulse sandwiched between two CR opposite-phase pulses.
+	Variable length CX experiment, with echo pulse sandwiched between two CR
+    opposite-phase pulses.  This is primarily used as a subroutine
+    in calibration.
 
 	Parameters
 	----------
-	controlQ : logical channel for the control qubit (LogicalChannel)
-	targetQ: logical channel for the target qubit (LogicalChannel)
-	lengths : pulse lengths of the CR pulse to sweep over (iterable)
-	riseFall : rise/fall time of the CR pulse (s)
-	amp : amplitude of the CR pulse
-	phase : phase of the CR pulse (rad)
-	calRepeats : number of repetitions of readout calibrations for each 2-qubit state
-	showPlot : whether to plot (boolean)
+	controlQ : Channels.LogicalChannel
+        Logical channel for the control qubit
+	targetQ : Channels.LogicalChannel
+        Logical channel for the target qubit
+	lengths : int/float iterable
+        Pulse lengths of the CR pulse to sweep over (seconds)
+	riseFall : float, optional
+        Rise/fall time of the CR pulse (seconds)
+	amp : float, optional
+        Amplitude of the CR pulse. Valid range: [0.0, 1.0].
+	phase : float, optional
+        Phase of the CR pulse (radian)
+	calRepeats : int, optional
+        Number of calibrations repeats for each 2-qubit state basis state
+	showPlot : boolean, optional
+        Whether to plot
 
     Returns
     -------
-    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files
+
+    Examples
+    --------
+    >>> mf = EchoCRLen(q1, q2, np.linspace(20.0e-9, 200.02e-6, 101));
+    Compiled 210 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
 	"""
     seqs = [[Id(controlQ),
              echoCR(controlQ, targetQ, length=l, phase=phase, amp=amp, riseFall=riseFall, canc_amp=canc_amp, canc_phase=canc_phase),
@@ -113,22 +148,41 @@ def EchoCRPhase(controlQ,
                 canc_amp=0,
                 canc_phase=np.pi/2):
     """
-	Variable phase CX experiment, with echo pulse sandwiched between two CR opposite-phase pulses.
+    Variable phase CX experiment, with echo pulse sandwiched between two CR
+    opposite-phase pulses.  This is primarily used as a subroutine
+    in calibration.
 
 	Parameters
 	----------
-	controlQ : logical channel for the control qubit (LogicalChannel)
-	CRchan: logical channel for the cross-resonance pulse (LogicalChannel)
-	phases : pulse phases of the CR pulse to sweep over (iterable)
-	riseFall : rise/fall time of the CR pulse (s)
-	amp : amplitude of the CR pulse
-	length : duration of each of the two flat parts of the CR pulse (s)
-	calRepeats : number of repetitions of readout calibrations for each 2-qubit state
-	showPlot : whether to plot (boolean)
+	controlQ : Channels.LogicalChannel
+        Logical channel for the control qubit
+	targetQ : Channels.LogicalChannel
+        Logical channel for the target qubit
+	phases : float iterable
+        Pulse phases of the CR pulse to sweep over (radians)
+	riseFall : float, optional
+        Rise/fall time of the CR pulse (seconds)
+	amp : float, optional
+        Amplitude of the CR pulse. Valid range: [0.0, 1.0].
+	length : float, optional
+        Duration of each of the two flat parts of the CR pulse (seconds)
+	calRepeats : int, optional
+        Number of calibrations repeats for each 2-qubit state basis state
+	showPlot : boolean, optional
+        Whether to plot
 
     Returns
     -------
-    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files
+
+    Examples
+    --------
+    >>> mf = EchoCRPhase(q1, q2, np.linspace(0.0, np.pi, 51));
+    Compiled 110 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
 	"""
     seqs = [[Id(controlQ),
              echoCR(controlQ, targetQ, length=length, phase=ph, amp=amp, riseFall=riseFall, canc_amp=canc_amp, canc_phase=canc_phase),
@@ -168,22 +222,37 @@ def EchoCRAmp(controlQ,
               calRepeats=2,
               showPlot=False):
     """
-	Variable amplitude CX experiment, with echo pulse sandwiched between two CR opposite-phase pulses.
+    Variable amplitude CX experiment, with echo pulse sandwiched between two
+    CR opposite-phase pulses.
 
 	Parameters
 	----------
-	controlQ : logical channel for the control qubit (LogicalChannel)
-	targetQ: logical channel for the target qubit (LogicalChannel)
-	amps : pulse amplitudes of the CR pulse to sweep over (iterable)
-	riseFall : rise/fall time of the CR pulse (s)
-	length : duration of each of the two flat parts of the CR pulse (s)
-	phase : phase of the CR pulse (rad)
-	calRepeats : number of repetitions of readout calibrations for each 2-qubit state
-	showPlot : whether to plot (boolean)
+    controlQ : Channels.LogicalChannel
+        Logical channel for the control qubit
+    targetQ : Channels.LogicalChannel
+        Logical channel for the target qubit
+    amps : float iterable
+        Pulse amplitudes of the CR pulse to sweep over. Valid range: [0.0, 1.0]
+    riseFall : float, optional
+        Rise/fall time of the CR pulse (seconds)
+    length : float, optional
+        Duration of each of the two flat parts of the CR pulse (seconds)
+    phase : float, optional
+        Phase of the CR pulse (radians)
+    calRepeats : int, optional
+        Number of calibrations repeats for each 2-qubit state basis state
+    showPlot : whether to plot (boolean)
 
     Returns
     -------
     metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+
+    Examples
+    --------
+    >>> mf = EchoCRAmp(q1, q2, np.linspace(0.7, 0.9, 101));
+    Compiled 105 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
 	"""
     seqs = [[Id(controlQ),
              echoCR(controlQ, targetQ, length=length, phase=phase, riseFall=riseFall,amp=a),
@@ -212,30 +281,55 @@ def EchoCRAmp(controlQ,
 
     return metafile
 
-def CRtomo_seq(controlQ, targetQ, lengths, ph, amp=0.8, riseFall=20e-9):
+def CRtomo_seq(controlQ,
+               targetQ,
+               lengths,
+               phase,
+               amp=0.8,
+               riseFall=20e-9,
+               calRepeats=2):
     """
     Variable length CX experiment, for Hamiltonian tomography.
 
     Parameters
     ----------
-    controlQ : logical channel for the control qubit (LogicalChannel)
-    targetQ: logical channel for the target qubit (LogicalChannel)
-    lengths : pulse lengths of the CR pulse to sweep over (iterable)
-    riseFall : rise/fall time of the CR pulse (s)
-    ph : phase of the CR pulse (rad)
+    controlQ : Channels.LogicalChannel
+        Logical channel for the control qubit
+    targetQ : Channels.LogicalChannel
+        Logical channel for the target qubit
+    lengths : int/float iterable
+        Pulse lengths of the CR pulse to sweep over (seconds)
+    phase : float
+        Phase of the CR pulse (radians)
+    amps : float, optional
+        Pulse amplitude of the CR pulse. Valid range: [0.0, 1.0]
+    riseFall : float, optional
+        Rise/fall time of the CR pulse (seconds)
+    calRepeats : int, optional
+        Number of calibrations repeats for each 2-qubit state basis state
 
     Returns
     -------
-    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files
+
+    Examples
+    --------
+    >>> mf = CRtomo_seq(q2, q3, np.linspace(20.0e-9, 200.02e-6, 101), \
+            phase=0.0);
+    Compiled 610 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
     """
     CRchan = ChannelLibraries.EdgeFactory(controlQ, targetQ)
     tomo_pulses = [Y90m, X90, Id]
     seqs = [[Id(controlQ),
-         flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=l, phase=ph, label="CR"),
+         flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=l, phase=phase, label="CR"),
          Id(controlQ)*tomo_pulse(targetQ),
          MEAS(targetQ)] for l,tomo_pulse in product(lengths, tomo_pulses)] + \
        [[X(controlQ),
-         flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=l, phase=ph, label="CR"),
+         flat_top_gaussian(CRchan, amp=amp, riseFall=riseFall, length=l, phase=phase, label="CR"),
          X(controlQ)*tomo_pulse(targetQ),
          MEAS(targetQ)] for l,tomo_pulse in product(lengths, tomo_pulses)] + \
        create_cal_seqs((targetQ,), 2,)

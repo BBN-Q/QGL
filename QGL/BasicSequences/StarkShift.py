@@ -9,22 +9,37 @@ from itertools import product
 
 def StarkSpectroscopy(qubit, measurement, amplitude,
                             delay=200e-9, length=1e-6, showPlot=False):
-    """Stark shift spectroscopy experiment. Applies a coherent displacement
-        to the qubit readout cavity while doing pulsed spectroscopy.
+    """
+    Stark shift spectroscopy experiment. Applies a coherent displacement
+    to the qubit readout cavity while doing pulsed spectroscopy.
 
-        Args:
-            qubit: Qubit channel to apply spectroscopy pulse to.
+    Parameters
+    ----------
+    qubit : Channels.LogicalChannel
+        Logical channel for the control qubit
+    measurement : Channels.LogicalChannel
+        Measurement channel to apply displacement pulse to
+    amplitude : float
+        Amplitude of the measurement pulse. Valid range: [0.0, 1.0].
+    delay : float, optional
+        Delay between end of spectroscopy pulse and start of MEAS (seconds)
+    lengths : int/float, optional
+        Total length of cavity displacement pulse (seconds).  4 ns minimum.
+    showPlot : boolean, optional
+        Whether to plot
 
-            measurement: Measurement channel to apply displacement pulse to.
+    Returns
+    -------
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files.
 
-            amplitude: Measurement pulse amplitude(s)
-
-            delay: Delay between end of spectroscopy pulse and start of MEAS(qubit).
-
-            length: Total length of cavity displacement pulse.
-
-        Returns:
-            metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    Examples
+    --------
+    >>> mf = StarkSpectroscopy(q1, q1.measure_chan, np.linspace(0.6, 0.8, 51));
+    Compiled 51 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
     """
 
     if not isinstance(amplitude, Iterable):
@@ -52,27 +67,45 @@ def StarkSpectroscopy(qubit, measurement, amplitude,
 
 def StarkEcho(qubit, measurement, amplitudes, delays,
                             wait=200e-9, periods=4, showPlot=False):
-    """Hahn echo sequence with a coherent displacement of the qubit measurement cavity.
-        Used to measure photon-induced dephasing. This sequence can cause a lot of cache pressure
-        so number of points may be limited.
+    """
+    Hahn echo sequence with a coherent displacement of the qubit measurement
+    cavity. Used to measure photon-induced dephasing. This sequence can cause
+    a lot of cache pressure so number of points may be limited.
 
-        TODO: Use QGL intrinsics to reduce sequence and memory cache utilization.
+    TODO: Use QGL intrinsics to reduce sequence and memory cache utilization.
 
-        Args:
-            qubit: Qubit channel for Hahn echo.
+    Parameters
+    ----------
+    qubit : Channels.LogicalChannel
+        Logical channel for the Hahn echo
+    measurement : Channels.LogicalChannel
+        Measurement channel of the qubit
+    amplitude : int/float iterable
+        Amplitude(s) of cavity displacement pulse. Valid range: [0.0, 1.0].
+    delays : int/float iterable
+        Delay between end of spectroscopy pulse and start of MEAS (seconds)
+    wait : int/float, optional
+        Hahn echo delays - the t in 90-t-180-t-180 (seconds)
+        (seconds).  4 ns minimum.
+    periods : int, optional
+        Number of artificial oscillations
+    showPlot : boolean, optional
+        Whether to plot
 
-            measurement: Measurement channel of qubit.
+    Returns
+    -------
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files.
 
-            amplitudes: Amplitude(s) of cavity displacement pulse.
-
-            delays: Hahn echo delays - the t in 90-t-180-t-180.
-
-            wait: Delay between end of cavity displacement pulse and start of MEAS(qubit).
-
-            periods: Number of artificial oscillations.
-
-        Returns:
-            metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    Examples
+    --------
+    >>> mf = StarkEcho(q1, q1.measure_chan,
+                       np.linspace(0.6, 0.8, 10),
+                       np.linspace(20.0e-9, 200.02e-6, 10));
+    Compiled 210 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
     """
 
     if not isinstance(amplitudes, Iterable):

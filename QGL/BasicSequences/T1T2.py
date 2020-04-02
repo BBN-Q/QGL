@@ -15,14 +15,27 @@ def InversionRecovery(qubit,
 
     Parameters
     ----------
-    qubit : logical channel to implement sequence (LogicalChannel)
-    delays : delays after inversion before measurement (iterable; seconds)
-    showPlot : whether to plot (boolean)
-    calRepeats : how many repetitions of calibration pulses (int)
+    qubit : Channels.LogicalChannel
+        Logical channel to implement sequence
+    delays : int/float iterable
+        Delays after inversion before measurement (seconds). 4 ns minimum.
+    showPlot : boolean, optional
+        Whether to plot
+    calRepeats : int, optional
+        How many repetitions of calibration pulses
 
     Returns
     -------
-    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files
+
+    Examples
+    --------
+    >>> mf = InversionRecovery(q1, np.linspace(20.0e-9, 200.02e-6, 101));
+    Compiled 105 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
     """
 
     #Create the basic sequences
@@ -32,7 +45,8 @@ def InversionRecovery(qubit,
     seqs += create_cal_seqs((qubit, ), calRepeats)
 
     metafile = compile_to_hardware(seqs,
-        'T1' + ('_' + qubit.label) * suffix + '/T1' + ('_' + qubit.label) * suffix,
+        'T1' + ('_' + qubit.label) * suffix + '/T1' +
+        ('_' + qubit.label) * suffix,
         axis_descriptor=[
             delay_descriptor(delays),
             cal_descriptor((qubit,), calRepeats)
@@ -54,15 +68,29 @@ def Ramsey(qubit,
 
     Parameters
     ----------
-    qubit : logical channel to implement sequence (LogicalChannel)
-    pulseSpacings : pulse spacings (iterable; seconds)
-    TPPIFreq : frequency for TPPI phase updates of second Ramsey pulse (Hz)
-    showPlot : whether to plot (boolean)
-    calRepeats : how many repetitions of calibration pulses (int)
+    qubit : Channels.LogicalChannel
+        Logical channel to implement sequence
+    pulseSpacings : int/float iterable
+        Pulse spacings (seconds). 4 ns minimum.
+    TPPIFreq : float, optional
+        Frequency for TPPI phase updates of second Ramsey pulse (Hz)
+    showPlot : boolean, optional
+        Whether to plot
+    calRepeats : int, optional
+        How many repetitions of calibration pulses
 
     Returns
     -------
-    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files
+
+    Examples
+    --------
+    >>> mf = Ramsey(q1, np.linspace(20.0e-9, 200.02e-6, 101), TPPIFreq=1.0e6);
+    Compiled 105 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
     """
 
     #Create the phases for the TPPI
@@ -76,7 +104,8 @@ def Ramsey(qubit,
     seqs += create_cal_seqs((qubit, ), calRepeats)
 
     metafile = compile_to_hardware(seqs,
-        'Ramsey' + ('_' + qubit.label) * suffix + '/Ramsey' + ('_' + qubit.label) * suffix,
+        'Ramsey' + ('_' + qubit.label) * suffix + '/Ramsey' +
+        ('_' + qubit.label) * suffix,
         axis_descriptor=[
             delay_descriptor(pulseSpacings),
             cal_descriptor((qubit,), calRepeats)
