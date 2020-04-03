@@ -10,7 +10,7 @@ def HahnEcho(qubit, pulseSpacings, periods=0, calRepeats=2, showPlot=False):
 
 	Parameters
 	----------
-	qubit :  LogicalChannel
+	qubit :  Channels.LogicalChannel
         Logical channel to implement sequence
 	pulseSpacings : int iterable
         Pulse spacings to sweep over; the t in 90-t-180-t-180 (iterable)
@@ -61,7 +61,7 @@ def CPMG(qubit, numPulses, pulseSpacing, calRepeats=2, showPlot=False):
 
 	Parameters
 	----------
-	qubit : LogicalChannel
+	qubit : Channels.LogicalChannel
         Logical channel to implement sequence
 	numPulses : int iterable
         Number of 180 pulses; should be even

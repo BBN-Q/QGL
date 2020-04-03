@@ -17,7 +17,7 @@ def StarkSpectroscopy(qubit, measurement, amplitude,
     ----------
     qubit : Channels.LogicalChannel
         Logical channel for the control qubit
-    measurement : Channels.LogicalChannel
+    measurement : bbndb.qgl.Measurement
         Measurement channel to apply displacement pulse to
     amplitude : float
         Amplitude of the measurement pulse. Valid range: [0.0, 1.0].
@@ -78,7 +78,7 @@ def StarkEcho(qubit, measurement, amplitudes, delays,
     ----------
     qubit : Channels.LogicalChannel
         Logical channel for the Hahn echo
-    measurement : Channels.LogicalChannel
+    measurement : bbndb.qgl.Measurement
         Measurement channel of the qubit
     amplitude : int/float iterable
         Amplitude(s) of cavity displacement pulse. Valid range: [0.0, 1.0].
@@ -144,26 +144,45 @@ def StarkEcho(qubit, measurement, amplitudes, delays,
 
 
 def CavityPumpProbe(qubit, measurement, offsets, amplitude,
-                            length=1e-6, wait=1e-6, showPlot=False):
-    """Time resolved cavity spectroscopy. Applies a coherent displacement to qubit
-        readout cavity while sweeping qubit spectroscopy pulse delay. Useful to measure
-        cavity kappa and cavity population.
+                            length=1e-6, wait=2e-6, showPlot=False):
+    """
+    Time resolved cavity spectroscopy. Applies a coherent displacement to qubit
+    readout cavity while sweeping qubit spectroscopy pulse delay. Useful to
+    measure cavity kappa and cavity population.
 
-        Args:
-            qubit: Qubit channel for spectroscopy.
+    Parameters
+    ----------
+    qubit : Channels.LogicalChannel
+        Logical channel for the Hahn echo
+    measurement : bbndb.qgl.Measurement
+        Measurement channel of the qubit
+    offsets : int/float iterable
+        Spectroscopy pulse offset relative to start of cavity displacement
+        pulse (seconds)
+    amplitude : int/float iterable
+        Amplitude(s) of cavity displacement pulse. Valid range: [0.0, 1.0].
+    length : int/float, optional
+        Total length of cavity displacement pulse (seconds)
+    wait : int/float, optional
+        Delay between end of cavity displacement pulse and start of measurement
+        (seconds).  4 ns minimum.
+    showPlot : boolean, optional
+        Whether to plot
 
-            measurement: Measurement channel of qubit.
+    Returns
+    -------
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files.
 
-            offsets: Spectroscopy pulse offset relative to start of cavity displacement pulse.
-
-            amplitude: Measurement pulse amplitude.
-
-            length: Total length of cavity displacement pulse.
-
-            wait: Delay between end of cavity displacement pulse and start of MEAS(qubit).
-
-        Returns:
-            metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    Examples
+    --------
+    >>> mf = CavityPumpProbe(q1, q1.measure_chan,
+                       np.linspace(20.0e-9, 200.02e-6, 10),
+                       0.6);
+    Compiled 210 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
     """
 
     if not isinstance(offsets, Iterable):

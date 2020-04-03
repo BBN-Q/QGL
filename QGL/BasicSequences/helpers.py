@@ -10,14 +10,44 @@ from ..ControlFlow import qwait
 
 def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False, delay=None):
     """
-	Helper function to create a set of calibration sequences.
+    Helper function to create a set of calibration sequences.
 
-	Parameters
-	----------
-	qubits : logical channels, e.g. (q1,) or (q1,q2) (tuple)
-	numRepeats = number of times to repeat calibration sequences (int)
-	waitcmp = True if the sequence contains branching
-    delay: optional time between state preparation and measurement (s)
+    Parameters
+    ----------
+    qubit : Channels.LogicalChannel
+        Logical channel to implement sequence
+	numRepeats : int
+        Number of times to repeat calibration sequences
+	waitcmp : boolean, optional
+        True if the sequence contains branching (sequencing based on values in
+        the register). Default = False.
+    delay : int/float, optional
+        Time between state preparation and measurement (seconds)
+
+    Returns
+    -------
+    seq : QGL sequence interable
+        A list of QGL sequence containing calibration pulses and measurements
+
+    Examples
+    --------
+    >>> create_cal_seqs((q2,q3), numRepeats=2)
+    [[Id(q2)⊗ Id(q3),
+      MEAS(M-q2, shape_fun=<autodyne>)⊗ MEAS(M-q3, shape_fun=<autodyne>)],
+     [Id(q2)⊗ Id(q3),
+      MEAS(M-q2, shape_fun=<autodyne>)⊗ MEAS(M-q3, shape_fun=<autodyne>)],
+     [Id(q2)⊗ X(q3),
+      MEAS(M-q2, shape_fun=<autodyne>)⊗ MEAS(M-q3, shape_fun=<autodyne>)],
+     [Id(q2)⊗ X(q3),
+      MEAS(M-q2, shape_fun=<autodyne>)⊗ MEAS(M-q3, shape_fun=<autodyne>)],
+     [X(q2)⊗ Id(q3),
+      MEAS(M-q2, shape_fun=<autodyne>)⊗ MEAS(M-q3, shape_fun=<autodyne>)],
+     [X(q2)⊗ Id(q3),
+      MEAS(M-q2, shape_fun=<autodyne>)⊗ MEAS(M-q3, shape_fun=<autodyne>)],
+     [X(q2)⊗ X(q3),
+      MEAS(M-q2, shape_fun=<autodyne>)⊗ MEAS(M-q3, shape_fun=<autodyne>)],
+     [X(q2)⊗ X(q3),
+      MEAS(M-q2, shape_fun=<autodyne>)⊗ MEAS(M-q3, shape_fun=<autodyne>)]]
 	"""
     if measChans is None:
         measChans = qubits

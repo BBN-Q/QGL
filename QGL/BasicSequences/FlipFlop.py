@@ -6,19 +6,32 @@ from itertools import chain
 
 def FlipFlop(qubit, dragParamSweep, maxNumFFs=10, showPlot=False):
     """
+    Flip-flop sequence (X90-X90m)**n to determine off-resonance or DRAG
+    parameter optimization.
 
-	Flip-flop sequence (X90-X90m)**n to determine off-resonance or DRAG parameter optimization.
+    Parameters
+    ----------
+    qubit : Channels.LogicalChannel
+        Logical channel to implement sequence
+    dragParamSweep : float iterable
+        Array-like drag parameter values to sweep over
+    maxNumFFs : int, optional
+        Maximum number of flip-flop pairs (default 10)
+    showPlot : bool, optional
+        Whether to plot (boolean)
 
-	Parameters
-	----------
-	qubit : logical channel to implement sequence (LogicalChannel)
-	dragParamSweep : drag parameter values to sweep over (iterable)
-	maxNumFFs : maximum number of flip-flop pairs to do
-	showPlot : whether to plot (boolean)
+    Returns
+    -------
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files
 
-	Returns
-	-------
-	metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    Examples
+    --------
+    >>> mf = FlipFlop(q2, np.linspace(0.1,0.9))
+    Compiled 551 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
 	"""
 
     def flipflop_seqs(drag_scaling):
