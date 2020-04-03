@@ -17,14 +17,14 @@ def qreset(qubits, signVec, measDelay, buf, reg_size=None, TDM_map=None):
 
     Parameters
     ----------
-    qubits : Channels.LogicalChannel tupple
-        A hashable (immutable) tupple of qubits to reset
-    signVec : boolean tupple
-        A hashable (immutable) tupple of binary values from the compairison
+    qubits : Channels.LogicalChannel tuple
+        A hashable (immutable) tuple of qubits to reset
+    signVec : boolean tuple
+        A hashable (immutable) tuple of binary values from the compairison
         register indicating the measured state of each qubit in the register
         before reset.
     measDelay : int/float
-        Delay after measurement before performing the LOADCMP compairison with
+        Delay after measurement before performing the LOADCMP comparison with
         value in the register (seconds)
     buf : int/float
         Wait time between (seconds)
@@ -43,7 +43,7 @@ def qreset(qubits, signVec, measDelay, buf, reg_size=None, TDM_map=None):
 
     Examples
     --------
-    >>> qreset((q1, q2), (0,1)], 2e-6, 2e-6);
+    >>> qreset((q1, q2), (0,1), 2e-6, 2e-6);
     CALL(H:)
     """
     if not reg_size:
@@ -89,19 +89,19 @@ def Reset(qubits,
 
     Parameters
     ----------
-    qubits : Channels.LogicalChannel tupple
-        A hashable (immutable) tupple of qubits to reset
+    qubits : Channels.LogicalChannel tuple
+        A hashable (immutable) tuple of qubits to reset
     measDelay : int/float, optional
         Delay after measurement before performing the LOADCMP compairison with
         value in the register (seconds)
-    signVec : boolean tupple, optional
+    signVec : boolean tuple, optional
         conditions for feedback. Tuple of 0 (flip if signal is above threshold) and 1 (flip if below) for each qubit. Default = 0 for all qubits
     doubleRound : boolean, optional
         If true, do two rounds of feedback
     showPlot : boolean, optional
         Whether to plot
-    measChans : LogicalChannel tupple, optional
-        A hashable (immutable) tupple of qubits to measured.
+    measChans : LogicalChannel tuple, optional
+        A hashable (immutable) tuple of qubits to measured.
     docals : boolean, optional
         Whether to append calibration pulses to the end of the sequence
     calRepeats : int, optional
@@ -183,10 +183,10 @@ def BitFlip3(data_qs,
 
     Parameters
     ----------
-    data_qs : Channels.LogicalChannel tupple
-        A hashable (immutable) tupple of qubits of the 3 code qubits
-    ancilla_qs : Channels.LogicalChannel tupple
-        A hashable (immutable) tupple of qubits of the 2 syndrome qubits
+    data_qs : Channels.LogicalChannel tuple
+        A hashable (immutable) tuple of qubits of the 3 code qubits
+    ancilla_qs : Channels.LogicalChannel tuple
+        A hashable (immutable) tuple of qubits of the 2 syndrome qubits
     theta : int/float, optional
         Longitudinal rotation angle for the encoded state (radians).
         Default = None.
@@ -273,8 +273,8 @@ def MajorityVoteN(qubits,
 
     Parameters
     ----------
-    qubits : Channels.LogicalChannel tupple
-        A hashable (immutable) tupple of qubits for majority vote
+    qubits : Channels.LogicalChannel tuple
+        A hashable (immutable) tuple of qubits for majority vote
     nrounds: int
         Number of consecutive measurements
     prep : boolean iterable, optional
