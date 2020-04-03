@@ -108,6 +108,7 @@ def RabiAmp_NQubits(qubits,
                     amps,
                     phase=0,
                     showPlot=False,
+                    shape_fun=None,
                     measChans=None,
                     docals=False,
                     calRepeats=2):
@@ -125,6 +126,10 @@ def RabiAmp_NQubits(qubits,
         Phase of the Rabi pulse (radians). Default = 0
     showPlot : boolean, optional
         Whether to plot
+    shape_fun : function, optional
+        Pulse shape to use for the RabiWidth experiments.  Some useful ones are
+        avaliable in QGL.PulseShapes but you can write your own.  See those in
+        QGL.PulseShapes for examples.
     measChans : Channels.LogicalChannel tupple, optional
         A hashable (immutable) tupple of qubits to measured.
     docals : boolean, optional
@@ -151,12 +156,15 @@ def RabiAmp_NQubits(qubits,
     measBlock = reduce(operator.mul, [MEAS(q) for q in measChans])
     if shape_fun:
         seqs = [[reduce(operator.mul,
-                        [Utheta(q, amp=amp, phase=phase, shape_fun) for q in qubits]),
+                        [Utheta(q,
+                                amp=amp,
+                                phase=phase,
+                                shape_fun=shape_fun) for q in qubits]),
                  measBlock] for amp in amps]
     else:
-    seqs = [[reduce(operator.mul,
-                    [Utheta(q, amp=amp, phase=phase) for q in qubits]),
-             measBlock] for amp in amps]
+        seqs = [[reduce(operator.mul,
+                        [Utheta(q, amp=amp, phase=phase) for q in qubits]),
+                 measBlock] for amp in amps]
 
     if docals:
         seqs += create_cal_seqs(qubits, calRepeats, measChans=measChans)
