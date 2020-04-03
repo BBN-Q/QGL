@@ -12,9 +12,39 @@ from functools import reduce
 @qfunction
 def qreset(qubits, signVec, measDelay, buf, reg_size=None, TDM_map=None):
     """
-    for each qubit, build the set of feedback actions to perform when
+    For each qubit, build the set of feedback actions to perform when
     receiving a zero or one in the comparison register
-    reg_size, TDM_map: optional arguments to reset a subset of the qubit register (see Reset)
+
+    Parameters
+    ----------
+    qubits : Channels.LogicalChannel tupple
+        A hashable (immutable) tupple of qubits to reset
+    signVec : boolean tupple
+        A hashable (immutable) tupple of binary values from the compairison
+        register indicating the measured state of each qubit in the register
+        before reset.
+    measDelay : int/float
+        Delay after measurement before performing the LOADCMP compairison with
+        value in the register (seconds)
+    buf : int/float
+        Wait time between (seconds)
+    reg_size : int, optional
+        Size of the register in number of qubits, including those not reset.
+        Default value is set to len(qubits).
+    TDM_map : bit mask, optional
+        Map each qubit to a TDM digital input.  If True, arguments reset a
+        subset of the qubit register (see Reset).
+        Default: np.array(qN, qN-1, ..., q1) from MSB to LSB.
+
+    Returns
+    -------
+    seq : QGL.ControlFlow.Call
+        QGL sequence with the qreset calls
+
+    Examples
+    --------
+    >>> qreset((q1, q2), (0,1)], 2e-6, 2e-6);
+    CALL(H:)
     """
     if not reg_size:
         reg_size = len(qubits)
@@ -32,9 +62,11 @@ def qreset(qubits, signVec, measDelay, buf, reg_size=None, TDM_map=None):
     seq = [Id(qubits[0], measDelay), qwait(kind='CMP'), Id(qubits[0], buf)]
     # create a branch for each possible comparison value
     for ct in range(2**reg_size):
-        # duplicate branches for the irrelevant results if reg_size > len(TDM_map)
+        # duplicate branches for the irrelevant results
+        # if reg_size > len(TDM_map)
         meas_result = [(ct & TDM_bit)>0 for TDM_bit in 2**(np.array(TDM_map)-1)]
-        branch_idx = sum([t*2**(len(qubits)-ind-1) for ind,t in enumerate((meas_result))])
+        branch_idx = sum([t*2**(len(qubits)-ind-1)
+                          for ind,t in enumerate((meas_result))])
         seq += qif(ct, [FbSeq[branch_idx]])
 
     return seq
@@ -52,24 +84,48 @@ def Reset(qubits,
           reg_size=None,
           TDM_map=None):
     """
-
-    Preparation, simultanoeus reset, and measurement of an arbitrary number of qubits
+    Preparation, simultanoeus reset, and measurement of an arbitrary number
+    of qubits
 
     Parameters
     ----------
-    qubits : tuple of logical channels to implement sequence (LogicalChannel)
-    measDelay : delay between end of measuerement and LOADCMP
-    signVec : conditions for feedback. Tuple of 0 (flip if signal is above threshold) and 1 (flip if below) for each qubit. Default = 0 for all qubits
-    doubleRound : if true, double round of feedback
-    showPlot : whether to plot (boolean)
-    measChans : tuble of qubits to be measured (LogicalChannel)
-    docals, calRepeats: enable calibration sequences, repeated calRepeats times
-    reg_size: total number of qubits, including those that are not reset. Default set to len(qubits)
-    TDM_map: map each qubit to a TDM digital input. Default: np.array(qN, qN-1, ..., q1) from MSB to LSB.
+    qubits : Channels.LogicalChannel tupple
+        A hashable (immutable) tupple of qubits to reset
+    measDelay : int/float, optional
+        Delay after measurement before performing the LOADCMP compairison with
+        value in the register (seconds)
+    signVec : boolean tupple, optional
+        conditions for feedback. Tuple of 0 (flip if signal is above threshold) and 1 (flip if below) for each qubit. Default = 0 for all qubits
+    doubleRound : boolean, optional
+        If true, do two rounds of feedback
+    showPlot : boolean, optional
+        Whether to plot
+    measChans : LogicalChannel tupple, optional
+        A hashable (immutable) tupple of qubits to measured.
+    docals : boolean, optional
+        Whether to append calibration pulses to the end of the sequence
+    calRepeats : int, optional
+        How many times to repeat calibration scalings (default 2)
+    reg_size : int, optional
+        Size of the register in number of qubits, including those not reset.
+        Default value is set to len(qubits).
+    TDM_map : bit mask, optional
+        Map each qubit to a TDM digital input.  If True, arguments reset a
+        subset of the qubit register (see Reset).
+        Default: np.array(qN, qN-1, ..., q1) from MSB to LSB.
 
     Returns
     -------
-    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    metafile : string
+        Path to a json metafile with details about the sequences and paths to
+        compiled machine files
+
+    Examples
+    --------
+    >>> Reset((q1, q2));
+    Compiled 12 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
     """
     if measChans is None:
         measChans = qubits
@@ -77,13 +133,23 @@ def Reset(qubits,
     if signVec == None:
         signVec = (0, ) * len(qubits)
 
-    seqs = [prep + [qreset(qubits, signVec, measDelay, buf, reg_size=reg_size, TDM_map=TDM_map)]
-            for prep in create_cal_seqs(qubits, 1)]
+    seqs = [prep + [qreset(qubits,
+                           signVec,
+                           measDelay,
+                           buf,
+                           reg_size=reg_size,
+                           TDM_map=TDM_map)]
+                           for prep in create_cal_seqs(qubits, 1)]
     measBlock = reduce(operator.mul, [MEAS(q) for q in qubits])
     if doubleRound:
         for seq in seqs:
             seq += [measBlock]
-            seq.append(qreset(qubits, signVec, measDelay, buf, reg_size=reg_size, TDM_map=TDM_map))
+            seq.append(qreset(qubits,
+                              signVec,
+                              measDelay,
+                              buf,
+                              reg_size=reg_size,
+                              TDM_map=TDM_map))
 
     # add final measurement
     for seq in seqs:
@@ -103,22 +169,51 @@ def Reset(qubits,
 
 
 # do not make it a subroutine for now
-def BitFlip3(data_qs, ancilla_qs, theta=None, phi=None, nrounds=1, meas_delay=1e-6, docals=False, calRepeats=2):
+def BitFlip3(data_qs,
+             ancilla_qs,
+             theta=None,
+             phi=None,
+             nrounds=1,
+             meas_delay=1e-6,
+             docals=False,
+             calRepeats=2):
     """
-
-    Encoding on 3-qubit bit-flip code, followed by n rounds of syndrome detection, and final correction using the n results.
+    Encoding on 3-qubit bit-flip code, followed by n rounds of syndrome
+    detection, and final correction using the n results.
 
     Parameters
     ----------
-    data_qs : tuple of logical channels for the 3 code qubits
-    ancilla_qs: tuple of logical channels for the 2 syndrome qubits
-    theta, phi: longitudinal and azimuthal rotation angles for encoded state (default = no encoding)
-    meas_delay : delay between syndrome check rounds
-    docals, calRepeats: enable calibration sequences, repeated calRepeats times
+    data_qs : Channels.LogicalChannel tupple
+        A hashable (immutable) tupple of qubits of the 3 code qubits
+    ancilla_qs : Channels.LogicalChannel tupple
+        A hashable (immutable) tupple of qubits of the 2 syndrome qubits
+    theta : int/float, optional
+        Longitudinal rotation angle for the encoded state (radians).
+        Default = None.
+    phi : int/float, optional
+        Azimuthal rotation angle for the encoded state (radians).
+        Default = None.
+    nrounds: int, optional
+        Number of consecutive measurements
+    measDelay : int/float, optional
+        Delay between syndrome check rounds (seconds)
+    docals : boolean, optional
+        Whether to append calibration pulses to the end of the sequence
+    calRepeats : int, optional
+        How many times to repeat calibration scalings (default 2)
 
     Returns
     -------
-    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    metafile : string
+        Path to a json metafile with details about the sequences and paths to
+        compiled machine files
+
+    Examples
+    --------
+    >>> mf = BitFlip3((q1, q2, q3), (q4, q5));
+    Compiled 12 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
     """
     if len(data_qs) != 3 or len(ancilla_qs) != 2:
         raise Exception("Wrong number of qubits")
@@ -129,19 +224,30 @@ def BitFlip3(data_qs, ancilla_qs, theta=None, phi=None, nrounds=1, meas_delay=1e
 
     # encode single-qubit state into 3 qubits
     if theta and phi:
-        seqs+=[Utheta(data_qs[1], theta, phi), CNOT(data_qs[1], data_qs[0]), CNOT(data_qs[1], data_qs[2])]
+        seqs+=[Utheta(data_qs[1], theta, phi),
+               CNOT(data_qs[1], data_qs[0]),
+               CNOT(data_qs[1], data_qs[2])]
 
     # multiple rounds of syndrome measurements
     for n in range(nrounds):
-        seqs+=[CNOT(data_qs[0],ancilla_qs[0])*CNOT(data_qs[1],ancilla_qs[1])],
-        seqs+=[CNOT(data_qs[1], ancilla_qs[0])*CNOT(data_qs[2],ancilla_qs[1])],
-        seqs+= [MEASA(ancilla_qs[0], maddr=(10, 2*n))*MEASA(ancilla_qs[1], maddr=(10, 2*n+1)),
-        Id(ancilla_qs[0], meas_delay),
-        MEAS(data_qs[0], amp=0)*MEAS(data_qs[1], amp=0)*MEAS(data_qs[2], amp=0)] # virtual msmt's just to keep the number of segments uniform across digitizer channels
+        seqs+= [CNOT(data_qs[0],ancilla_qs[0])*CNOT(data_qs[1],ancilla_qs[1])],
+        seqs+= [CNOT(data_qs[1], ancilla_qs[0])*CNOT(data_qs[2],ancilla_qs[1])],
+        seqs+= [MEASA(ancilla_qs[0], maddr=(10, 2*n))*
+                MEASA(ancilla_qs[1], maddr=(10, 2*n+1)),
+                Id(ancilla_qs[0], meas_delay),
+                    MEAS(data_qs[0], amp=0)*
+                    MEAS(data_qs[1], amp=0)*
+                    MEAS(data_qs[2], amp=0)]
+                    # virtual msmt's just to keep the number of segments
+                    # uniform across digitizer channels
     seqs+=Decode(10, 11, 2*nrounds)
     seqs+=qwait("RAM",11)
-    seqs+=[MEAS(data_qs[0])*MEAS(data_qs[1])*MEAS(data_qs[2])*
-    MEAS(ancilla_qs[0], amp=0)*MEAS(ancilla_qs[1], amp=0)] # virtual msmt's
+    seqs+=[MEAS(data_qs[0])*
+           MEAS(data_qs[1])*
+           MEAS(data_qs[2])*
+           MEAS(ancilla_qs[0], amp=0)*
+           MEAS(ancilla_qs[1], amp=0)]
+           # virtual msmt's
 
     # apply corrective pulses depending on the decoder result
     FbGates = []
@@ -156,29 +262,62 @@ def BitFlip3(data_qs, ancilla_qs, theta=None, phi=None, nrounds=1, meas_delay=1e
     metafile = compile_to_hardware(seqs, 'BitFlip/BitFlip', tdm_seq=True)
     return metafile
 
-def MajorityVoteN(qubits, nrounds, prep=[], meas_delay=1e-6, docals=False, calRepeats=2):
+def MajorityVoteN(qubits,
+                  nrounds,
+                  prep=[],
+                  meas_delay=1e-6,
+                  docals=False,
+                  calRepeats=2):
     """
     Majority vote across multiple measurement results (same or different qubits)
 
     Parameters
     ----------
-    qubits : tuple of logical channels
-    nrounds: number of consecutive measurements
-    meas_delay : delay between measurements
-    docals, calRepeats: enable calibration sequences, repeated calRepeats times
+    qubits : Channels.LogicalChannel tupple
+        A hashable (immutable) tupple of qubits for majority vote
+    nrounds: int
+        Number of consecutive measurements
+    prep : boolean iterable, optional
+        Array of binary values mapping X(q) pulses to the list of qubits
+        proivided. Ex: (q1,q2), prep=(1,0) -> would apply a pi pulse to q1
+        before the majority vote measurement. Default = []
+    measDelay : int/float, optional
+        Delay between syndrome check rounds (seconds)
+    docals : boolean, optional
+        Whether to append calibration pulses to the end of the sequence
+    calRepeats : int, optional
+        How many times to repeat calibration scalings (default 2)
 
     Returns
     -------
-    metafile : metafile path
+    metafile : string
+        Path to a json metafile with details about the sequences and paths to
+        compiled machine files
+
+    Examples
+    --------
+    >>> mf = MajorityVoteN((q1, q2, q3), 10);
+    Compiled 1 sequences.
+    o INVALIDATE(channel=None, addr=0x1, mask=0x0)
+    o WRITEADDR(channel=None, addr=0x1, value=0xfffff)
+    MAJORITYMASK(in_addr=1, out_addr=0)
+    o INVALIDATE(channel=None, addr=0xa, mask=0xfffff)
+    o INVALIDATE(channel=None, addr=0xb, mask=0x1)
+    MAJORITY(in_addr=a, out_addr=b)
+    >>> mf
+    '/path/to/exp/exp-meta.json'
     """
     nqubits = len(qubits)
     seqs = [MajorityMask(1, 0, nrounds*nqubits),
            Invalidate(10, nrounds*nqubits),
            Invalidate(11, 1)]
     if prep:
-       seqs += [reduce(operator.mul, [X(q) for n,q in enumerate(qubits) if prep[n]])]
+       seqs += [reduce(operator.mul,
+                    [X(q) for n,q in enumerate(qubits) if prep[n]])]
     for n in range(nrounds):
-       seqs += [reduce(operator.mul, [MEASA(q, (10, nqubits*n+m)) for m,q in enumerate(qubits)]),  Id(qubits[0],meas_delay)]
+       seqs += [reduce(operator.mul,
+               [MEASA(q, (10, nqubits*n+m)) for m,q in enumerate(qubits)]),
+               Id(qubits[0],meas_delay)]
     seqs+=MajorityVote(10,11, nrounds*nqubits)
     seqs+=qwait("RAM", 11)
     seqs+=[Id(qubits[0],100e-9)]
@@ -187,4 +326,7 @@ def MajorityVoteN(qubits, nrounds, prep=[], meas_delay=1e-6, docals=False, calRe
     if docals:
         seqs += create_cal_seqs(qubits,
         calRepeats)
-    metafile = compile_to_hardware(seqs, 'MajorityVote/MajorityVote', tdm_seq=True)
+    metafile = compile_to_hardware(seqs,
+                                   'MajorityVote/MajorityVote',
+                                   tdm_seq=True)
+    return metafile
