@@ -79,7 +79,7 @@ def Reset(qubits,
           buf=20e-9,
           showPlot=False,
           measChans=None,
-          docals=True,
+          add_cals=True,
           calRepeats=2,
           reg_size=None,
           TDM_map=None):
@@ -102,7 +102,7 @@ def Reset(qubits,
         Whether to plot
     measChans : LogicalChannel tuple, optional
         A hashable (immutable) tuple of qubits to measured.
-    docals : boolean, optional
+    add_cals : boolean, optional
         Whether to append calibration pulses to the end of the sequence
     calRepeats : int, optional
         How many times to repeat calibration scalings (default 2)
@@ -155,7 +155,7 @@ def Reset(qubits,
     for seq in seqs:
         seq += [measBlock, Id(qubits[0], measDelay), qwait(kind='CMP')]
 
-    if docals:
+    if add_cals:
         seqs += create_cal_seqs(qubits,
                                 calRepeats,
                                 measChans=measChans,
@@ -175,7 +175,7 @@ def BitFlip3(data_qs,
              phi=None,
              nrounds=1,
              meas_delay=1e-6,
-             docals=False,
+             add_cals=False,
              calRepeats=2):
     """
     Encoding on 3-qubit bit-flip code, followed by n rounds of syndrome
@@ -197,7 +197,7 @@ def BitFlip3(data_qs,
         Number of consecutive measurements
     measDelay : int/float, optional
         Delay between syndrome check rounds (seconds)
-    docals : boolean, optional
+    add_cals : boolean, optional
         Whether to append calibration pulses to the end of the sequence
     calRepeats : int, optional
         How many times to repeat calibration scalings (default 2)
@@ -256,7 +256,7 @@ def BitFlip3(data_qs,
     FbSeq = [reduce(operator.mul, x) for x in product(*FbGates)]
     for k in range(8):
         seqs += qif(k, [FbSeq[k]])
-    if docals:
+    if add_cals:
         seqs += create_cal_seqs(qubits,
         calRepeats)
     metafile = compile_to_hardware(seqs, 'BitFlip/BitFlip', tdm_seq=True)
@@ -266,7 +266,7 @@ def MajorityVoteN(qubits,
                   nrounds,
                   prep=[],
                   meas_delay=1e-6,
-                  docals=False,
+                  add_cals=False,
                   calRepeats=2):
     """
     Majority vote across multiple measurement results (same or different qubits)
@@ -283,7 +283,7 @@ def MajorityVoteN(qubits,
         before the majority vote measurement. Default = []
     measDelay : int/float, optional
         Delay between syndrome check rounds (seconds)
-    docals : boolean, optional
+    add_cals : boolean, optional
         Whether to append calibration pulses to the end of the sequence
     calRepeats : int, optional
         How many times to repeat calibration scalings (default 2)
@@ -323,7 +323,7 @@ def MajorityVoteN(qubits,
     seqs+=[Id(qubits[0],100e-9)]
     seqs+=qif(1,[X(qubits[0])]) # placeholder for any conditional operation
     seqs=[seqs]
-    if docals:
+    if add_cals:
         seqs += create_cal_seqs(qubits,
         calRepeats)
     metafile = compile_to_hardware(seqs,
