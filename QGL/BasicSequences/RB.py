@@ -10,8 +10,48 @@ import numpy as np
 from functools import reduce
 
 
-def create_RB_seqs(numQubits, lengths, repeats=32, interleaveGate=None, recovery=True):
-    """Create a list of lists of Clifford gates to implement RB. """
+def create_RB_seqs(numQubits,
+                   lengths,
+                   repeats=32,
+                   interleaveGate=None,
+                   recovery=True):
+    """
+    Create a list of lists of Clifford gates to implement RB.
+
+    Parameters
+    ----------
+    numQubits : int
+        Number of qubits to create sequences for
+    lengths : int iterable
+        Array-like list of integers that denote the specific length for the
+        various RB experiments.  A common examples would be powers of two
+        spacing = [2, 4, 8, 16, 32, 64, ...]
+    repeats : int, optional
+        Number of individual randomizations for each number of lengths.
+        Default = 32.
+    interleaveGate : int, optional
+        This is the index of a Clifford operation that can be optionally
+        interleaved in the sequence if you would like to do interleaved RB.
+        The index corresponds to the mapping in QGL.Cliffords.
+    recovery : boolean, optional
+        Optional parameter which, if false, leaves off the recovery operation
+
+    Returns
+    -------
+    seq : int list of lists
+        A list of lists containing integer pulses indicies based on those in
+        QGL.Cliffords.
+
+    Examples
+    --------
+    >>> create_RB_seqs(1, [2,4,8], repeats=2, interleaveGate=1)
+    [[19, 1, 6],
+     [3, 1, 0],
+     [1, 1, 18, 1, 9, 1, 15],
+     [11, 1, 8, 1, 19, 1, 20],
+     [6, 1, 21, 1, 23, 1, 8, 1, 13, 1, 2, 1, 3, 1, 0],
+     [2, 1, 8, 1, 4, 1, 10, 1, 18, 1, 20, 1, 10, 1, 19]]
+    """
     if numQubits == 1:
         cliffGroupSize = 24
     elif numQubits == 2:
@@ -48,17 +88,35 @@ def create_RB_seqs(numQubits, lengths, repeats=32, interleaveGate=None, recovery
     return seqs
 
 def SingleQubitRB(qubit, seqs, purity=False, showPlot=False, add_cals=True):
-    """Single qubit randomized benchmarking using 90 and 180 generators.
+    """
+    Single qubit randomized benchmarking using 90 and 180 generators.
 
     Parameters
     ----------
-    qubit : logical channel to implement sequence (LogicalChannel)
-    seqs : list of lists of Clifford group integers
-    showPlot : whether to plot (boolean)
+    qubit : Channels.LogicalChannel
+        Logical channel to implement sequence
+    seqs : int iterable
+        list of lists of Clifford group integers produced by create_RB_seqs
+    purity : boolean, optional
+        If True, this create sequences for purity RB
+    showPlot : boolean, optional
+        Whether to plot
+    add_cals : boolean, optional
+        Whether to append calibration pulses to the end of the sequence
 
     Returns
     -------
-    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files
+
+    Examples
+    --------
+    >>> seqs = create_RB_seqs(1, [2,4,8], repeats=2, interleaveGate=1);
+    >>> mf = SingleQubitRB(q1, seqs);
+    Compiled 10 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
     """
 
     seqsBis = []
@@ -91,21 +149,37 @@ def SingleQubitRB(qubit, seqs, purity=False, showPlot=False, add_cals=True):
     return metafile
 
 def SingleQubitLeakageRB(qubit, seqs, pi2args, showPlot=False):
-    """Single qubit randomized benchmarking using 90 and 180 generators to
-       measure leakage outside the qubit subspace.
-       See https://journals.aps.org/prl/supplemental/10.1103/PhysRevLett.123.120502/Rol_SOM.pdf
-       for description of algorithm.
+    """
+    Single qubit randomized benchmarking using 90 and 180 generators to
+    measure leakage outside the qubit subspace.
+    See https://journals.aps.org/prl/supplemental/10.1103/
+    PhysRevLett.123.120502/Rol_SOM.pdf for description of algorithm.
 
     Parameters
     ----------
-    qubit : logical channel to implement sequence (LogicalChannel)
-    seqs : list of lists of Clifford group integers
-    pi2args: arguments passed to the X90 gate for the 1 <-> 2 transition during calibration
-    showPlot : whether to plot (boolean)
+    qubit : Channels.LogicalChannel
+        Logical channel to implement sequence
+    seqs : int iterable
+        list of lists of Clifford group integers produced by create_RB_seqs
+    pi2args: dictionary mapping
+        Arguments passed to the X90 gate for the 1 <-> 2 transition during
+        calibration
+    showPlot : boolean, optional
+        Whether to plot
 
     Returns
     -------
-    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files
+
+    Examples
+    --------
+    >>> seqs = create_RB_seqs(1, [2,4,8]);
+    >>> mf = SingleQubitLeakageRB(q1, seqs, {'one': 1, 'two': 2});
+    Compiled 10 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
     """
 
     seqsBis = []
@@ -146,18 +220,38 @@ def SingleQubitLeakageRB(qubit, seqs, pi2args, showPlot=False):
 
 
 def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix="", add_cals=True):
-    """Two qubit randomized benchmarking using 90 and 180 single qubit generators and ZX90
+    """
+    Two qubit randomized benchmarking using 90 and 180 single qubit generators
+    and ZX90.
 
     Parameters
     ----------
-    qubit : logical channel to implement sequence (LogicalChannel)
-    seqs : list of lists of Clifford group integers
-    showPlot : whether to plot (boolean)
-    suffix : suffix to apply to sequence file names
+    qubit : Channels.LogicalChannel
+        Logical channel to implement RB
+    qubit : Channels.LogicalChannel
+        Logical channel to implement RB
+    seqs : int iterable
+        list of lists of Clifford group integers produced by create_RB_seqs
+    showPlot : boolean, optional
+        Whether to plot
+    suffix : string, optional
+        Suffix to add to generated files
+    add_cals : boolean, optional
+        Whether to append calibration pulses to the end of the sequence
 
     Returns
     -------
-    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files
+
+    Examples
+    --------
+    >>> seqs = create_RB_seqs(2, [2,4,8], repeats=2);
+    >>> mf = TwoQubitRB(q1, q2, seqs);
+    Compiled 14 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
     """
     seqsBis = []
     for seq in seqs:
@@ -187,20 +281,41 @@ def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix="", add_cals=True):
     return metafile
 
 def TwoQubitLeakageRB(q1, q2, meas_qubit, seqs, pi2args, showPlot=False):
-    """Two qubit randomized benchmarking using 90 and 180 single qubit generators and ZX90 to
-       measure leakage outside the qubit subspace.
-       See https://journals.aps.org/prl/supplemental/10.1103/PhysRevLett.123.120502/Rol_SOM.pdf
-       for description of algorithm.
-        Parameters
-            ----------
-            qubit : logical channel to implement sequence (LogicalChannel)
-            seqs : list of lists of Clifford group integers
-            showPlot : whether to plot (boolean)
-            suffix : suffix to apply to sequence file names
+    """
+    Two qubit randomized benchmarking using 90 and 180 single qubit generators
+    and ZX90 to measure leakage outside the qubit subspace.  See https://
+    journals.aps.org/prl/supplemental/10.1103/PhysRevLett.123.120502/Rol_SOM.pdf
+    for description of algorithm.
 
-            Returns
-            -------
-            metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    Parameters
+    ----------
+    qubit : Channels.LogicalChannel
+        Logical channel to implement RB
+    qubit : Channels.LogicalChannel
+        Logical channel to implement RB
+    meas_qubit : Channels.LogicalChannel
+        Qubit to measure
+    seqs : int iterable
+        list of lists of Clifford group integers produced by create_RB_seqs
+    pi2args: dictionary mapping
+        Arguments passed to the X90 gate for the 1 <-> 2 transition during
+        calibration
+    showPlot : boolean, optional
+        Whether to plot
+
+    Returns
+    -------
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files
+
+    Examples
+    --------
+    >>> seqs = create_RB_seqs(2, [2,4,8], repeats=2);
+    >>> mf = TwoQubitLeakageRB(q1, q2, q1, seqs, {'one': 1, 'two': 2});
+    Compiled 14 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
     """
     seqsBis = []
     for seq in seqs:
@@ -238,17 +353,37 @@ def TwoQubitLeakageRB(q1, q2, meas_qubit, seqs, pi2args, showPlot=False):
     return metafile
 
 def SingleQubitRB_AC(qubit, seqs, purity=False, showPlot=False, add_cals=True):
-    """Single qubit randomized benchmarking using atomic Clifford pulses.
+    """
+    Single qubit randomized benchmarking using atomic Clifford pulses.
 
     Parameters
     ----------
-    qubit : logical channel to implement sequence (LogicalChannel)
-    seqFile : file containing sequence strings
-    showPlot : whether to plot (boolean)
+    qubit : Channels.LogicalChannel
+        Logical channel to implement sequence
+    seqs : int iterable
+        list of lists of Clifford group integers produced by create_RB_seqs
+    purity : boolean, optional
+        If True, this create sequences for purity RB: measure <Z>,<X>,<Y> of
+        final state, to measure purity. See J.J. Wallman et al.,
+        New J. Phys. 17, 113020 (2015)
+    showPlot : boolean, optional
+        Whether to plot
+    add_cals : boolean, optional
+        Whether to append calibration pulses to the end of the sequence
 
     Returns
     -------
-    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files
+
+    Examples
+    --------
+    >>> seqs = create_RB_seqs(1, [2,4,8], repeats=2, interleaveGate=1);
+    >>> mf = SingleQubitRB_AC(q1, seqs);
+    Compiled 10 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
     """
     seqsBis = []
     op = [Id(qubit, length=0), Y90m(qubit), X90(qubit)]
@@ -278,21 +413,45 @@ def SingleQubitRB_AC(qubit, seqs, purity=False, showPlot=False, add_cals=True):
         plot_pulse_files(metafile)
     return metafile
 
-def SingleQubitRB_DiAC(qubit, seqs, compiled=True, purity=False, showPlot=False, add_cals=True):
-    """Single qubit randomized benchmarking using diatomic Clifford pulses.
+def SingleQubitRB_DiAC(qubit,
+                       seqs,
+                       compiled=True,
+                       purity=False,
+                       showPlot=False,
+                       add_cals=True):
+    """
+    Single qubit randomized benchmarking using diatomic Clifford pulses.
 
     Parameters
     ----------
-    qubit : logical channel to implement sequence (LogicalChannel)
-    seqFile : file containing sequence strings
-    compiled : if True, compile Z90(m)-X90-Z90(m) to Y90(m) pulses
-    purity : measure <Z>,<X>,<Y> of final state, to measure purity. See J.J.
-        Wallman et al., New J. Phys. 17, 113020 (2015)
-    showPlot : whether to plot (boolean)
+    qubit : Channels.LogicalChannel
+        Logical channel to implement sequence
+    seqs : int iterable
+        list of lists of Clifford group integers produced by create_RB_seqs
+    compiled : boolean, optional
+        If True, compile Z90(m)-X90-Z90(m) to Y90(m) pulses
+    purity : boolean, optional
+        If True, this create sequences for purity RB: measure <Z>,<X>,<Y> of
+        final state, to measure purity. See J.J. Wallman et al.,
+        New J. Phys. 17, 113020 (2015)
+    showPlot : boolean, optional
+        Whether to plot
+    add_cals : boolean, optional
+        Whether to append calibration pulses to the end of the sequence
 
     Returns
     -------
-    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files
+
+    Examples
+    --------
+    >>> seqs = create_RB_seqs(1, [2,4,8], repeats=2, interleaveGate=1);
+    >>> mf = SingleQubitRB_DiAC(q1, seqs);
+    Compiled 10 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
     """
     seqsBis = []
     op = [Id(qubit, length=0), Y90m(qubit), X90(qubit)]
@@ -323,17 +482,32 @@ def SingleQubitRB_DiAC(qubit, seqs, compiled=True, purity=False, showPlot=False,
     return metafile
 
 def SingleQubitIRB_AC(qubit, seqFile, showPlot=False):
-    """Single qubit interleaved randomized benchmarking using atomic Clifford pulses.
+    """
+    Single qubit interleaved randomized benchmarking using atomic Clifford
+    pulses.
 
     Parameters
     ----------
-    qubit : logical channel to implement sequence (LogicalChannel)
-    seqFile : file containing sequence strings
-    showPlot : whether to plot (boolean)
+    qubit : Channels.LogicalChannel
+        Logical channel to implement sequence
+    seqsFiles : string
+        String defining the path to the file with sequence strings
+    showPlot : boolean, optional
+        Whether to plot
 
     Returns
     -------
-    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files
+
+    Examples
+    --------
+    >>> seqs = create_RB_seqs(1, [2,4,8], repeats=2, interleaveGate=1);
+    >>> mf = SingleQubitIRB_AC(q1, '/path/to/seq/strings/file');
+    Compiled 10 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
     """
     #Setup a pulse library
     pulseLib = [AC(qubit, cliffNum) for cliffNum in range(24)]
@@ -351,7 +525,8 @@ def SingleQubitIRB_AC(qubit, seqFile, showPlot=False):
             seqs.append(seq)
 
     #Hack for limited APS waveform memory and break it up into multiple files
-    #We've shuffled the sequences so that we loop through each gate length on the inner loop
+    #We've shuffled the sequences so that we loop through each gate length
+    #on the inner loop
     numRandomizations = 36
     for ct in range(numRandomizations):
         chunk = seqs[ct::numRandomizations]
@@ -372,10 +547,17 @@ def SingleQubitIRB_AC(qubit, seqFile, showPlot=False):
     return metafile
 
 
-def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False, add_cals=True):
-    """	Single qubit randomized benchmarking tomography using atomic Clifford pulses.
+def SingleQubitRBT(qubit,
+                   seqFileDir,
+                   analyzedPulse,
+                   showPlot=False,
+                   add_cals=True):
+    """
+    Single qubit randomized benchmarking tomography using atomic Clifford
+    pulses.
 
-    This relies on specific sequence files and is here for historical purposes only.
+    This relies on specific sequence files and is here for historical
+    purposes only!
 
     Parameters
     ----------
@@ -386,7 +568,9 @@ def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False, add_cals=Tr
 
     Returns
     -------
-    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files
     """
     #Setup a pulse library
     pulseLib = [AC(qubit, cliffNum) for cliffNum in range(24)]
@@ -428,22 +612,29 @@ def SingleQubitRBT(qubit, seqFileDir, analyzedPulse, showPlot=False, add_cals=Tr
 
 def SimultaneousRB_AC(qubits, seqs, showPlot=False, add_cals=True):
     """
-    Simultaneous randomized benchmarking on multiple qubits using atomic Clifford pulses.
+    Simultaneous randomized benchmarking on multiple qubits using atomic
+    Clifford pulses.
 
     Parameters
     ----------
-    qubits : iterable of logical channels to implement seqs on (list or tuple)
-    seqs : a tuple of sequences created for each qubit in qubits
-    showPlot : whether to plot (boolean)
+    qubits : Channels.LogicalChannel tuple
+        A tuple of two logical channels to implement RB
+    seqs : int iterable tuple
+        A length two tuple containing list of lists of Clifford group
+        integers produced by create_RB_seqs
+    showPlot : boolean, optional
+        Whether to plot
+    add_cals : boolean, optional
+        Whether to append calibration pulses to the end of the sequence
 
     Returns
     -------
-    metafile : path to a json metafile with details about the sequences and paths to compiled machine files
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files
 
     Example
     -------
-    >>> q1 = QubitFactory('q1')
-    >>> q2 = QubitFactory('q2')
     >>> seqs1 = create_RB_seqs(1, [2, 4, 8, 16])
     >>> seqs2 = create_RB_seqs(1, [2, 4, 8, 16])
     >>> SimultaneousRB_AC((q1, q2), (seqs1, seqs2), showPlot=False)

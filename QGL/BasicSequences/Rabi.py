@@ -110,7 +110,7 @@ def RabiAmp_NQubits(qubits,
                     showPlot=False,
                     shape_fun=None,
                     measChans=None,
-                    docals=False,
+                    add_cals=False,
                     calRepeats=2):
     """
     Variable amplitude Rabi nutation experiment for an arbitrary number of
@@ -118,8 +118,8 @@ def RabiAmp_NQubits(qubits,
 
     Parameters
     ----------
-    qubits : Channels.LogicalChannel tupple
-        A hashable (immutable) tupple of qubits for the Rabi experiment
+    qubits : Channels.LogicalChannel tuple
+        A hashable (immutable) tuple of qubits for the Rabi experiment
     amps : int/float iterable
         Array-like iterable of amplitudes to sweep over. [-1, 1]
     phase : float, optional
@@ -130,9 +130,9 @@ def RabiAmp_NQubits(qubits,
         Pulse shape to use for the RabiWidth experiments.  Some useful ones are
         avaliable in QGL.PulseShapes but you can write your own.  See those in
         QGL.PulseShapes for examples.
-    measChans : Channels.LogicalChannel tupple, optional
-        A hashable (immutable) tupple of qubits to measured.
-    docals : boolean, optional
+    measChans : Channels.LogicalChannel tuple, optional
+        A hashable (immutable) tuple of qubits to measured.
+    add_cals : boolean, optional
         Whether to append calibration pulses to the end of the sequence
     calRepeats : int, optional
         How many times to repeat calibration scalings (default 2)
@@ -166,7 +166,7 @@ def RabiAmp_NQubits(qubits,
                         [Utheta(q, amp=amp, phase=phase) for q in qubits]),
                  measBlock] for amp in amps]
 
-    if docals:
+    if add_cals:
         seqs += create_cal_seqs(qubits, calRepeats, measChans=measChans)
     else:
         calRepeats = 0

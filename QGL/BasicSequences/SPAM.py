@@ -8,23 +8,39 @@ from numpy import pi
 
 def SPAM(qubit, angleSweep, maxSpamBlocks=10, showPlot=False):
     """
+    X-Y sequence (X-Y-X-Y)**n to determine quadrature angles or mixer
+    correction.
 
-	X-Y sequence (X-Y-X-Y)**n to determine quadrature angles or mixer correction.
+    Parameters
+    ----------
+    qubit : Channels.LogicalChannel
+        Logical channel to implement sequence
+    angleSweep : int/float iterable
+        Array-like iterable of angles to sweep over (radians).
+    maxSpamBlocks : int, optional
+        Number of (X-Y-X-Y) sequences to include
+    showPlot : boolean, optional
+        Whether to plot
 
-	Parameters
-	----------
-	qubit : logical channel to implement sequence (LogicalChannel)
-	angleSweep : angle shift to sweep over
-	maxSpamBlocks : maximum number of XYXY block to do
-	showPlot : whether to plot (boolean)
+    Returns
+    -------
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files
 
-	Returns
-	-------
-	metafile : path to a json metafile with details about the sequences and paths to compiled machine files
-	"""
+    Examples
+    --------
+    >>> mf = SPAM(q1, np.linspace(-1.0, 1.0, 11));
+    Compiled 122 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
+    """
 
     def spam_seqs(angle):
-        """ Helper function to create a list of sequences increasing SPAM blocks with a given angle. """
+        """
+        Helper function to create a list of sequences increasing SPAM blocks
+        with a given angle.
+        """
         SPAMBlock = [X(qubit), U(qubit, phase=pi / 2 + angle), X(qubit),
                      U(qubit, phase=pi / 2 + angle)]
         return [[Y90(qubit)] + SPAMBlock * rep + [X90(qubit)]
