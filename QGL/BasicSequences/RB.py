@@ -2,6 +2,7 @@ from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
 from ..Cliffords import clifford_seq, clifford_mat, inverse_clifford
+from ..Euler import XYXClifford
 from .helpers import create_cal_seqs, cal_descriptor
 
 import os
@@ -480,6 +481,67 @@ def SingleQubitRB_DiAC(qubit,
     if showPlot:
         plot_pulse_files(metafile)
     return metafile
+
+def SingleQubitRB_XYX(qubit, seqs, purity=False, showPlot=False, add_cals=True):
+    """
+    Single qubit randomized benchmarking using XYX Euler pulses. 
+
+    Parameters
+    ----------
+    qubit : Channels.LogicalChannel
+        Logical channel to implement sequence
+    seqs : int iterable
+        list of lists of Clifford group integers produced by create_RB_seqs
+    purity : boolean, optional
+        If True, this create sequences for purity RB
+    showPlot : boolean, optional
+        Whether to plot
+    add_cals : boolean, optional
+        Whether to append calibration pulses to the end of the sequence
+
+    Returns
+    -------
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files
+
+    Examples
+    --------
+    >>> seqs = create_RB_seqs(1, [2,4,8], repeats=2, interleaveGate=1);
+    >>> mf = SingleQubitRB(q1, seqs);
+    Compiled 10 sequences.
+    >>> mf
+    '/path/to/exp/exp-meta.json'
+    """
+
+    seqsBis = []
+    op = [Id(qubit, length=0), Y90m(qubit), X90(qubit)]
+    for ct in range(3 if purity else 1):
+        for seq in seqs:
+            seqsBis.append([XYXClifford(qubit, c) for c in seq])
+            #append tomography pulse to measure purity
+            seqsBis[-1].append(op[ct])
+            #append measurement
+            seqsBis[-1].append(MEAS(qubit))
+
+    axis_descriptor = [{
+        'name': 'length',
+        'unit': None,
+        'points': list(map(len, seqs)),
+        'partition': 1
+    }]
+
+    #Tack on the calibration sequences
+    if add_cals:
+        seqsBis += create_cal_seqs((qubit, ), 2)
+        axis_descriptor.append(cal_descriptor((qubit,), 2))
+
+    metafile = compile_to_hardware(seqsBis, 'RB_XYX/RB_XYX', axis_descriptor = axis_descriptor, extra_meta = {'sequences':seqs})
+
+    if showPlot:
+        plot_pulse_files(metafile)
+    return metafile
+
 
 def SingleQubitIRB_AC(qubit, seqFile, showPlot=False):
     """
