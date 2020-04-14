@@ -20,7 +20,7 @@ limitations under the License.
 
 import numpy as np 
 from scipy.linalg import expm
-
+from .Cliffords import C1
 from .PulsePrimitives import *
 
 #Pauli matrices
@@ -102,7 +102,17 @@ def xyx_unitary(α, β, γ):
     return expm(-0.5j*α*pX)@expm(-0.5j*β*pY)@expm(-0.5j*γ*pX)
 
 def zyz_unitary(ϕ, θ, λ):
+    """Unitary decomposed as Rz, Ry, Rz rotations. 
+        Angles are in matrix order, not in circuit order!
+    """
     return expm(-0.5j*ϕ*pZ)@expm(-0.5j*θ*pY)@expm(-0.5j*λ*pZ)
+
+def diatomic_unitary(a, b, c):
+    """Unitary decomposed as a diatomic gate of the form  
+        Ztheta + X90 + Ztheta + X90 + Ztheta
+    """
+    X90 = expm(-0.25j*np.pi*pX)
+    return expm(-0.5j*a*pZ)@X90@expm(-0.5j*b*pZ)@X90@expm(-0.5j*c*pZ)
 
 def zyz_angles(U):
     """Euler angles for a unitary matrix U in the sequence Z-Y-Z.
@@ -128,31 +138,38 @@ def xyx_angles(U):
     ϕ, θ, λ = zyz_angles(H@U@H)
     return (ϕ, -1.0*θ, λ)
 
-C1 = {}
-C1[0] = pI
-C1[1] = expm(-1j * (pi / 4) * pX)
-C1[2] = expm(-2j * (pi / 4) * pX)
-C1[3] = expm(-3j * (pi / 4) * pX)
-C1[4] = expm(-1j * (pi / 4) * pY)
-C1[5] = expm(-2j * (pi / 4) * pY)
-C1[6] = expm(-3j * (pi / 4) * pY)
-C1[7] = expm(-1j * (pi / 4) * pZ)
-C1[8] = expm(-2j * (pi / 4) * pZ)
-C1[9] = expm(-3j * (pi / 4) * pZ)
-C1[10] = expm(-1j * (pi / 2) * (1 / np.sqrt(2)) * (pX + pY))
-C1[11] = expm(-1j * (pi / 2) * (1 / np.sqrt(2)) * (pX - pY))
-C1[12] = expm(-1j * (pi / 2) * (1 / np.sqrt(2)) * (pX + pZ))
-C1[13] = expm(-1j * (pi / 2) * (1 / np.sqrt(2)) * (pX - pZ))
-C1[14] = expm(-1j * (pi / 2) * (1 / np.sqrt(2)) * (pY + pZ))
-C1[15] = expm(-1j * (pi / 2) * (1 / np.sqrt(2)) * (pY - pZ))
-C1[16] = expm(-1j * (pi / 3) * (1 / np.sqrt(3)) * (pX + pY + pZ))
-C1[17] = expm(-2j * (pi / 3) * (1 / np.sqrt(3)) * (pX + pY + pZ))
-C1[18] = expm(-1j * (pi / 3) * (1 / np.sqrt(3)) * (pX - pY + pZ))
-C1[19] = expm(-2j * (pi / 3) * (1 / np.sqrt(3)) * (pX - pY + pZ))
-C1[20] = expm(-1j * (pi / 3) * (1 / np.sqrt(3)) * (pX + pY - pZ))
-C1[21] = expm(-2j * (pi / 3) * (1 / np.sqrt(3)) * (pX + pY - pZ))
-C1[22] = expm(-1j * (pi / 3) * (1 / np.sqrt(3)) * (-pX + pY + pZ))
-C1[23] = expm(-2j * (pi / 3) * (1 / np.sqrt(3)) * (-pX + pY + pZ))
+def diatomic_angles(U):
+    ϕ, θ, λ = zyz_angles(U)
+    a = ϕ
+    b = np.pi - θ
+    c = λ - np.pi
+    return (a, b, c)
+
+# C1 = {}
+# C1[0] = pI
+# C1[1] = expm(-1j * (pi / 4) * pX)
+# C1[2] = expm(-2j * (pi / 4) * pX)
+# C1[3] = expm(-3j * (pi / 4) * pX)
+# C1[4] = expm(-1j * (pi / 4) * pY)
+# C1[5] = expm(-2j * (pi / 4) * pY)
+# C1[6] = expm(-3j * (pi / 4) * pY)
+# C1[7] = expm(-1j * (pi / 4) * pZ)
+# C1[8] = expm(-2j * (pi / 4) * pZ)
+# C1[9] = expm(-3j * (pi / 4) * pZ)
+# C1[10] = expm(-1j * (pi / 2) * (1 / np.sqrt(2)) * (pX + pY))
+# C1[11] = expm(-1j * (pi / 2) * (1 / np.sqrt(2)) * (pX - pY))
+# C1[12] = expm(-1j * (pi / 2) * (1 / np.sqrt(2)) * (pX + pZ))
+# C1[13] = expm(-1j * (pi / 2) * (1 / np.sqrt(2)) * (pX - pZ))
+# C1[14] = expm(-1j * (pi / 2) * (1 / np.sqrt(2)) * (pY + pZ))
+# C1[15] = expm(-1j * (pi / 2) * (1 / np.sqrt(2)) * (pY - pZ))
+# C1[16] = expm(-1j * (pi / 3) * (1 / np.sqrt(3)) * (pX + pY + pZ))
+# C1[17] = expm(-2j * (pi / 3) * (1 / np.sqrt(3)) * (pX + pY + pZ))
+# C1[18] = expm(-1j * (pi / 3) * (1 / np.sqrt(3)) * (pX - pY + pZ))
+# C1[19] = expm(-2j * (pi / 3) * (1 / np.sqrt(3)) * (pX - pY + pZ))
+# C1[20] = expm(-1j * (pi / 3) * (1 / np.sqrt(3)) * (pX + pY - pZ))
+# C1[21] = expm(-2j * (pi / 3) * (1 / np.sqrt(3)) * (pX + pY - pZ))
+# C1[22] = expm(-1j * (pi / 3) * (1 / np.sqrt(3)) * (-pX + pY + pZ))
+# C1[23] = expm(-2j * (pi / 3) * (1 / np.sqrt(3)) * (-pX + pY + pZ))
 
 def XYXClifford(qubit, cliff_num):
     """

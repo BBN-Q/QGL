@@ -30,10 +30,21 @@ class EulerDecompositions(unittest.TestCase):
 			Ux = xyx_unitary(*xyx_angles(Uh))
 			assert is_close(Uh, Ux)
 
+	def test_diatomic_decomp(self):
+		for j in range(self.N_test):
+			Uh = haar_unitary(2)
+			Ux = diatomic_unitary(*diatomic_angles(Uh))
+			assert is_close(Uh, Ux)
+
 	def test_xyx_cliffords(self):
 		for j in range(24):
 			Uxyx = xyx_unitary(*xyx_angles(C1[j]))
 			assert is_close(Uxyx, C1[j]), f"{j}"
+
+	def test_diatomic_cliffords(self):
+		for j in range(24):
+			Ud = diatomic_unitary(*diatomic_angles(C1[j]))
+			assert is_close(Ud, C1[j]), f"{j}"
 
 if __name__ == "__main__":
 	unittest.main()
