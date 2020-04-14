@@ -72,14 +72,16 @@ def tracedist(A, B, tol=np.sqrt(_eps)):
 #### END FUNCTIONS COPIED FROM PYGSTI
 
 def is_close(A, B, tol=np.sqrt(_eps)):
-    """Check if two matrices are close in the sense of trace distance. 
+    """Check if two matrices are close in the sense of trace distance.
     """
     if tracedist(A, B) < tol:
-        return True 
+        return True
     else:
+        A[np.abs(A) < tol] = 0.0
+        B[np.abs(B) < tol] = 0.0
         A /= np.exp(1j*np.angle(A[0,0]))
         B /= np.exp(1j*np.angle(B[0,0]))
-        return tracedist(A, B) < tol
+        return ((tracedist(A, B) < tol) or (tracedist(A, -1.0*B) < tol))
 
 def haar_unitary(d):
     """Generate a Haar-random unitary matrix of dimension d.
@@ -128,6 +130,13 @@ def zyz_angles(U):
     λ = (a - b) * 0.5
     return (ϕ, θ, λ)
 
+def _mod_2pi(angle):
+    if angle > np.pi:
+        angle -= 2*np.pi
+    if angle < -np.pi:
+        angle += 2*np.pi
+    return angle
+
 def xyx_angles(U):
     """Euler angles for a unitary matrix U in the sequence X-Y-X.
         Note that angles are returned in matrix multiplication, not circuit order.
@@ -136,7 +145,7 @@ def xyx_angles(U):
     """
     H = np.array([[1., 1.], [1., -1.]], dtype=np.complex128)/np.sqrt(2)
     ϕ, θ, λ = zyz_angles(H@U@H)
-    return (ϕ, -1.0*θ, λ)
+    return (_mod_2pi(ϕ), _mod_2pi(-1.0*θ), _mod_2pi(λ))
 
 def diatomic_angles(U):
     ϕ, θ, λ = zyz_angles(U)
