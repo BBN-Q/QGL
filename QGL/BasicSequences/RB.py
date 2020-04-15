@@ -124,7 +124,7 @@ def SingleQubitRB(qubit, seqs, cliff_type='std', purity=False, showPlot=False, a
     if cliff_type.upper() not in clifford_map.keys():
         raise ValueError(f"Unknown clifford type: must be one of {clifford.map.keys()}.")
 
-    clifford = clifford_map[cliff_type]
+    clifford = clifford_map[cliff_type.upper()]
 
     seqsBis = []
     op = [Id(qubit, length=0), Y90m(qubit), X90(qubit)]
@@ -191,7 +191,7 @@ def SingleQubitLeakageRB(qubit, seqs, pi2args, cliff_type='std', showPlot=False)
     if cliff_type.upper() not in clifford_map.keys():
         raise ValueError(f"Unknown clifford type: must be one of {clifford.map.keys()}.")
 
-    clifford = clifford_map[cliff_type]
+    clifford = clifford_map[cliff_type.upper()]
 
     seqsBis = []
     for seq in seqs:
