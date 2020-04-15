@@ -80,26 +80,3 @@ def diatomic_angles(U):
     b = np.pi - θ
     c = λ - np.pi
     return (a, b, c)
-
-def XYXClifford(qubit, cliff_num):
-    """
-    The set of 24 Diatomic Clifford single qubit pulses. Each pulse is decomposed
-    as Rx(α)Ry(β)Rx(γ).
-
-    Parameters
-    ----------
-    qubit : logical channel to implement sequence (LogicalChannel)
-    cliffNum : the zero-indexed Clifford number
-
-    Returns
-    -------
-    pulse object
-    """
-    α, β, γ = xyx_angles(C1[cliff_num])
-
-    p1 =  Id(qubit) if np.isclose(γ, 0.0) else Xtheta(qubit, angle=γ)
-    p2 =  Id(qubit) if np.isclose(β, 0.0) else Ytheta(qubit, angle=β)
-    p3 =  Id(qubit) if np.isclose(α, 0.0) else Xtheta(qubit, angle=α)
-
-    return p1 + p2 + p3
-
