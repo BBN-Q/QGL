@@ -180,6 +180,24 @@ def clifford_mat(c, numQubits):
         return mat
 
 
+def entangling_mat(gate):
+    """
+    Helper function to create the entangling gate matrix
+    """
+    echoCR = expm(1j * pi / 4 * np.kron(pX, pZ))
+    if gate == "CNOT":
+        return echoCR
+    elif gate == "iSWAP":
+        return reduce(lambda x, y: np.dot(y, x),
+                      [echoCR, np.kron(C1[6], C1[6]), echoCR])
+    elif gate == "SWAP":
+        return reduce(lambda x, y: np.dot(y, x),
+                      [echoCR, np.kron(C1[6], C1[6]), echoCR, np.kron(
+                          np.dot(C1[6], C1[1]), C1[1]), echoCR])
+    else:
+        raise ValueError("Entangling gate must be one of: CNOT, iSWAP, SWAP.")
+
+
 def inverse_clifford(cMat):
     """Return the inverse clifford index."""
     dim = cMat.shape[0]

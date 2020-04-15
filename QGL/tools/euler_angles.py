@@ -20,9 +20,8 @@ limitations under the License.
 
 import numpy as np 
 from scipy.linalg import expm
-from .Cliffords import C1
-from .PulsePrimitives import *
-from .tools.matrix_tools import *
+from .clifford_tools import C1
+from .matrix_tools import *
 
 def xyx_unitary(α, β, γ):
     """Unitary decomposed as Rx, Ry, Rx rotations. 

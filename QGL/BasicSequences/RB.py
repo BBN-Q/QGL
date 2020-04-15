@@ -1,8 +1,8 @@
 from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
-from ..Cliffords import clifford_seq, clifford_mat, inverse_clifford
-from ..Euler import XYXClifford
+#from ..tools.clifford_tools import clifford_seq, clifford_mat, inverse_clifford
+#from ..Euler import XYXClifford
 from .helpers import create_cal_seqs, cal_descriptor
 
 import os
