@@ -2,6 +2,7 @@ import unittest
 
 from QGL import *
 from QGL.Euler import *
+from QGL.tools.matrix_tools import *
 from QGL.Cliffords import C1
 import QGL.config
 try:
