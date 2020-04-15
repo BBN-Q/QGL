@@ -1,9 +1,9 @@
 import unittest
 
 from QGL import *
-from QGL.Euler import *
+from QGL.tools.euler_angles import *
 from QGL.tools.matrix_tools import *
-from QGL.Cliffords import C1
+from QGL.tools.clifford_tools import C1
 import QGL.config
 try:
   from helpers import setup_test_lib
