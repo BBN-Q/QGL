@@ -9,83 +9,13 @@ from random import choice
 import operator
 from functools import reduce
 
+from .tools.clifford_tools import *
+from .tools.euler_angles import xyx_angles
 from .PulsePrimitives import *
 
-#Single qubit paulis
-pX = np.array([[0, 1], [1, 0]], dtype=np.complex128)
-pY = np.array([[0, -1j], [1j, 0]], dtype=np.complex128)
-pZ = np.array([[1, 0], [0, -1]], dtype=np.complex128)
-pI = np.eye(2, dtype=np.complex128)
-
-
-def pauli_mats(n):
-    """
-	Return a list of n-qubit Paulis as numpy array.
-	"""
-    assert n > 0, "You need at least 1 qubit!"
-    if n == 1:
-        return [pI, pX, pY, pZ]
-    else:
-        paulis = pauli_mats(n - 1)
-        return [np.kron(p1, p2)
-                for p1, p2 in product([pI, pX, pY, pZ], paulis)]
-
-#Basis single-qubit Cliffords with an arbitrary enumeration
-C1 = {}
-C1[0] = pI
-C1[1] = expm(-1j * (pi / 4) * pX)
-C1[2] = expm(-2j * (pi / 4) * pX)
-C1[3] = expm(-3j * (pi / 4) * pX)
-C1[4] = expm(-1j * (pi / 4) * pY)
-C1[5] = expm(-2j * (pi / 4) * pY)
-C1[6] = expm(-3j * (pi / 4) * pY)
-C1[7] = expm(-1j * (pi / 4) * pZ)
-C1[8] = expm(-2j * (pi / 4) * pZ)
-C1[9] = expm(-3j * (pi / 4) * pZ)
-C1[10] = expm(-1j * (pi / 2) * (1 / np.sqrt(2)) * (pX + pY))
-C1[11] = expm(-1j * (pi / 2) * (1 / np.sqrt(2)) * (pX - pY))
-C1[12] = expm(-1j * (pi / 2) * (1 / np.sqrt(2)) * (pX + pZ))
-C1[13] = expm(-1j * (pi / 2) * (1 / np.sqrt(2)) * (pX - pZ))
-C1[14] = expm(-1j * (pi / 2) * (1 / np.sqrt(2)) * (pY + pZ))
-C1[15] = expm(-1j * (pi / 2) * (1 / np.sqrt(2)) * (pY - pZ))
-C1[16] = expm(-1j * (pi / 3) * (1 / np.sqrt(3)) * (pX + pY + pZ))
-C1[17] = expm(-2j * (pi / 3) * (1 / np.sqrt(3)) * (pX + pY + pZ))
-C1[18] = expm(-1j * (pi / 3) * (1 / np.sqrt(3)) * (pX - pY + pZ))
-C1[19] = expm(-2j * (pi / 3) * (1 / np.sqrt(3)) * (pX - pY + pZ))
-C1[20] = expm(-1j * (pi / 3) * (1 / np.sqrt(3)) * (pX + pY - pZ))
-C1[21] = expm(-2j * (pi / 3) * (1 / np.sqrt(3)) * (pX + pY - pZ))
-C1[22] = expm(-1j * (pi / 3) * (1 / np.sqrt(3)) * (-pX + pY + pZ))
-C1[23] = expm(-2j * (pi / 3) * (1 / np.sqrt(3)) * (-pX + pY + pZ))
-
-
-#A little memoize decorator
-def memoize(function):
-    cache = {}
-
-    def decorated(*args):
-        if args not in cache:
-            cache[args] = function(*args)
-        return cache[args]
-
-    return decorated
-
-
-@memoize
-def clifford_multiply(c1, c2):
-    '''
-    Multiplication table for single qubit cliffords.  Note this assumes c1 is applied first.
-    i.e.  clifford_multiply(c1, c2) calculates c2*c1
-    '''
-    tmpMult = np.dot(C1[c2], C1[c1])
-    checkArray = np.array(
-        [np.abs(np.trace(np.dot(tmpMult.transpose().conj(), C1[x])))
-         for x in range(24)])
-    return checkArray.argmax()
-
-#We can usually (without atomic Cliffords) only apply a subset of the single-qubit Cliffords
-#i.e. the pulses that we can apply: Id, X90, X90m, Y90, Y90m, X, Y
-generatorPulses = [0, 1, 3, 4, 6, 2, 5]
-
+###
+### Single Qubit Cliffords
+###
 
 def generator_pulse(G):
     """
@@ -101,82 +31,360 @@ def generator_pulse(G):
                        5: (Y, Ym)}
     return choice(generatorPulses[G])
 
-#Get all combinations of generator sequences up to length three
-generatorSeqs = [x for x in product(generatorPulses,repeat=1)] + \
-                [x for x in product(generatorPulses,repeat=2)] + \
-    [x for x in product(generatorPulses,repeat=3)]
-
-#Find the effective unitary for each generator sequence
-reducedSeqs = np.array([reduce(clifford_multiply, x) for x in generatorSeqs])
-
-#Pick first generator sequence (and thus shortest) that gives each Clifford and then
-#also add all those that have the same length
-
-#First for each of the 24 single-qubit Cliffords find which sequences create them
-allC1Seqs = [np.nonzero(reducedSeqs == x)[0] for x in range(24)]
-#And the length of the first one for all 24
-minSeqLengths = [len(generatorSeqs[seqs[0]]) for seqs in allC1Seqs]
-#Now pull out all those that are the same length as the first one
-C1Seqs = []
-for minLength, seqs in zip(minSeqLengths, allC1Seqs):
-    C1Seqs.append([s for s in seqs if len(generatorSeqs[s]) == minLength])
-
-C2Seqs = []
-"""
-The IBM paper has the Sgroup (rotation n*(pi/3) rotations about the X+Y+Z axis)
-Sgroup = [C[0], C[16], C[17]]
-
-The two qubit Cliffords can be written down as the product of
-1. A choice of one of 24^2 C \otimes C single-qubit Cliffords
-2. Optionally an entangling gate from CNOT, iSWAP and SWAP
-3. Optional one of 9 S \otimes S gate
-
-Therefore, we'll enumerate the two-qubit Clifford as a three tuple ((c1,c2), Entangling, (s1,s2))
-
-"""
-
-#1. All pairs of single-qubit Cliffords
-for c1, c2 in product(range(24), repeat=2):
-    C2Seqs.append(((c1, c2), None, None))
-
-#2. The CNOT-like class, replacing the CNOT with a echoCR
-#TODO: sort out whether we need to explicitly encorporate the single qubit rotations into the trailing S gates
-# The leading single-qubit Cliffords are fully sampled so they should be fine
-
-for (c1, c2), (s1, s2) in product(
-        product(
-            range(24), repeat=2),
-        product([0, 16, 17], repeat=2)):
-    C2Seqs.append(((c1, c2), "CNOT", (s1, s2)))
-
-#3. iSWAP like class - replacing iSWAP with (echoCR - (Y90m*Y90m) - echoCR)
-for (c1, c2), (s1, s2) in product(
-        product(
-            range(24), repeat=2),
-        product([0, 16, 17], repeat=2)):
-    C2Seqs.append(((c1, c2), "iSWAP", (s1, s2)))
-
-#4. SWAP like class
-for c1, c2 in product(range(24), repeat=2):
-    C2Seqs.append(((c1, c2), "SWAP", None))
-
-
-def Cx2(c1, c2, q1, q2):
+def StdClifford(qubit, cliffNum):
     """
-	Helper function to create pulse block for a pair of single-qubit Cliffords
-	"""
-    #Create list of pulse objects on the qubits
-    seq1 = clifford_seq(c1, q1)
-    seq2 = clifford_seq(c2, q2)
+
+    The set of 24 clifford pulses from the Pauli group generators.
+    Note that this will randomly select between +/- X and +- Y pulses.
+
+    Parameters
+    ----------
+    qubit : logical channel to implement sequence (LogicalChannel)
+    cliffNum : the zero-indexed Clifford number
+
+    Returns
+    -------
+    pulse object
+    """
+    genSeq = generatorSeqs[choice(C1Seqs[cliffNum])]
+    return reduce(operator.add, [generator_pulse(g)(qubit) for g in genSeq])
+
+def AC(qubit, cliffNum):
+    """
+
+    The set of 24 Atomic Clifford single qubit pulses.
+
+    Parameters
+    ----------
+    qubit : logical channel to implement sequence (LogicalChannel)
+    cliffNum : the zero-indexed Clifford number
+
+    Returns
+    -------
+    pulse object
+    """
+
+    #Figure out the approximate nutation frequency calibration from the X180 and the sampling_rate
+    Xp = X(qubit)
+    xpulse = Xp.amp * Xp.shape
+    nutFreq = 0.5 / (sum(xpulse) / qubit.phys_chan.sampling_rate)
+
+    #Now a big else if chain for to get the specific Clifford
+    if cliffNum == 0:
+        #Identity gate
+        return Id(qubit, length=0)
+    elif cliffNum == 1:
+        #X90
+        return X90(qubit)
+    elif cliffNum == 2:
+        #X180
+        return X(qubit)
+    elif cliffNum == 3:
+        #X90m
+        return X90m(qubit)
+    elif cliffNum == 4:
+        #Y90
+        return Y90(qubit)
+    elif cliffNum == 5:
+        #Y180
+        return Y(qubit)
+    elif cliffNum == 6:
+        #Y90m
+        return Y90m(qubit)
+    elif cliffNum == 7:
+        #Z90
+        return Z90(qubit)
+    elif cliffNum == 8:
+        #Z180
+        return Z(qubit)
+    elif cliffNum == 9:
+        #Z90m
+        return Z90m(qubit)
+    elif cliffNum == 10:
+        #X+Y 180
+        return U(qubit, phase=pi / 4, label="AC_10")
+    elif cliffNum == 11:
+        #X-Y 180
+        return U(qubit, phase=-pi / 4, label="AC_11")
+    elif cliffNum == 12:
+        #X+Z 180(Hadamard)
+        return arb_axis_drag(qubit,
+                             nutFreq,
+                             rotAngle=pi,
+                             polarAngle=pi / 4,
+                             label="AC_12")
+    elif cliffNum == 13:
+        #X-Z 180
+        return arb_axis_drag(qubit,
+                             nutFreq,
+                             rotAngle=pi,
+                             polarAngle=pi / 4,
+                             aziAngle=pi,
+                             label="AC_13")
+    elif cliffNum == 14:
+        #Y+Z 180
+        return arb_axis_drag(qubit,
+                             nutFreq,
+                             rotAngle=pi,
+                             polarAngle=pi / 4,
+                             aziAngle=pi / 2,
+                             label="AC_14")
+    elif cliffNum == 15:
+        #Y-Z 180
+        return arb_axis_drag(qubit,
+                             nutFreq,
+                             rotAngle=pi,
+                             polarAngle=pi / 4,
+                             aziAngle=-pi / 2,
+                             label="AC_15")
+    elif cliffNum == 16:
+        #X+Y+Z 120
+        return arb_axis_drag(qubit,
+                             nutFreq,
+                             rotAngle=2 * pi / 3,
+                             polarAngle=acos(1 / sqrt(3)),
+                             aziAngle=pi / 4,
+                             label="AC_16")
+    elif cliffNum == 17:
+        #X+Y+Z -120 (equivalent to -X-Y-Z 120)
+        return arb_axis_drag(qubit,
+                             nutFreq,
+                             rotAngle=2 * pi / 3,
+                             polarAngle=pi - acos(1 / sqrt(3)),
+                             aziAngle=5 * pi / 4,
+                             label="AC_17")
+    elif cliffNum == 18:
+        #X-Y+Z 120
+        return arb_axis_drag(qubit,
+                             nutFreq,
+                             rotAngle=2 * pi / 3,
+                             polarAngle=acos(1 / sqrt(3)),
+                             aziAngle=-pi / 4,
+                             label="AC_18")
+    elif cliffNum == 19:
+        #X-Y+Z 120 (equivalent to -X+Y-Z -120)
+        return arb_axis_drag(qubit,
+                             nutFreq,
+                             rotAngle=2 * pi / 3,
+                             polarAngle=pi - acos(1 / sqrt(3)),
+                             aziAngle=3 * pi / 4,
+                             label="AC_19")
+    elif cliffNum == 20:
+        #X+Y-Z 120
+        return arb_axis_drag(qubit,
+                             nutFreq,
+                             rotAngle=2 * pi / 3,
+                             polarAngle=pi - acos(1 / sqrt(3)),
+                             aziAngle=pi / 4,
+                             label="AC_20")
+    elif cliffNum == 21:
+        #X+Y-Z -120 (equivalent to -X-Y+Z 120)
+        return arb_axis_drag(qubit,
+                             nutFreq,
+                             rotAngle=2 * pi / 3,
+                             polarAngle=acos(1 / sqrt(3)),
+                             aziAngle=5 * pi / 4,
+                             label="AC_21")
+    elif cliffNum == 22:
+        #-X+Y+Z 120
+        return arb_axis_drag(qubit,
+                             nutFreq,
+                             rotAngle=2 * pi / 3,
+                             polarAngle=acos(1 / sqrt(3)),
+                             aziAngle=3 * pi / 4,
+                             label="AC_22")
+    elif cliffNum == 23:
+        #-X+Y+Z -120 (equivalent to X-Y-Z 120)
+        return arb_axis_drag(qubit,
+                             nutFreq,
+                             rotAngle=2 * pi / 3,
+                             polarAngle=pi - acos(1 / sqrt(3)),
+                             aziAngle=-pi / 4,
+                             label="AC_23")
+    else:
+        raise ValueError('Clifford number must be between 0 and 23')
+
+def get_DiAC_phases(cliffNum):
+    """
+
+    Returns the phases (in multiples of pi) of the three Z gates dressing the two X90
+    pulses comprising the DiAC pulse correspoding to cliffNum
+    e.g., get_DiAC_phases(1) returns a=0, b=1, c=1, in
+    Ztheta(a) + X90 + Ztheta(b) + X90 + Ztheta(c) = Id
+    """
+    DiAC_table = [
+    [0, 1, 1],
+    [0.5, -0.5, 0.5],
+    [0, 0, 0],
+    [0.5, 0.5, 0.5],
+    [0, -0.5, 1],
+    [0, 0, 1],
+    [0, 0.5, 1],
+    [0, 1, -0.5],
+    [0, 1, 0],
+    [0, 1, 0.5],
+    [0, 0, 0.5],
+    [0, 0, -0.5],
+    [1, -0.5, 1],
+    [1, 0.5, 1],
+    [0.5, -0.5, -0.5],
+    [0.5, 0.5, -0.5],
+    [0.5, -0.5, 1],
+    [1, -0.5, -0.5],
+    [0, 0.5, -0.5],
+    [-0.5, -0.5, 1],
+    [1, 0.5, -0.5],
+    [0.5, 0.5, 1],
+    [0, -0.5, -0.5],
+    [-0.5, 0.5, 1]]
+    return DiAC_table[cliffNum]
+
+def DiAC(qubit, cliffNum, compiled = True):
+    """
+
+    The set of 24 Diatomic Clifford single qubit pulses. Each pulse is decomposed
+    as Ztheta(a) + X90 + Ztheta(b) + X90 + Ztheta(c) if compiled = False,
+    uses also Y90, Y90m and shorter sequences if compiled = True
+
+    Parameters
+    ----------
+    qubit : logical channel to implement sequence (LogicalChannel)
+    cliffNum : the zero-indexed Clifford number
+
+    Returns
+    -------
+    pulse object
+    """
+    #Now a big else if chain for to get the specific Clifford
+    if not compiled:
+        DiAC_phases = get_DiAC_phases(cliffNum)
+        return Ztheta(qubit, angle = DiAC_phases[0]*np.pi) + X90(qubit) + Ztheta(qubit, angle = DiAC_phases[1]*np.pi) + \
+        X90(qubit) + Ztheta(qubit, angle = DiAC_phases[2]*np.pi)
+    else:
+        if cliffNum == 0:
+            #Identity gate
+            return Id(qubit, length=0)
+        elif cliffNum == 1:
+            #X90
+            return X90(qubit)
+        elif cliffNum == 2:
+            #X180
+            return X90(qubit)+X90(qubit)
+        elif cliffNum == 3:
+            #X90m
+            return X90m(qubit)
+        elif cliffNum == 4:
+            #Y90
+            return Y90(qubit)
+        elif cliffNum == 5:
+            #Y180
+            return Y90(qubit) + Y90(qubit)
+        elif cliffNum == 6:
+            #Y90m
+            return Y90m(qubit)
+        elif cliffNum == 7:
+            #Z90
+            return Z90(qubit)
+        elif cliffNum == 8:
+            #Z180
+            return Z(qubit)
+        elif cliffNum == 9:
+            #Z90m
+            return Z90m(qubit)
+        elif cliffNum == 10:
+            #X+Y 180
+            return Y90(qubit) + Y90(qubit) + Z90m(qubit)
+        elif cliffNum == 11:
+            #X-Y 180
+            return Y90(qubit) + Y90(qubit) + Z90(qubit)
+        elif cliffNum == 12:
+            #X+Z 180(Hadamard)
+            return Z(qubit) + Y90(qubit)
+        elif cliffNum == 13:
+            #X-Z 180
+            return Z(qubit) + Y90m(qubit)
+        elif cliffNum == 14:
+            #Y+Z 180
+            return Z90(qubit) + Y90(qubit) + Z90(qubit)
+        elif cliffNum == 15:
+            #Y-Z 180
+            return Z90(qubit) + Y90m(qubit) + Z90(qubit)
+        elif cliffNum == 16:
+                #X+Y+Z -120 (equivalent to -X-Y-Z 120)
+            return Z90(qubit) + Y90(qubit)
+        elif cliffNum == 17:
+            #X+Y+Z 120
+            return Z(qubit) + Y90(qubit) + Z90(qubit)
+        elif cliffNum == 18:
+            #X-Y+Z 120 (equivalent to -X+Y-Z 120)
+            return Y90m(qubit) + Z90(qubit)
+        elif cliffNum == 19:
+            #X-Y+Z -120
+            return Z90m(qubit) + Y90(qubit)
+        elif cliffNum == 20:
+            #X+Y-Z -120 (equivalent to -X-Y+Z 120)
+            return Z(qubit) + Y90m(qubit) + Z90(qubit)
+        elif cliffNum == 21:
+            #X+Y-Z 120
+            return Z90(qubit) + Y90m(qubit)
+        elif cliffNum == 22:
+            #-X+Y+Z -120 (equivalent to X-Y-Z 120)
+            return Y90(qubit) + Z90(qubit)
+        elif cliffNum == 23:
+            #-X+Y+Z 120
+            return Z90m(qubit) + Y90m(qubit)
+        else:
+            raise ValueError('Clifford number must be between 0 and 23')
+
+def XYXClifford(qubit, cliff_num):
+    """
+    The set of 24 Diatomic Clifford single qubit pulses. Each pulse is decomposed
+    as Rx(α)Ry(β)Rx(γ).
+
+    Parameters
+    ----------
+    qubit : logical channel to implement sequence (LogicalChannel)
+    cliffNum : the zero-indexed Clifford number
+
+    Returns
+    -------
+    pulse object
+    """
+    α, β, γ = xyx_angles(C1[cliff_num])
+
+    p1 =  Id(qubit) if np.isclose(γ, 0.0) else Xtheta(qubit, angle=γ)
+    p2 =  Id(qubit) if np.isclose(β, 0.0) else Ytheta(qubit, angle=β)
+    p3 =  Id(qubit) if np.isclose(α, 0.0) else Xtheta(qubit, angle=α)
+
+    return p1 + p2 + p3
+
+###
+### Two qubit Cliffords
+###
+
+clifford_map = {}
+clifford_map['STD'] = StdClifford
+clifford_map['DIAC'] = DiAC 
+clifford_map['ZXZXZ'] = lambda q,c: DiAC(q,c,compiled=False)
+clifford_map['AC'] = AC 
+clifford_map['XYX'] = XYXClifford
+
+def Cx2(c1, c2, q1, q2, kind='std'):
+    """
+    Helper function to create pulse block for a pair of single-qubit Cliffords
+    """
+    
+    clifford_fun = clifford_map[kind.upper()]
+    seq1 = clifford_fun(q1, c1)
+    seq2 = clifford_fun(q2, c2)
 
     #Create the pulse block
-    return reduce(operator.add, seq1) * reduce(operator.add, seq2)
-
+    return seq1 * seq2
 
 def entangling_seq(gate, q1, q2):
     """
-	Helper function to create the entangling gate sequence
-	"""
+    Helper function to create the entangling gate sequence
+    """
     if gate == "CNOT":
         return ZX90_CR(q2, q1)
     elif gate == "iSWAP":
@@ -185,78 +393,15 @@ def entangling_seq(gate, q1, q2):
         return [ZX90_CR(q2, q1), Y90m(q1) * Y90m(q2), ZX90_CR(
             q2, q1), (X90(q1) + Y90m(q1)) * X90(q2), ZX90_CR(q2, q1)]
 
+def TwoQubitClifford(q1, q2, cliffNum, kind='std'):
 
-def entangling_mat(gate):
-    """
-	Helper function to create the entangling gate matrix
-	"""
-    echoCR = expm(1j * pi / 4 * np.kron(pX, pZ))
-    if gate == "CNOT":
-        return echoCR
-    elif gate == "iSWAP":
-        return reduce(lambda x, y: np.dot(y, x),
-                      [echoCR, np.kron(C1[6], C1[6]), echoCR])
-    elif gate == "SWAP":
-        return reduce(lambda x, y: np.dot(y, x),
-                      [echoCR, np.kron(C1[6], C1[6]), echoCR, np.kron(
-                          np.dot(C1[6], C1[1]), C1[1]), echoCR])
-    else:
-        raise ValueError("Entangling gate must be one of: CNOT, iSWAP, SWAP.")
+    if kind.upper() not in clifford_map.keys():
+        raise ValueError(f"Unknown clifford type: must be one of {clifford.map.keys()}.")
 
-
-def clifford_seq(c, q1, q2=None):
-    """
-	Return a sequence of pulses that implements a clifford C
-	"""
-    #If qubit2 not defined assume 1 qubit
-    if not q2:
-        genSeq = generatorSeqs[choice(C1Seqs[c])]
-        return [generator_pulse(g)(q1) for g in genSeq]
-    else:
-        #Look up the sequence for the integer
-        c = C2Seqs[c]
-        seq = [Cx2(c[0][0], c[0][1], q1, q2)]
-        if c[1]:
-            seq += entangling_seq(c[1], q1, q2)
-        if c[2]:
-            seq += [Cx2(c[2][0], c[2][1], q1, q2)]
-        return seq
-
-
-@memoize
-def clifford_mat(c, numQubits):
-    """
-	Return the matrix unitary the implements the qubit clifford C
-	"""
-    assert numQubits <= 2, "Oops! I only handle one or two qubits"
-    if numQubits == 1:
-        return C1[c]
-    else:
-        c = C2Seqs[c]
-        mat = np.kron(clifford_mat(c[0][0], 1), clifford_mat(c[0][1], 1))
-        if c[1]:
-            mat = np.dot(entangling_mat(c[1]), mat)
-        if c[2]:
-            mat = np.dot(
-                np.kron(
-                    clifford_mat(c[2][0], 1), clifford_mat(c[2][1], 1)), mat)
-        return mat
-
-
-def inverse_clifford(cMat):
-    dim = cMat.shape[0]
-    if dim == 2:
-        for ct in range(24):
-            if np.isclose(
-                    np.abs(np.dot(cMat, clifford_mat(ct, 1)).trace()), dim):
-                return ct
-    elif dim == 4:
-        for ct in range(len(C2Seqs)):
-            if np.isclose(
-                    np.abs(np.dot(cMat, clifford_mat(ct, 2)).trace()), dim):
-                return ct
-    else:
-        raise Exception("Expected 2 or 4 qubit dimensional matrix.")
-
-    #If we got here something is wrong
-    raise Exception("Couldn't find inverse clifford")
+    c = C2Seqs[cliffNum]
+    seq = [Cx2(c[0][0], c[0][1], q1, q2, kind=kind)]
+    if c[1]:
+        seq += entangling_seq(c[1], q1, q2)
+    if c[2]:
+        seq += [Cx2(c[2][0], c[2][1], q1, q2, kind=kind)]
+    return seq

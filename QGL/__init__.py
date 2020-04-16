@@ -9,6 +9,7 @@ from .BasicSequences import *
 from .Plotting import build_waveforms #, show, , plot_waveforms
 from .PulseSequencePlotter import plot_pulse_files
 from .Tomography import state_tomo, process_tomo
+from .Cliffords import StdClifford, DiAC, AC, XYXClifford, TwoQubitClifford
 from .Scheduler import schedule
 
 from .TdmInstructions import MajorityMask, MajorityVote, WriteAddr, Invalidate, Decode, DecodeSetRounds

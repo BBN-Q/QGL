@@ -1,8 +1,10 @@
 from ..PulsePrimitives import *
+from ..Cliffords import *
 from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
-from ..Cliffords import clifford_seq, clifford_mat, inverse_clifford
+from ..tools.clifford_tools import clifford_mat, inverse_clifford
 from .helpers import create_cal_seqs, cal_descriptor
+from ..config import logger
 
 import os
 from csv import reader
@@ -87,7 +89,10 @@ def create_RB_seqs(numQubits,
 
     return seqs
 
-def SingleQubitRB(qubit, seqs, purity=False, showPlot=False, add_cals=True):
+def SingleQubitRB(qubit, seqs, cliff_type='std',
+                               purity=False,
+                               showPlot=False,
+                               add_cals=True):
     """
     Single qubit randomized benchmarking using 90 and 180 generators.
 
@@ -97,6 +102,8 @@ def SingleQubitRB(qubit, seqs, purity=False, showPlot=False, add_cals=True):
         Logical channel to implement sequence
     seqs : int iterable
         list of lists of Clifford group integers produced by create_RB_seqs
+    cliff_type : string, optional
+        Clifford library to use for RB -> ['STD', 'DIAC', 'AC', 'XYX']
     purity : boolean, optional
         If True, this create sequences for purity RB
     showPlot : boolean, optional
@@ -119,12 +126,16 @@ def SingleQubitRB(qubit, seqs, purity=False, showPlot=False, add_cals=True):
     '/path/to/exp/exp-meta.json'
     """
 
+    if cliff_type.upper() not in clifford_map.keys():
+        raise ValueError(f"Unknown clifford type: must be one of {clifford.map.keys()}.")
+
+    clifford = clifford_map[cliff_type.upper()]
+
     seqsBis = []
     op = [Id(qubit, length=0), Y90m(qubit), X90(qubit)]
     for ct in range(3 if purity else 1):
         for seq in seqs:
-            seqsBis.append(reduce(operator.add, [clifford_seq(c, qubit)
-                                                for c in seq]))
+            seqsBis.append([clifford(qubit,c) for c in seq])
             #append tomography pulse to measure purity
             seqsBis[-1].append(op[ct])
             #append measurement
@@ -142,13 +153,17 @@ def SingleQubitRB(qubit, seqs, purity=False, showPlot=False, add_cals=True):
         seqsBis += create_cal_seqs((qubit, ), 2)
         axis_descriptor.append(cal_descriptor((qubit,), 2))
 
-    metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor, extra_meta = {'sequences':seqs})
+    metafile = compile_to_hardware(seqsBis,
+                                   'RB/RB',
+                                   axis_descriptor = axis_descriptor,
+                                   extra_meta = {'sequences':seqs})
 
     if showPlot:
         plot_pulse_files(metafile)
     return metafile
 
-def SingleQubitLeakageRB(qubit, seqs, pi2args, showPlot=False):
+def SingleQubitLeakageRB(qubit, seqs, pi2args, cliff_type='std',
+                                               showPlot=False):
     """
     Single qubit randomized benchmarking using 90 and 180 generators to
     measure leakage outside the qubit subspace.
@@ -164,6 +179,8 @@ def SingleQubitLeakageRB(qubit, seqs, pi2args, showPlot=False):
     pi2args: dictionary mapping
         Arguments passed to the X90 gate for the 1 <-> 2 transition during
         calibration
+    cliff_type : string, optional
+        Clifford library to use for RB -> ['STD', 'DIAC', 'AC', 'XYX']
     showPlot : boolean, optional
         Whether to plot
 
@@ -182,9 +199,14 @@ def SingleQubitLeakageRB(qubit, seqs, pi2args, showPlot=False):
     '/path/to/exp/exp-meta.json'
     """
 
+    if cliff_type.upper() not in clifford_map.keys():
+        raise ValueError(f"Unknown clifford type: must be one of {clifford.map.keys()}.")
+
+    clifford = clifford_map[cliff_type.upper()]
+
     seqsBis = []
     for seq in seqs:
-        combined_seq = reduce(operator.add, [clifford_seq(c, qubit) for c in seq])
+        combined_seq = [clifford(qubit, c) for c in seq]
 
         # Append sequence with tomography ids and measurement
         seqsBis.append(combined_seq + [Id(qubit), Id(qubit), MEAS(qubit)])
@@ -195,7 +217,10 @@ def SingleQubitLeakageRB(qubit, seqs, pi2args, showPlot=False):
     # Add the calibration sequences
     seqsBis.append([Id(qubit), Id(qubit), Id(qubit), Id(qubit), MEAS(qubit)])
     seqsBis.append([X90(qubit), X90(qubit), Id(qubit), Id(qubit), MEAS(qubit)])
-    seqsBis.append([X90(qubit), X90(qubit), X90(qubit, **pi2args), X90(qubit, **pi2args), MEAS(qubit)])
+    seqsBis.append([X90(qubit), X90(qubit),
+                                X90(qubit, **pi2args),
+                                X90(qubit, **pi2args),
+                                MEAS(qubit)])
 
     axis_descriptor = [
     {
@@ -211,7 +236,10 @@ def SingleQubitLeakageRB(qubit, seqs, pi2args, showPlot=False):
         'points': ['0', '1', '2']
     }]
 
-    metafile = compile_to_hardware(seqsBis, 'RB/LRB', axis_descriptor = axis_descriptor, extra_meta = {'sequences':seqs})
+    metafile = compile_to_hardware(seqsBis,
+                                   'RB/LRB',
+                                   axis_descriptor = axis_descriptor,
+                                   extra_meta = {'sequences':seqs})
 
     if showPlot:
         plot_pulse_files(metafile)
@@ -219,7 +247,11 @@ def SingleQubitLeakageRB(qubit, seqs, pi2args, showPlot=False):
 
 
 
-def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix="", add_cals=True):
+def TwoQubitRB(q1, q2, seqs, meas_qubits='all',
+                             cliff_type='std',
+                             showPlot=False,
+                             suffix="",
+                             add_cals=True):
     """
     Two qubit randomized benchmarking using 90 and 180 single qubit generators
     and ZX90.
@@ -232,6 +264,10 @@ def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix="", add_cals=True):
         Logical channel to implement RB
     seqs : int iterable
         list of lists of Clifford group integers produced by create_RB_seqs
+    meas_qubits : iterableof strings, string, optional
+        list of qubits to measure or 'ALL' to measure all qubits
+    cliff_type : string, optional
+        Clifford library to use for RB -> ['STD', 'DIAC', 'AC', 'XYX']
     showPlot : boolean, optional
         Whether to plot
     suffix : string, optional
@@ -253,14 +289,19 @@ def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix="", add_cals=True):
     >>> mf
     '/path/to/exp/exp-meta.json'
     """
+
     seqsBis = []
     for seq in seqs:
-        seqsBis.append(reduce(operator.add, [clifford_seq(c, q2, q1)
+        seqsBis.append(reduce(operator.add,
+                              [TwoQubitClifford(q2, q1, c, kind=cliff_type)
                                              for c in seq]))
 
     #Add the measurement to all sequences
     for seq in seqsBis:
-        seq.append(MEAS(q1) * MEAS(q2))
+        if meas_qubits.upper() == "ALL":
+            seq.append(MEAS(q1) * MEAS(q2))
+        else:
+            seq.append(reduce(operator.mul, [MEAS(q) for q in meas_qubits]))
 
     axis_descriptor = [{
         'name': 'length',
@@ -280,7 +321,8 @@ def TwoQubitRB(q1, q2, seqs, showPlot=False, suffix="", add_cals=True):
         plot_pulse_files(metafile)
     return metafile
 
-def TwoQubitLeakageRB(q1, q2, meas_qubit, seqs, pi2args, showPlot=False):
+def TwoQubitLeakageRB(q1, q2, meas_qubit, seqs, pi2args, cliff_type='std',
+                                                         showPlot=False):
     """
     Two qubit randomized benchmarking using 90 and 180 single qubit generators
     and ZX90 to measure leakage outside the qubit subspace.  See https://
@@ -300,6 +342,8 @@ def TwoQubitLeakageRB(q1, q2, meas_qubit, seqs, pi2args, showPlot=False):
     pi2args: dictionary mapping
         Arguments passed to the X90 gate for the 1 <-> 2 transition during
         calibration
+    cliff_type : string, optional
+        Clifford library to use for RB -> ['STD', 'DIAC', 'AC', 'XYX']
     showPlot : boolean, optional
         Whether to plot
 
@@ -319,7 +363,9 @@ def TwoQubitLeakageRB(q1, q2, meas_qubit, seqs, pi2args, showPlot=False):
     """
     seqsBis = []
     for seq in seqs:
-        combined_seq = reduce(operator.add, [clifford_seq(c, q2, q1) for c in seq])
+        combined_seq = reduce(operator.add,
+                              [TwoQubitClifford(q2, q1, c, kind=cliff_type)
+                              for c in seq])
 
         # Append sequence with tomography ids and measurement
         seqsBis.append(combined_seq + [Id(meas_qubit), Id(meas_qubit), MEAS(meas_qubit)])
@@ -346,7 +392,10 @@ def TwoQubitLeakageRB(q1, q2, meas_qubit, seqs, pi2args, showPlot=False):
         'points': ['0', '1', '2']
     }]
 
-    metafile = compile_to_hardware(seqsBis, 'RB/LRB', axis_descriptor = axis_descriptor, extra_meta = {'sequences':seqs})
+    metafile = compile_to_hardware(seqsBis,
+                                   'RB/LRB',
+                                   axis_descriptor = axis_descriptor,
+                                   extra_meta = {'sequences':seqs})
 
     if showPlot:
         plot_pulse_files(metafile)
@@ -385,6 +434,10 @@ def SingleQubitRB_AC(qubit, seqs, purity=False, showPlot=False, add_cals=True):
     >>> mf
     '/path/to/exp/exp-meta.json'
     """
+
+    logger.warning("This function is deprecated and may be removed in a future release of QGL! " +
+        "Use `SingleQubitRB` with the `cliff_type` keyword argument instead.")
+
     seqsBis = []
     op = [Id(qubit, length=0), Y90m(qubit), X90(qubit)]
     for ct in range(3 if purity else 1):
@@ -453,6 +506,10 @@ def SingleQubitRB_DiAC(qubit,
     >>> mf
     '/path/to/exp/exp-meta.json'
     """
+
+    logger.warning("This function is deprecated and may be removed in a future release of QGL! " +
+        "Use `SingleQubitRB` with the `cliff_type` keyword argument instead.")
+
     seqsBis = []
     op = [Id(qubit, length=0), Y90m(qubit), X90(qubit)]
     for ct in range(3 if purity else 1):
