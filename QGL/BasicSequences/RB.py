@@ -89,7 +89,10 @@ def create_RB_seqs(numQubits,
 
     return seqs
 
-def SingleQubitRB(qubit, seqs, cliff_type='std', purity=False, showPlot=False, add_cals=True):
+def SingleQubitRB(qubit, seqs, cliff_type='std',
+                               purity=False,
+                               showPlot=False,
+                               add_cals=True):
     """
     Single qubit randomized benchmarking using 90 and 180 generators.
 
@@ -150,13 +153,17 @@ def SingleQubitRB(qubit, seqs, cliff_type='std', purity=False, showPlot=False, a
         seqsBis += create_cal_seqs((qubit, ), 2)
         axis_descriptor.append(cal_descriptor((qubit,), 2))
 
-    metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor, extra_meta = {'sequences':seqs})
+    metafile = compile_to_hardware(seqsBis,
+                                   'RB/RB',
+                                   axis_descriptor = axis_descriptor,
+                                   extra_meta = {'sequences':seqs})
 
     if showPlot:
         plot_pulse_files(metafile)
     return metafile
 
-def SingleQubitLeakageRB(qubit, seqs, pi2args, cliff_type='std', showPlot=False):
+def SingleQubitLeakageRB(qubit, seqs, pi2args, cliff_type='std',
+                                               showPlot=False):
     """
     Single qubit randomized benchmarking using 90 and 180 generators to
     measure leakage outside the qubit subspace.
@@ -210,7 +217,10 @@ def SingleQubitLeakageRB(qubit, seqs, pi2args, cliff_type='std', showPlot=False)
     # Add the calibration sequences
     seqsBis.append([Id(qubit), Id(qubit), Id(qubit), Id(qubit), MEAS(qubit)])
     seqsBis.append([X90(qubit), X90(qubit), Id(qubit), Id(qubit), MEAS(qubit)])
-    seqsBis.append([X90(qubit), X90(qubit), X90(qubit, **pi2args), X90(qubit, **pi2args), MEAS(qubit)])
+    seqsBis.append([X90(qubit), X90(qubit),
+                                X90(qubit, **pi2args),
+                                X90(qubit, **pi2args),
+                                MEAS(qubit)])
 
     axis_descriptor = [
     {
@@ -226,7 +236,10 @@ def SingleQubitLeakageRB(qubit, seqs, pi2args, cliff_type='std', showPlot=False)
         'points': ['0', '1', '2']
     }]
 
-    metafile = compile_to_hardware(seqsBis, 'RB/LRB', axis_descriptor = axis_descriptor, extra_meta = {'sequences':seqs})
+    metafile = compile_to_hardware(seqsBis,
+                                   'RB/LRB',
+                                   axis_descriptor = axis_descriptor,
+                                   extra_meta = {'sequences':seqs})
 
     if showPlot:
         plot_pulse_files(metafile)
@@ -234,7 +247,11 @@ def SingleQubitLeakageRB(qubit, seqs, pi2args, cliff_type='std', showPlot=False)
 
 
 
-def TwoQubitRB(q1, q2, seqs, meas_qubits='all', cliff_type='std', showPlot=False, suffix="", add_cals=True):
+def TwoQubitRB(q1, q2, seqs, meas_qubits='all',
+                             cliff_type='std',
+                             showPlot=False,
+                             suffix="",
+                             add_cals=True):
     """
     Two qubit randomized benchmarking using 90 and 180 single qubit generators
     and ZX90.
@@ -275,7 +292,8 @@ def TwoQubitRB(q1, q2, seqs, meas_qubits='all', cliff_type='std', showPlot=False
 
     seqsBis = []
     for seq in seqs:
-        seqsBis.append(reduce(operator.add, [TwoQubitClifford(q2, q1, c, kind=cliff_type)
+        seqsBis.append(reduce(operator.add,
+                              [TwoQubitClifford(q2, q1, c, kind=cliff_type)
                                              for c in seq]))
 
     #Add the measurement to all sequences
@@ -303,7 +321,8 @@ def TwoQubitRB(q1, q2, seqs, meas_qubits='all', cliff_type='std', showPlot=False
         plot_pulse_files(metafile)
     return metafile
 
-def TwoQubitLeakageRB(q1, q2, meas_qubit, seqs, pi2args, cliff_type='std', showPlot=False):
+def TwoQubitLeakageRB(q1, q2, meas_qubit, seqs, pi2args, cliff_type='std',
+                                                         showPlot=False):
     """
     Two qubit randomized benchmarking using 90 and 180 single qubit generators
     and ZX90 to measure leakage outside the qubit subspace.  See https://
@@ -344,7 +363,9 @@ def TwoQubitLeakageRB(q1, q2, meas_qubit, seqs, pi2args, cliff_type='std', showP
     """
     seqsBis = []
     for seq in seqs:
-        combined_seq = reduce(operator.add, [TwoQubitClifford(q2, q1, c, kind=cliff_type) for c in seq])
+        combined_seq = reduce(operator.add,
+                              [TwoQubitClifford(q2, q1, c, kind=cliff_type)
+                              for c in seq])
 
         # Append sequence with tomography ids and measurement
         seqsBis.append(combined_seq + [Id(meas_qubit), Id(meas_qubit), MEAS(meas_qubit)])
@@ -371,7 +392,10 @@ def TwoQubitLeakageRB(q1, q2, meas_qubit, seqs, pi2args, cliff_type='std', showP
         'points': ['0', '1', '2']
     }]
 
-    metafile = compile_to_hardware(seqsBis, 'RB/LRB', axis_descriptor = axis_descriptor, extra_meta = {'sequences':seqs})
+    metafile = compile_to_hardware(seqsBis,
+                                   'RB/LRB',
+                                   axis_descriptor = axis_descriptor,
+                                   extra_meta = {'sequences':seqs})
 
     if showPlot:
         plot_pulse_files(metafile)
