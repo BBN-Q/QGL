@@ -99,6 +99,8 @@ def SingleQubitRB(qubit, seqs, cliff_type='std', purity=False, showPlot=False, a
         Logical channel to implement sequence
     seqs : int iterable
         list of lists of Clifford group integers produced by create_RB_seqs
+    cliff_type : string, optional
+        Clifford library to use for RB -> ['STD', 'DIAC', 'AC', 'XYX']
     purity : boolean, optional
         If True, this create sequences for purity RB
     showPlot : boolean, optional
@@ -170,6 +172,8 @@ def SingleQubitLeakageRB(qubit, seqs, pi2args, cliff_type='std', showPlot=False)
     pi2args: dictionary mapping
         Arguments passed to the X90 gate for the 1 <-> 2 transition during
         calibration
+    cliff_type : string, optional
+        Clifford library to use for RB -> ['STD', 'DIAC', 'AC', 'XYX']
     showPlot : boolean, optional
         Whether to plot
 
@@ -243,6 +247,10 @@ def TwoQubitRB(q1, q2, seqs, meas_qubits='all', cliff_type='std', showPlot=False
         Logical channel to implement RB
     seqs : int iterable
         list of lists of Clifford group integers produced by create_RB_seqs
+    meas_qubits : iterableof strings, string, optional
+        list of qubits to measure or 'ALL' to measure all qubits
+    cliff_type : string, optional
+        Clifford library to use for RB -> ['STD', 'DIAC', 'AC', 'XYX']
     showPlot : boolean, optional
         Whether to plot
     suffix : string, optional
@@ -315,6 +323,8 @@ def TwoQubitLeakageRB(q1, q2, meas_qubit, seqs, pi2args, cliff_type='std', showP
     pi2args: dictionary mapping
         Arguments passed to the X90 gate for the 1 <-> 2 transition during
         calibration
+    cliff_type : string, optional
+        Clifford library to use for RB -> ['STD', 'DIAC', 'AC', 'XYX']
     showPlot : boolean, optional
         Whether to plot
 
