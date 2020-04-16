@@ -294,7 +294,10 @@ def TwoQubitRB(q1, q2, seqs, cliff_type='std',
 
     #Add the measurement to all sequences
     for seq in seqsBis:
-        seq.append(MEAS(q1) * MEAS(q2))
+        if meas_qubits.upper() == "ALL":
+            seq.append(MEAS(q1) * MEAS(q2))
+        else:
+            seq.append(reduce(operator.mul, [MEAS(q) for q in meas_qubits]))
 
     axis_descriptor = [{
         'name': 'length',
