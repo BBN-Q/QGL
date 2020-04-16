@@ -365,6 +365,7 @@ def XYXClifford(qubit, cliff_num):
 clifford_map = {}
 clifford_map['STD'] = StdClifford
 clifford_map['DIAC'] = DiAC 
+clifford_map['ZXZXZ'] = lambda q,c: DiAC(q,c,compiled=False)
 clifford_map['AC'] = AC 
 clifford_map['XYX'] = XYXClifford
 
