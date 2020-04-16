@@ -230,7 +230,7 @@ def SingleQubitLeakageRB(qubit, seqs, pi2args, cliff_type='std', showPlot=False)
 
 
 
-def TwoQubitRB(q1, q2, seqs, cliff_type='std', showPlot=False, suffix="", add_cals=True):
+def TwoQubitRB(q1, q2, seqs, meas_qubits='all', cliff_type='std', showPlot=False, suffix="", add_cals=True):
     """
     Two qubit randomized benchmarking using 90 and 180 single qubit generators
     and ZX90.
@@ -267,12 +267,15 @@ def TwoQubitRB(q1, q2, seqs, cliff_type='std', showPlot=False, suffix="", add_ca
 
     seqsBis = []
     for seq in seqs:
-        seqsBis.append(reduce(operator.add, [TwoQubitClifford(q2, q1, kind=cliff_type)
+        seqsBis.append(reduce(operator.add, [TwoQubitClifford(q2, q1, c, kind=cliff_type)
                                              for c in seq]))
 
     #Add the measurement to all sequences
     for seq in seqsBis:
-        seq.append(MEAS(q1) * MEAS(q2))
+        if meas_qubits.upper() == "ALL":
+            seq.append(MEAS(q1) * MEAS(q2))
+        else:
+            seq.append(reduce(operator.mul, [MEAS(q) for q in meas_qubits]))
 
     axis_descriptor = [{
         'name': 'length',
