@@ -339,13 +339,13 @@ def arb_axis_drag(qubit,
 
 
 def DiatomicPulse(qubit, a, b, c):
-  return (Ztheta(qubit, angle=a) + X90(qubit) + 
+  return (Ztheta(qubit, angle=c) + X90(qubit) + 
           Ztheta(qubit, angle=b) + X90(qubit) + 
-          Ztheta(qubit, angle=c))
+          Ztheta(qubit, angle=a))
 
 def ZYZPulse(qubit, a, b, c):
   Ypulse = Id(qubit) if np.isclose(b, 0.0) else Ytheta(qubit, angle=b)
-  return Ztheta(qubit, angle=a)+Ypulse+Ztheta(qubit, angle=c)
+  return Ztheta(qubit, angle=c)+Ypulse+Ztheta(qubit, angle=a)
 
 def XYXPulse(qubit, α, β, γ):
   p1 =  Id(qubit) if np.isclose(γ, 0.0) else Xtheta(qubit, angle=γ)
