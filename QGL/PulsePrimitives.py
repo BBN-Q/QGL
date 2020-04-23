@@ -337,6 +337,22 @@ def arb_axis_drag(qubit,
     return Pulse(kwargs["label"] if "label" in kwargs else "ArbAxis", qubit,
                  params, 1.0, aziAngle, frameChange)
 
+
+def DiatomicPulse(qubit, a, b, c):
+  return (Ztheta(qubit, angle=c) + X90(qubit) + 
+          Ztheta(qubit, angle=b) + X90(qubit) + 
+          Ztheta(qubit, angle=a))
+
+def ZYZPulse(qubit, a, b, c):
+  Ypulse = Id(qubit) if np.isclose(b, 0.0) else Ytheta(qubit, angle=b)
+  return Ztheta(qubit, angle=c)+Ypulse+Ztheta(qubit, angle=a)
+
+def XYXPulse(qubit, α, β, γ):
+  p1 =  Id(qubit) if np.isclose(γ, 0.0) else Xtheta(qubit, angle=γ)
+  p2 =  Id(qubit) if np.isclose(β, 0.0) else Ytheta(qubit, angle=β)
+  p3 =  Id(qubit) if np.isclose(α, 0.0) else Xtheta(qubit, angle=α)
+  return p1+p2+p3
+
 ## two-qubit primitivies
 
 # helper used by echoCR

@@ -351,12 +351,7 @@ def XYXClifford(qubit, cliff_num):
     pulse object
     """
     α, β, γ = xyx_angles(C1[cliff_num])
-
-    p1 =  Id(qubit) if np.isclose(γ, 0.0) else Xtheta(qubit, angle=γ)
-    p2 =  Id(qubit) if np.isclose(β, 0.0) else Ytheta(qubit, angle=β)
-    p3 =  Id(qubit) if np.isclose(α, 0.0) else Xtheta(qubit, angle=α)
-
-    return p1 + p2 + p3
+    return XYXPulse(qubit, α, β, γ)
 
 ###
 ### Two qubit Cliffords
