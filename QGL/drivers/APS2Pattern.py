@@ -1026,7 +1026,7 @@ def compress_marker(markerLL):
 
 def write_sequence_file(awgData, fileName):
     '''
-    Main function to pack channel sequences into an APS2 h5 file.
+    Main function to pack channel sequences into an .aps2 file.
     '''
     # Convert QGL IR into a representation that is closer to the hardware.
     awgData['ch1']['linkList'], wfLib = preprocess(
@@ -1115,7 +1115,7 @@ def write_sequence_file(awgData, fileName):
 
 def read_sequence_file(fileName):
     """
-    Reads a HDF5 sequence file and returns a dictionary of lists.
+    Reads a .aps2 sequence file and returns a dictionary of lists.
     Dictionary keys are channel strings such as ch1, m1
     Lists are or tuples of time-amplitude pairs (time, output)
     """
@@ -1483,12 +1483,6 @@ def read_waveforms(filename):
             dat = ( 1.0 / MAX_WAVEFORM_VALUE) * np.frombuffer(FID.read(2*wf_len), dtype=np.int16).flatten()
             wf_dat.append(dat)
         return wf_dat
-
-def replace_instructions(filename, instructions, channel = 1):
-    channelStr =  get_channel_instructions_string(channel)
-    with h5py.File(filename, 'r+') as fid:
-        del fid[channelStr]
-        fid.create_dataset(channelStr, data=instructions)
 
 def display_decompiled_file(filename, tdm = False):
     raw = raw_instructions(filename)
