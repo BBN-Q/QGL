@@ -247,7 +247,7 @@ def SingleQubitLeakageRB(qubit, seqs, pi2args, cliff_type='std',
 
 
 
-def TwoQubitRB(q1, q2, seqs, meas_qubits='all',
+def TwoQubitRB(q1, q2, seqs, meas_qubits=None,
                              cliff_type='std',
                              showPlot=False,
                              suffix="",
@@ -264,8 +264,8 @@ def TwoQubitRB(q1, q2, seqs, meas_qubits='all',
         Logical channel to implement RB
     seqs : int iterable
         list of lists of Clifford group integers produced by create_RB_seqs
-    meas_qubits : iterableof strings, string, optional
-        list of qubits to measure or 'ALL' to measure all qubits
+    meas_qubits : iterable of Channels.LogicalChannel, optional
+        list of qubits to measure or None (default) to measure all qubits
     cliff_type : string, optional
         Clifford library to use for RB -> ['STD', 'DIAC', 'AC', 'XYX']
     showPlot : boolean, optional
@@ -298,7 +298,7 @@ def TwoQubitRB(q1, q2, seqs, meas_qubits='all',
 
     #Add the measurement to all sequences
     for seq in seqsBis:
-        if meas_qubits.upper() == "ALL":
+        if not meas_qubits:
             seq.append(MEAS(q1) * MEAS(q2))
         else:
             seq.append(reduce(operator.mul, [MEAS(q) for q in meas_qubits]))
