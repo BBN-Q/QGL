@@ -311,7 +311,7 @@ def TwoQubitRB(q1, q2, seqs, meas_qubits=None,
 
     #Tack on the calibration sequences
     if add_cals:
-        seqsBis += create_cal_seqs((q1, q2, 2, measChans = meas_qubits)
+        seqsBis += create_cal_seqs((q1, q2), 2, measChans = meas_qubits)
         axis_descriptor.append(cal_descriptor((q1, q2), 2))
 
     metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor, suffix = suffix, extra_meta = {'sequences':seqs})
