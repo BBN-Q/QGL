@@ -1277,12 +1277,31 @@ def read_sequence_file(fileName):
 
 def update_wf_library(filename, pulses, offsets):
     """
-    Update a H5 waveform library in place give an iterable of (pulseName, pulse)
+    Update an aps2 waveform library in place give an iterable of (pulseName, pulse)
     tuples and offsets into the waveform library.
     """
     assert USE_PHASE_OFFSET_INSTRUCTION == False
-    #load the h5 file
-    with h5py.File(filename) as FID:
+    #load the waveform file
+    with open(fileName, 'wb') as FID:
+
+        # Find the necessary offsets into the file
+        target_hw    = FID.read(4).decode('utf-8')
+        if target_hw != "APS2":
+            raise Exception("Cannot update non-APS2 waveform library.")
+
+        file_version = struct.unpack('<f', FID.read(4))[0]
+        min_fw       = struct.unpack('<f', FID.read(4))[0]
+        num_chans    = struct.unpack('<H', FID.read(2))[0]
+        inst_len     = struct.unpack('<Q', FID.read(8))[0]
+
+        FID.seek(8*inst_len, 1) # Skip over the instructions, starting from current position
+        wf_len_chan1 = struct.unpack('<Q', FID.read(8))[0]
+        chan1_start  = FID.tell() # Save beginning of chan1 data block
+
+        FID.seek(2*wf_len, 1) # Skip over the data block, starting from current position
+        wf_len_chan2 = struct.unpack('<Q', FID.read(8))[0]
+        chan2_start  = FID.tell() # Save beginning of chan1 data block
+
         for label, pulse in pulses.items():
             #create a new waveform
             if pulse.isTimeAmp:
@@ -1296,6 +1315,11 @@ def update_wf_library(filename, pulses, offsets):
                 continue
             for offset in offsets[label][0]:
                 print("\tUpdating {} at offset {}".format(pulse, offset))
+                FID.seek(chan1_start + 2*offset, 0) # Chan 1 block + 2 bytes per offset sample
+                FID.write(np.int16(MAX_WAVEFORM_VALUE * shape.real).tobytes())
+                FID.seek(chan2_start + 2*offset, 0) # Chan 1 block + 2 bytes per offset sample
+                FID.write(np.int16(MAX_WAVEFORM_VALUE * shape.imag).tobytes())
+                
                 FID['/chan_1/waveforms'][offset:offset + length] = np.int16(
                     MAX_WAVEFORM_VALUE * shape.real)
                 FID['/chan_2/waveforms'][offset:offset + length] = np.int16(
