@@ -1070,7 +1070,7 @@ def write_sequence_file(awgData, fileName):
                         #store offsets and wavefor lib length
                         #time ampltidue entries are clamped to ADDRESS_UNIT
                         wf_length = ADDRESS_UNIT if entry.isTimeAmp else entry.length
-                        offsets[entry.label] = ([_[sig] for _ in wfInfo[0][1]],
+                        offsets[str(entry)+"_"+hex(hash(entry))] = ([_[sig] for _ in wfInfo[0][1]],
                                                 wf_length)
                         wf_sigs.discard(sig)
 
@@ -1581,7 +1581,9 @@ if __name__ == '__main__':
                 self.height = 1200
                 self.instructions = instructions
                 self.waveforms = waveforms
-                print(self.waveforms)
+                for wf in self.waveforms:
+                    print(wf, len(wf))
+                # print(self.waveforms)
                 self.initUI()
                 self.plotters = []
 
