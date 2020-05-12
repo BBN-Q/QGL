@@ -1282,7 +1282,7 @@ def update_wf_library(filename, pulses, offsets):
     """
     assert USE_PHASE_OFFSET_INSTRUCTION == False
     #load the waveform file
-    with open(fileName, 'wb') as FID:
+    with open(filename, 'rb+') as FID:
 
         # Find the necessary offsets into the file
         target_hw    = FID.read(4).decode('utf-8')
@@ -1298,7 +1298,7 @@ def update_wf_library(filename, pulses, offsets):
         wf_len_chan1 = struct.unpack('<Q', FID.read(8))[0]
         chan1_start  = FID.tell() # Save beginning of chan1 data block
 
-        FID.seek(2*wf_len, 1) # Skip over the data block, starting from current position
+        FID.seek(2*wf_len_chan1, 1) # Skip over the data block, starting from current position
         wf_len_chan2 = struct.unpack('<Q', FID.read(8))[0]
         chan2_start  = FID.tell() # Save beginning of chan1 data block
 
@@ -1319,11 +1319,6 @@ def update_wf_library(filename, pulses, offsets):
                 FID.write(np.int16(MAX_WAVEFORM_VALUE * shape.real).tobytes())
                 FID.seek(chan2_start + 2*offset, 0) # Chan 1 block + 2 bytes per offset sample
                 FID.write(np.int16(MAX_WAVEFORM_VALUE * shape.imag).tobytes())
-                
-                FID['/chan_1/waveforms'][offset:offset + length] = np.int16(
-                    MAX_WAVEFORM_VALUE * shape.real)
-                FID['/chan_2/waveforms'][offset:offset + length] = np.int16(
-                    MAX_WAVEFORM_VALUE * shape.imag)
 
 
 def tdm_instructions(seqs):
