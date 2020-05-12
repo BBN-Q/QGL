@@ -1625,8 +1625,9 @@ if __name__ == '__main__':
                             # Not a TA pair
                             btn = QPushButton(self.tableWidget)
                             btn.setText('WFM')
-                            addr = int(fields[6].split("=")[1])
-                            count = int(fields[5].split("=")[1])
+                            addr = (int(fields[6].split("=")[1])+0)*4
+                            print(fields[5])
+                            count = (int(fields[5].split("=")[1])+1)*4
                             def open_plotter(addr=None, I=self.waveforms[0][addr:addr+count], Q=self.waveforms[1][addr:addr+count]):
                                 w = MatplotlibWidget(I,Q)
                                 self.plotters.append(w)
