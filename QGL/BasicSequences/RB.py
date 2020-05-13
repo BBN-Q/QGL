@@ -247,7 +247,7 @@ def SingleQubitLeakageRB(qubit, seqs, pi2args, cliff_type='std',
 
 
 
-def TwoQubitRB(q1, q2, seqs, meas_qubits='all',
+def TwoQubitRB(q1, q2, seqs, meas_qubits=None,
                              cliff_type='std',
                              showPlot=False,
                              suffix="",
@@ -264,8 +264,8 @@ def TwoQubitRB(q1, q2, seqs, meas_qubits='all',
         Logical channel to implement RB
     seqs : int iterable
         list of lists of Clifford group integers produced by create_RB_seqs
-    meas_qubits : iterableof strings, string, optional
-        list of qubits to measure or 'ALL' to measure all qubits
+    meas_qubits : iterable of Channels.LogicalChannel, optional
+        list of qubits to measure or None (default) to measure all qubits
     cliff_type : string, optional
         Clifford library to use for RB -> ['STD', 'DIAC', 'AC', 'XYX']
     showPlot : boolean, optional
@@ -298,10 +298,9 @@ def TwoQubitRB(q1, q2, seqs, meas_qubits='all',
 
     #Add the measurement to all sequences
     for seq in seqsBis:
-        if meas_qubits.upper() == "ALL":
-            seq.append(MEAS(q1) * MEAS(q2))
-        else:
-            seq.append(reduce(operator.mul, [MEAS(q) for q in meas_qubits]))
+        if not meas_qubits:
+            meas_qubits = (q1,q2)
+        seq.append(reduce(operator.mul, [MEAS(q) for q in meas_qubits]))
 
     axis_descriptor = [{
         'name': 'length',
@@ -312,7 +311,7 @@ def TwoQubitRB(q1, q2, seqs, meas_qubits='all',
 
     #Tack on the calibration sequences
     if add_cals:
-        seqsBis += create_cal_seqs((q1, q2), 2)
+        seqsBis += create_cal_seqs((q1, q2), 2, measChans = meas_qubits)
         axis_descriptor.append(cal_descriptor((q1, q2), 2))
 
     metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor, suffix = suffix, extra_meta = {'sequences':seqs})
