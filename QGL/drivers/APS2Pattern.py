@@ -1314,7 +1314,7 @@ def update_wf_library(filename, pulses, offsets):
                 print("\t{} not found in offsets so skipping".format(pulse))
                 continue
             for offset in offsets[label][0]:
-                print("\tUpdating {} at offset {}".format(pulse, offset))
+                # print("\tUpdating {} at offset {}".format(pulse, offset))
                 FID.seek(chan1_start + 2*offset, 0) # Chan 1 block + 2 bytes per offset sample
                 FID.write(np.int16(MAX_WAVEFORM_VALUE * shape.real).tobytes())
                 FID.seek(chan2_start + 2*offset, 0) # Chan 1 block + 2 bytes per offset sample
