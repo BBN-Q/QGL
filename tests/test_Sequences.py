@@ -1,6 +1,7 @@
 import numpy as np
 import unittest, time, os, random, sys
 import tempfile
+import pickle
 
 from QGL import *
 from QGL import GSTTools
@@ -503,6 +504,18 @@ class TestAPS2(unittest.TestCase, APS2Helper, TestSequences):
 
         filenames = compile_to_hardware(seqs, 'CNOT_CR_mux/CNOT_CR_mux')
         self.compare_sequences('CNOT_CR_mux')
+
+    def test_update_in_place(self):
+        self.set_awg_dir('RabiAmpInPlace')
+        APS2Pattern.SAVE_WF_OFFSETS = True
+        RabiAmp(self.q1, np.linspace(0, 5e-6, 11))
+        with open(os.path.join(self.awg_dir, "Rabi", "Rabi-APS1.offsets"), "rb") as FID:
+            offsets = pickle.load(FID)
+        print(offsets)
+        pulses = {list(offsets.keys())[0]: Utheta(self.q1, amp=0.0, phase=0)}
+        APS2Pattern.update_wf_library(os.path.join(self.awg_dir, "Rabi", "Rabi-APS1.aps2"), pulses, offsets)
+        print(os.path.join(self.awg_dir, "Rabi", "Rabi-APS1.aps2"))
+        APS2Pattern.SAVE_WF_OFFSETS = False
 
 
 class TestAPS1(unittest.TestCase, AWGTestHelper, TestSequences):

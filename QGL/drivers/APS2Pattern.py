@@ -1070,7 +1070,7 @@ def write_sequence_file(awgData, fileName):
                         #store offsets and wavefor lib length
                         #time ampltidue entries are clamped to ADDRESS_UNIT
                         wf_length = ADDRESS_UNIT if entry.isTimeAmp else entry.length
-                        offsets[entry.label] = ([_[sig] for _ in wfInfo[0][1]],
+                        offsets[str(entry)+"_"+hex(hash(entry))] = ([_[sig] for _ in wfInfo[0][1]],
                                                 wf_length)
                         wf_sigs.discard(sig)
 
@@ -1277,12 +1277,53 @@ def read_sequence_file(fileName):
 
 def update_wf_library(filename, pulses, offsets):
     """
-    Update a H5 waveform library in place give an iterable of (pulseName, pulse)
-    tuples and offsets into the waveform library.
+    Update an aps2 waveform library in place give an iterable of
+    (pulseName, pulse) tuples and offsets into the waveform library.
+    This requires the .aps2 file to have been compiled with the SAVE_WF_OFFSETS
+    flag set to True.
+
+    Parameters
+    ----------
+    filename : string
+        path to the .aps2 file to update
+    pulses : dict{labels: pulse objects}
+        A dictionary of pulse labels and the the new pulse objects to write
+        into file.
+    offsets : dict{waveform_names : address values}
+        A dictionary of waveform names used to index the newly
+        created wavefroms
+
+    Examples
+    --------
+    >>> APS2Pattern.SAVE_WF_OFFSETS = True
+    >>> RabiAmp(q1, np.linspace(0, 5e-6, 11))
+    >>> with open(os.path.join(path/to/awg/dir, "Rabi", "Rabi-APS1.offsets"), "rb") as FID:
+            offsets = pickle.load(FID)
+    >>> pulses = {list(offsets.keys())[0]: Utheta(q1, amp=0.0, phase=0)}
+    >>> APS2Pattern.update_wf_library('path/to/.aps2', pulses, offsets)
     """
     assert USE_PHASE_OFFSET_INSTRUCTION == False
-    #load the h5 file
-    with h5py.File(filename) as FID:
+    #load the waveform file
+    with open(filename, 'rb+') as FID:
+
+        # Find the necessary offsets into the file
+        target_hw    = FID.read(4).decode('utf-8')
+        if target_hw != "APS2":
+            raise Exception("Cannot update non-APS2 waveform library.")
+
+        file_version = struct.unpack('<f', FID.read(4))[0]
+        min_fw       = struct.unpack('<f', FID.read(4))[0]
+        num_chans    = struct.unpack('<H', FID.read(2))[0]
+        inst_len     = struct.unpack('<Q', FID.read(8))[0]
+
+        FID.seek(8*inst_len, 1) # Skip over the instructions, starting from current position
+        wf_len_chan1 = struct.unpack('<Q', FID.read(8))[0]
+        chan1_start  = FID.tell() # Save beginning of chan1 data block
+
+        FID.seek(2*wf_len_chan1, 1) # Skip over the data block, starting from current position
+        wf_len_chan2 = struct.unpack('<Q', FID.read(8))[0]
+        chan2_start  = FID.tell() # Save beginning of chan1 data block
+
         for label, pulse in pulses.items():
             #create a new waveform
             if pulse.isTimeAmp:
@@ -1295,11 +1336,11 @@ def update_wf_library(filename, pulses, offsets):
                 print("\t{} not found in offsets so skipping".format(pulse))
                 continue
             for offset in offsets[label][0]:
-                print("\tUpdating {} at offset {}".format(pulse, offset))
-                FID['/chan_1/waveforms'][offset:offset + length] = np.int16(
-                    MAX_WAVEFORM_VALUE * shape.real)
-                FID['/chan_2/waveforms'][offset:offset + length] = np.int16(
-                    MAX_WAVEFORM_VALUE * shape.imag)
+                # print("\tUpdating {} at offset {}".format(pulse, offset))
+                FID.seek(chan1_start + 2*offset, 0) # Chan 1 block + 2 bytes per offset sample
+                FID.write(np.int16(MAX_WAVEFORM_VALUE * shape.real).tobytes())
+                FID.seek(chan2_start + 2*offset, 0) # Chan 1 block + 2 bytes per offset sample
+                FID.write(np.int16(MAX_WAVEFORM_VALUE * shape.imag).tobytes())
 
 
 def tdm_instructions(seqs):
@@ -1562,7 +1603,9 @@ if __name__ == '__main__':
                 self.height = 1200
                 self.instructions = instructions
                 self.waveforms = waveforms
-                print(self.waveforms)
+                for wf in self.waveforms:
+                    print(wf, len(wf))
+                # print(self.waveforms)
                 self.initUI()
                 self.plotters = []
 
@@ -1606,8 +1649,9 @@ if __name__ == '__main__':
                             # Not a TA pair
                             btn = QPushButton(self.tableWidget)
                             btn.setText('WFM')
-                            addr = int(fields[6].split("=")[1])
-                            count = int(fields[5].split("=")[1])
+                            addr = (int(fields[6].split("=")[1])+0)*4
+                            print(fields[5])
+                            count = (int(fields[5].split("=")[1])+1)*4
                             def open_plotter(addr=None, I=self.waveforms[0][addr:addr+count], Q=self.waveforms[1][addr:addr+count]):
                                 w = MatplotlibWidget(I,Q)
                                 self.plotters.append(w)
