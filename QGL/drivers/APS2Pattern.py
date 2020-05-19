@@ -1277,8 +1277,30 @@ def read_sequence_file(fileName):
 
 def update_wf_library(filename, pulses, offsets):
     """
-    Update an aps2 waveform library in place give an iterable of (pulseName, pulse)
-    tuples and offsets into the waveform library.
+    Update an aps2 waveform library in place give an iterable of
+    (pulseName, pulse) tuples and offsets into the waveform library.
+    This requires the .aps2 file to have been compiled with the SAVE_WF_OFFSETS
+    flag set to True.
+
+    Parameters
+    ----------
+    filename : string
+        path to the .aps2 file to update
+    pulses : dict{labels: pulse objects}
+        A dictionary of pulse labels and the the new pulse objects to write
+        into file.
+    offsets : dict{waveform_names : address values}
+        A dictionary of waveform names used to index the newly
+        created wavefroms
+
+    Examples
+    --------
+    >>> APS2Pattern.SAVE_WF_OFFSETS = True
+    >>> RabiAmp(q1, np.linspace(0, 5e-6, 11))
+    >>> with open(os.path.join(path/to/awg/dir, "Rabi", "Rabi-APS1.offsets"), "rb") as FID:
+            offsets = pickle.load(FID)
+    >>> pulses = {list(offsets.keys())[0]: Utheta(q1, amp=0.0, phase=0)}
+    >>> APS2Pattern.update_wf_library('path/to/.aps2', pulses, offsets)
     """
     assert USE_PHASE_OFFSET_INSTRUCTION == False
     #load the waveform file
