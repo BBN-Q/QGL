@@ -1,6 +1,6 @@
 
 from .Channels import Edge, Measurement
-from .PulseSequencer import PulseBlock
+from .PulseSequencer import PulseBlock, CompoundGate
 from .ControlFlow import Barrier, ControlInstruction
 from .BlockLabel import BlockLabel
 from .PatternUtils import flatten
@@ -56,6 +56,13 @@ def get_channels(instr, channel_set=None):
         return channel_set
     elif isinstance(instr, Barrier):
         return chanlist
+    elif isinstance(instr, CompoundGate): #5" hack! FIX compoundgate.channel
+        if isinstance(instr.channel, Edge):
+            return (instr.channel.source, instr.channel.target)
+        elif len(instr.channel) > 1:
+            return tuple(instr.channel)
+        else:
+            return instr.channel
     elif isinstance(instr, list):
         # This is a bug I think
         warn("Supposed instruction is actually a %d item list" % len(instr))
