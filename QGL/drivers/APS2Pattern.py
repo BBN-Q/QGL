@@ -1539,10 +1539,6 @@ def replace_instructions(filename, instructions):
 
     Examples
     --------
-    >>> RabiAmp(q1, np.linspace(0, 5e-6, 11))
-    >>> with open(os.path.join(path/to/awg/dir, "Rabi", "Rabi-APS1.offsets"), "rb") as FID:
-            offsets = pickle.load(FID)
-    >>> instructions = {list(offsets.keys())[0]: Utheta(q1, amp=0.0, phase=0)}
     >>> APS2Pattern.replace_instructions('path/to/.aps2', instructions)
     """
 
@@ -1561,14 +1557,14 @@ def replace_instructions(filename, instructions):
         wf_dat = []
         for i in range(num_chans):
             wf_len  = struct.unpack('<Q', FID.read(8))[0]
-            dat = ( 1.0 / MAX_WAVEFORM_VALUE) * np.frombuffer(FID.read(2*wf_len), dtype=np.int16).flatten()
+            dat = np.frombuffer(FID.read(2*wf_len), dtype=np.int16).flatten()
             wf_dat.append(dat)
 
         # Write new data
 
         # skip over the header
         FID.seek(0) # return to the start of the file
-        FID.seek(4, 1) # target_hw
+        FID.seek(4) # target_hw
         FID.seek(4, 1) # file version
         FID.seek(4, 1) # minimum firmware version
         FID.seek(2, 1) # number of channels
@@ -1576,10 +1572,16 @@ def replace_instructions(filename, instructions):
         FID.write(np.uint64(instructions.size).tobytes()) # instruction length
         FID.write(instructions.tobytes()) # instructions in uint64 form
 
-        for chanct in range(num_chans):
-            data = wf_dat[chanct]
+        # if the instruction length has changed we need to rewrite the
+        # waveform data
+        for i in range(num_chans):
+            data = wf_dat[i]
             FID.write(np.uint64(data.size).tobytes()) # waveform data length for channel
-            FID.write(data.tobytes())
+            print(data.astype(np.int16))
+            FID.write(data.astype(np.int16).tobytes())
+
+        # chop off any remaining old data
+        FID.truncate()
 
 
 def display_decompiled_file(filename, tdm = False):
