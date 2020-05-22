@@ -43,6 +43,58 @@ class APSPatternUtils(unittest.TestCase):
             instrOpCode = (actual.header >> 4) & 0xf
             assert (instrOpCode == expected)
 
+    def test_inplace_updates(self):
+        q1 = self.q1
+        APS2Pattern.SAVE_WF_OFFSETS = True
+
+        mf = RabiAmp(q1, np.linspace(-1, 1, 11))
+        aps2_f = os.path.join(os.path.dirname(mf), "Rabi-BBNAPS1.aps2")
+
+        instructions = APS2Pattern.read_instructions(aps2_f)
+        waveforms    = APS2Pattern.read_waveforms(aps2_f)
+
+        t_instructions =
+        t_waveforms    =
+
+        # Assert that we can read the correct information from file
+        for actual, expected in zip(instructions, t_instructions):
+            instrOpCode = (actual.header >> 4) & 0xf
+            assert (instrOpCode == expected)
+
+        for actual, expected in zip(waveforms, t_waveforms):
+            instrOpCode = (actual.header >> 4) & 0xf
+            assert (instrOpCode == expected)
+
+        # overwrite the instructions and waveforms
+        # here we completely change the experiment from Rabi to
+        # SPAM characterization
+        spam_mf = SPAM(q1, np.linspace(-1.0, 1.0, 11));
+
+        offset_f = os.path.join(os.path.dirname(spam_mf), "SPAM-BBNAPS1.offsets"))
+        with open(offset_f, "rb") as FID:
+            offsets = pickle.load(FID)
+
+        #pulses = {l: Utheta(q1, amp=0.5, phase=0) for l in offsets}
+        aps2_f = os.path.dirname(mf), "Rabi-BBNAPS1.aps2")
+        wfm_f  = os.path.dirname(mf), "SPAM-BBNAPS1.aps2")
+        spam_waveforms = APS2Pattern.read_waveforms(wfm_f)
+        # The spam_waveforms are raw.  Is this what we want?
+        QGL.drivers.APS2Pattern.update_wf_library(aps2_f, wfm_f, offsets)
+
+        spam_instrs = APS2Pattern.read_instructions(wfm_f)
+        APS2Pattern.replace_instructions(aps2_f, spam_instrs)
+
+        # assert the data now in the file is what we wrote above
+        instructions = APS2Pattern.read_instructions(aps2_f)
+        waveforms    = APS2Pattern.read_waveforms(aps2_f)
+        for actual, expected in zip(instructions, spam_instrs):
+            instrOpCode = (actual.header >> 4) & 0xf
+            assert (instrOpCode == expected)
+
+        for actual, expected in zip(waveforms, spam_waveforms):
+            instrOpCode = (actual.header >> 4) & 0xf
+            assert (instrOpCode == expected)
+
 
 if __name__ == "__main__":
     unittest.main()
