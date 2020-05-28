@@ -19,6 +19,7 @@ from math import pi
 import hashlib, collections
 import pickle
 from copy import copy
+from collections.abc import Iterable
 
 from .PulseSequencer import Pulse, TAPulse, PulseBlock, CompositePulse, CompoundGate, align
 from .PulsePrimitives import BLANK, X
@@ -312,7 +313,7 @@ def convert_length_to_samples(wf_length, sampling_rate, quantization=1):
 # from Stack Overflow: http://stackoverflow.com/questions/2158395/flatten-an-irregular-list-of-lists-in-python/2158532#2158532
 def flatten(l):
     for el in l:
-        if isinstance(el, collections.Iterable) and not isinstance(el, (str, Pulse, CompositePulse)) :
+        if isinstance(el, Iterable) and not isinstance(el, (str, Pulse, CompositePulse)) :
             for sub in flatten(el):
                 yield sub
         else:

@@ -1026,7 +1026,7 @@ def compress_marker(markerLL):
 
 def write_sequence_file(awgData, fileName):
     '''
-    Main function to pack channel sequences into an APS2 h5 file.
+    Main function to pack channel sequences into an APS2 file.
     '''
     # Convert QGL IR into a representation that is closer to the hardware.
     awgData['ch1']['linkList'], wfLib = preprocess(
@@ -1115,7 +1115,7 @@ def write_sequence_file(awgData, fileName):
 
 def read_sequence_file(fileName):
     """
-    Reads a HDF5 sequence file and returns a dictionary of lists.
+    Reads a .aps2 sequence file and returns a dictionary of lists.
     Dictionary keys are channel strings such as ch1, m1
     Lists are or tuples of time-amplitude pairs (time, output)
     """
@@ -1286,9 +1286,12 @@ def update_wf_library(filename, pulses, offsets):
     ----------
     filename : string
         path to the .aps2 file to update
-    pulses : dict{labels: pulse objects}
+    pulses : dict{labels: pulse objects} or 2-by-N list of raw data values
         A dictionary of pulse labels and the the new pulse objects to write
-        into file.
+        into file or a two element list with raw waveform data from [-1, 1]
+        listed for the real, then imaginary quadrature.  This method does no
+        checking of the data to assure and pulse structure.  The WF data is
+        directly packed into the file.
     offsets : dict{waveform_names : address values}
         A dictionary of waveform names used to index the newly
         created wavefroms
@@ -1324,23 +1327,31 @@ def update_wf_library(filename, pulses, offsets):
         wf_len_chan2 = struct.unpack('<Q', FID.read(8))[0]
         chan2_start  = FID.tell() # Save beginning of chan1 data block
 
-        for label, pulse in pulses.items():
-            #create a new waveform
-            if pulse.isTimeAmp:
-                shape = np.repeat(pulse.amp * np.exp(1j * pulse.phase), 4)
-            else:
-                shape = pulse.amp * np.exp(1j * pulse.phase) * pulse.shape
-            try:
-                length = offsets[label][1]
-            except KeyError:
-                print("\t{} not found in offsets so skipping".format(pulse))
-                continue
-            for offset in offsets[label][0]:
-                # print("\tUpdating {} at offset {}".format(pulse, offset))
-                FID.seek(chan1_start + 2*offset, 0) # Chan 1 block + 2 bytes per offset sample
-                FID.write(np.int16(MAX_WAVEFORM_VALUE * shape.real).tobytes())
-                FID.seek(chan2_start + 2*offset, 0) # Chan 1 block + 2 bytes per offset sample
-                FID.write(np.int16(MAX_WAVEFORM_VALUE * shape.imag).tobytes())
+        if isinstance(pulses, dict):
+            for label, pulse in pulses.items():
+                #create a new waveform
+                if pulse.isTimeAmp:
+                    shape = np.repeat(pulse.amp * np.exp(1j * pulse.phase), 4)
+                else:
+                    shape = pulse.amp * np.exp(1j * pulse.phase) * pulse.shape
+                try:
+                    length = offsets[label][1]
+                except KeyError:
+                    print("\t{} not found in offsets so skipping".format(pulse))
+                    continue
+                for offset in offsets[label][0]:
+                    # print("\tUpdating {} at offset {}".format(pulse, offset))
+                    FID.seek(chan1_start + 2*offset, 0) # Chan 1 block + 2 bytes per offset sample
+                    FID.write(np.int16(MAX_WAVEFORM_VALUE * shape.real).tobytes())
+                    FID.seek(chan2_start + 2*offset, 0) # Chan 1 block + 2 bytes per offset sample
+                    FID.write(np.int16(MAX_WAVEFORM_VALUE * shape.imag).tobytes())
+        elif isinstance(pulses, list) and len(pulses) == 2:
+            logger.debug('Using raw data to update WF library in file.')
+            # write raw data to file
+            FID.seek(chan1_start, 0) # Chan 1 block + 2 bytes per offset sample
+            FID.write(np.int16(MAX_WAVEFORM_VALUE * pulses[0]).tobytes())
+            FID.seek(chan2_start, 0) # Chan 1 block + 2 bytes per offset sample
+            FID.write(np.int16(MAX_WAVEFORM_VALUE * pulses[1]).tobytes())
 
 
 def tdm_instructions(seqs):
@@ -1525,17 +1536,77 @@ def read_waveforms(filename):
             wf_dat.append(dat)
         return wf_dat
 
-def replace_instructions(filename, instructions, channel = 1):
-    channelStr =  get_channel_instructions_string(channel)
-    with h5py.File(filename, 'r+') as fid:
-        del fid[channelStr]
-        fid.create_dataset(channelStr, data=instructions)
+def replace_instructions(filename, instructions):
+    """
+    Update an aps2 instruction set in place give an iterable of
+    properly encoded instructions.
+
+    Parameters
+    ----------
+    filename : string
+        path to the .aps2 file to update
+    instructions : list of raw aps2 instructions
+        list of raw, uint64 instructions to replace the current ones in file
+
+    Examples
+    --------
+    >>> APS2Pattern.replace_instructions('path/to/.aps2', instructions)
+    """
+
+    with open(filename, 'rb+') as FID:
+        # read all the existing file information so we can faithfully
+        # reconstruct it.
+
+        target_hw    = FID.read(4).decode('utf-8')
+        file_version = struct.unpack('<f', FID.read(4))[0]
+        min_fw       = struct.unpack('<f', FID.read(4))[0]
+        num_chans    = struct.unpack('<H', FID.read(2))[0]
+
+        old_inst_len     = struct.unpack('<Q', FID.read(8))[0]
+        old_instructions = np.frombuffer(FID.read(8*old_inst_len), dtype=np.uint64)
+
+        wf_dat = []
+        for i in range(num_chans):
+            wf_len  = struct.unpack('<Q', FID.read(8))[0]
+            dat = np.frombuffer(FID.read(2*wf_len), dtype=np.int16).flatten()
+            wf_dat.append(dat)
+
+        # Write new data
+
+        # skip over the header
+        FID.seek(0) # return to the start of the file
+        FID.seek(4) # target_hw
+        FID.seek(4, 1) # file version
+        FID.seek(4, 1) # minimum firmware version
+        FID.seek(2, 1) # number of channels
+
+        FID.write(np.uint64(instructions.size).tobytes()) # instruction length
+        FID.write(instructions.tobytes()) # instructions in uint64 form
+
+        # if the instruction length has changed we need to rewrite the
+        # waveform data
+        for i in range(num_chans):
+            data = wf_dat[i]
+            FID.write(np.uint64(data.size).tobytes()) # waveform data length for channel
+            FID.write(data.astype(np.int16).tobytes())
+
+        # chop off any remaining old data
+        FID.truncate()
+
 
 def display_decompiled_file(filename, tdm = False):
+    """
+    Display all the decomplied instructions from a .aps2 file as
+    {instructions #}{instruction value in 16 bit hex}{decompiled instruction}
+    """
     raw = raw_instructions(filename)
     display_decompiled_instructions(raw, tdm)
 
 def display_decompiled_instructions(raw, tdm = False, display_op_codes = True):
+    """
+    Display the decomplied instructions from their packed, 16 bit values
+    {instructions #}{instruction value in 16 bit hex}{decompiled instruction}
+    """
     cmds = decompile_instructions(raw, tdm)
     opcodeStr = ''
     for i,a in enumerate(zip(raw,cmds)):
@@ -1545,10 +1616,16 @@ def display_decompiled_instructions(raw, tdm = False, display_op_codes = True):
         print("{:5}: {}{}".format(i, opcodeStr,y))
 
 def display_raw_instructions(raw):
+    """
+    Format a raw number as a 16 bit hex instruction
+    """
     for x in raw:
         print("0x{:016x}".format(x))
 
 def display_raw_file(filename):
+    """
+    Display all the raw hex instructions from a .aps2 file as
+    """
     raw = raw_instructions(filename)
     display_raw_instructions(raw)
 
