@@ -1286,9 +1286,12 @@ def update_wf_library(filename, pulses, offsets):
     ----------
     filename : string
         path to the .aps2 file to update
-    pulses : dict{labels: pulse objects}
+    pulses : dict{labels: pulse objects} or 2-by-N list of raw data values
         A dictionary of pulse labels and the the new pulse objects to write
-        into file.
+        into file or a two element list with raw waveform data from [-1, 1]
+        listed for the real, then imaginary quadrature.  This method does no
+        checking of the data to assure and pulse structure.  The WF data is
+        directly packed into the file.
     offsets : dict{waveform_names : address values}
         A dictionary of waveform names used to index the newly
         created wavefroms
@@ -1324,23 +1327,31 @@ def update_wf_library(filename, pulses, offsets):
         wf_len_chan2 = struct.unpack('<Q', FID.read(8))[0]
         chan2_start  = FID.tell() # Save beginning of chan1 data block
 
-        for label, pulse in pulses.items():
-            #create a new waveform
-            if pulse.isTimeAmp:
-                shape = np.repeat(pulse.amp * np.exp(1j * pulse.phase), 4)
-            else:
-                shape = pulse.amp * np.exp(1j * pulse.phase) * pulse.shape
-            try:
-                length = offsets[label][1]
-            except KeyError:
-                print("\t{} not found in offsets so skipping".format(pulse))
-                continue
-            for offset in offsets[label][0]:
-                # print("\tUpdating {} at offset {}".format(pulse, offset))
-                FID.seek(chan1_start + 2*offset, 0) # Chan 1 block + 2 bytes per offset sample
-                FID.write(np.int16(MAX_WAVEFORM_VALUE * shape.real).tobytes())
-                FID.seek(chan2_start + 2*offset, 0) # Chan 1 block + 2 bytes per offset sample
-                FID.write(np.int16(MAX_WAVEFORM_VALUE * shape.imag).tobytes())
+        if isinstance(pulses, dict):
+            for label, pulse in pulses.items():
+                #create a new waveform
+                if pulse.isTimeAmp:
+                    shape = np.repeat(pulse.amp * np.exp(1j * pulse.phase), 4)
+                else:
+                    shape = pulse.amp * np.exp(1j * pulse.phase) * pulse.shape
+                try:
+                    length = offsets[label][1]
+                except KeyError:
+                    print("\t{} not found in offsets so skipping".format(pulse))
+                    continue
+                for offset in offsets[label][0]:
+                    # print("\tUpdating {} at offset {}".format(pulse, offset))
+                    FID.seek(chan1_start + 2*offset, 0) # Chan 1 block + 2 bytes per offset sample
+                    FID.write(np.int16(MAX_WAVEFORM_VALUE * shape.real).tobytes())
+                    FID.seek(chan2_start + 2*offset, 0) # Chan 1 block + 2 bytes per offset sample
+                    FID.write(np.int16(MAX_WAVEFORM_VALUE * shape.imag).tobytes())
+        elif isinstance(pulses, list) and len(pulses) == 2:
+            logger.debug('Using raw data to update WF library in file.')
+            # write raw data to file
+            FID.seek(chan1_start, 0) # Chan 1 block + 2 bytes per offset sample
+            FID.write(np.int16(MAX_WAVEFORM_VALUE * pulses[0]).tobytes())
+            FID.seek(chan2_start, 0) # Chan 1 block + 2 bytes per offset sample
+            FID.write(np.int16(MAX_WAVEFORM_VALUE * pulses[1]).tobytes())
 
 
 def tdm_instructions(seqs):
@@ -1577,7 +1588,6 @@ def replace_instructions(filename, instructions):
         for i in range(num_chans):
             data = wf_dat[i]
             FID.write(np.uint64(data.size).tobytes()) # waveform data length for channel
-            print(data.astype(np.int16))
             FID.write(data.astype(np.int16).tobytes())
 
         # chop off any remaining old data

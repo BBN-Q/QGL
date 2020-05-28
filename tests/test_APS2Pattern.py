@@ -95,39 +95,9 @@ class APSPatternUtils(unittest.TestCase):
     def test_inplace_updates(self):
         q1 = self.q1
         APS2Pattern.SAVE_WF_OFFSETS = True
-        #print(q1)
-        #print(q1.chan)
 
-        # amps = np.linspace(-1, 1, 11)
-        # seqs = [[Utheta(q1, amp=amp), MEAS(q1)] for amp in amps]
-        #
-        # axis_descriptor = [{
-        #     'name': 'amplitude',
-        #     'unit': None,
-        #     'points': list(amps),
-        #     'partition': 1
-        # }]
-        #
-        # mf = compile_to_hardware(seqs, 'Rabi/Rabi',
-        #                                axis_descriptor=axis_descriptor)
-
-        mf = RabiAmp(q1, np.linspace(-1, 1, 11))
+        mf = RabiAmp(q1, np.linspace(-1, 1, 122))
         aps2_f = os.path.join(os.path.dirname(mf), "Rabi-Maxwell_U4.aps2")
-
-        # instructions = APS2Pattern.read_instructions(aps2_f)
-        # waveforms    = APS2Pattern.read_waveforms(aps2_f)
-        #
-        # t_instructions =
-        # t_waveforms    =
-        #
-        # # Assert that we can read the correct information from file
-        # for actual, expected in zip(instructions, t_instructions):
-        #      instrOpCode = (actual.header >> 4) & 0xf
-        #      assert (instrOpCode == expected)
-        #
-        # for actual, expected in zip(waveforms, t_waveforms):
-        #     instrOpCode = (actual.header >> 4) & 0xf
-        #     assert (instrOpCode == expected)
 
         # overwrite the instructions and waveforms
         # here we completely change the experiment from Rabi to
@@ -141,24 +111,26 @@ class APSPatternUtils(unittest.TestCase):
         #pulses = {l: Utheta(q1, amp=0.5, phase=0) for l in offsets}
         aps2_f = os.path.join(os.path.dirname(mf), "Rabi-Maxwell_U4.aps2")
         wfm_f  = os.path.join(os.path.dirname(spam_mf), "SPAM-Maxwell_U4.aps2")
+        # read raw waveforms
         spam_waveforms = APS2Pattern.read_waveforms(wfm_f)
-        print(spam_waveforms)
-        # The spam_waveforms are raw.  Is this what we want?
-        APS2Pattern.update_wf_library(aps2_f, spam_waveforms, offsets)
 
-        spam_instrs = APS2Pattern.read_instructions(wfm_f)
+        spam_instrs = APS2Pattern.raw_instructions(wfm_f)
         APS2Pattern.replace_instructions(aps2_f, spam_instrs)
 
+        APS2Pattern.update_wf_library(aps2_f, spam_waveforms, offsets)
+
         # assert the data now in the file is what we wrote above
-        instructions = APS2Pattern.read_instructions(wfm_f)
-        waveforms    = APS2Pattern.read_waveforms(wfm_f)
-        for actual, expected in zip(instructions, spam_instrs):
+        instructions = APS2Pattern.read_instructions(aps2_f)
+        waveforms    = APS2Pattern.read_waveforms(aps2_f)
+        decomp_spam_instr = APS2Pattern.decompile_instructions(spam_instrs)
+
+        for actual, expected in zip(instructions, decomp_spam_instr):
             instrOpCode = (actual.header >> 4) & 0xf
-            assert (instrOpCode == expected)
+            expe_OpCode = (expected.header >> 4) & 0xf
+            assert (int(instrOpCode) == int(expe_OpCode))
 
         for actual, expected in zip(waveforms, spam_waveforms):
-            instrOpCode = (actual.header >> 4) & 0xf
-            assert (instrOpCode == expected)
+            assert (actual.all() == expected.all())
 
 
 if __name__ == "__main__":
