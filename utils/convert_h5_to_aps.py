@@ -66,9 +66,9 @@ def read_aps2_from_h5(fileName):
         data["instrument"]   = FID['/'].attrs['target hardware']
         data["file_version"] = FID["/"].attrs["Version"]
         data["fw_version"]   = FID['/'].attrs['minimum firmware version']
-        data["chan1"]        = FID['/chan_1/waveforms'].value.flatten()
-        data["chan2"]        = FID['/chan_2/waveforms'].value.flatten()
-        data["instructions"] = FID['/chan_1/instructions'].value.flatten()
+        data["chan1"]        = FID['/chan_1/waveforms'][()].flatten()
+        data["chan2"]        = FID['/chan_2/waveforms'][()].flatten()
+        data["instructions"] = FID['/chan_1/instructions'][()].flatten()
     return data
 
 def read_aps1_from_h5(fileName):
@@ -81,14 +81,14 @@ def read_aps1_from_h5(fileName):
         channels = list(FID['/'].keys())
         data['channels'] = {}
         for channel in channels:
-            data['channels'][channel] = {'waveformLib': FID[f'/{channel}/waveformLib'].value.flatten()}
+            data['channels'][channel] = {'waveformLib': FID[f'/{channel}/waveformLib'][()].flatten()}
             data['channels'][channel]['isIQMode'] = FID[f'/{channel}'].attrs['isIQMode']
             if 'linkListData' in list(FID[f'/{channel}'].keys()):
                 data['channels'][channel]['linkListData'] = {}
                 for key in FID[f'/{channel}/linkListData'].keys():
                     data['channels'][channel]['linkListNumKeys'] = len(FID[f'/{channel}/linkListData'].keys())
                     data['channels'][channel]['linkListDataLength'] = FID[f'/{channel}/linkListData'].attrs['length']
-                    data['channels'][channel]['linkListData'][key] = FID[f'/{channel}/linkListData/{key}'].value.flatten()
+                    data['channels'][channel]['linkListData'][key] = FID[f'/{channel}/linkListData/{key}'][()].flatten()
     return data
 
 if __name__ == '__main__':
