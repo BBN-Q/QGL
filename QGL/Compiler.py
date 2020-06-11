@@ -305,7 +305,7 @@ def compile_to_hardware(seqs,
                         library_version=None,
                         suffix='',
                         axis_descriptor=None,
-                        add_slave_trigger=True,
+                        add_minion_trigger=True,
                         extra_meta=None,
                         tdm_seq = False):
     '''
@@ -320,7 +320,7 @@ def compile_to_hardware(seqs,
             axes of the measurements that the sequence will yield. For instance,
             if `seqs` generates a Ramsey experiment, axis_descriptor would describe
             the time delays between pulses.
-        add_slave_trigger (optional): add the slave trigger(s)
+        add_minion_trigger (optional): add the minion trigger(s)
         tdm_seq (optional): compile for TDM
     '''
     ChannelLibraries.channelLib.update_channelDict()
@@ -347,13 +347,13 @@ def compile_to_hardware(seqs,
         PatternUtils.add_parametric_pulses(seq)
         PatternUtils.add_gate_pulses(seq)
 
-    if add_slave_trigger and 'slave_trig' in ChannelLibraries.channelLib:
-        # Add the slave trigger
-        logger.debug("Adding slave trigger")
-        PatternUtils.add_slave_trigger(seqs,
-                                       ChannelLibraries.channelLib['slave_trig'])
+    if add_minion_trigger and 'minion_trig' in ChannelLibraries.channelLib:
+        # Add the minion trigger
+        logger.debug("Adding minion trigger")
+        PatternUtils.add_minion_trigger(seqs,
+                                       ChannelLibraries.channelLib['minion_trig'])
     else:
-        logger.info("Not adding slave trigger")
+        logger.info("Not adding minion trigger")
 
     # find channel set at top level to account for individual sequence channel variability
     logger.info("Finding unique channels.")

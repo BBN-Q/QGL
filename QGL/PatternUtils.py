@@ -249,9 +249,9 @@ def contains_measurement(entry):
     return False
 
 
-def add_slave_trigger(seqs, slaveChan):
+def add_minion_trigger(seqs, minionChan):
     '''
-    Add the slave trigger to each sequence.
+    Add the minion trigger to each sequence.
     '''
     for seq in seqs:
         # Attach a TRIG immediately after a WAIT.
@@ -259,10 +259,10 @@ def add_slave_trigger(seqs, slaveChan):
         while ct < len(seq) - 1:
             if isinstance(seq[ct], ControlFlow.Wait):
                 try:
-                    seq[ct + 1] = align('left', seq[ct + 1], TAPulse("TRIG", slaveChan, slaveChan.pulse_params['length'], 1.0, 0.0, 0.0))
+                    seq[ct + 1] = align('left', seq[ct + 1], TAPulse("TRIG", minionChan, minionChan.pulse_params['length'], 1.0, 0.0, 0.0))
                 except:
-                    seq.insert(ct + 1, TAPulse("TRIG", slaveChan,
-                                               slaveChan.pulse_params['length'],
+                    seq.insert(ct + 1, TAPulse("TRIG", minionChan,
+                                               minionChan.pulse_params['length'],
                                                1.0, 0.0, 0.0))
                 ct += 2  # can skip over what we just modified
             else:
