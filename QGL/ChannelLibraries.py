@@ -582,7 +582,7 @@ class ChannelLibrary(object):
     @check_for_duplicates
     def new_APS2_rack(self, label, ip_addresses, tdm_ip=None, **kwargs):
         transmitters  = [self.new_APS2(f"{label}_U{n+1}", f"{ip}") for n, ip in enumerate(ip_addresses)]
-        this_transceiver = Channels.Transceiver(label=label, model="APS2", master=True, address=ip_addresses[0], transmitters=transmitters, channel_db=self.channelDatabase, **kwargs)
+        this_transceiver = Channels.Transceiver(label=label, model="APS2", primary=True, address=ip_addresses[0], transmitters=transmitters, channel_db=self.channelDatabase, **kwargs)
         for t in transmitters:
             t.transceiver = this_transceiver
 
@@ -832,29 +832,29 @@ class ChannelLibrary(object):
             meas.processor_chan = phys_tdm_channel
             self.add_and_update_dict([meas, phys_tdm_channel])
 
-    def set_master(self, master_instrument, trig_channel=None, pulse_length=1e-7):
+    def set_primary(self, primary_instrument, trig_channel=None, pulse_length=1e-7):
 
-        if isinstance(master_instrument, Channels.Processor):
-            master_instrument.master = True
+        if isinstance(primary_instrument, Channels.Processor):
+            primary_instrument.primary = True
 
         elif trig_channel:
 
             if not isinstance(trig_channel, Channels.PhysicalMarkerChannel):
-                raise ValueError("In set_master the trigger channel must be an instance of PhysicalMarkerChannel")
+                raise ValueError("In set_primary the trigger channel must be an instance of PhysicalMarkerChannel")
 
-            if "slave_trig" in self.channelDict:
-                logger.warning(f"The slave trigger slave_trig already exists: using this trigger.")
-                st = self.channelDict["slave_trig"]
+            if "minion_trig" in self.channelDict:
+                logger.warning(f"The minion trigger minion_trig already exists: using this trigger.")
+                st = self.channelDict["minion_trig"]
             else:
-                st = Channels.LogicalMarkerChannel(label="slave_trig", channel_db=self.channelDatabase)
+                st = Channels.LogicalMarkerChannel(label="minion_trig", channel_db=self.channelDatabase)
             st.phys_chan = trig_channel
             st.pulse_params = {"length": pulse_length, "shape_fun": "constant"}
-            master_instrument.master = True
-            master_instrument.trigger_source = "internal"
+            primary_instrument.primary = True
+            primary_instrument.trigger_source = "internal"
             self.add_and_update_dict([st])
 
         else:
-            raise ValueError(f"Could not determine which transmitter to set as master for {master_instrument}:{trig_channel}")
+            raise ValueError(f"Could not determine which transmitter to set as primary for {primary_instrument}:{trig_channel}")
 
 # Used by QGL2, which needs a non-class member function to
 # retrieve a Qubit from the CL without accessing the CL directly
