@@ -1,3 +1,22 @@
+'''
+Test program for stepping through APS2/APS3 sequencer state given an input sequence.
+Specification current as of 9/3/20, incorporating latest VRAM changes.
+
+Copyright 2020 Raytheon BBN Technologies
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+'''
+
 import numpy as np
 from queue import Queue
 
@@ -23,6 +42,10 @@ class VRAMentry(object):
         self.validity = np.uint32(validity)
         
     def invalidate(self, mask=0x0, flag=False):
+    	"""Invalidate and entry using a mask. 
+    	If flag is set, set bits corresponding to mask to 0.
+    	If flag is unset, load mask into validity.
+    	"""
         mask = np.uint32(mask) #ugly...
         if flag:
             self.validity = self.validity & ~mask
@@ -30,6 +53,11 @@ class VRAMentry(object):
             self.validity = mask
             
     def store(self, value, flag=False):
+    	"""Store a value to the  VRAM.
+    	If flag is set, use the validity as a mask for the data.
+    	If flag is unset, just store the value to VRAM.
+    	Note that this does not change the validity!
+    	"""
         value = np.uint32(value)
         if flag:
             self.data = (self.data & ~self.validity) | value
@@ -37,38 +65,67 @@ class VRAMentry(object):
             self.data = value
             
     def set_valid(self):
-        self.validity = 0xFFFFFFFF
+    	"""Mark entry as all valid (validity all 1's)
+    	"""
+        self.validity = np.uint32(0xFFFFFFFF)
         
     def test_valid(self, mask):
+    	"""Test validity using mask: bits which are 1 in both mask and stored validity must match"""
+
         mask = np.uint32(mask)
         return (mask & self.validity) == mask
 
 class OutputEngine(object):
+	"""An output engine (marker or waveform).
+	Contains a FIFO queue for storing pending outputs."""
     
     def __init__(self):
         self.fifo   = Queue() #pending commands
         self.output = [] #the output
     
     def write(self):
+    	"""Dump all pending outputs"""
         while not self.fifo.empty():
             self.output.append(self.fifo.get())
 
 class WaveformEngine(OutputEngine):
-            
+    """A waveform engine."""
+
     def play_waveform(self, wave):
+    	"""Play back wave data."""
         self.fifo.put(wave)
         
     def play_TA(self, value, count):
+    	"""Play T/A pair data, holding `value` for `count` quad-samples."""
         self.fifo.put(np.full(count, value, dtype=np.complex))
         
 class MarkerEngine(OutputEngine):
     
     def play_marker(self, state, count, tword=0):
+    	"""Hold marker in `state` for `count` quad samples."""
         #ignore transition word for now...
         data = np.full(count, state, dtype=np.uint8)
         self.fifo.put(data)
      
 class APS2Sequencer:
+
+	"""APS2/3 sequencer simulation. This is NOT meant to be a faithful 
+	representation of the internal workings of the sequencer, but to generate 
+	correct outputs and VRAM data given an input sequence. We use this to check
+	HDL simulation output state. 
+
+	Currently there is no support for SYNC and WAIT instructions as this simulation
+	ignores timing.
+	
+	TODO:
+	 - Can we support SYNC/WAIT better?
+	 - Can we support the TDM message queue? Eventually I would like to move this to 
+	   an async execution model to better simulate multiple APS units...
+	 - Support modulation commands.
+	 - Double check spec for comparison implementation (not sure there is any functional 
+	   difference from here...)
+
+	"""
     
     def __init__(self, seq_memory_size=1024, VRAMsize=16, 
                  max_step=2048, stop=None):
@@ -113,7 +170,7 @@ class APS2Sequencer:
         if self.rep < 0:
             raise InvalidSequencerState(f"Negative repeat counter!")
     
-    ## INSTRUCTIONS
+    ##  INSTRUCTIONS ##################################################
     
     def noop(self):
         self.ip += 1
@@ -230,6 +287,7 @@ class APS2Sequencer:
         
         if opcode == WFM:
             N      = (instr.payload >> 24) & 2**21 - 1
+            #TODO: Load address from VRAM
             addr   = instr.payload & 2**24 - 1
             ta_bit = (instr.payload >> 45) & 0x1
             self.waveform(addr, N, ta_bit)
