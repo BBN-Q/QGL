@@ -66,6 +66,88 @@ def drag(amp=1,
     QQuad = drag_scaling * derivScale * xPts * np.exp(-0.5 * (xPts**2))
     return amp * (IQuad + 1j * QQuad)
 
+def alt_gaussian(pulse_length, sampling_rate, cutoff=2):
+    num_points = int(round(pulse_length*sampling_rate))
+
+    # Cut off the gaussian at some number of std devs away
+    x_points = np.linspace(-cutoff, cutoff, num_points)
+
+    # Compute the gaussian itself
+    gaussian_points = np.exp(-0.5 * (x_points**2))
+
+    # Shift it down so that the cutoff point becomes zero
+    gaussian_points -= np.min(gaussian_points)
+
+    # Scale to an amp of 1
+    gaussian_points /= np.max(gaussian_points)
+
+    # Pad with zeroes to match the vector length and return
+    return gaussian_points
+
+def gng(amp=1,
+        length=0,
+        sampling_rate=1e9,
+        secondary_gaussian_width=0,
+        cutoff=2,
+        notch_freq=0,
+        **params):
+    # Create the original gaussian pulse and the second term which will be upconverted
+    print('Making gng with amp={:.2f} length={:f} sampling_rate={:f} sgw={:f} cutoff={:d} notch_freq={:f}'.format(amp,length,sampling_rate,secondary_gaussian_width, cutoff, notch_freq))
+    g = alt_gaussian(length, sampling_rate, cutoff)
+
+    if notch_freq == 0 or secondary_gaussian_width == 0:
+        return g
+
+    secondary_g = alt_gaussian(secondary_gaussian_width, sampling_rate, cutoff)
+
+    # Create the upconverion
+    secondary_time_points = np.linspace(0, secondary_gaussian_width, int(round(secondary_gaussian_width*sampling_rate)))
+    shift = np.exp(2*np.pi*notch_freq*secondary_time_points)
+
+    # Upconvert the second gaussian and calculate the spectrum of both
+    shifted_fft = np.fft.fft(list(secondary_g*shift) + [0]*(len(g) - len(secondary_g)))
+    fft = np.fft.fft(list(g) + [0]*(len(secondary_g) - len(g)))
+
+    # Scale and rotate the shifted gaussian so that at the notch, the frequency component disappears
+    idx_notch = np.argmin(np.abs(np.fft.fftfreq(len(g), d=1/sampling_rate) - notch_freq))
+    scale_factor = (np.abs(fft[idx_notch])/np.abs(shifted_fft[idx_notch]))
+    phase_factor = np.exp(1j*(np.angle(fft[idx_notch]) - np.angle(shifted_fft[idx_notch]) + np.pi))
+
+    # Calculate the new spectrum with the desired tone cancelled
+    fft += shifted_fft*scale_factor*phase_factor
+
+    # Return the time samples scaled to an absolute magnitude of 1
+    ifft = np.fft.ifft(fft)
+    return ifft * amp / np.max(np.abs(ifft))
+
+def notched_gaussian(amp=1,
+                     length=0,
+                     sampling_rate=1e9,
+                     cutoff=2,
+                     notch_freq=0,
+                     notch_width=0,
+                     **params):
+    notch_freqs = [notch_freq]
+    notch_widths = [notch_width]
+    g = alt_gaussian(length, sampling_rate, cutoff)
+    fft = np.fft.fft(g)
+    fft_freqs = np.fft.fftfreq(fft.size, d=1/sampling_rate)
+
+    # Find the index of the frequency closest to the edges of the desired notches
+    idx_notch_starts = [np.argmin(np.abs(fft_freqs - c - (notch_widths[idx]/2))) for idx,c in enumerate(notch_freqs)]
+    idx_notch_stops = [np.argmin(np.abs(fft_freqs - c + (notch_widths[idx]/2))) for idx,c in enumerate(notch_freqs)]
+
+#     print(str(pulse_length) + ' ' + str(idx_notch_starts[0]) + str(idx_notch_stops[0]))
+
+    for i in range(len(notch_freqs)):
+        zeros = np.zeros(abs(idx_notch_stops[i] - idx_notch_starts[i]), dtype=fft.dtype)
+        if(idx_notch_stops[i] > idx_notch_starts[i]):
+            fft[idx_notch_starts[i]:idx_notch_stops[i]] = zeros
+        else:
+            fft[idx_notch_stops[i]:idx_notch_starts[i]] = zeros
+
+    ifft = np.fft.ifft(fft)
+    return ifft * amp / np.max(np.abs(ifft))
 
 def gaussOn(amp=1, length=0, cutoff=2, sampling_rate=1e9, **params):
     '''
@@ -81,6 +163,24 @@ def gaussOn(amp=1, length=0, cutoff=2, sampling_rate=1e9, **params):
     #Rescale so that it still goes to amp
     amp = (amp / (1 - nextPoint))
     return (amp * (np.exp(-0.5 * (xPts**2)) - nextPoint)).astype(np.complex)
+
+def cosOn(amp=1, length=0, sampling_rate=1e9, **params):
+    '''
+    A half-cosine pulse going from zero to full
+    '''
+    numPts = int(np.round(length * sampling_rate))
+    times = np.linspace(0, length, numPts)
+    vals = amp*(1 - np.cos((times * np.pi / length)))/2
+    return vals.astype(np.complex)
+
+def cosOff(amp=1, length=0, sampling_rate=1e9, **params):
+    '''
+    A half-cosine pulse going from full to zero
+    '''
+    numPts = int(np.round(length * sampling_rate))
+    times = np.linspace(0, length, numPts)
+    vals = amp*(1 - np.cos((times * np.pi / length) + np.pi))/2
+    return vals.astype(np.complex)
 
 
 def gaussOff(amp=1, length=0, cutoff=2, sampling_rate=1e9, **params):
@@ -162,6 +262,19 @@ def exp_decay(amp=1, length=0, sigma=0, sampling_rate=1e9, steady_state=0.4, **p
     numPts = int(np.round(length * sampling_rate))
     timePts = (1.0 / sampling_rate) * np.arange(numPts)
     return amp * ((1-steady_state) * np.exp(-timePts / sigma) + steady_state).astype(np.complex)
+
+# def composite(amp=1, resolution=1e6, band_start=0, band_stop=0.5e9, sampling_rate=1e9, **params):
+#     """
+
+#     """
+#     numPts = int((1/resolution)*sampling_rate)
+#     freqs = np.zeros(numPts, dtype=np.complex)
+#     idx_start = int(round(numPts * band_start / sampling_rate))
+#     idx_stop = int(round(numPts * band_stop / sampling_rate))
+#     freqs[idx_start : idx_stop] = 1
+#     samples = np.ifft(
+
+
 
 def CLEAR(amp=1, length=0, sigma=0, sampling_rate=1e9, **params):
     """
