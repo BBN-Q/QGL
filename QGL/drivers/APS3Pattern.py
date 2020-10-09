@@ -1108,7 +1108,7 @@ def write_sequence_file(awgData, fileName):
 
 def read_sequence_file(fileName):
     """
-    Reads a HDF5 sequence file and returns a dictionary of lists.
+    Reads a APS sequence file and returns a dictionary of lists.
     Dictionary keys are channel strings such as ch1, m1
     Lists are or tuples of time-amplitude pairs (time, output)
     """
@@ -1272,30 +1272,83 @@ def read_sequence_file(fileName):
 
 def update_wf_library(filename, pulses, offsets):
     """
-    Update a H5 waveform library in place give an iterable of (pulseName, pulse)
-    tuples and offsets into the waveform library.
+    Update an aps2 waveform library in place give an iterable of
+    (pulseName, pulse) tuples and offsets into the waveform library.
+    This requires the .aps2 file to have been compiled with the
+    SAVE_WF_OFFSETS flag set to True.
+
+    TO-DO: update for APS3
+
+    Parameters
+    ----------
+    filename : string
+        path to the .aps2 file to update
+    pulses : dict{labels: pulse objects} or 2-by-N list of raw data values
+        A dictionary of pulse labels and the the new pulse objects to write
+        into file or a two element list with raw waveform data from [-1, 1]
+        listed for the real, then imaginary quadrature.  This method does no
+        checking of the data to assure and pulse structure.  The WF data is
+        directly packed into the file.
+    offsets : dict{waveform_names : address values}
+        A dictionary of waveform names used to index the newly
+        created wavefroms
+
+    Examples
+    --------
+    >>> APS2Pattern.SAVE_WF_OFFSETS = True
+    >>> RabiAmp(q1, np.linspace(0, 5e-6, 11))
+    >>> with open(os.path.join(path/to/awg/dir, "Rabi", "Rabi-APS1.offsets"), "rb") as FID:
+            offsets = pickle.load(FID)
+    >>> pulses = {list(offsets.keys())[0]: Utheta(q1, amp=0.0, phase=0)}
+    >>> APS2Pattern.update_wf_library('path/to/.aps2', pulses, offsets)
     """
     assert USE_PHASE_OFFSET_INSTRUCTION == False
-    #load the h5 file
-    with h5py.File(filename) as FID:
-        for label, pulse in pulses.items():
-            #create a new waveform
-            if pulse.isTimeAmp:
-                shape = np.repeat(pulse.amp * np.exp(1j * pulse.phase), 4)
-            else:
-                shape = pulse.amp * np.exp(1j * pulse.phase) * pulse.shape
-            try:
-                length = offsets[label][1]
-            except KeyError:
-                print("\t{} not found in offsets so skipping".format(pulse))
-                continue
-            for offset in offsets[label][0]:
-                print("\tUpdating {} at offset {}".format(pulse, offset))
-                FID['/chan_1/waveforms'][offset:offset + length] = np.int16(
-                    MAX_WAVEFORM_VALUE * shape.real)
-                FID['/chan_2/waveforms'][offset:offset + length] = np.int16(
-                    MAX_WAVEFORM_VALUE * shape.imag)
+    #load the waveform file
+    with open(filename, 'rb+') as FID:
 
+        # Find the necessary offsets into the file
+        target_hw    = FID.read(4).decode('utf-8')
+        if target_hw != "APS2":
+            raise Exception("Cannot update non-APS2 waveform library.")
+
+        file_version = struct.unpack('<f', FID.read(4))[0]
+        min_fw       = struct.unpack('<f', FID.read(4))[0]
+        num_chans    = struct.unpack('<H', FID.read(2))[0]
+        inst_len     = struct.unpack('<Q', FID.read(8))[0]
+
+        FID.seek(8*inst_len, 1) # Skip over the instructions, starting from current position
+        wf_len_chan1 = struct.unpack('<Q', FID.read(8))[0]
+        chan1_start  = FID.tell() # Save beginning of chan1 data block
+
+        FID.seek(2*wf_len_chan1, 1) # Skip over the data block, starting from current position
+        wf_len_chan2 = struct.unpack('<Q', FID.read(8))[0]
+        chan2_start  = FID.tell() # Save beginning of chan1 data block
+
+        if isinstance(pulses, dict):
+            for label, pulse in pulses.items():
+                #create a new waveform
+                if pulse.isTimeAmp:
+                    shape = np.repeat(pulse.amp * np.exp(1j * pulse.phase), 4)
+                else:
+                    shape = pulse.amp * np.exp(1j * pulse.phase) * pulse.shape
+                try:
+                    length = offsets[label][1]
+                except KeyError:
+                    print("\t{} not found in offsets so skipping".format(pulse))
+                    continue
+                for offset in offsets[label][0]:
+                    # print("\tUpdating {} at offset {}".format(pulse, offset))
+                    FID.seek(chan1_start + 2*offset, 0) # Chan 1 block + 2 bytes per offset sample
+                    FID.write(np.int16(MAX_WAVEFORM_VALUE * shape.real).tobytes())
+                    FID.seek(chan2_start + 2*offset, 0) # Chan 1 block + 2 bytes per offset sample
+                    FID.write(np.int16(MAX_WAVEFORM_VALUE * shape.imag).tobytes())
+        elif isinstance(pulses, list) and len(pulses) == 2:
+            logger.debug('Using raw data to update WF library in file.')
+            # write raw data to file
+            FID.seek(chan1_start, 0) # Chan 1 block + 2 bytes per offset sample
+            FID.write(np.int16(MAX_WAVEFORM_VALUE * pulses[0]).tobytes())
+            FID.seek(chan2_start, 0) # Chan 1 block + 2 bytes per offset sample
+            FID.write(np.int16(MAX_WAVEFORM_VALUE * pulses[1]).tobytes())
 
 def tdm_instructions(seqs):
     """
@@ -1425,24 +1478,150 @@ def tdm_instructions(seqs):
     return np.fromiter((instr.flatten() for instr in instructions), np.uint64,
                        len(instructions))
 
+def tdm_instructions(seqs):
+    """
+    Generate the TDM instructions for the given sequence.
+
+    This assumes that there is one instruction sequence, not
+    a list of them (as is generally the case elsewhere). FIXME
+    """
+    instructions = list()
+    label2addr = dict()     # the backpatch table for labels
+
+    label = seqs[0][0]
+    for seq in seqs:
+        seq = list(flatten(copy(seq)))
+
+        #add sync at the beginning of the sequence. FIXME: for now, ignore subroutines. Assume that the first entry is a label
+        instructions.append(Sync(label=label))
+
+        label = None
+        for s in seq:
+            if isinstance(s, BlockLabel.BlockLabel):
+                #label2addr[s.label] = len(instructions) #FIXME this convert a label (A, B, ...) to the instruction number, i.e. the address (typically)
+
+                # carry label forward to next entry
+                label = s
+                continue
+
+            if isinstance(s, ControlFlow.Wait):
+                instructions.append(Wait(label=label))
+            elif isinstance(s, ControlFlow.LoadCmp):
+                instructions.append(LoadCmp(label=label))
+
+            elif isinstance(s, TdmInstructions.WriteAddrInstruction) and s.tdm == True:
+                if s.instruction == 'INVALIDATE':
+                    print('o INVALIDATE(channel=%s, addr=0x%x, mask=0x%x)' %
+                            (str(s.channel), s.addr, s.value))
+                    instructions.append(Invalidate(s.addr, s.value, label=label))
+
+                elif s.instruction == 'WRITEADDR':
+                    print('o WRITEADDR(channel=%s, addr=0x%x, value=0x%x)' %
+                            (str(s.channel), s.addr, s.value))
+                    instructions.append(WriteAddr(s.addr, s.value, label=label))
+
+                elif s.instruction == 'STOREMEAS':
+                    print('STOREMEAS(channel=%s, addr=0x%x, mapping=0x%x)' %
+                            (str(s.channel), s.addr, s.value))
+                    instructions.append(StoreMeas(s.addr, s.value, label=label))
+                else: # TODO: add CrossBar (no need for explicit QGL call for TDM)
+                    print('UNSUPPORTED WriteAddr: %s(channel=%s, addr=0x%x, val=0x%x)' %
+                            (s.instruction, str(s.channel),
+                                s.addr, s.value))
+                    continue
+
+            elif isinstance(s, TdmInstructions.CustomInstruction):
+
+                if s.instruction == 'MAJORITY':
+                    print('MAJORITY(in_addr=%x, out_addr=%x)' %
+                            (s.in_addr, s.out_addr))
+                    instructions.append(
+                            MajorityVote(s.in_addr, s.out_addr, label=label))
+                elif s.instruction == 'MAJORITYMASK':
+                    print('MAJORITYMASK(in_addr=%x, out_addr=%x)' %
+                            (s.in_addr, s.out_addr))
+                    instructions.append(
+                            MajorityVoteMask(s.in_addr, s.out_addr, label=label))
+                elif s.instruction == 'TSM':
+                    print('DECODE(in_addr=%x, out_addr=%x)' %
+                            (s.in_addr, s.out_addr))
+                    instructions.append(
+                            Decode(s.in_addr, s.out_addr, label=label))
+                elif s.instruction == 'TSM_SET_ROUNDS':
+                    print('DECODESETROUNDS(in_addr=%x, out_addr=%x)' %
+                            (s.in_addr, s.out_addr))
+                    instructions.append(
+                            DecodeSetRounds(s.in_addr, s.out_addr, label=label))
+                else: #TODO: add decoder
+                    print('UNSUPPORTED CUSTOM: %s(in_addr=0x%x, out_addr=0x%x)' %
+                            (s.instruction, s.in_addr, s.out_addr))
+
+            elif isinstance(s, ControlFlow.Goto):
+                instructions.append(Goto(s.target, label=label))
+            elif isinstance(s, ControlFlow.Repeat):
+                instructions.append(Repeat(s.target, label=label))
+            elif isinstance(s, ControlFlow.LoadRepeat):
+                instructions.append(Load(s.value - 1, label=label))
+
+            elif isinstance(s, TdmInstructions.LoadCmpVramInstruction):
+                if s.instruction == 'LOADCMPVRAM' and s.tdm == True:
+                    instructions.append(
+                            LoadCmpVram(s.addr, s.mask, label=label))
+
+            elif isinstance(s, PulseSequencer.Pulse):
+                if s.label == 'MEAS' and s.maddr != (-1, 0):
+                    # tdm_chan specifies the input channel to the TDM carrying the qubit state. Defaults to 1
+                    tdm_chan = m.channel.processor_chan.channel if getattr(m.channel, 'processor_chan') else 1
+                    instructions.append(CrossBar(2**m.maddr[1], 2**(tdm_chan-1)), label=label)
+                    instructions.append(LoadCmp(label=label))
+                    instructions.append(StoreMeas(s.maddr[0], 1 << 16, label=label))
+
+            elif isinstance(s, PulseSequencer.PulseBlock):
+                sim_meas = []
+                for k in s.pulses:
+                    if s.pulses[k].label == 'MEAS' and s.pulses[k].maddr != (-1, 0):
+                        sim_meas.append(s.pulses[k])
+                if sim_meas:
+                    maddr = [m.maddr[0] for m in sim_meas]
+                    if len(set(maddr))>1:
+                        raise Exception('Storing simultaneous measurements on different addresses not supported.')
+                    for n,m in enumerate(sim_meas):
+                        # each tdm_chan specifies the input channel to the TDM carrying the corresponding qubit state. Default values  are the first n channels
+                        tdm_chan = m.channel.processor_chan.channel if getattr(m.channel, 'processor_chan') else n+1
+                        instructions.append(CrossBar(2**m.maddr[1], 2**(tdm_chan-1)))
+                    instructions.append(LoadCmp(label=label))
+                    instructions.append(StoreMeas(maddr[0], 1 << 16))
+
+            elif isinstance(s, list):
+                # FIXME:
+                # If this happens, we are confused.
+                print('FIXME: TDM GOT LIST: %s' % str(s))
+
+            elif isinstance(s, ControlFlow.ComparisonInstruction):
+                instructions.append(
+                        Cmp(CMPTABLE[s.operator], s.value, label=label))
+
+            else:
+                pass
+                # use this for debugging purposes
+                #print('OOPS: unhandled [%s]' % str(type(s)))
+
+    resolve_symbols(instructions)
+    return np.fromiter((instr.flatten() for instr in instructions), np.uint64,
+                       len(instructions))
+
 def write_tdm_seq(seq, tdm_fileName):
-    #Open the HDF5 file
+    #Open the binary file
     if os.path.isfile(tdm_fileName):
         os.remove(tdm_fileName)
-    with h5py.File(tdm_fileName, 'w') as FID:
-        FID['/'].attrs['Version'] = 5.0
-        FID['/'].attrs['target hardware'] = 'APS3'
-        FID['/'].attrs['minimum firmware version'] = 5.0
-        FID['/'].attrs['channelDataFor'] = np.uint16([1, 2])
 
-        #Create the groups and datasets
-        for chanct in range(2):
-            chanStr = '/chan_{0}'.format(chanct + 1)
-            chanGroup = FID.create_group(chanStr)
-            FID.create_dataset(chanStr + '/waveforms', data=np.uint16([]))
-            #Write the instructions to channel 1
-            if np.mod(chanct, 2) == 0:
-                FID.create_dataset(chanStr + '/instructions', data=seq)
+    with open(tdm_fileName, 'wb') as FID:
+        FID.write(b'TDM1')                     # target hardware
+        FID.write(np.float32(2.0).tobytes())   # Version
+        FID.write(np.float32(2.0).tobytes())   # minimum firmware version
+        FID.write(np.uint16(0).tobytes())      # number of channels
+        FID.write(np.uint64(seq.size).tobytes()) # instructions length
+        FID.write(seq.tobytes()) # instructions in uint64 form
 
 # Utility Functions for displaying programs
 
