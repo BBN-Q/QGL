@@ -559,8 +559,8 @@ class ChannelLibrary(object):
         return tdm
 
     @check_for_duplicates
-    def new_spectrum_analzyer(self, label, address, source, **kwargs):
-        sa = Channels.SpectrumAnalyzer(label=label, model="SpectrumAnalyzer", address=address, LO_source=source, channel_db=self.channelDatabase, **kwargs)
+    def new_spectrum_analyzer(self, label, address, source, model="SpectrumAnalyzer", **kwargs):
+        sa = Channels.SpectrumAnalyzer(label=label, model=model, address=address, LO_source=source, channel_db=self.channelDatabase, **kwargs)
         self.add_and_update_dict(sa)
         return sa
 
