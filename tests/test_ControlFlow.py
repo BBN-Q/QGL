@@ -7,7 +7,7 @@ from QGL.BlockLabel import label, endlabel
 
 class ControlFlowTest(unittest.TestCase):
     def setUp(self):
-        cl = ChannelLibrary(db_resource_name=":memory:")
+        cl = ChannelLibrary(":memory:")
         self.q1 = cl.new_qubit(label='q1')
         self.q2 = cl.new_qubit(label='q2')
         self.q3 = cl.new_qubit(label='q3')

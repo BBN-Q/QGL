@@ -10,7 +10,7 @@ from QGL.drivers import APS2Pattern
 
 class APSPatternUtils(unittest.TestCase):
     def setUp(self):
-        self.cl = ChannelLibrary(db_resource_name=":memory:")
+        self.cl = ChannelLibrary(":memory:")
         #self.q1gate = Channels.LogicalMarkerChannel(label='q1-gate',
         #                                    channel_db=self.cl.channelDatabase)
         self.q1 = self.cl.new_qubit(label='q1')

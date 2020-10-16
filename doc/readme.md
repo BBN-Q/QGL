@@ -115,7 +115,7 @@ programs typically refer only to `Qubit` channels. Actions on other channel
 types may be implied by the operation. For example, to create a `Qubit` object
 in QGL, one can write:
 ```
-cl = ChannelLibrary(db_resource_name=":memory:")
+cl = ChannelLibrary(":memory:")
 q1 = cl.new_qubit("q1")
 ```
 where the Channel Library contains the "physical" information for the logical "qubit" 

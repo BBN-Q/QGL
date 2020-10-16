@@ -38,7 +38,7 @@ class AWGTestHelper(object):
         for name, value in mapping.items():
             self.channels[name].phys_chan = self.channels[value]
 
-        self.cl = ChannelLibrary(db_resource_name=":memory:")
+        self.cl = ChannelLibrary(":memory:")
         self.cl.clear()
         self.cl.session.add_all(self.channels.values())
         for chan in self.channels.values():
