@@ -1,7 +1,7 @@
 from QGL import *
 
 def setup_test_lib():
-    cl = ChannelLibrary(db_resource_name=":memory:")
+    cl = ChannelLibrary(":memory:")
     cl.clear()
     q1 = cl.new_qubit(label='q1')
     q2 = cl.new_qubit(label='q2')

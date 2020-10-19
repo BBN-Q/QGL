@@ -91,10 +91,24 @@ def check_for_duplicates(f):
 
 class ChannelLibrary(object):
 
-    def __init__(self, db_resource_name=":memory:", db_provider="sqlite"):
-        """Create the channel library."""
+    def __init__(self, db_resource_name):
+        """Create the channel library.
+        db_resource_name is the filename (without suffix) of the sqlite database use for the channel library.
+        The .sqlite suffix will automatically be added. Optionally one can be ":memory:" for a purely in-memory
+        database.
+        """
+        db_provider="sqlite"
 
         global channelLib
+
+        if ".sqlite" not in db_resource_name:
+            db_resource_name += ".sqlite"
+
+        if db_resource_name is not ":memory:":
+            if not os.path.isabs(db_resource_name):
+                db_resource_name = os.path.abspath(db_resource_name)
+
+        logger.info(f"Intializing database at {db_provider}:///{db_resource_name}")
 
         bbndb.initialize_db(f'{db_provider}:///{db_resource_name}')
         self.session = bbndb.get_cl_session()

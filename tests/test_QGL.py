@@ -141,7 +141,7 @@ class SingleQubitTestCases(SequenceTestCases):
     fileHeader = 'single'
 
     def newQ1(self):
-        cl = ChannelLibrary(db_resource_name=":memory:")
+        cl = ChannelLibrary(":memory:")
         cl.clear()
         q1 = cl.new_qubit("q1")
         q1.pulse_params['length'] = 30e-9
@@ -164,7 +164,7 @@ class MultiQubitTestCases(SequenceTestCases):
 
     def newQubits(self):
         # Create an in-memory blank channel library
-        cl = ChannelLibrary(db_resource_name=":memory:")
+        cl = ChannelLibrary(":memory:")
         cl.clear()
         q1 = cl.new_qubit("q1")
         q2 = cl.new_qubit("q2")
