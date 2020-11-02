@@ -44,6 +44,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 import networkx as nx
 import logging
+from collections import Iterable
 
 import bbndb
 
@@ -764,6 +765,17 @@ class ChannelLibrary(object):
             edge = Channels.Edge(label=f"{source.label}->{target.label}", source=source, target=target, channel_db=self.channelDatabase, cnot_impl=cnot_impl)
         self.add_and_update_dict(edge)
         return edge
+
+    def new_parametric_drive(self, label, qubits):
+        """
+        Create a new parametric drive on one or more qubits.
+        qubits (list, Qubit): Qubits that are affected by this parametric drive.
+        """
+        if not isinstance(qubits, Iterable):
+            qubits = [qubits]
+        pdrive = Channels.ParametricDrive(label=label, qubits=list(qubits), channel_db=self.channelDatabase)
+        self.add_and_update_dict(pdrive)
+        return pdrive
 
     def set_qubit_connectivity(self, graph):
         """

@@ -576,3 +576,27 @@ def TRIG(marker_chan, length):
     if not isinstance(marker_chan, Channels.LogicalMarkerChannel):
         raise ValueError("TRIG pulses can only be generated on LogicalMarkerChannels.")
     return TAPulse("TRIG", marker_chan, length, 1.0, 0., 0.)
+
+def PARAM(chan, **kwargs):
+  """A parametric drive on a channel."""
+  if not isinstance(chan, Channels.ParametricDrive):
+    raise ValueError("PARAM pulses must be defined on a parametric channel.")
+  params = overrideDefaults(chan, kwargs)
+  if 'frequency' not in kwargs:
+    params['frequency'] = tuple(chan.autodyne_freq)
+  else:
+    params['frequency'] = tuple(kwargs['frequency'])
+  params['baseShape'] = params.pop('shape_fun')
+  params['shape_fun'] = PulseShapes.multifrequency
+  amp = params.pop('amp')
+  phase = params.pop('phase')
+  ignoredStrParams = ['frameChange']
+  if 'amp' not in kwargs:
+      ignoredStrParams.append('amp')
+  if 'phase' not in kwargs:
+      ignoredStrParams.append('phase')
+
+
+  return Pulse("PARAM", chan, params,
+          amp, phase, 0.0, ignoredStrParams=ignoredStrParams)
+

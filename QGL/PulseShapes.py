@@ -4,6 +4,7 @@ All generic pulse shapes are defined here.
 
 import numpy as np
 from math import pi, sin, cos, acos, sqrt
+from collections import Iterable
 
 
 def gaussian(amp=1, length=0, cutoff=2, sampling_rate=1e9, **params):
@@ -192,6 +193,22 @@ def autodyne(frequency=10e6, baseShape=constant, **params):
     # Apply the autodyne frequency
     timePts = np.linspace(0, params['length'], len(shape))
     shape *= np.exp(-1j * 2 * np.pi * frequency * timePts)
+    return shape
+
+
+def multifrequency(frequency=[10e6], baseShape=constant, **params):
+    """
+    A pulse with more than one frequency baked in.
+    """
+    if not isinstance(frequency, Iterable):
+        frequency = (frequency,)
+    if isinstance(baseShape, str):
+        shape = globals()[baseShape](**params)
+    else:
+        shape = baseShape(**params)
+    timePts = np.linspace(0, params['length'], len(shape))
+    for freq in frequency:
+        shape *= np.exp(-1j * 2 * np.pi * freq * timePts)
     return shape
 
 
