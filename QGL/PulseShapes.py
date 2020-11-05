@@ -196,19 +196,23 @@ def autodyne(frequency=10e6, baseShape=constant, **params):
     return shape
 
 
-def multifrequency(frequency=[10e6], baseShape=constant, **params):
+def multifrequency(amp_factor = [1],frequency=[10e6], baseShape=constant, **params):
     """
     A pulse with more than one frequency baked in.
     """
     if not isinstance(frequency, Iterable):
         frequency = (frequency,)
+    if not isinstance(amp_factor, Iterable):
+        amp_factor = (amp_factor,)
     if isinstance(baseShape, str):
         shape = globals()[baseShape](**params)
     else:
         shape = baseShape(**params)
     timePts = np.linspace(0, params['length'], len(shape))
-    for freq in frequency:
-        shape *= np.exp(-1j * 2 * np.pi * freq * timePts)
+    mod = np.zeros(len(shape),dtype = np.complex128)
+    for a,freq in zip(amp_factor,frequency):
+        mod += a*np.exp(-1j * 2 * np.pi * freq * timePts)
+    shape *= mod
     return shape
 
 

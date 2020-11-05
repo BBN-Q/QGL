@@ -339,8 +339,8 @@ def arb_axis_drag(qubit,
 
 
 def DiatomicPulse(qubit, a, b, c):
-  return (Ztheta(qubit, angle=c) + X90(qubit) + 
-          Ztheta(qubit, angle=b) + X90(qubit) + 
+  return (Ztheta(qubit, angle=c) + X90(qubit) +
+          Ztheta(qubit, angle=b) + X90(qubit) +
           Ztheta(qubit, angle=a))
 
 def ZYZPulse(qubit, a, b, c):
@@ -586,6 +586,10 @@ def PARAM(chan, **kwargs):
     params['frequency'] = tuple(chan.autodyne_freq)
   else:
     params['frequency'] = tuple(kwargs['frequency'])
+  if 'amp_factor' not in kwargs:
+     params['amp_factor'] = tuple(chan.amp_factor)
+  else:
+     params['amp_factor'] = tuple(kwargs['amp_factor'])
   params['baseShape'] = params.pop('shape_fun')
   params['shape_fun'] = PulseShapes.multifrequency
   amp = params.pop('amp')
@@ -599,4 +603,3 @@ def PARAM(chan, **kwargs):
 
   return Pulse("PARAM", chan, params,
           amp, phase, 0.0, ignoredStrParams=ignoredStrParams)
-
