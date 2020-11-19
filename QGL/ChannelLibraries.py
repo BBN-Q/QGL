@@ -101,15 +101,14 @@ class ChannelLibrary(object):
 
         global channelLib
 
-        if ".sqlite" not in db_resource_name:
+        if ".sqlite" not in db_resource_name and db_resource_name != ":memory:":
             db_resource_name += ".sqlite"
 
-        if db_resource_name is not ":memory:":
+        if db_resource_name != ":memory:":
             if not os.path.isabs(db_resource_name):
                 db_resource_name = os.path.abspath(db_resource_name)
 
         logger.info(f"Intializing database at {db_provider}:///{db_resource_name}")
-
         bbndb.initialize_db(f'{db_provider}:///{db_resource_name}')
         self.session = bbndb.get_cl_session()
         self.connectivityG = nx.DiGraph()
