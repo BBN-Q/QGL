@@ -609,36 +609,44 @@ class ChannelLibrary(object):
         return this_transceiver
 
     @check_for_duplicates
-    def new_transceiver(self, model, label, address, numtx=1, numrx=1, nummark=4, record_length = 1024, **kwargs):
+    def new_transceiver(self, model, label, address, numtx=1, numrx=1, nummark=4,
+        record_length = 1024, reference_freq=10e6, tx_sampling_rate=500e6, rx_sampling_rate=1e9, **kwargs):
         translator = model+"Pattern"
         stream_sel = model+"StreamSelector"
 
         chans = []
         for i in range(numtx):
-            chan = Channels.PhysicalQuadratureChannel(label=f"{label}-Tx{i+1}-1", instrument=label, channel=i, translator=translator, channel_db=self.channelDatabase)
+            chan = Channels.PhysicalQuadratureChannel(label=f"{label}-Tx{i+1:02d}-1", instrument=label, channel=i, 
+                sampling_rate=tx_sampling_rate, translator=translator, channel_db=self.channelDatabase)
             chans.append(chan)
         for i in range(nummark):
-            chan = Channels.PhysicalMarkerChannel(label=f"{label}-Tx{i+1}-M", channel=i, instrument=label, translator=translator, channel_db=self.channelDatabase)
+            chan = Channels.PhysicalMarkerChannel(label=f"{label}-Tx{i+1:02d}-M", channel=i, instrument=label, 
+                translator=translator, channel_db=self.channelDatabase)
             chans.append(chan)
 
-        transmitter = Channels.Transmitter(label=f"{label}-Tx", model=model, address=address, channels=chans, channel_db=self.channelDatabase)
+        transmitter = Channels.Transmitter(label=f"{label}-Tx", model=model, address=address, channels=chans, 
+            channel_db=self.channelDatabase)
         transmitter.trigger_source = "external"
         transmitter.address = address
 
         chans = []
         for i in range(numrx):
-            chan = Channels.ReceiverChannel(label=f"RecvChan-{label}-{i+1}", channel=i, channel_db=self.channelDatabase)
+            chan = Channels.ReceiverChannel(label=f"RecvChan-{label}-{i+1:02d}", channel=i, channel_db=self.channelDatabase)
             chans.append(chan)
 
-        receiver = Channels.Receiver(label=f"{label}-Rx", model=model, address=address, channels=chans, record_length=record_length, channel_db=self.channelDatabase)
+        receiver = Channels.Receiver(label=f"{label}-Rx", model=model, address=address, channels=chans, 
+            sampling_rate=rx_sampling_rate, reference_freq=reference_freq, record_length=record_length, channel_db=self.channelDatabase)
         receiver.trigger_source = "external"
         receiver.stream_types   = "raw"
         receiver.address    = address
         receiver.stream_sel = stream_sel
 
-        transceiver = Channels.Transceiver(label=label, address=address, model=model, transmitters=[transmitter], receivers = [receiver], initialize_separately=False, channel_db=self.channelDatabase)
+        transceiver = Channels.Transceiver(label=label, address=address, model=model, transmitters=[transmitter], 
+            receivers = [receiver], initialize_separately=False, channel_db=self.channelDatabase)
         transmitter.transceiver = transceiver
         receiver.transceiver    = transceiver
+        transceiver.master      = True
+        transceiver._locked     = False
 
         self.add_and_update_dict(transceiver)
         return transceiver
