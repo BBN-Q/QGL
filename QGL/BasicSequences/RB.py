@@ -740,7 +740,7 @@ def SingleQubitRBT(qubit,
     #Setup a pulse library
     
     # warn the user
-    deprication(unmanitained_str)
+    deprication(unmaintained_str)
 
     pulseLib = [AC(qubit, cliffNum) for cliffNum in range(24)]
     pulseLib.append(analyzedPulse)
