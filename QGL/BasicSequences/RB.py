@@ -10,6 +10,7 @@ import os
 from csv import reader
 import numpy as np
 from functools import reduce
+import warnings
 
 
 def create_RB_seqs(numQubits,
@@ -314,7 +315,10 @@ def TwoQubitRB(q1, q2, seqs, meas_qubits=None,
         seqsBis += create_cal_seqs((q1, q2), 2, measChans = meas_qubits)
         axis_descriptor.append(cal_descriptor((q1, q2), 2))
 
-    metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor, suffix = suffix, extra_meta = {'sequences':seqs})
+    metafile = compile_to_hardware(seqsBis, 'RB/RB', 
+                                   axis_descriptor = axis_descriptor, 
+                                   suffix = suffix, 
+                                   extra_meta = {'sequences':seqs})
 
     if showPlot:
         plot_pulse_files(metafile)
@@ -373,9 +377,12 @@ def TwoQubitLeakageRB(q1, q2, meas_qubit, seqs, pi2args, cliff_type='std',
         seqsBis.append(combined_seq + [X90(meas_qubit), X90(meas_qubit), MEAS(meas_qubit)])
 
     # Add the calibration sequences
-    seqsBis.append([Id(meas_qubit), Id(meas_qubit), Id(meas_qubit), Id(meas_qubit), MEAS(meas_qubit)])
-    seqsBis.append([X90(meas_qubit), X90(meas_qubit), Id(meas_qubit), Id(meas_qubit), MEAS(meas_qubit)])
-    seqsBis.append([X90(meas_qubit), X90(meas_qubit), X90(meas_qubit, **pi2args), X90(meas_qubit, **pi2args), MEAS(meas_qubit)])
+    seqsBis.append([Id(meas_qubit), Id(meas_qubit), Id(meas_qubit), 
+                    Id(meas_qubit), MEAS(meas_qubit)])
+    seqsBis.append([X90(meas_qubit), X90(meas_qubit), Id(meas_qubit), 
+                    Id(meas_qubit), MEAS(meas_qubit)])
+    seqsBis.append([X90(meas_qubit), X90(meas_qubit), X90(meas_qubit, **pi2args), 
+                    X90(meas_qubit, **pi2args), MEAS(meas_qubit)])
 
     axis_descriptor = [
     {
@@ -399,6 +406,100 @@ def TwoQubitLeakageRB(q1, q2, meas_qubit, seqs, pi2args, cliff_type='std',
     if showPlot:
         plot_pulse_files(metafile)
     return metafile
+
+def SimultaneousRB(qubits, seqs, showPlot=False, cliff_type='std', 
+                                                 add_cals=True):
+    """
+    Simultaneous randomized benchmarking on multiple qubits.
+
+    Parameters
+    ----------
+    qubits : Channels.LogicalChannel tuple
+        A tuple of two logical channels to implement RB
+    seqs : int iterable tuple
+        A length two tuple containing list of lists of Clifford group
+        integers produced by create_RB_seqs
+    showPlot : boolean, optional
+        Whether to plot
+    cliff_type : string, optional
+        Clifford library to use for RB -> ['STD', 'DIAC', 'AC', 'XYX']
+    add_cals : boolean, optional
+        Whether to append calibration pulses to the end of the sequence
+
+    Returns
+    -------
+    metafile : string
+        Path to a json metafile with details about the sequences and paths
+        to compiled machine files
+
+    Example
+    -------
+    >>> seqs1 = create_RB_seqs(1, [2, 4, 8, 16])
+    >>> seqs2 = create_RB_seqs(1, [2, 4, 8, 16])
+    >>> SimultaneousRB_AC((q1, q2), (seqs1, seqs2), showPlot=False)
+    """
+
+    if cliff_type.upper() not in clifford_map.keys():
+        raise ValueError(f"Unknown clifford type: must be one of {clifford.map.keys()}.")
+
+    clifford = clifford_map[cliff_type.upper()]
+
+    seqsBis = []
+    for seq in zip(*seqs):
+        seqsBis.append([reduce(operator.__mul__,
+                               [clifford(q, c) for q, c in zip(qubits, pulseNums)])
+                        for pulseNums in zip(*seq)])
+
+    #Add the measurement to all sequences
+    for seq in seqsBis:
+        seq.append(reduce(operator.mul, [MEAS(q) for q in qubits]))
+
+    axis_descriptor = [{
+        'name': 'length',
+        'unit': None,
+        'points': list(map(len, seqs)),
+        'partition': 1
+    }]
+
+    #Tack on the calibration sequences
+    if add_cals:
+        seqsBis += create_cal_seqs((qubits), 2)
+        axis_descriptor.append(cal_descriptor((qubits), 2))
+
+    metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor, extra_meta = {'sequences':seqs})
+
+    if showPlot:
+        plot_pulse_files(metafile)
+    return metafile
+
+###############################################################################
+######################### Depricated ##########################################
+###############################################################################
+
+# from stackoverflow: 
+# https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+unmaintained_str = f"{bcolors.WARNING}This function is unmaintained \
+                                    and likely not to work! Please read \
+                                    the source and make sure you are \
+                                    doing what you want to do.{bcolors.ENDC}"
+
+depricated_str = f"{bcolors.WARNING}This function is depricated and will be \
+                                    removed in future releases! Please Use \
+                                    `SingleQubitRB` with the `cliff_type` \
+                                    keyword argument instead.{bcolors.ENDC}"
+def deprecation(message):
+    warnings.warn(message, DeprecationWarning, stacklevel=1)
 
 def SingleQubitRB_AC(qubit, seqs, purity=False, showPlot=False, add_cals=True):
     """
@@ -434,6 +535,8 @@ def SingleQubitRB_AC(qubit, seqs, purity=False, showPlot=False, add_cals=True):
     '/path/to/exp/exp-meta.json'
     """
 
+    # warn the user and log
+    deprication(depricated_str)
     logger.warning("This function is deprecated and may be removed in a future release of QGL! " +
         "Use `SingleQubitRB` with the `cliff_type` keyword argument instead.")
 
@@ -506,6 +609,8 @@ def SingleQubitRB_DiAC(qubit,
     '/path/to/exp/exp-meta.json'
     """
 
+    # warn the user and log
+    deprication(depricated_str)
     logger.warning("This function is deprecated and may be removed in a future release of QGL! " +
         "Use `SingleQubitRB` with the `cliff_type` keyword argument instead.")
 
@@ -565,6 +670,10 @@ def SingleQubitIRB_AC(qubit, seqFile, showPlot=False):
     >>> mf
     '/path/to/exp/exp-meta.json'
     """
+    
+    # warn the user
+    deprication(unmaintained_str)
+
     #Setup a pulse library
     pulseLib = [AC(qubit, cliffNum) for cliffNum in range(24)]
     pulseLib.append(pulseLib[0])
@@ -629,6 +738,10 @@ def SingleQubitRBT(qubit,
         to compiled machine files
     """
     #Setup a pulse library
+    
+    # warn the user
+    deprication(unmanitained_str)
+
     pulseLib = [AC(qubit, cliffNum) for cliffNum in range(24)]
     pulseLib.append(analyzedPulse)
     measBlock = MEAS(qubit)
@@ -660,64 +773,6 @@ def SingleQubitRBT(qubit,
         metafile = compile_to_hardware(chunk,
                                         'RBT/RBT',
                                         suffix='_{0}'.format(ct + 1))
-
-    if showPlot:
-        plot_pulse_files(metafile)
-    return metafile
-
-
-def SimultaneousRB_AC(qubits, seqs, showPlot=False, add_cals=True):
-    """
-    Simultaneous randomized benchmarking on multiple qubits using atomic
-    Clifford pulses.
-
-    Parameters
-    ----------
-    qubits : Channels.LogicalChannel tuple
-        A tuple of two logical channels to implement RB
-    seqs : int iterable tuple
-        A length two tuple containing list of lists of Clifford group
-        integers produced by create_RB_seqs
-    showPlot : boolean, optional
-        Whether to plot
-    add_cals : boolean, optional
-        Whether to append calibration pulses to the end of the sequence
-
-    Returns
-    -------
-    metafile : string
-        Path to a json metafile with details about the sequences and paths
-        to compiled machine files
-
-    Example
-    -------
-    >>> seqs1 = create_RB_seqs(1, [2, 4, 8, 16])
-    >>> seqs2 = create_RB_seqs(1, [2, 4, 8, 16])
-    >>> SimultaneousRB_AC((q1, q2), (seqs1, seqs2), showPlot=False)
-    """
-    seqsBis = []
-    for seq in zip(*seqs):
-        seqsBis.append([reduce(operator.__mul__,
-                               [AC(q, c) for q, c in zip(qubits, pulseNums)])
-                        for pulseNums in zip(*seq)])
-
-    #Add the measurement to all sequences
-    for seq in seqsBis:
-        seq.append(reduce(operator.mul, [MEAS(q) for q in qubits]))
-
-    axis_descriptor = [{
-        'name': 'length',
-        'unit': None,
-        'points': list(map(len, seqs)),
-        'partition': 1
-    }]
-
-    #Tack on the calibration sequences
-    if add_cals:
-        seqsBis += create_cal_seqs((qubits), 2)
-        axis_descriptor.append(cal_descriptor((qubits), 2))
-
-    metafile = compile_to_hardware(seqsBis, 'RB/RB', axis_descriptor = axis_descriptor, extra_meta = {'sequences':seqs})
 
     if showPlot:
         plot_pulse_files(metafile)
