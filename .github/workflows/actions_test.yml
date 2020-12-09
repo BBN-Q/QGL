@@ -24,6 +24,27 @@ jobs:
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
         echo $CONDA/bin >> $GITHUB_PATH
+        mkdir ~/.cache/conda
+        touch ~/.condarc
+        echo "pkgs_dirs:" >> ~/.condarc
+        echo "  - ~/.cache/conda" >> ~/.condarc
+    
+    - name: pip cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: conda cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/conda
+        key: ${{ runner.os }}-conda-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
     - name: Install dependencies
       run: |
         conda install -yq numpy sqlalchemy jupyter scipy networkx
