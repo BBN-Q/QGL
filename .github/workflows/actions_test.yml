@@ -55,3 +55,9 @@ jobs:
       run: |
         pip install -e .
         python -m unittest discover -v test 
+        
+    - name: Make documentation
+      uses: mhausenblas/mkdocs-deploy-gh-pages@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
