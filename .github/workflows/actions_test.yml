@@ -24,7 +24,7 @@ jobs:
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
         echo $CONDA/bin >> $GITHUB_PATH
-        mkdir ~/.cache/conda
+        #mkdir ~/.cache/conda
         touch ~/.condarc
         echo "pkgs_dirs:" >> ~/.condarc
         echo "  - ~/.cache/conda" >> ~/.condarc
