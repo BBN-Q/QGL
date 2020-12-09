@@ -51,13 +51,21 @@ jobs:
         pip install git+https://github.com/BBN-Q/bbndb.git
         pip install bqplot
         pip install pygsti
+        pip install mkdocs
+        pip install mkdocs-material
     - name: Test with pytest
       run: |
         pip install -e .
         python -m unittest discover -v test 
         
-    - name: Make documentation
-      uses: mhausenblas/mkdocs-deploy-gh-pages@master
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Build documentation
+      run: |
+        mkdocs build
+    - name: Deploy docs to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with: 
+        github_token: $
+        publish_dir: ./site
+      
+      
       
