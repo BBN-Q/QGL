@@ -60,6 +60,7 @@ jobs:
         
     - name: Build and deploy documentation
       run: |
+        git pull
         mkdocs gh-deploy
 
       
