@@ -1,6 +1,6 @@
 # Quantum Gate Language (QGL)  
 
-[![Build Status](https://github.com/gribeill/QGL/workflows/actions_test/badge.svg)](https://github.com/gribeill/QGL/actions)
+![Build Status](https://github.com/gribeill/QGL/workflows/Python%20Package%20using%20Conda/badge.svg?branch=develop)
 
 # Overview
 
