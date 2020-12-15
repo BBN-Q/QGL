@@ -1,0 +1,270 @@
+//////////////////////////////////////////////////////////////////////////////
+//Original Author: Guilhem Ribeill
+//
+//Copyright 2020 Raytheon BBN Technologies
+//
+//Licensed under the Apache License, Version 2.0 (the "License");
+//you may not use this file except in compliance with the License.
+//You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+//Unless required by applicable law or agreed to in writing, software
+//distributed under the License is distributed on an "AS IS" BASIS,
+//WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//See the License for the specific language governing permissions and
+//limitations under the License.
+//////////////////////////////////////////////////////////////////////////////
+
+// OpenQASM 3.0 Grammar in EBNF syntax for use with the Lark parser engine
+
+// Comments and whitespace
+%import common.WS
+%import common.CPP_COMMENT
+%import common.C_COMMENT 
+%ignore WS 
+%ignore CPP_COMMENT
+%ignore C_COMMENT
+
+_ENDL: ";"
+
+/////////////////////////////////////////////////////////
+// Terminals 
+
+//Constant terminals
+%import common.ESCAPED_STRING
+%import common.SIGNED_NUMBER
+%import common.INT
+
+STR: ESCAPED_STRING
+
+TEXT: /[\S\t ]+/
+
+BIN_NUMBER: /0b[01]+/ 
+HEX_NUMBER: /0x[0-9a-fA-F]+/
+CONSTANT : "pi" | "tau" | "e"
+NUMBER: HEX_NUMBER | BIN_NUMBER | SIGNED_NUMBER | CONSTANT
+BOOL: "true" | "false"
+
+TIME: "ns" | "us" | "ms" | "s" | "dt"
+
+//Variable types
+ID: /[a-zA-Z_%][a-zA-Z0-9_]*/ //TODO: Support unicode
+
+//Quantum types
+QTYPE      : "qubit" | "qreg"
+
+//Classical types
+RTYPE      : "bit"   | "creg"
+NUMTYPE    : "int" | "uint" | "float" | "fixed" | "angle"
+BTYPE      : "bool"
+CTYPE      : RTYPE | NUMTYPE | BTYPE  
+
+//Math 
+MATH_FUNCS : "sqrt" | "exp" | "log" | "abs" 
+           | "sin" | "cos" | "tan" 
+           | "popcount" | "lengthof"
+
+//Operators 
+UNARY_OP   : "~" | "!" | "-"
+
+INCR_OP    : "++" | "--"
+
+ARITH_OP  : "+" | "-" | "*" | "/" 
+BITS_OP   : "&" | "|" | "^" | "<<" | ">>" | "rotl" | "rotr"
+BOOL_OP   : ">" | "<" | ">=" | "<=" | "==" | "!="  | "&&" | "||" | "in"
+BINARY_OP : ARITH_OP | BITS_OP | BOOL_OP
+
+ASSIGN_OP : "+=" | "-=" | "*=" | "/="
+
+BUILTIN_GATE : "U" | "CX" | "reset"
+
+/////////////////////////////////////////////////////////
+//Rules
+
+//Basic structure
+?start  : version include* statement+
+
+version  : "OPENQASM" NUMBER _ENDL 
+
+include  : "include" STR _ENDL
+
+pragma   : "#PRAGMA" TEXT 
+
+block : "{" block* statement* "}"
+
+?statement : qstatement 
+          | qblock
+          | gatedecl
+          | cstatement 
+          | branch 
+          | loop 
+          | control
+          | subroutine 
+          | kernel
+          | decl 
+          | pragma
+
+/////////////////////////////////////////////////////////
+//Variable delcaration
+decl : qdecl _ENDL
+     | cdecl _ENDL
+     | const_decl _ENDL
+
+qdecl   : qtype ID
+
+cdecl   : ctype ID assignment?
+
+tdecl   : ttype ID assignment?
+
+const_decl : "const" ID assignment
+
+assignment : "=" expr
+           | ASSIGN_OP expr
+
+modifier: index 
+        | slice
+
+/////////////////////////////////////////////////////////
+// Register aliasing, concatenation, slicing and indexing
+
+alias  : "let" ID "=" concat
+       | "let" ID "=" ID slice
+       | "let" ID "=" ID index
+
+concat : ID "||" ID ("||" ID)* 
+
+slice  : "[" range "]"
+
+range  : expr ":" expr (":" expr)?
+
+index  : "[" expr ("," expr)? "]"
+
+/////////////////////////////////////////////////////////
+//Quantum operatiors and gates
+
+qblock : "{" qblock* qstatement* "}"
+
+qstatement : gatecall _ENDL
+           | meas_decl _ENDL
+           | measure _ENDL
+
+gatedecl :"gate" gatedef qblock
+
+gatedef : ID ("(" carg_list? ")")? id_list 
+
+gatecall : gatemod? gate ("(" expr_list? ")")? duration? id_list
+
+gate    : BUILTIN_GATE
+        | ID
+        | gatemod gate
+
+gatemod : "inv" "@"                       -> gate_inv
+        | "pow" "(" SIGNED_NUMBER ")" "@" -> gate_pow
+        | "ctrl" "@"                      -> gate_ctrl 
+
+measure : "measure" id_list
+
+meas_decl : measure "->" id_list 
+          | id_list "=" measure
+
+/////////////////////////////////////////////////////////
+//Classical operations
+
+cstatement : expr _ENDL
+           | "return" cstatement -> return
+
+expr   : expr binary_op expr
+       | unary_op expr 
+       | expr incr_op
+       | call "(" expr_list? ")"
+       | member
+       | measure
+       | ID assignment
+       | value 
+       | tvalue
+       | ID
+
+call : MATH_FUNCS 
+     | cast 
+     | ID
+
+cast : ctype
+
+member : ID "in" "{" expr_list "}"
+       | ID "in" range
+
+expr_list : (expr ",")* expr
+
+binary_op : BINARY_OP 
+unary_op  : UNARY_OP 
+incr_op   : INCR_OP
+
+/////////////////////////////////////////////////////////
+//Control flow
+branch_block : statement
+             | block 
+
+branch : "if" "(" expr ")" branch_block ("else" branch_block)?
+
+loop : for_loop branch_block 
+     | while_loop branch_block
+
+for_loop : "for" member
+
+while_loop: "while" "(" expr ")"
+
+control : "break" _ENDL    -> break 
+        | "continue" _ENDL -> continue 
+        | "end" _ENDL      -> end
+
+/////////////////////////////////////////////////////////
+//Timing instructions
+
+barrier : "barrier" id_list
+
+delay : "delay" index id_list
+
+box : "boxas" ID qblock 
+    | "boxto" tvalue qblock
+
+ttype : "length"       -> length 
+          | "stretch" INT? -> stretch
+
+duration : "[" tvalue "]"
+         | "[" expr "]"
+         | "[" "stretchinf" "]"
+
+/////////////////////////////////////////////////////////
+//Subroutines
+
+subroutine : "def" ID ("(" carg_list? qarg_list? ")")? return_sig? block
+
+kernel : "kernel" ID ("(" carg_list? ")")? return_sig?
+
+return_sig : "->" carg
+
+/////////////////////////////////////////////////////////
+// Helpers
+id_index : ID index?
+?id_list  : (id_index ",")* id_index
+
+carg     : ctype association
+qarg     : qtype association
+
+?carg_list : (carg ",")* carg 
+?qarg_list : (qarg ",")* qarg
+
+association: ":" ID
+
+//Type declaration with width
+?qtype : QTYPE ("[" SIGNED_NUMBER "]")?
+?ctype : CTYPE ("[" SIGNED_NUMBER ("," SIGNED_NUMBER)* "]")?
+
+?tvalue : NUMBER TIME
+
+?value : NUMBER
+       | STR 
+       | BOOL
+
+

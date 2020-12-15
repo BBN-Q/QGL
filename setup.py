@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 extras = {
-  'with_qasm': ['sly >= 0.4']
+  'with_qasm': ['lark-parser >= 0.11']
 }
 
 setup(name='QGL',
