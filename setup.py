@@ -1,5 +1,9 @@
 from setuptools import setup, find_packages
 
+extras = {
+  'with_qasm': ['sly >= 0.4']
+}
+
 setup(name='QGL',
       version='2020.1',
       packages=find_packages(exclude=["tests"]),
@@ -18,7 +22,8 @@ setup(name='QGL',
       long_description_content_type='text/markdown',
       long_description=open('README.md').read(),
       python_requires='>=3.6',
-      keywords="quantum qubit experiment configuration gate language"
+      keywords="quantum qubit experiment configuration gate language",
+      extras_requier=extras
 )
 
 # python setup.py sdist
