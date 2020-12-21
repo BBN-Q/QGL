@@ -7,14 +7,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
   
-  
   <link rel="shortcut icon" href="../img/favicon.ico">
   <title>Getting Started with QGL - QGL</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
 
-  <link rel="stylesheet" href="../css/theme.css" />
-  <link rel="stylesheet" href="../css/theme_extra.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" />
+  <link rel="stylesheet" href="../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
   
   <script>
     // Current page data
@@ -25,7 +24,7 @@
   
   <script src="../js/jquery-2.1.1.min.js" defer></script>
   <script src="../js/modernizr-2.8.3.min.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
   <script>hljs.initHighlightingOnLoad();</script> 
   
 </head>
@@ -36,7 +35,6 @@
 
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
-    <div class="wy-side-scroll">
       <div class="wy-side-nav-search">
         <a href=".." class="icon icon-home"> QGL</a>
         <div role="search">
@@ -47,20 +45,27 @@
       </div>
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-                <ul>
-                    <li class="toctree-l1"><a class="" href="../index.md">Intro</a>
-                    </li>
-                </ul>
-                <ul>
-                    <li class="toctree-l1"><a class="" href="../config.md">Configuration</a>
-                    </li>
-                </ul>
-                <ul>
-                    <li class="toctree-l1"><a class="" href="../examples.md">Examples</a>
-                    </li>
-                </ul>
+	<ul class="current">
+	  
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../index.md">Intro</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../config.md">Configuration</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../examples.md">Examples</a>
+	    </li>
+          
+        </ul>
       </div>
-    </div>
+      &nbsp;
     </nav>
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
@@ -85,7 +90,6 @@
       
     </li>
   </ul>
-  
   <hr/>
 </div>
           <div role="main">
@@ -123,6 +127,7 @@ achieved through <em>frame updates</em>.</p>
 jupyter labextension install @jupyter-widgets/jupyterlab-manager
 jupyter labextension install bqplot
 </code></pre>
+
 <h2 id="installation">Installation <a name="Installation"></a></h2>
 <p>There are a number of ways to obtain QGL:</p>
 <p>Directly from the pypi, which will get the most recent master release, e.g. 2019.2:</p>
@@ -135,6 +140,7 @@ jupyter labextension install bqplot
 <pre><code>cd QGL    
 pip install -e .       
 </code></pre>
+
 <p>which will automatically fetch and install all of the requirement packages. As typical with package managers,
 this process will execute the package requirements enumerated in <a href="../setup.py">setup.py</a>.   </p>
 <h2 id="examples-where-to-start">Examples: where to start <a name="Examples"></a></h2>
@@ -178,6 +184,7 @@ in QGL, one can write:</p>
 <pre><code>cl = ChannelLibrary(&quot;:memory:&quot;)
 q1 = cl.new_qubit(&quot;q1&quot;)
 </code></pre>
+
 <p>where the Channel Library contains the &ldquo;physical&rdquo; information for the logical &ldquo;qubit&rdquo; 
 channel. </p>
 <p>The <code>new_qubit</code> method returns a <code>Qubit</code> object with the properties defined
@@ -223,12 +230,14 @@ Id(q, length) # length parameter is optional
 # measurement
 MEAS(q)
 </code></pre>
+
 <p>Due to the utility of Clifford-group operations in characterizing gate
 performance, QGL also directly provides a primitive to implement the 24-element
 single-qubit Clifford group:</p>
 <pre><code># atomic Clifford operation on 1-qubit
 AC(q, n)
 </code></pre>
+
 <p>This method is &ldquo;atomic&rdquo; because it implements the full 1-qubit Clifford group
 with one pulse per element, as opposed to requiring a sequence of the primitives
 already given above. We known of no canonical way to specify the elements of the
@@ -239,7 +248,7 @@ definition of <code>C1</code> in <code>Cliffords.py</code> to find our enumerati
 <p>QGL provides only one high-level two-qubit primitive, <code>CNOT</code>. The implementation
 of CNOT may be chosen by specifying the <code>cnot_implementation</code> key in QGL&rsquo;s
 <a href="../QGL/config.py">config.py</a> file.</p>
-<pre><code class="language-python"># high-level primitives
+<pre><code class="python"># high-level primitives
 CNOT(q1, q2)
 
 # mid-level primitives
@@ -251,6 +260,7 @@ ZX90_CR(q1, q2)     # a ZX90 on Edge(q1, q2) implemented with &quot;echoed&quot;
 # lowest-level primitives
 echoCR(q1, q2)  # A &quot;echoed&quot; cross-resonance pulse
 </code></pre>
+
 <h3 id="composite-pulses">Composite Pulses</h3>
 <p>Occasionally one wants to construct a sequence of pulses and treat them as if
 the entire sequence were a single pulse. For this, QGL allows pulses to be
@@ -258,6 +268,7 @@ joined with the <code>+</code> operator. This allows, for example, us to define<
 <pre><code>def hadamard(q):
     return Y90(q) + X(q)
 </code></pre>
+
 <p>and then use <code>hadamard(q)</code> just like any other pulse primitive, even though it is
 composed of a sequence of two pulses.</p>
 <h3 id="additional-pulse-parameters">Additional Pulse Parameters</h3>
@@ -276,6 +287,7 @@ instance, you can concisely write a scan over a rotation angle or delay in a
 list comprehension such as:</p>
 <pre><code>seq = [[X90(q1), Id(q1, length=d), X90(q1), MEAS(q1)] for d in np.linspace(0, 10e-6, 11)]
 </code></pre>
+
 <p>QGL&rsquo;s compiler assumes that such lists of lists represent a series of related
 experiments and schedules them to occur sequentially in the AWG output.</p>
 <p>Users express concurrent operation in QGL using the <code>*</code> operator. For instance,</p>
@@ -283,14 +295,16 @@ experiments and schedules them to occur sequentially in the AWG output.</p>
 q2 = cl.new_qubit(&quot;q2&quot;)
 seq = [[X90(q1)*X90(q2), MEAS(q1)*MEAS(q2)]]
 </code></pre>
+
 <p>would execute the same sequence on <code>Qubit</code>s <code>q1</code> and <code>q2</code>. If the gate durations
 differ between <code>q1</code> and <code>q2</code>, the QGL compiler injects delays to create aligned
 <code>PulseBlock</code>s. By default, simultaneous pulses are &ldquo;left-aligned&rdquo;, meaning that
 the leading pulse edges are aligned and padding delays are injected on the
 trailing edge. However, the user may change this behavior with the <code>align</code>
 method:</p>
-<pre><code class="language-python">seq = [[align(X90(q1)*X90(q2)), align(MEAS(q1)*MEAS(q2), mode=&quot;right&quot;)][
+<pre><code class="python">seq = [[align(X90(q1)*X90(q2)), align(MEAS(q1)*MEAS(q2), mode=&quot;right&quot;)][
 </code></pre>
+
 <p><code>align</code> takes a <code>mode</code> argument (&ldquo;left&rdquo;, &ldquo;right&rdquo;, or default &ldquo;center&rdquo;) to
 specify a particular pulse alignment within a <code>PulseBlock</code>.</p>
 <h2 id="pulse-shapes-and-waveforms">Pulse Shapes and Waveforms <a name="Pulse-Shapes-and-Waveforms"></a></h2>
@@ -312,14 +326,16 @@ override the default shape with a keyword argument. For example, to force the
 use of square pulse shape we may write:</p>
 <pre><code>seq = [[X(q1, shape_fun=PulseShapes.constant), MEAS(q1)]]
 </code></pre>
+
 <p>One common use case for specifying a shape function is in the construction of
 composite pulses. For instance, you may want a square pulse shape with Gaussian
 edges rather than those given by the <code>tanh</code> function. To do this you might write:</p>
-<pre><code class="language-python">seq = [[X(q1, shape_fun=PulseShapes.gaussOn) +\
+<pre><code class="python">seq = [[X(q1, shape_fun=PulseShapes.gaussOn) +\
        X(q1, shape_fun=PulseShapes.constant) +\
        X(q1, shape_fun=PulseShapes.gaussOff),
        MEAS(q1)]]
 </code></pre>
+
 <p>Shape functions can be an arbitrary piece of python code that returns a NumPy
 array of complex values. Shape functions must accept <strong>all</strong> of their arguments
 as keyword arguments. The only arguments that are guaranteed to exist are
@@ -331,9 +347,11 @@ a ramp shape with</p>
     numPts = int(np.round(length * sampling_rate))
     return np.linspace(0, 1, numPts)
 </code></pre>
+
 <p>Then use it with any pulse primitive, e.g.:</p>
 <pre><code>seq = [[X(q1, shape_fun=ramp)]]
 </code></pre>
+
 <p>If your custom shape function requires additional arguments, you must either
 arrange for these parameters to exist in the <code>LogicalChannel</code>&lsquo;s <code>shapeParams</code>
 dictionary, or pass them at the call site. For instance,</p>
@@ -343,6 +361,7 @@ dictionary, or pass them at the call site. For instance,</p>
 
 seq = [[X(q1, bar=0.5, shape_fun=foo)]] # bar is passed as a keyword arg
 </code></pre>
+
 <p>See the <code>PulseShapes</code> module for further examples.</p>
 <h2 id="compiling-and-plotting">Compiling and Plotting <a name="Compiling-and-Plotting"></a></h2>
 <p>To compile the QGL gate and pulse primitives to waveform and 
@@ -351,6 +370,7 @@ AWG vendor-specific hardware instructions, use the
 <pre><code>seq = [[X90(q1), Id(q1, length=d), X90(q1), MEAS(q1)] for d in np.linspace(0, 10e-6, 11)]
 meta_info = compile_to_hardware(seq, 'test/ramsey')
 </code></pre>
+
 <p>This code snippet will create a folder called <code>test</code> inside
 [<code>AWGDir</code>] (if defined) or a temp directory and produce sequence files for each
 AWG targeted by the <code>PhysicalChannels</code> associated with the QGL program. For
@@ -366,6 +386,7 @@ path to this &ldquo;meta info&rdquo; file.</p>
 created by a QGL program. For example,</p>
 <pre><code>plot_pulse_files(meta_info)
 </code></pre>
+
 <p>will create an interactive plot where each line represents a physical output
 channel of an AWG referenced by the QGL program.</p>
 <h2 id="built-in-basic-sequences">Built-in Basic Sequences <a name="Built-in-Basic-Sequences"></a></h2>
@@ -400,6 +421,7 @@ plotHandle : handle to plot window to prevent destruction
 File:      ~/Repos/QGL/QGL/BasicSequences/Rabi.py
 Type:      function
 </code></pre>
+
 <p>We encourage users to peruse the methods defined in BasicSequences for templates that may be useful in writing their own QGL programs.</p>
 <p>For additional information into QGL settings and compiler customizations (such as type of 2-qubit gate), please reveiw <a href="../QGL/config.py">config.py</a>. </p>
               
@@ -415,7 +437,7 @@ Type:      function
     
   </div>
 
-  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
 </footer>
       
         </div>
@@ -425,7 +447,7 @@ Type:      function
 
   </div>
 
-  <div class="rst-versions" role="note" aria-label="versions">
+  <div class="rst-versions" role="note" style="cursor: pointer">
     <span class="rst-current-version" data-toggle="rst-current-version">
       
       
@@ -435,11 +457,6 @@ Type:      function
     <script>var base_url = '..';</script>
     <script src="../js/theme.js" defer></script>
       <script src="../search/main.js" defer></script>
-    <script defer>
-        window.onload = function () {
-            SphinxRtdTheme.Navigation.enable(true);
-        };
-    </script>
 
 </body>
 </html>
