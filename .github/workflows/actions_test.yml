@@ -53,6 +53,7 @@ jobs:
         pip install pygsti
         pip install mkdocs
         pip install mkdocs-material
+        pip install mkdocs-jupyter
     - name: Test with pytest
       run: |
         pip install -e .
