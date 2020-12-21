@@ -1,13 +1,13 @@
 # Quantum Gate Language (QGL)  
 
-[![Build Status](https://travis-ci.org/BBN-Q/QGL.svg?branch=master)](https://travis-ci.org/BBN-Q/QGL) [![Coverage Status](https://coveralls.io/repos/BBN-Q/QGL/badge.svg?branch=master)](https://coveralls.io/r/BBN-Q/QGL)
+![Build Status](https://github.com/gribeill/QGL/workflows/Python%20Package%20using%20Conda/badge.svg?branch=develop)
 
 # Overview
 
 Quantum Gate Language (QGL) is a domain specific language embedded in python for
 specifying pulse sequences.
 
-Our "getting started" documentation is published [online](https://bbn-q.github.io/QGL/) from the local 
+Our "getting started" documentation is published [online](https://gribeill.github.io/QGL/readme/index.html) from the local 
 [file](doc/readme.md). This documentation includes dependency, 
 installation and basic programming information. The documentation is organized into the following
 sections:   
