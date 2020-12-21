@@ -1,9 +1,16 @@
 site_name: QGL
 nav:
-    - Intro: index.md
-    - Configuration: config.md
-    - Examples: examples.md
+    - Home: index.md
+    - Examples:
+      - QGL Basics: ex1_QGL_basics.ipynb
+      - Single Qubit: ex2_single-qubit_sequences.ipynb
+      - Two Qubit: ex3_two-qubit_sequences.ipynb
+      - Update In Place: ex4_update_in_place.ipynb
+      - Example Channel Lib: example_channel_library.ipynb
+
 theme: readthedocs
 docs_dir: 'doc'
 markdown_extensions:
     - smarty
+plugins:
+  - mkdocs-jupyter
