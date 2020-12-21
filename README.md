@@ -1,14 +1,14 @@
 # Quantum Gate Language (QGL)  
 
-![Build Status](https://github.com/gribeill/QGL/workflows/Python%20Package%20using%20Conda/badge.svg?branch=develop)
+![Build Status](https://github.com/bbn-q/QGL/workflows/Python%20Package%20using%20Conda/badge.svg?branch=develop)
 
 # Overview
 
 Quantum Gate Language (QGL) is a domain specific language embedded in python for
 specifying pulse sequences.
 
-Our "getting started" documentation is published [online](https://gribeill.github.io/QGL/readme/index.html) from the local 
-[file](doc/readme.md). This documentation includes dependency, 
+Our "getting started" documentation is published [online](https://bbn-q.github.io/QGL/) from the local 
+[file](doc/index.md). This documentation includes dependency, 
 installation and basic programming information. The documentation is organized into the following
 sections:   
 
@@ -40,7 +40,7 @@ It is based on the SQLAlchemy framework.
 
 QGL is typically used with Auspex -- an experiment management framework. More sophisticated uses of bbndb, 
 especially usage of a channel library, can be found in the 
-[Auspex documentation](https://auspex.readthedocs.io/en/develop/qubits.html)
+[Auspex documentation](https://bbn-q.github.io/Auspex)
 
 ## Dependencies
 
