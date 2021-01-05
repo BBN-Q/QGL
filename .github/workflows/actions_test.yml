@@ -63,6 +63,11 @@ jobs:
       run: |
         git pull
         mkdocs gh-deploy
-
+        cp -r site QGL_documentation
+        
+    - name: Documentation Deploy
+      uses: actions/upload-artifact@v2
+      with:
+        path: QGL_documentation
       
       
