@@ -373,6 +373,8 @@ class TestSequences(object):
     # 	SingleQubitRBT(self.q1,'')
     # 	self.compare_sequences('RBT')
 
+    @unittest.skip("SimultaneousRB_AC is depricated")
+    # depricated ###################################
     def test_RB_SimultaneousRB_AC(self):
         self.set_awg_dir('SimultaneousRB_AC')
         np.random.seed(20151709)  # set seed for create_RB_seqs

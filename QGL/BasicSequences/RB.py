@@ -11,13 +11,14 @@ from csv import reader
 import numpy as np
 from functools import reduce
 import warnings
+from typing import List, Mapping, Iterable
 
 
-def create_RB_seqs(numQubits,
-                   lengths,
-                   repeats=32,
-                   interleaveGate=None,
-                   recovery=True):
+def create_RB_seqs(numQubits: int,
+                   lengths: Iterable[int],
+                   repeats: int = 32,
+                   interleaveGate: int = None,
+                   recovery: bool = True) -> List[List[int]]:
     """
     Create a list of lists of Clifford gates to implement RB.
 
@@ -90,10 +91,12 @@ def create_RB_seqs(numQubits,
 
     return seqs
 
-def SingleQubitRB(qubit, seqs, cliff_type='std',
-                               purity=False,
-                               showPlot=False,
-                               add_cals=True):
+def SingleQubitRB(qubit: Channels.LogicalChannel, 
+                  seqs: List[List[int]], 
+                  cliff_type: str = 'std',
+                  purity: bool = False,
+                  showPlot: bool = False,
+                  add_cals: bool = True) -> str:
     """
     Single qubit randomized benchmarking using 90 and 180 generators.
 
@@ -163,8 +166,11 @@ def SingleQubitRB(qubit, seqs, cliff_type='std',
         plot_pulse_files(metafile)
     return metafile
 
-def SingleQubitLeakageRB(qubit, seqs, pi2args, cliff_type='std',
-                                               showPlot=False):
+def SingleQubitLeakageRB(qubit: Channels.LogicalChannel, 
+                         seqs: List[List[int]],
+                         pi2args: Mapping[int, str], 
+                         cliff_type: str = 'std', 
+                         showPlot: bool = False) -> str:
     """
     Single qubit randomized benchmarking using 90 and 180 generators to
     measure leakage outside the qubit subspace.
@@ -248,11 +254,14 @@ def SingleQubitLeakageRB(qubit, seqs, pi2args, cliff_type='std',
 
 
 
-def TwoQubitRB(q1, q2, seqs, meas_qubits=None,
-                             cliff_type='std',
-                             showPlot=False,
-                             suffix="",
-                             add_cals=True):
+def TwoQubitRB(q1: Channels.LogicalChannel, 
+               q2: Channels.LogicalChannel, 
+               seqs: List[List[int]], 
+               meas_qubits: Iterable[Channels.LogicalChannel] = None,
+               cliff_type: str = 'std',
+               showPlot: bool = False,
+               suffix: str = "",
+               add_cals: bool = True) -> str:
     """
     Two qubit randomized benchmarking using 90 and 180 single qubit generators
     and ZX90.
@@ -324,8 +333,13 @@ def TwoQubitRB(q1, q2, seqs, meas_qubits=None,
         plot_pulse_files(metafile)
     return metafile
 
-def TwoQubitLeakageRB(q1, q2, meas_qubit, seqs, pi2args, cliff_type='std',
-                                                         showPlot=False):
+def TwoQubitLeakageRB(q1: Channels.LogicalChannel, 
+                      q2: Channels.LogicalChannel, 
+                      meas_qubit: Iterable[Channels.LogicalChannel], 
+                      seqs: List[List[int]], 
+                      pi2args: Mapping[int, str], 
+                      cliff_type: str = 'std', 
+                      showPlot: bool = False) -> str:
     """
     Two qubit randomized benchmarking using 90 and 180 single qubit generators
     and ZX90 to measure leakage outside the qubit subspace.  See https://
@@ -407,8 +421,11 @@ def TwoQubitLeakageRB(q1, q2, meas_qubit, seqs, pi2args, cliff_type='std',
         plot_pulse_files(metafile)
     return metafile
 
-def SimultaneousRB(qubits, seqs, showPlot=False, cliff_type='std', 
-                                                 add_cals=True):
+def SimultaneousRB(qubits: Iterable[Channels.LogicalChannel], 
+                   seqs: List[List[int]], 
+                   showPlot: bool = False, 
+                   cliff_type: str = 'std', 
+                   add_cals: bool = True) -> str:
     """
     Simultaneous randomized benchmarking on multiple qubits.
 

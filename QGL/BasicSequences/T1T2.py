@@ -4,12 +4,14 @@ from ..PulseSequencePlotter import plot_pulse_files
 from scipy.constants import pi
 from .helpers import create_cal_seqs, delay_descriptor, cal_descriptor
 
+from typing import Iterable, Union
 
-def InversionRecovery(qubit,
-                      delays,
-                      showPlot=False,
-                      calRepeats=2,
-                      suffix=False):
+
+def InversionRecovery(qubit: Channels.LogicalChannel,
+                      delays: Iterable[Union[int, float]],
+                      showPlot: bool = False,
+                      calRepeats: int = 2,
+                      suffix: bool = False) -> str:
     """
     Inversion recovery experiment to measure qubit T1
 
@@ -57,12 +59,12 @@ def InversionRecovery(qubit,
     return metafile
 
 
-def Ramsey(qubit,
-           pulseSpacings,
-           TPPIFreq=0,
-           showPlot=False,
-           calRepeats=2,
-           suffix=False):
+def Ramsey(qubit: Channels.LogicalChannel,
+           pulseSpacings: Iterable[Union[int, float]],
+           TPPIFreq: Union[int, float] = 0,
+           showPlot: bool = False,
+           calRepeats: int = 2,
+           suffix: bool = False) -> str:
     """
     Variable pulse spacing Ramsey (pi/2 - tau - pi/2) with optional TPPI.
 

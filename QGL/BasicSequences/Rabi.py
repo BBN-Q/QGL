@@ -5,8 +5,12 @@ import QGL.PulseShapes
 from .helpers import create_cal_seqs, delay_descriptor, cal_descriptor
 from functools import reduce
 
+from typing import Iterable, Union, Callable
 
-def RabiAmp(qubit, amps, phase=0, showPlot=False):
+def RabiAmp(qubit: Channels.LogicalChannel, 
+            amps: Iterable[Union[int, float]], 
+            phase: float = 0, 
+            showPlot: bool = False) -> str:
     """
     Variable amplitude Rabi nutation experiment.
 
@@ -52,12 +56,12 @@ def RabiAmp(qubit, amps, phase=0, showPlot=False):
     return metafile
 
 
-def RabiWidth(qubit,
-              widths,
-              amp=1,
-              phase=0,
-              shape_fun=QGL.PulseShapes.tanh,
-              showPlot=False):
+def RabiWidth(qubit: Channels.LogicalChannel,
+              widths: Iterable[Union[int,float]],
+              amp: Union[int,float] = 1,
+              phase: float = 0,
+              shape_fun: Callable = QGL.PulseShapes.tanh,
+              showPlot: bool = False) -> str:
     """
     Variable pulse width Rabi nutation experiment.
 
@@ -104,14 +108,14 @@ def RabiWidth(qubit,
     return metafile
 
 
-def RabiAmp_NQubits(qubits,
-                    amps,
-                    phase=0,
-                    showPlot=False,
-                    shape_fun=None,
-                    measChans=None,
-                    add_cals=False,
-                    calRepeats=2):
+def RabiAmp_NQubits(qubits: Iterable[Channels.LogicalChannel],
+                    amps: Iterable[Union[int,float]],
+                    phase: float = 0,
+                    showPlot: bool = False,
+                    shape_fun: Callable = None,
+                    measChans: Iterable[Channels.LogicalChannel] = None,
+                    add_cals: bool = False,
+                    calRepeats: int = 2) -> str:
     """
     Variable amplitude Rabi nutation experiment for an arbitrary number of
     qubits simultaneously
@@ -189,7 +193,11 @@ def RabiAmp_NQubits(qubits,
     return metafile
 
 
-def RabiAmpPi(qubit, mqubit, amps, phase=0, showPlot=False):
+def RabiAmpPi(qubit: Channels.LogicalChannel, 
+              mqubit: Channels.LogicalChannel, 
+              amps: Iterable[Union[int,float]], 
+              phase: float = 0, 
+              showPlot: bool = False) -> str:
     """
 	Variable amplitude Rabi nutation experiment with the state of a second,
     spectator qubit flipped for the duration of the Rabi pulse.
@@ -239,7 +247,8 @@ def RabiAmpPi(qubit, mqubit, amps, phase=0, showPlot=False):
     return metafile
 
 
-def SingleShot(qubit, showPlot=False):
+def SingleShot(qubit: Channels.LogicalChannel, 
+               showPlot: bool = False) -> str:
     """
     2-segment sequence with qubit prepared in |0> and |1>, useful for
     single-shot fidelity measurements and kernel calibration.  It produces a
@@ -281,7 +290,9 @@ def SingleShot(qubit, showPlot=False):
     return metafile
 
 
-def PulsedSpec(qubit, specOn=True, showPlot=False):
+def PulsedSpec(qubit: Channels.LogicalChannel, 
+               specOn: bool = True, 
+               showPlot: bool = False) -> str:
     """
 	Measurement preceded by a qubit pulse if specOn = True
 

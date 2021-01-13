@@ -3,9 +3,11 @@ Sequences for optimizing gating timing.
 """
 from ..PulsePrimitives import *
 from ..Compiler import compile_to_hardware
+from typing import Iterable, Union
 
 
-def sweep_gateDelay(qubit, sweepPts):
+def sweep_gateDelay(qubit: Channels.LogicalChannel, 
+                    sweepPts: Iterable[Union[int,float]]) -> str:
     """
     Sweep the gate delay associated with a qubit channel using a simple Id, Id,
     X90, X90 seqeuence.
@@ -40,8 +42,10 @@ def sweep_gateDelay(qubit, sweepPts):
 
         generator.gateDelay = delay
 
-        compile_to_hardware(seqs,
-                            'BlankingSweeps/GateDelay',
-                            suffix='_{}'.format(ct + 1))
+        metafile = compile_to_hardware(seqs, 
+                                       'BlankingSweeps/GateDelay', 
+                                       suffix='_{}'.format(ct + 1))
 
     generator.gateDelay = oldDelay
+
+    return metafile

@@ -3,8 +3,12 @@ from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
 from itertools import chain
 
+from typing import Iterable
 
-def FlipFlop(qubit, dragParamSweep, maxNumFFs=10, showPlot=False):
+def FlipFlop(qubit: Channels.LogicalChannel,
+             dragParamSweep: Iterable[float], 
+             maxNumFFs: int = 10, 
+             showPlot: bool = False) -> str:
     """
     Flip-flop sequence (X90-X90m)**n to determine off-resonance or DRAG
     parameter optimization.

@@ -7,10 +7,15 @@ import operator
 from ..ControlFlow import *
 from ..TdmInstructions import *
 from functools import reduce
-
+from typing import Iterable, Union, Tuple
 
 @qfunction
-def qreset(qubits, signVec, measDelay, buf, reg_size=None, TDM_map=None):
+def qreset(qubits: Channels.LogicalChannel, 
+           signVec: Tuple[bool], 
+           measDelay: Union[int,float], 
+           buf: Union[int,float], 
+           reg_size: int = None, 
+           TDM_map: Iterable[Union[int,bool]] = None) -> list:
     """
     For each qubit, build the set of feedback actions to perform when
     receiving a zero or one in the comparison register
@@ -72,17 +77,17 @@ def qreset(qubits, signVec, measDelay, buf, reg_size=None, TDM_map=None):
     return seq
 
 
-def Reset(qubits,
-          measDelay=1e-6,
-          signVec=None,
-          doubleRound=True,
-          buf=20e-9,
-          showPlot=False,
-          measChans=None,
-          add_cals=True,
-          calRepeats=2,
-          reg_size=None,
-          TDM_map=None):
+def Reset(qubits: Iterable[Channels.LogicalChannel],
+          measDelay: Union[int,float]=1e-6,
+          signVec: Tuple[bool] = None,
+          doubleRound: bool = True,
+          buf: Union[int,float] = 20e-9,
+          showPlot: bool = False,
+          measChans: Channels.LogicalChannel = None,
+          add_cals: bool = True,
+          calRepeats: int = 2,
+          reg_size: int = None,
+          TDM_map: Iterable[Union[int,bool]]=None) -> str:
     """
     Preparation, simultanoeus reset, and measurement of an arbitrary number
     of qubits
@@ -169,14 +174,14 @@ def Reset(qubits,
 
 
 # do not make it a subroutine for now
-def BitFlip3(data_qs,
-             ancilla_qs,
-             theta=None,
-             phi=None,
-             nrounds=1,
-             meas_delay=1e-6,
-             add_cals=False,
-             calRepeats=2):
+def BitFlip3(data_qs: Iterable[Channels.LogicalChannel],
+             ancilla_qs: Iterable[Channels.LogicalChannel],
+             theta: Union[int,float] = None,
+             phi: Union[int,float] = None,
+             nrounds: int = 1,
+             meas_delay: Union[int,float] = 1e-6,
+             add_cals: bool = False,
+             calRepeats: int = 2) -> str:
     """
     Encoding on 3-qubit bit-flip code, followed by n rounds of syndrome
     detection, and final correction using the n results.
@@ -262,12 +267,12 @@ def BitFlip3(data_qs,
     metafile = compile_to_hardware(seqs, 'BitFlip/BitFlip', tdm_seq=True)
     return metafile
 
-def MajorityVoteN(qubits,
-                  nrounds,
-                  prep=[],
-                  meas_delay=1e-6,
-                  add_cals=False,
-                  calRepeats=2):
+def MajorityVoteN(qubits: Iterable[Channels.LogicalChannel],
+                  nrounds: int,
+                  prep: Iterable[bool] = [],
+                  meas_delay: float = 1e-6,
+                  add_cals: bool = False,
+                  calRepeats: int = 2) -> str:
     """
     Majority vote across multiple measurement results (same or different qubits)
 

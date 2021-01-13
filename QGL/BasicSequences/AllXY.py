@@ -5,7 +5,7 @@ import QGL.PulseShapes
 from .helpers import create_cal_seqs
 
 
-def AllXY(q, showPlot=False):
+def AllXY(q: Channels.LogicalChannel, showPlot: bool = False) -> str:
     '''
     Produce a sequence with all possible combinations of
     {Id, X, Y, X90, Y90} * 2.  This is currently only used in testing.
