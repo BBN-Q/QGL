@@ -3,12 +3,20 @@ from ..Compiler import compile_to_hardware
 from ..ChannelLibraries import EdgeFactory
 from ..PulseSequencePlotter import plot_pulse_files
 from .helpers import create_cal_seqs, delay_descriptor, cal_descriptor
+import sqlalchemy
 import numpy as np
 from collections.abc import Iterable
 from itertools import product
 
-def StarkSpectroscopy(qubit, measurement, amplitude,
-                            delay=200e-9, length=1e-6, showPlot=False):
+from typing import Iterable as IterableType
+from typing import Union
+
+def StarkSpectroscopy(qubit: Channels.LogicalChannel,
+                      measurement: sqlalchemy.ext.declarative.api.DeclarativeMeta, 
+                      amplitude: float, 
+                      delay: Union[int, float] = 200e-9, 
+                      length: Union[int, float] = 1e-6, 
+                      showPlot: bool = False) -> str:
     """
     Stark shift spectroscopy experiment. Applies a coherent displacement
     to the qubit readout cavity while doing pulsed spectroscopy.
@@ -65,8 +73,13 @@ def StarkSpectroscopy(qubit, measurement, amplitude,
 
     return metafile
 
-def StarkEcho(qubit, measurement, amplitudes, delays,
-                            wait=200e-9, periods=4, showPlot=False):
+def StarkEcho(qubit: Channels.LogicalChannel,
+              measurement: sqlalchemy.ext.declarative.api.DeclarativeMeta, 
+              amplitudes: IterableType[Union[int,float]], 
+              delays: IterableType[Union[int,float]],
+              wait: Union[int,float] = 200e-9, 
+              periods: int = 4, 
+              showPlot: bool = False) -> str:
     """
     Hahn echo sequence with a coherent displacement of the qubit measurement
     cavity. Used to measure photon-induced dephasing. This sequence can cause
@@ -143,8 +156,13 @@ def StarkEcho(qubit, measurement, amplitudes, delays,
     return metafile
 
 
-def CavityPumpProbe(qubit, measurement, offsets, amplitude,
-                            length=1e-6, wait=2e-6, showPlot=False):
+def CavityPumpProbe(qubit: Channels.LogicalChannel, 
+                    measurement: sqlalchemy.ext.declarative.api.DeclarativeMeta, 
+                    offsets: IterableType[Union[int,float]], 
+                    amplitude: IterableType[Union[int,float]],
+                    length: Union[int,float] = 1e-6, 
+                    wait: Union[int,float] = 2e-6, 
+                    showPlot: bool = False) -> str:
     """
     Time resolved cavity spectroscopy. Applies a coherent displacement to qubit
     readout cavity while sweeping qubit spectroscopy pulse delay. Useful to

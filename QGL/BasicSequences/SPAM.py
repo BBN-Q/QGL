@@ -4,9 +4,12 @@ from ..PulseSequencePlotter import plot_pulse_files
 
 from itertools import chain
 from numpy import pi
+from typing import Iterable, Union
 
-
-def SPAM(qubit, angleSweep, maxSpamBlocks=10, showPlot=False):
+def SPAM(qubit: Channels.LogicalChannel,
+         angleSweep: Iterable[Union[int, float]], 
+         maxSpamBlocks: int = 10, 
+         showPlot: bool = False) -> str:
     """
     X-Y sequence (X-Y-X-Y)**n to determine quadrature angles or mixer
     correction.

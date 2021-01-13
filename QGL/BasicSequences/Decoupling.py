@@ -3,8 +3,13 @@ from ..Compiler import compile_to_hardware
 from ..PulseSequencePlotter import plot_pulse_files
 from .helpers import create_cal_seqs, delay_descriptor, cal_descriptor
 
+from typing import Iterable, Union
 
-def HahnEcho(qubit, pulseSpacings, periods=0, calRepeats=2, showPlot=False):
+def HahnEcho(qubit: Channels.LogicalChannel,
+             pulseSpacings: Iterable[Union[int, float]],
+             periods: int = 0, 
+             calRepeats: int = 2, 
+             showPlot: bool = False) -> str:
     """
 	A single pulse Hahn echo with variable phase of second pi/2 pulse.
 
@@ -54,7 +59,11 @@ def HahnEcho(qubit, pulseSpacings, periods=0, calRepeats=2, showPlot=False):
     return metafile
 
 
-def CPMG(qubit, numPulses, pulseSpacing, calRepeats=2, showPlot=False):
+def CPMG(qubit: Channels.LogicalChannel,
+         numPulses: Iterable[int], 
+         pulseSpacing: float, 
+         calRepeats: int = 2, 
+         showPlot: bool = False):
     """
 	CPMG pulse train with fixed pulse spacing. Note this pulse spacing is centre to centre,
 	i.e. it accounts for the pulse width

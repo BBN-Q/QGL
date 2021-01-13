@@ -4,11 +4,18 @@ from functools import reduce
 from itertools import product
 import numpy as np
 import operator
+from typing import Iterable, Union, List, Mapping, Any, Dict
 
 from ..PulsePrimitives import Id, X, MEAS
 from ..ControlFlow import qwait
+import QGL.Channels as Channels
+import QGL.PulsePrimitives as PulseSequencer
 
-def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False, delay=None):
+def create_cal_seqs(qubits: Channels.LogicalChannel, 
+                    numRepeats: int, 
+                    measChans: Iterable[Channels.LogicalChannel] = None, 
+                    waitcmp: bool = False, 
+                    delay: Union[int, float] = None) -> List[List[PulseSequencer.Pulse]]:
     """
     Helper function to create a set of calibration sequences.
 
@@ -16,9 +23,9 @@ def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False, delay=Non
     ----------
     qubit : Channels.LogicalChannel
         Logical channel to implement sequence
-	numRepeats : int
+  	numRepeats : int
         Number of times to repeat calibration sequences
-	waitcmp : boolean, optional
+  	waitcmp : boolean, optional
         True if the sequence contains branching (sequencing based on values in
         the register). Default = False.
     delay : int/float, optional
@@ -66,7 +73,10 @@ def create_cal_seqs(qubits, numRepeats, measChans=None, waitcmp=False, delay=Non
         [cal_seq.append(qwait(kind='CMP')) for cal_seq in full_cal_seqs]
     return full_cal_seqs
 
-def cal_descriptor(qubits, numRepeats, partition=2, states = ['0', '1']):
+def cal_descriptor(qubits: Iterable[Channels.LogicalChannel], 
+                   numRepeats: int, 
+                   partition: int = 2, 
+                   states = ['0', '1']) -> Dict[str, Any]:
     # generate state set in same order as we do above in create_cal_seqs()
     state_set = [reduce(operator.add, s) for s in product(states, repeat=len(qubits))]
     descriptor = {
@@ -79,7 +89,8 @@ def cal_descriptor(qubits, numRepeats, partition=2, states = ['0', '1']):
         descriptor['points'] += [state] * numRepeats
     return descriptor
 
-def delay_descriptor(delays, desired_units="us"):
+def delay_descriptor(delays: np.ndarray, 
+                     desired_units: str = "us") -> Dict[str, Any]:
     if desired_units == "s":
         scale = 1
     elif desired_units == "ms":

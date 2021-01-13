@@ -5,15 +5,16 @@ from ..PulseSequencePlotter import plot_pulse_files
 from .helpers import create_cal_seqs, delay_descriptor, cal_descriptor
 import numpy as np
 from itertools import product
+from typing import Iterable, Union
 
-def PiRabi(controlQ,
-           targetQ,
-           lengths,
-           riseFall=40e-9,
-           amp=1,
-           phase=0,
-           calRepeats=2,
-           showPlot=False):
+def PiRabi(controlQ: Channels.LogicalChannel,
+           targetQ: Channels.LogicalChannel,
+           lengths: Iterable[Union[int,float]],
+           riseFall: Union[int,float] = 40e-9,
+           amp: Union[int,float] = 1,
+           phase: Union[int,float] = 0,
+           calRepeats: int = 2,
+           showPlot: bool = False) -> str:
     """
 	Variable length CX experiment.
 
@@ -70,14 +71,16 @@ def PiRabi(controlQ,
     return metafile
 
 
-def EchoCRLen(controlQ,
-              targetQ,
-              lengths,
-              riseFall=40e-9,
-              amp=1,
-              phase=0,
-              calRepeats=2,
-              showPlot=False, canc_amp=0, canc_phase=np.pi/2):
+def EchoCRLen(controlQ: Channels.LogicalChannel,
+              targetQ: Channels.LogicalChannel,
+              lengths: Iterable[Union[int,float]],
+              riseFall: Union[int,float] = 40e-9,
+              amp: Union[int,float] = 1,
+              phase: Union[int,float] = 0,
+              calRepeats: int = 2,
+              showPlot: bool = False, 
+              canc_amp: Union[int,float] = 0, 
+              canc_phase: Union[int,float] = np.pi/2) -> str:
     """
 	Variable length CX experiment, with echo pulse sandwiched between two CR
     opposite-phase pulses.  This is primarily used as a subroutine
@@ -137,16 +140,16 @@ def EchoCRLen(controlQ,
     return metafile
 
 
-def EchoCRPhase(controlQ,
-                targetQ,
-                phases,
-                riseFall=40e-9,
-                amp=1,
-                length=100e-9,
-                calRepeats=2,
-                showPlot=False,
-                canc_amp=0,
-                canc_phase=np.pi/2):
+def EchoCRPhase(controlQ: Channels.LogicalChannel,
+                targetQ: Channels.LogicalChannel,
+                phases: Iterable[Union[int,float]],
+                riseFall: Union[int,float] = 40e-9,
+                amp: Union[int,float] = 1,
+                length: Union[int,float] = 100e-9,
+                calRepeats: int = 2,
+                showPlot: bool = False,
+                canc_amp: Union[int,float] = 0,
+                canc_phase: Union[int,float] = np.pi/2) -> str:
     """
     Variable phase CX experiment, with echo pulse sandwiched between two CR
     opposite-phase pulses.  This is primarily used as a subroutine
@@ -213,14 +216,14 @@ def EchoCRPhase(controlQ,
     return metafile
 
 
-def EchoCRAmp(controlQ,
-              targetQ,
-              amps,
-              riseFall=40e-9,
-              length=50e-9,
-              phase=0,
-              calRepeats=2,
-              showPlot=False):
+def EchoCRAmp(controlQ: Channels.LogicalChannel,
+              targetQ: Channels.LogicalChannel,
+              amps: Iterable[Union[int,float]],
+              riseFall: Union[int,float] = 40e-9,
+              length: Union[int,float] = 50e-9,
+              phase: Union[int,float] = 0,
+              calRepeats: int = 2,
+              showPlot: bool = False) -> str:
     """
     Variable amplitude CX experiment, with echo pulse sandwiched between two
     CR opposite-phase pulses.
@@ -281,13 +284,13 @@ def EchoCRAmp(controlQ,
 
     return metafile
 
-def CRtomo_seq(controlQ,
-               targetQ,
-               lengths,
-               phase,
-               amp=0.8,
-               riseFall=20e-9,
-               calRepeats=2):
+def CRtomo_seq(controlQ: Channels.LogicalChannel,
+               targetQ: Channels.LogicalChannel,
+               lengths: Iterable[Union[int,float]],
+               phase: Union[int,float],
+               amp: Union[int,float] = 0.8,
+               riseFall: Union[int,float] = 20e-9,
+               calRepeats: int = 2) -> str:
     """
     Variable length CX experiment, for Hamiltonian tomography.
 
