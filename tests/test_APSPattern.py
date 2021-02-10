@@ -3,6 +3,7 @@ import numpy as np
 
 from QGL import *
 from QGL.drivers import APSPattern
+from QGL.PatternUtils import flatten
 
 
 class APSPatternUtils(unittest.TestCase):
@@ -16,6 +17,7 @@ class APSPatternUtils(unittest.TestCase):
 
     def test_unroll_loops_simple(self):
         q1 = self.q1
+
         seqs = [repeat(2, [qwait(), X(q1), Id(q1)]), repeat(2, [qwait(), Y(q1),
                                                                 Id(q1)])]
         a, b = APSPattern.unroll_loops(seqs)
@@ -24,14 +26,19 @@ class APSPatternUtils(unittest.TestCase):
 
     def test_unroll_loops(self):
         q1 = self.q1
-        seqs = [repeat(2, [qwait(), X(q1), Id(q1)]), repeat(3, [qwait(), Y(q1),
-                                                                Id(q1)])]
+
+        Xw = APSPattern.APSWaveform(Compiler.Waveform(Z(q1)))
+        Yw = APSPattern.APSWaveform(Compiler.Waveform(Y(q1)))
+        Zw = APSPattern.APSWaveform(Compiler.Waveform(Z(q1)))
+
+        seqs = [repeat(2, [qwait(), Xw, Yw]), repeat(3, [qwait(), Yw,
+                                                                Zw])]
         a, b = APSPattern.unroll_loops(seqs)
 
-        seqUnrolled = [qwait(), X(q1), Id(q1)] * 2
+        seqUnrolled = [qwait(), Xw, Yw] * 2
         assert (a[0] == seqUnrolled)
 
-        seqUnrolled = [qwait(), Y(q1), Id(q1)] * 3
+        seqUnrolled = [qwait(), Yw, Zw] * 3
         assert (a[1] == seqUnrolled)
 
         assert (b == 0)
@@ -39,29 +46,31 @@ class APSPatternUtils(unittest.TestCase):
     def test_unroll_nested_loops(self):
         q1 = self.q1
         # since single qubit pulse will be modified convert to APSWaveform
-        Zq1 = APSPattern.APSWaveform(Compiler.Waveform(Z(q1)))
-        seqs = [repeat(2, [X(q1), Y(q1)] + repeat(3, [Zq1]) + [Y(q1), X(
-            q1)]), [X(q1), Y(q1)]]
+        Xw = APSPattern.APSWaveform(Compiler.Waveform(Z(q1)))
+        Yw = APSPattern.APSWaveform(Compiler.Waveform(Y(q1)))
+        Zw = APSPattern.APSWaveform(Compiler.Waveform(Z(q1)))
+
+        seqs =  [[Xw, Yw] + repeat(2, [Xw, Yw] + repeat(3, [qwait(), Zw, Xw]))]
+        unrolled = list(flatten([Xw, Yw] + 2 * [[Xw, Yw] + 3*[qwait(), Zw, Xw]]))
+
         a, b = APSPattern.unroll_loops(seqs)
 
-        Zq1_looped = APSPattern.APSWaveform(Compiler.Waveform(Z(q1)))
-        Zq1_looped.repeat = 3
-        seqUnrolled = ([X(q1), Y(q1), Zq1_looped, Y(q1), X(q1)]) * 2
-
-        assert (a[0] == seqUnrolled)
+        assert (a[0] == unrolled)
 
         assert (b == 0)
 
     def test_unroll_single_entry(self):
         q1 = self.q1
         # since single qubit pulse will be modified convert to APSWaveform
-        Xq1 = APSPattern.APSWaveform(Compiler.Waveform(Z(q1)))
-        seqs = [repeat(5, [Xq1]) + [Y(q1)]]
+        Xw = APSPattern.APSWaveform(Compiler.Waveform(Z(q1)))
+        Yw = APSPattern.APSWaveform(Compiler.Waveform(Y(q1)))
+        Yw_repeat = APSPattern.APSWaveform(Compiler.Waveform(Y(q1)))
+        Yw_repeat.repeat = 5
+
+        seqs = [repeat(5, [Yw]) + [Xw]]
         a, b = APSPattern.unroll_loops(seqs)
 
-        Xq1_looped = APSPattern.APSWaveform(Compiler.Waveform(Z(q1)))
-        Xq1_looped.repeat = 5
-        seqUnrolled = [Xq1_looped, Y(q1)]
+        seqUnrolled = [Yw_repeat, Xw]
 
         assert (a[0] == seqUnrolled)
         assert (b == 0)
