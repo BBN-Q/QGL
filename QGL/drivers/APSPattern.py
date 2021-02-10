@@ -140,7 +140,8 @@ def compress_sequences(seqs):
                 prevEntry.length += curEntry.length
                 prevEntry.frameChange += curEntry.frameChange
                 del seq[ct]
-            ct += 1
+            else:
+                ct += 1
 
 
 def build_waveforms(seqs, shapeLib):
@@ -470,6 +471,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
 	'''
     if len(markerLL) == 0:
         return
+
     assert len(IQLL) <= len(markerLL), "Sequence length mismatch"
     if len(IQLL) < len(markerLL):
         for ct in range(len(markerLL) - len(IQLL)):
@@ -479,8 +481,9 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
         PatternUtils.convert_lengths_to_samples(seq, SAMPLING_RATE,
                                                 ADDRESS_UNIT, Compiler.Waveform)
 
+    #markerAttr = 'markerDelay' + str(markerNum)
+    markerLL, _ = unroll_loops(markerLL, False)
     markerAttr = 'markerDelay' + str(markerNum)
-
     #Step through the all the miniLL's together
     for miniLL_IQ, miniLL_m in zip_longest(IQLL, markerLL):
         #Find the switching points of the marker channels
@@ -599,7 +602,7 @@ def merge_APS_markerData(IQLL, markerLL, markerNum):
                 miniLL_IQ.append(padding_entry(pad))
 
 
-def unroll_loops(LLs):
+def unroll_loops(LLs, use_repeat_attr=True):
     '''
 	Unrolls repeated sequences in place, unless the sequence can be unrolled with a miniLL repeat
 	attribute. Returns the (potentially) modified sequence and the miniLL repeat value.
@@ -640,14 +643,14 @@ def unroll_loops(LLs):
                 repeatedBlock = seq[symbols[entry.target] + 1:ct]
                 numRepeats = seq[symbols[entry.target] - 1].value
                 # unroll the block (dropping the LOAD and REPEAT)
-                if len(repeatedBlock) == 1:
+                if len(repeatedBlock) == 1 and use_repeat_attr:
                     repeatedBlock[0].repeat = numRepeats
                     seq[symbols[entry.target] - 1:ct + 1] = repeatedBlock
                     # dropped two instructions and a label
                     ct -= 3
                 else:
                     seq[symbols[entry.target] - 1:ct +
-                        1] = repeatedBlock * numRepeats
+                        1] = [copy(x) for x in repeatedBlock * numRepeats]#repeatedBlock * numRepeats
                     # advance the count (minus 3 for dropped instructions and label)
                     ct += (numRepeats - 1) * len(repeatedBlock) - 3
             ct += 1

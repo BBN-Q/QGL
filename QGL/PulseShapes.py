@@ -189,11 +189,62 @@ def autodyne(frequency=10e6, baseShape=constant, **params):
         shape = globals()[baseShape](**params)
     else:
         shape = baseShape(**params)
+
+    if 'phase' not in params:
+        phase = 0
     # Apply the autodyne frequency
     timePts = np.linspace(0, params['length'], len(shape))
-    shape *= np.exp(-1j * 2 * np.pi * frequency * timePts)
+    shape *= np.exp(-1j * 2 * np.pi * frequency * timePts + 1j*phase)
     return shape
 
+def dual_sideband(dual_frequency=10e6, baseShape=constant, **params):
+    '''
+    Pulse sequence to have dual sideband modulation.
+    '''
+    if isinstance(baseShape,str):
+        shape = globals()[baseShape](**params)
+    else:
+        shape = baseShape(**params)
+    # Apply the autodyne frequency
+    timePts = np.linspace(0, params['length'], len(shape))
+    shape *= np.real(np.exp(-1j * 2 * np.pi * dual_frequency * timePts))
+    # shape += 1j*shap/e
+    return shape
+
+def dual_modulate(dual_frequency1=10e6, dual_frequency2=10e6, d_amp1 = 1, d_amp2 = 1, d_phase1=0, d_phase2=0, baseShape=constant, **params):
+    '''
+    Pulse sequence to have dual sideband modulation.
+    '''
+
+    if isinstance(baseShape,str):
+        shape = globals()[baseShape](**params)
+    else:
+        shape = baseShape(**params)
+    # Apply the autodyne frequency
+    timePts = np.linspace(0, params['length'], len(shape)).astype(np.complex)
+    shape *= (d_amp1 * np.exp(-1j * 2 * np.pi * dual_frequency1 * timePts + 1j*d_phase1) + d_amp2 * np.exp(-1j * 2 * np.pi * dual_frequency2 * timePts + 1j*d_phase2))
+    if np.any(shape>1):
+        print("WARNING: Sequence amplitude above 1 at one or more points.")
+
+    # shape += 1j*shap/e
+    return shape
+
+def dual_sideband_amp(dual_frequency=10e6, d_amp1 = 1, d_amp2=1, baseShape=constant, **params):
+    '''
+    Pulse sequence to have dual sideband modulation.
+    '''
+    if isinstance(baseShape,str):
+        shape = globals()[baseShape](**params)
+    else:
+        shape = baseShape(**params)
+    # Apply the autodyne frequency
+    timePts = np.linspace(0, params['length'], len(shape))
+    
+    # shape *= np.real(np.exp(-1j * 2 * np.pi * dual_frequency * timePts))
+    # shape += 1j*amp1*np.imag(np.exp(-1j*2*np.pi*dual_frequency*timePts)) + 1j*amp2*np.imag(np.exp(1j*2*np.pi*dual_frequency*timepts))
+    # LR - I think the following should replace the previous two lines
+    shape *= (d_amp1*np.exp(-1j*2*np.pi*dual_frequency*timePts) + d_amp2*np.exp(1j*2*np.pi*dual_frequency*timepts))
+    return shape
 
 def arb_axis_drag(nutFreq=10e6,
                   rotAngle=0,
