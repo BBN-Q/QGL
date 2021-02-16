@@ -137,8 +137,8 @@ def compress_sequences(seqs):
                prevEntry.isTimeAmp and curEntry.isTimeAmp and \
                prevEntry.amp == curEntry.amp and \
                prevEntry.phase == curEntry.phase:
-                prevEntry.length += curEntry.length
-                prevEntry.frameChange += curEntry.frameChange
+                prevEntry.length += curEntry.length * getattr(curEntry, 'repeat', 1)
+                prevEntry.frameChange += curEntry.frameChange * getattr(curEntry, 'repeat', 1)
                 del seq[ct]
             else:
                 ct += 1
