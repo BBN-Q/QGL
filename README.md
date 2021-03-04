@@ -2,6 +2,8 @@
 
 ![Build Status](https://github.com/bbn-q/QGL/workflows/Python%20Package%20using%20Conda/badge.svg?branch=develop)
 
+![QGL](QGL_logo.png)
+
 # Overview
 
 Quantum Gate Language (QGL) is a domain specific language embedded in python for
