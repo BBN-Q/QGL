@@ -886,6 +886,7 @@ def create_seq_instructions(seqs, offsets, label = None):
                                 entry.isTimeAmp or entry.isZero,
                                 write=write_flags[ct], label=label if idx == 0 else None))
                                 count -= MAX_WAVEFORM_LEN-1
+                                idx += 1
                             if count > 0:
                                 instructions.append(Waveform(
                                     offsets[wf_sig(entry)], count,
