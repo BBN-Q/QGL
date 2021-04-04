@@ -12,7 +12,7 @@ from typing import Iterable as IterableType
 from typing import Union
 
 def StarkSpectroscopy(qubit: Channels.LogicalChannel,
-                      measurement: sqlalchemy.ext.declarative.api.DeclarativeMeta, 
+                      measurement: sqlalchemy.ext.declarative.DeclarativeMeta, 
                       amplitude: float, 
                       delay: Union[int, float] = 200e-9, 
                       length: Union[int, float] = 1e-6, 
@@ -74,7 +74,7 @@ def StarkSpectroscopy(qubit: Channels.LogicalChannel,
     return metafile
 
 def StarkEcho(qubit: Channels.LogicalChannel,
-              measurement: sqlalchemy.ext.declarative.api.DeclarativeMeta, 
+              measurement: sqlalchemy.ext.declarative.DeclarativeMeta, 
               amplitudes: IterableType[Union[int,float]], 
               delays: IterableType[Union[int,float]],
               wait: Union[int,float] = 200e-9, 
@@ -157,7 +157,7 @@ def StarkEcho(qubit: Channels.LogicalChannel,
 
 
 def CavityPumpProbe(qubit: Channels.LogicalChannel, 
-                    measurement: sqlalchemy.ext.declarative.api.DeclarativeMeta, 
+                    measurement: sqlalchemy.ext.declarative.DeclarativeMeta, 
                     offsets: IterableType[Union[int,float]], 
                     amplitude: IterableType[Union[int,float]],
                     length: Union[int,float] = 1e-6, 
