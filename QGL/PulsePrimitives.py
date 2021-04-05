@@ -365,12 +365,20 @@ def flat_top_gaussian(chan,
     """
     A constant pulse with rising and falling gaussian shape
     """
+    # Note: use_cos is a hack that should definitely be fixed more elegantly later
+    use_cos = False
     if riseFall == 0:
         p = Utheta(chan, length=length, amp=amp, phase=phase, shape_fun=PulseShapes.constant, label=label+"_top")
     else:
-        p =  Utheta(chan, length=riseFall, amp=amp, phase=phase, shape_fun=PulseShapes.gaussOn, label=label+"_rise") + \
-             Utheta(chan, length=length, amp=amp, phase=phase, shape_fun=PulseShapes.constant, label=label+"_top") + \
-             Utheta(chan, length=riseFall, amp=amp, phase=phase, shape_fun=PulseShapes.gaussOff, label=label+"_fall")
+        if use_cos:
+            #print('Using cosine ZX90')
+            p =  Utheta(chan, length=riseFall, amp=amp, phase=phase, shape_fun=PulseShapes.cosOn, label=label+"_rise") + \
+                 Utheta(chan, length=length, amp=amp, phase=phase, shape_fun=PulseShapes.constant, label=label+"_top") + \
+                 Utheta(chan, length=riseFall, amp=amp, phase=phase, shape_fun=PulseShapes.cosOff, label=label+"_fall")
+        else:
+            p =  Utheta(chan, length=riseFall, amp=amp, phase=phase, shape_fun=PulseShapes.gaussOn, label=label+"_rise") + \
+                 Utheta(chan, length=length, amp=amp, phase=phase, shape_fun=PulseShapes.constant, label=label+"_top") + \
+                 Utheta(chan, length=riseFall, amp=amp, phase=phase, shape_fun=PulseShapes.gaussOff, label=label+"_fall")
     return p._replace(label=label)
 
 

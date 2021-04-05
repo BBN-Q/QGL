@@ -615,8 +615,9 @@ def inject_modulation_cmds(seqs):
     for ct,seq in enumerate(seqs):
         #check whether we have modulation commands
         freqs = np.unique([entry.frequency for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)])
-        if len(freqs) > 2:
-            raise Exception("Max 2 frequencies on the same channel allowed.")
+        # print(freqs)
+        # if len(freqs) > 2:
+        #     raise Exception("Max 2 frequencies on the same channel allowed.")
         no_freq_cmds = np.all(np.less(np.abs(freqs), 1e-8))
         phases = [entry.phase for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
         no_phase_cmds = np.all(np.less(np.abs(phases), 1e-8))
