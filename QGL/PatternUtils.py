@@ -20,13 +20,18 @@ import hashlib, collections
 import pickle
 from copy import copy
 from collections.abc import Iterable
+from functools import reduce
+import operator
 
 from .PulseSequencer import Pulse, TAPulse, PulseBlock, CompositePulse, CompoundGate, align
 from .PulsePrimitives import BLANK, X
 from . import ControlFlow
 from . import BlockLabel
 from . import TdmInstructions
+from . import ChannelLibraries
 import QGL.drivers
+from functools import reduce
+import operator
 
 def hash_pulse(shape):
     return hashlib.sha1(shape.tostring()).hexdigest()
@@ -364,3 +369,38 @@ def update_wf_library(pulses, path):
         print("Updating pulses for {}".format(awg))
         translators[awg].update_wf_library(path + "-" + awg + ".aps", ps,
                                            offsets)
+
+def decouple_seqs(seqs, meas_qs, meas_decoupled_qs, CR_chs, CR_decoupled_chs):
+    for seq in seqs:
+        if meas_decoupled_qs:
+            decouple_meas_pulses(seq, meas_qs, meas_decoupled_qs)
+        if CR_decoupled_chs:
+            decouple_CR_pulses(seq, CR_chs, CR_decoupled_chs)
+
+def decouple_meas_pulses(seq, meas_qs, meas_decoupled_qs):
+    """
+    Add decoupling X pulses to qubits meas_decoupled_qs during measurement on qubits meas_qs
+    """
+    for (k,pulse) in enumerate(seq):
+        if isinstance(pulse, Pulse):
+            for qM in meas_qs:
+                #TODO: check if pulse block
+                if pulse.channel == ChannelLibraries.MeasFactory('M-%s' % qM.label):
+                    #TODO: add arbitary shift of X from center
+                    seq[k] = align(pulse *\
+                        reduce(operator.mul, [X(q) for q in meas_decoupled_qs]))
+
+def decouple_CR_pulses(seq, CR_qs, CR_decoupled_qs):
+    """
+    Add decoupling X pulses to qubits CR_decoupled_qs between CR pulses on qubit pairs CR_qs (list of tuples)
+    """
+    for seq_el in seq:
+        #for qsCR in CR_qs:
+        if isinstance(seq_el, CompoundGate):
+            for (k, pulse) in enumerate(seq_el.seq):
+                if isinstance(pulse.channel, collections.abc.KeysView) and any([ChannelLibraries.EdgeFactory(*qsCR) in pulse.channel for qsCR in CR_qs]):
+                    seq_el.seq[k+1] = reduce(operator.mul, [seq_el.seq[k+1]] + [X(q) for q in CR_decoupled_qs])
+                elif any([pulse.channel == ChannelLibraries.EdgeFactory(*qsCR) for qsCR in CR_qs]):# and pulse.channel == seq_el.seq[k+2].channel:
+                    seq_el.seq[k+1] = reduce(operator.mul, [seq_el.seq[k+1]] + [X(q) for q in CR_decoupled_qs])
+    return seq
+
