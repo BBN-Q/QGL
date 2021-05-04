@@ -307,7 +307,7 @@ def compile_to_hardware(seqs,
                         axis_descriptor=None,
                         add_slave_trigger=True,
                         extra_meta=None,
-                        tdm_seq=False):
+                        tdm_seq=False,
                         meas_qs=None,
                         meas_decoupled_qs=None,
                         CR_chs=None,
