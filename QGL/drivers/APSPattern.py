@@ -701,19 +701,11 @@ def write_sequence_file(awgData, fileName, miniLLRepeat=1):
     if repeat12 != 0:
         miniLLRepeat *= repeat12
 
-    for s in LLs12:
-        for e in s:
-            print(f"{e}: {getattr(e, 'markerDelay1', 0)}, {getattr(e, 'markerDelay2', 0)}")
-
     #Merge the the marker data into the IQ linklists
     merge_APS_markerData(LLs12, awgData['ch1m1']['linkList'], 1)
     merge_APS_markerData(LLs12, awgData['ch2m1']['linkList'], 2)
     merge_APS_markerData(LLs34, awgData['ch3m1']['linkList'], 1)
     merge_APS_markerData(LLs34, awgData['ch4m1']['linkList'], 2)
-
-    for s in LLs12:
-        for e in s:
-            print(f"{e}: {getattr(e, 'markerDelay1', 0)}, {getattr(e, 'markerDelay2', 0)}")
 
     if os.path.isfile(fileName):
         os.remove(fileName)
