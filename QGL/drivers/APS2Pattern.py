@@ -51,6 +51,9 @@ MAX_VRAM_ADDRESS = 2**(12-2)-1
 MODULATION_CLOCK = 300e6
 NUM_NCO = 4
 
+MAX_WAVEFORM_LEN = 2**20 - 1
+MAX_MARKER_LEN   = 2**32 - 1
+
 # instruction encodings
 WFM = 0x0
 MARKER = 0x1
@@ -384,12 +387,16 @@ class Instruction(object):
     def flatten(self):
         return int((self.header << 56) | (self.payload & 0xffffffffffffff))
 
+def waveform_count_bits(count):
+    """Convert waveform count to bits for instruction"""
+    count = ((int(count)//ADDRESS_UNIT) - 1)
+    return count
 
 def Waveform(addr, count, isTA, write=False, label=None):
     header = (WFM << 4) | (0x3 << 2) | (write &
                                         0x1)  #broadcast to both engines
-    count = int(count)
-    count = ((count // ADDRESS_UNIT) - 1) & 0x000fffff  # 20 bit count
+    assert count < MAX_WAVEFORM_LEN, "Waveform too long!"
+    count &= 0x000fffff  # 20 bit count
     addr = (addr // ADDRESS_UNIT) & 0x00ffffff  # 24 bit addr
     payload = (PLAY << WFM_OP_OFFSET) | ((int(isTA) & 0x1)
                                          << TA_PAIR_BIT) | (count << 24) | addr
@@ -401,12 +408,18 @@ def WaveformPrefetch(addr):
     payload = (WFM_PREFETCH << WFM_OP_OFFSET) | addr
     return Instruction(header, payload, None)
 
+def marker_count_bits(count):
+    """Marker count to instruction bits"""
+    count = int(count)
+    four_count = ((count // ADDRESS_UNIT) - 1) 
+    count_rem = count % ADDRESS_UNIT
+    return four_count, count_rem
 
 def Marker(sel, state, count, write=False, label=None):
     header = (MARKER << 4) | ((sel & 0x3) << 2) | (write & 0x1)
-    count = int(count)
-    four_count = ((count // ADDRESS_UNIT) - 1) & 0xffffffff  # 32 bit count
-    count_rem = count % ADDRESS_UNIT
+    four_count, count_rem = marker_count_bits(count)
+    assert four_count < MAX_MARKER_LEN, "Marker too long!"
+    four_count &= 0xffffffff  # 32 bit count
     if state == 0:
         transitionWords = {0: 0b0000, 1: 0b1000, 2: 0b1100, 3: 0b1110}
         transition = transitionWords[count_rem]
@@ -856,11 +869,30 @@ def create_seq_instructions(seqs, offsets, label = None):
                     if entry.length < MIN_ENTRY_LENGTH:
                         warn("Dropping Waveform entry of length %s!" % entry.length)
                         continue
+                    count = waveform_count_bits(entry.length)
+                    if count < MAX_WAVEFORM_LEN:
+                        instructions.append(Waveform(
+                                offsets[wf_sig(entry)], count,
+                                entry.isTimeAmp or entry.isZero,
+                                write=write_flags[ct], label=label))
+                    else:
+                        if not (entry.isTimeAmp or entry.isZero):
+                            raise ValueError(f"Non-TA waveform of length {entry.length} is too long; cannot split automatically!")
+                        else:
+                            idx = 0
+                            while count > MAX_WAVEFORM_LEN:
+                                instructions.append(Waveform(
+                                offsets[wf_sig(entry)], MAX_WAVEFORM_LEN-1,
+                                entry.isTimeAmp or entry.isZero,
+                                write=write_flags[ct], label=label if idx == 0 else None))
+                                count -= MAX_WAVEFORM_LEN-1
+                                idx += 1
+                            if count > 0:
+                                instructions.append(Waveform(
+                                    offsets[wf_sig(entry)], count,
+                                    entry.isTimeAmp or entry.isZero,
+                                    write=write_flags[ct], label=None))
 
-                    instructions.append(Waveform(
-                            offsets[wf_sig(entry)], entry.length,
-                            entry.isTimeAmp or entry.isZero,
-                            write=write_flags[ct], label=label))
                 elif isinstance(entry, ModulationCommand):
                     instructions.append(entry.to_instruction(
                         write_flag=write_flags[ct],
