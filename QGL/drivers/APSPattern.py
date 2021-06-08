@@ -72,7 +72,7 @@ class APSWaveform(object):
         self.label        = waveform.label
         self.key          = waveform.key
         self.amp          = waveform.amp
-        self.length       = PatternUtils.convert_length_to_samples(waveform.length, SAMPLING_RATE, ADDRESS_UNIT)
+        self._length       = PatternUtils.convert_length_to_samples(waveform.length, SAMPLING_RATE, ADDRESS_UNIT)
         self.phase        = waveform.phase
         self.frameChange  = waveform.frameChange
         self.isTimeAmp    = waveform.isTimeAmp
@@ -104,6 +104,15 @@ class APSWaveform(object):
     def isZero(self):
         return self.amp == 0
 
+    @property
+    def length(self):
+        return self._length
+
+    @length.setter
+    def length(self, value):
+        self._length = value
+
+    
 
 def preprocess(seqs, shapeLib, T):
     for seq in seqs:
@@ -141,6 +150,27 @@ def compress_sequences(seqs):
                 prevEntry.frameChange += curEntry.frameChange
                 del seq[ct]
             ct += 1
+    #Make sure we haven't accidentally made an entry that is too long for the 16-bit count variable
+    #TODO: merge into above loop
+    for seq in seqs:
+        lengths = [(idx, getattr(entry, "length", 0)) for idx,entry in enumerate(seq)]
+        skip = 0
+        for idx, length in lengths:
+            if length > MAX_TRIGGER_COUNT:
+                if not seq[idx+skip].isTimeAmp:
+                    raise ValueError("Waveform {0} is too long; cannot automatically split non-TA waveforms.".format(seq[idx]))
+                else:
+                    repl_seq = []
+                    while length > MAX_TRIGGER_COUNT:
+                        repl_entry = copy(seq[idx+skip])
+                        repl_entry.length = MAX_TRIGGER_COUNT 
+                        repl_seq.append(repl_entry)
+                        length -= MAX_TRIGGER_COUNT 
+                    final_entry = copy(seq[idx+skip])
+                    final_entry.length = length 
+                    repl_seq.append(final_entry)
+                    seq[idx+skip:idx+skip+1] = repl_seq
+                    skip += len(repl_seq) - 1
 
 
 def build_waveforms(seqs, shapeLib):
