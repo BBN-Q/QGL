@@ -362,11 +362,11 @@ def calc_marker_delay(entry):
 
 class Instruction(object):
     def __init__(self, addr=0, count=0, trig1=0, trig2=0, repeat=0):
-        self.addr = int(addr)
-        self.count = int(count)
-        self.trig1 = int(trig1)
-        self.trig2 = int(trig2)
-        self.repeat = int(repeat)
+        self.addr = int(addr) & 0xFFFF
+        self.count = int(count) & 0xFFFF
+        self.trig1 = int(trig1) & 0xFFFF
+        self.trig2 = int(trig2) & 0xFFFF
+        self.repeat = int(repeat) & 0xFFFF
 
     def __repr__(self):
         return self.__str__()
@@ -410,7 +410,7 @@ class Instruction(object):
 
     def flatten(self):
         return (self.addr << 16 * 4) | (self.count << 16 * 3) | (
-            self.trig1 << 16 * 2) | (self.trig2 << 16 * 1) | self.repeat
+            self.trig1 << 16 * 2) | (self.trig2 << 16 * 1) | (self.repeat & 0xFFFF)
 
 
 def create_LL_data(LLs, offsets, AWGName=''):
