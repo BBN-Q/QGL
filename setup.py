@@ -16,7 +16,8 @@ setup(name='QGL',
         "scipy >= 0.17.1",
         "networkx >= 1.11",
         "bqplot >= 0.12.2",
-        "sqlalchemy >= 1.2.15"
+        "sqlalchemy >= 1.2.15",
+        "lark-parser >= 0.11.03"
       ],
       description="Quantum Gate Language (QGL) is a domain specific language embedded in python for specifying pulse sequences.",
       long_description_content_type='text/markdown',
