@@ -15,7 +15,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import os
+import os, sys
 from lark import Lark, tree 
 
 try:
@@ -48,4 +48,8 @@ class QASM3Parser(Lark):
         else:
             raise ModuleNotFoundError("Please install pydot to generate tree graphs.")
 
-
+if __name__ == "__main__":
+    with open(sys.argv[1]) as f:
+        parser = QASM3Parser()
+        parser.build_tree(f.read())
+        parser.cst_graph("test_qasm.png")
