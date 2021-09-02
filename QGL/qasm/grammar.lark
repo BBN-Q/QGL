@@ -93,17 +93,18 @@ pragma   : "#PRAGMA" TEXT
 
 block : "{" block* statement* "}"
 
-?statement : qstatement 
-          | qblock
-          | gatedecl
-          | cstatement 
-          | branch 
-          | loop 
-          | control
-          | subroutine 
-          | kernel
-          | decl 
-          | pragma
+?statement : kernel
+           | pragma
+           | decl 
+           | gatedecl
+           | branch 
+           | loop 
+           | control
+           | subroutine 
+           | qblock
+           | qstatement 
+           | cstatement 
+
 
 /////////////////////////////////////////////////////////
 //Variable delcaration
