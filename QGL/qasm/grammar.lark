@@ -49,7 +49,7 @@ BOOL: "true" | "false"
 TIME: "ns" | "us" | "ms" | "s" | "dt"
 
 //Variable types
-ID: /[a-zA-Z_%][a-zA-Z0-9_]*/ //TODO: Support unicode
+ID: /\$*[a-zA-Z_%][a-zA-Z0-9_]*/ //TODO: Support unicode
 
 //Quantum types
 QTYPE      : "qubit" | "qreg"
@@ -93,17 +93,19 @@ pragma   : "#PRAGMA" TEXT
 
 block : "{" block* statement* "}"
 
-?statement : kernel
-           | pragma
+?statement : pragma
            | decl 
            | gatedecl
            | branch 
            | loop 
            | control
            | subroutine 
+           | kernel
+           | extern
            | qblock
            | qstatement 
            | cstatement 
+           | defcal
 
 
 /////////////////////////////////////////////////////////
@@ -111,6 +113,7 @@ block : "{" block* statement* "}"
 decl : qdecl _ENDL
      | cdecl _ENDL
      | const_decl _ENDL
+     | tdecl _ENDL
 
 qdecl   : qtype ID
 
@@ -169,8 +172,14 @@ measure : "measure" id_list
 meas_decl : measure "->" id_list 
           | id_list "=" measure
 
+defcal : "defcal" gatedef qblock* cblock*
+       | "defcalgrammar" "\"" ID "\"" _ENDL
+
+
 /////////////////////////////////////////////////////////
 //Classical operations
+
+cblock : "{" cblock* cstatement* "}"
 
 cstatement : expr _ENDL
            | "return" cstatement -> return
@@ -193,7 +202,7 @@ call : MATH_FUNCS
 cast : ctype
 
 member : ID "in" "{" expr_list "}"
-       | ID "in" range
+       | ID "in" slice
 
 expr_list : (expr ",")* expr
 
@@ -231,6 +240,7 @@ box : "boxas" ID qblock
 
 ttype : "length"       -> length 
           | "stretch" INT? -> stretch
+          | "duration" -> duration_decl
 
 duration : "[" tvalue "]"
          | "[" expr "]"
@@ -243,7 +253,10 @@ subroutine : "def" ID ("(" carg_list? qarg_list? ")")? return_sig? block
 
 kernel : "kernel" ID ("(" carg_list? ")")? return_sig?
 
+extern : "extern" ID ("(" id_list? ")")? (return_sig ID)? _ENDL 
+
 return_sig : "->" carg
+
 
 /////////////////////////////////////////////////////////
 // Helpers
