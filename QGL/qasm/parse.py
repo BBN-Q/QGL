@@ -16,7 +16,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import os, sys
-from lark import Lark, tree 
+import logging 
+from lark import Lark, tree, logger 
+
+#logger.setLevel(logging.DEBUG)
 
 try:
     import pydot
@@ -50,6 +53,7 @@ class QASM3Parser(Lark):
 
 if __name__ == "__main__":
     with open(sys.argv[1]) as f:
-        parser = QASM3Parser()
+        parser = QASM3Parser(debug=True)
         parser.build_tree(f.read())
+        print(parser)
         parser.cst_graph("test_qasm.png")
