@@ -108,8 +108,8 @@ block : "{" block* statement* "}"
 
 /////////////////////////////////////////////////////////
 //Variable delcaration
-decl : qdecl _ENDL
-     | cdecl _ENDL
+?decl : qdecl _ENDL 
+     | cdecl _ENDL 
      | const_decl _ENDL
 
 qdecl   : qtype ID
@@ -118,10 +118,10 @@ cdecl   : ctype ID assignment?
 
 tdecl   : ttype ID assignment?
 
-const_decl : "const" ID assignment
+const_decl : "const" ID "=" expr
 
-assignment : "=" expr
-           | ASSIGN_OP expr
+?assignment : "=" expr -> assign
+           | ASSIGN_OP expr -> aug_assign
 
 modifier: index 
         | slice
@@ -172,16 +172,16 @@ meas_decl : measure "->" id_list
 /////////////////////////////////////////////////////////
 //Classical operations
 
-cstatement : expr _ENDL
+?cstatement : expr _ENDL
            | "return" cstatement -> return
 
-expr   : expr binary_op expr
+expr   : ID assignment -> classical_assignment
        | unary_op expr 
        | expr incr_op
        | call "(" expr_list? ")"
        | member
        | measure
-       | ID assignment
+       | expr binary_op expr -> bin_op
        | value 
        | tvalue
        | ID
