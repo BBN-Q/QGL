@@ -43,6 +43,13 @@ def constant(amp=1, length=0, sampling_rate=1e9, **params):
 # square is deprecated but alias square to constant
 square = constant
 
+def constant_autodyne(amp=1, length=0, sampling_rate=1e9, **params):
+    '''
+    A constant section.
+    '''
+    numPts = int(np.round(length * sampling_rate))
+    return amp * np.ones(numPts, dtype=np.complex)
+    
 def drag(amp=1,
          length=0,
          cutoff=2,
