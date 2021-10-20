@@ -612,7 +612,6 @@ def inject_modulation_cmds(seqs):
     """
     cur_freq = 0
     cur_phase = 0
-#    import pdb;pdb.set_trace();
     for ct,seq in enumerate(seqs):
         #check whether we have modulation commands
         freqs = np.unique([entry.frequency for entry in filter(lambda s: isinstance(s,Compiler.Waveform) and s.label!='Id', seq)])
