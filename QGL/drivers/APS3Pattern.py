@@ -650,22 +650,25 @@ def inject_modulation_cmds(seqs):
             elif isinstance(entry, Compiler.Waveform):
                 if not no_modulation_cmds:
                     #select nco
-                    if entry.label != 'Id': #Id gate does not need modulation
+                    if entry.label != 'Id': #Id gate does not to add new frequency
                         nco_select = (list(freqs)).index(entry.frequency) + 1
+                        cur_freq = entry.frequency
+                    else:
+                        nco_select = mod_seq[-1].nco_select
                         cur_freq = entry.frequency
                         if USE_PHASE_OFFSET_INSTRUCTION and (entry.length > 0) and (cur_phase != entry.phase):
                             mod_seq.append( ModulationCommand("SET_PHASE", nco_select, phase=entry.phase) )
                             cur_phase = entry.phase
-                        #now apply modulation for count command and waveform command, if non-zero length
-                        if entry.length > 0:
-                            mod_seq.append(entry)
-                            # if we have a modulate waveform modulate pattern and there is no pending frame update we can append length to previous modulation command
-                            if (len(mod_seq) > 1) and (isinstance(mod_seq[-1], Compiler.Waveform)) and (isinstance(mod_seq[-2], ModulationCommand)) and (mod_seq[-2].instruction == "MODULATE") \
-                            and mod_seq[-1].frequency == freqs[mod_seq[-2].nco_select - 1] and not pending_frame_update:
-                                mod_seq[-2].length += entry.length
-                            else:
-                                mod_seq.append( ModulationCommand("MODULATE", nco_select, length = entry.length))
-                                pending_frame_update = False
+                    #now apply modulation for count command and waveform command, if non-zero length
+                    if entry.length > 0:
+                        mod_seq.append(entry)
+                        # if we have a modulate waveform modulate pattern and there is no pending frame update we can append length to previous modulation command
+                        if (len(mod_seq) > 1) and (isinstance(mod_seq[-1], Compiler.Waveform)) and (isinstance(mod_seq[-2], ModulationCommand)) and (mod_seq[-2].instruction == "MODULATE") \
+                        and mod_seq[-1].frequency == freqs[mod_seq[-2].nco_select - 1] and not pending_frame_update:
+                            mod_seq[-2].length += entry.length
+                        else:
+                            mod_seq.append( ModulationCommand("MODULATE", nco_select, length = entry.length))
+                            pending_frame_update = False
                     #now apply non-zero frame changes after so it is applied at end
                     if entry.frameChange != 0:
                         pending_frame_update = True
