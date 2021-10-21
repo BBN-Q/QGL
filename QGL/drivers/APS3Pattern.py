@@ -650,7 +650,7 @@ def inject_modulation_cmds(seqs):
             elif isinstance(entry, Compiler.Waveform):
                 if not no_modulation_cmds:
                     #select nco
-                    if entry.label != 'Id': #Id gate does not to add new frequency
+                    if entry.label != 'Id': #Id gate should not add a new frequency
                         nco_select = (list(freqs)).index(entry.frequency) + 1
                         cur_freq = entry.frequency
                     else:
