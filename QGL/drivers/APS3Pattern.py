@@ -654,11 +654,11 @@ def inject_modulation_cmds(seqs):
                         nco_select = (list(freqs)).index(entry.frequency) + 1
                         cur_freq = entry.frequency
                     else:
-                        nco_select = mod_seq[-1].nco_select
-                        cur_freq = entry.frequency
-                        if USE_PHASE_OFFSET_INSTRUCTION and (entry.length > 0) and (cur_phase != entry.phase):
-                            mod_seq.append( ModulationCommand("SET_PHASE", nco_select, phase=entry.phase) )
-                            cur_phase = entry.phase
+                        nco_select = 1
+                        #cur_freq = entry.frequency
+                        #if USE_PHASE_OFFSET_INSTRUCTION and (entry.length > 0) and (cur_phase != entry.phase):
+                        #    mod_seq.append( ModulationCommand("SET_PHASE", nco_select, phase=entry.phase) )
+                        #    cur_phase = entry.phase
                     #now apply modulation for count command and waveform command, if non-zero length
                     if entry.length > 0:
                         mod_seq.append(entry)
