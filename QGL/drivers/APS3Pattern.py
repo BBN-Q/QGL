@@ -49,7 +49,7 @@ MAX_REPEAT_COUNT = 2**16 - 1
 MAX_TRIGGER_COUNT = 2**32 - 1
 
 MODULATION_CLOCK = 312.5e6
-
+NUM_NCO = 4
 # instruction encodings
 WFM = 0x0
 MARKER = 0x1
@@ -615,8 +615,8 @@ def inject_modulation_cmds(seqs):
     for ct,seq in enumerate(seqs):
         #check whether we have modulation commands
         freqs = np.unique([entry.frequency for entry in filter(lambda s: isinstance(s,Compiler.Waveform) and s.label!='Id', seq)])
-        if len(freqs) > 4:
-            raise Exception("Max 4 frequencies on the same channel allowed.")
+        if len(freqs) > NUM_NCO:
+            raise Exception("Max {} frequencies on the same channel allowed.".format(NUM_NCO))
         no_freq_cmds = np.all(np.less(np.abs(freqs), 1e-8))
         phases = [entry.phase for entry in filter(lambda s: isinstance(s,Compiler.Waveform) and s.label!='Id', seq)]
         no_phase_cmds = np.all(np.less(np.abs(phases), 1e-8))
@@ -653,12 +653,11 @@ def inject_modulation_cmds(seqs):
                     if entry.label != 'Id': #Id gate should not add a new frequency
                         nco_select = (list(freqs)).index(entry.frequency) + 1
                         cur_freq = entry.frequency
+                        if USE_PHASE_OFFSET_INSTRUCTION and (entry.length > 0) and (cur_phase != entry.phase):
+                            mod_seq.append( ModulationCommand("SET_PHASE", nco_select, phase=entry.phase) )
+                            cur_phase = entry.phase
                     else:
                         nco_select = 1
-                        #cur_freq = entry.frequency
-                        #if USE_PHASE_OFFSET_INSTRUCTION and (entry.length > 0) and (cur_phase != entry.phase):
-                        #    mod_seq.append( ModulationCommand("SET_PHASE", nco_select, phase=entry.phase) )
-                        #    cur_phase = entry.phase
                     #now apply modulation for count command and waveform command, if non-zero length
                     if entry.length > 0:
                         mod_seq.append(entry)
@@ -1143,7 +1142,6 @@ def read_sequence_file(fileName):
             wf_dat  = np.frombuffer(FID.read(2*wf_len), dtype=np.int16)
             wf_lib[f'ch{i+1}'] = ( 1.0 / MAX_WAVEFORM_VALUE) * wf_dat.flatten()
 
-        NUM_NCO = 2
         freq = np.zeros(NUM_NCO)  #radians per timestep
         phase = np.zeros(NUM_NCO)
         frame = np.zeros(NUM_NCO)
