@@ -1117,7 +1117,6 @@ def read_sequence_file(fileName):
     """
     chanStrs = ['ch1', 'ch2', 'm1', 'mod_phase']
     seqs = {ch: [] for ch in chanStrs}
-
     def start_new_seq():
         for ct, ch in enumerate(chanStrs):
             if (ct < 2) or (ct == 6):
@@ -1202,10 +1201,10 @@ def read_sequence_file(fileName):
                 if modulator_opcode == 0x0:
                     #modulate
                     count = ((instr.payload & 0xffffffff) + 1) * ADDRESS_UNIT
-                    nco_select = {0b0001: 0,
-                                  0b0010: 1,
-                                  0b0100: 2,
-                                  0b1000: 3}[nco_select_bits]
+                    nco_select = {0b001: 0,
+                                  0b010: 1,
+                                  0b011: 2,
+                                  0b100: 3}[nco_select_bits]
                     seqs['mod_phase'][-1] = np.append(
                         seqs['mod_phase'][-1], freq[nco_select] *
                         np.arange(count) + accumulated_phase[nco_select] +
@@ -1215,7 +1214,7 @@ def read_sequence_file(fileName):
                     phase_rad = 2 * np.pi * (instr.payload &
                                              0xffffffff) / 2**27
                     for ct in range(NUM_NCO):
-                        if (nco_select_bits >> ct) & 0x1:
+                        if (int(nco_select_bits)-1 == ct):
                             if modulator_opcode == 0x2:
                                 #reset
                                 next_phase[ct] = 0

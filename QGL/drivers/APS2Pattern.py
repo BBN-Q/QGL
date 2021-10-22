@@ -411,7 +411,7 @@ def WaveformPrefetch(addr):
 def marker_count_bits(count):
     """Marker count to instruction bits"""
     count = int(count)
-    four_count = ((count // ADDRESS_UNIT) - 1) 
+    four_count = ((count // ADDRESS_UNIT) - 1)
     count_rem = count % ADDRESS_UNIT
     return four_count, count_rem
 
