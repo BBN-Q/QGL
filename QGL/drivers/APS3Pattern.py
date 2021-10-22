@@ -1201,10 +1201,7 @@ def read_sequence_file(fileName):
                 if modulator_opcode == 0x0:
                     #modulate
                     count = ((instr.payload & 0xffffffff) + 1) * ADDRESS_UNIT
-                    nco_select = {0b001: 0,
-                                  0b010: 1,
-                                  0b011: 2,
-                                  0b100: 3}[nco_select_bits]
+                    nco_select = int(nco_select_bits)-1
                     seqs['mod_phase'][-1] = np.append(
                         seqs['mod_phase'][-1], freq[nco_select] *
                         np.arange(count) + accumulated_phase[nco_select] +
