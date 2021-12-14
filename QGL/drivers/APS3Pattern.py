@@ -49,7 +49,7 @@ MAX_REPEAT_COUNT = 2**16 - 1
 MAX_TRIGGER_COUNT = 2**32 - 1
 
 MODULATION_CLOCK = 312.5e6
-
+NUM_NCO = 4
 # instruction encodings
 WFM = 0x0
 MARKER = 0x1
@@ -614,13 +614,13 @@ def inject_modulation_cmds(seqs):
     cur_phase = 0
     for ct,seq in enumerate(seqs):
         #check whether we have modulation commands
-        freqs = np.unique([entry.frequency for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)])
-        if len(freqs) > 2:
-            raise Exception("Max 2 frequencies on the same channel allowed.")
+        freqs = np.unique([entry.frequency for entry in filter(lambda s: isinstance(s,Compiler.Waveform) and s.label!='Id', seq)])
+        if len(freqs) > NUM_NCO:
+            raise Exception("Max {} frequencies on the same channel allowed.".format(NUM_NCO))
         no_freq_cmds = np.all(np.less(np.abs(freqs), 1e-8))
-        phases = [entry.phase for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
+        phases = [entry.phase for entry in filter(lambda s: isinstance(s,Compiler.Waveform) and s.label!='Id', seq)]
         no_phase_cmds = np.all(np.less(np.abs(phases), 1e-8))
-        frame_changes = [entry.frameChange for entry in filter(lambda s: isinstance(s,Compiler.Waveform), seq)]
+        frame_changes = [entry.frameChange for entry in filter(lambda s: isinstance(s,Compiler.Waveform) and s.label!='Id', seq)]
         no_frame_cmds = np.all(np.less(np.abs(frame_changes), 1e-8))
         no_modulation_cmds = no_freq_cmds and no_phase_cmds and no_frame_cmds
 
@@ -650,11 +650,14 @@ def inject_modulation_cmds(seqs):
             elif isinstance(entry, Compiler.Waveform):
                 if not no_modulation_cmds:
                     #select nco
-                    nco_select = (list(freqs)).index(entry.frequency) + 1
-                    cur_freq = entry.frequency
-                    if USE_PHASE_OFFSET_INSTRUCTION and (entry.length > 0) and (cur_phase != entry.phase):
-                        mod_seq.append( ModulationCommand("SET_PHASE", nco_select, phase=entry.phase) )
-                        cur_phase = entry.phase
+                    if entry.label != 'Id': #Id gate should not add a new frequency
+                        nco_select = (list(freqs)).index(entry.frequency) + 1
+                        cur_freq = entry.frequency
+                        if USE_PHASE_OFFSET_INSTRUCTION and (entry.length > 0) and (cur_phase != entry.phase):
+                            mod_seq.append( ModulationCommand("SET_PHASE", nco_select, phase=entry.phase) )
+                            cur_phase = entry.phase
+                    else:
+                        nco_select = 1
                     #now apply modulation for count command and waveform command, if non-zero length
                     if entry.length > 0:
                         mod_seq.append(entry)
@@ -1114,7 +1117,6 @@ def read_sequence_file(fileName):
     """
     chanStrs = ['ch1', 'ch2', 'm1', 'mod_phase']
     seqs = {ch: [] for ch in chanStrs}
-
     def start_new_seq():
         for ct, ch in enumerate(chanStrs):
             if (ct < 2) or (ct == 6):
@@ -1139,7 +1141,6 @@ def read_sequence_file(fileName):
             wf_dat  = np.frombuffer(FID.read(2*wf_len), dtype=np.int16)
             wf_lib[f'ch{i+1}'] = ( 1.0 / MAX_WAVEFORM_VALUE) * wf_dat.flatten()
 
-        NUM_NCO = 2
         freq = np.zeros(NUM_NCO)  #radians per timestep
         phase = np.zeros(NUM_NCO)
         frame = np.zeros(NUM_NCO)
@@ -1200,10 +1201,7 @@ def read_sequence_file(fileName):
                 if modulator_opcode == 0x0:
                     #modulate
                     count = ((instr.payload & 0xffffffff) + 1) * ADDRESS_UNIT
-                    nco_select = {0b0001: 0,
-                                  0b0010: 1,
-                                  0b0100: 2,
-                                  0b1000: 3}[nco_select_bits]
+                    nco_select = int(nco_select_bits)-1
                     seqs['mod_phase'][-1] = np.append(
                         seqs['mod_phase'][-1], freq[nco_select] *
                         np.arange(count) + accumulated_phase[nco_select] +
@@ -1213,7 +1211,7 @@ def read_sequence_file(fileName):
                     phase_rad = 2 * np.pi * (instr.payload &
                                              0xffffffff) / 2**27
                     for ct in range(NUM_NCO):
-                        if (nco_select_bits >> ct) & 0x1:
+                        if (int(nco_select_bits)-1 == ct):
                             if modulator_opcode == 0x2:
                                 #reset
                                 next_phase[ct] = 0
