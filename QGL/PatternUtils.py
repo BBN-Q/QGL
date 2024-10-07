@@ -37,7 +37,7 @@ def hash_pulse(shape):
     return hashlib.sha1(shape.tostring()).hexdigest()
 
 
-TAZKey = hash_pulse(np.zeros(1, dtype=np.complex))
+TAZKey = hash_pulse(np.zeros(1, dtype=np.complex128))
 
 
 def delay(sequences, delay):
@@ -403,4 +403,3 @@ def decouple_CR_pulses(seq, CR_qs, CR_decoupled_qs):
                 elif any([pulse.channel == ChannelLibraries.EdgeFactory(*qsCR) for qsCR in CR_qs]):# and pulse.channel == seq_el.seq[k+2].channel:
                     seq_el.seq[k+1] = reduce(operator.mul, [seq_el.seq[k+1]] + [X(q) for q in CR_decoupled_qs])
     return seq
-
