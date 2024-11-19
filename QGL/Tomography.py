@@ -44,7 +44,7 @@ def create_tomo_blocks(qubits, numPulses, alignment='parallel'):
         raise ValueError("Alignment must be either serial or parallel")
 
 
-def state_tomo(seq, qubits, numPulses=4, measChans=None):
+def state_tomo(seq, qubits, numPulses=4, measChans=None, alignment='parallel'):
     '''
 	Apply state tomography readout pulses and measurement.
 
@@ -60,7 +60,7 @@ def state_tomo(seq, qubits, numPulses=4, measChans=None):
     measBlock = reduce(operator.mul, [MEAS(q) for q in measChans])
 
     return [seq + [tomoBlock, measBlock]
-            for tomoBlock in create_tomo_blocks(qubits, numPulses)]
+            for tomoBlock in create_tomo_blocks(qubits, numPulses, alignment=alignment)]
 
 
 def process_tomo(seq, qubits, numPulses=4, measChans=None):

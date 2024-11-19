@@ -54,18 +54,33 @@ def StarkSpectroscopy(qubit: Channels.LogicalChannel,
         amplitude = [amplitude]
 
     def stark_shift_pulse(amp):
-        pump_pulse = Utheta(measurement, amp=amp, length=length)
+        pump_pulse = Utheta(measurement, amp=amp, length=length, frequency = measurement.autodyne_freq) #Edited to add sideband TB 2/3/23
         l1 = length - delay - qubit.pulse_params["length"] - delay
         spec_pulse = Id(qubit, length=l1)+X(qubit)+Id(qubit,length=delay)
         return spec_pulse*pump_pulse
 
     seqs = [[stark_shift_pulse(a), MEAS(qubit)] for a in amplitude]
-    axis_descriptor = [{
+    if cals:
+        seqs = seqs + [[Id(qubit), MEAS(qubit)], [X(qubit), MEAS(qubit)]]
+        # axis_descriptor = [delay_descriptor(offsets), cal_descriptor([qubit],1)]
+        axis_descriptor = [{
         'name': 'Stark Shift Amplitude',
         'unit': None,
         'points': list(amplitude),
         'partition': 1
-    }]
+        }, cal_descriptor([qubit], 1)]
+
+    else:
+        axis_descriptor = [delay_descriptor(offsets)]
+        axis_descriptor = [{
+        'name': 'Stark Shift Amplitude',
+        'unit': None,
+        'points': list(amplitude),
+        'partition': 1
+        }]
+
+    # seqs = seqs + [[Id(qubit), MEAS(qubit)], [X(qubit), MEAS(qubit)]]
+
     metafile = compile_to_hardware(seqs, 'StarkSpec/StarkSpec', axis_descriptor=axis_descriptor)
 
     if showPlot:
@@ -79,7 +94,9 @@ def StarkEcho(qubit: Channels.LogicalChannel,
               delays: IterableType[Union[int,float]],
               wait: Union[int,float] = 200e-9, 
               periods: int = 4, 
-              showPlot: bool = False) -> str:
+              showPlot: bool = False,
+              ringuptime: Union[int,float] = 0,
+              cals: bool=True) -> str:
     """
     Hahn echo sequence with a coherent displacement of the qubit measurement
     cavity. Used to measure photon-induced dephasing. This sequence can cause
@@ -132,21 +149,30 @@ def StarkEcho(qubit: Channels.LogicalChannel,
 
     def echo_stark(n, amp, max_delay, meas_delay=200e-9):
         x_len = qubit.pulse_params["length"]
-        max_len = 3*x_len + 2*max_delay + meas_delay
-        echo_wait = max_len - (3*x_len + 2*delays[n])
+        max_len = 3*x_len + max_delay + meas_delay
+        echo_wait = max_len - (3*x_len + delays[n]) + ringuptime
 
-        echo_seq = Id(qubit, echo_wait) + X90(qubit) + Id(qubit, delays[n]) + \
-                        Y(qubit) + Id(qubit, delays[n]) + U90(qubit, echo_phase(n))
+        echo_seq = Id(qubit, echo_wait) + X90(qubit) + Id(qubit, delays[n]/2) + \
+                        Y(qubit) + Id(qubit, delays[n]/2) + U90(qubit, echo_phase(n))
 
-        meas_seq = Utheta(measurement, amp=amp, length=max_len)
+        meas_seq = Utheta(measurement, amp=amp, length=max_len+ringuptime, frequency = measurement.autodyne_freq) #Edited to add sideband TB 2/3/23
 
         return echo_seq*meas_seq
 
 
     seqs = [[echo_stark(n, amp, np.max(delays)), Id(measurement, length=wait), MEAS(qubit)]
                 for n, amp in product(range(len(delays)), amplitudes)]
+    # seqs = seqs + [[Id(qubit), MEAS(qubit)], [X(qubit), MEAS(qubit)]]
 
-    axis_descriptor = [delay_descriptor(delays)] * len(amplitudes)
+    if cals:
+        seqs = seqs + [[Id(qubit), MEAS(qubit)], [X(qubit), MEAS(qubit)]]
+        axis_descriptor = [delay_descriptor(delays), cal_descriptor([qubit],1)]
+    else:
+        axis_descriptor = [delay_descriptor(delays)]
+
+    # axis_descriptor = [delay_descriptor(delays)] * len(amplitudes)
+    # axis_descriptor = axis_descriptor + [cal_descriptor([qubit],1)]
+
 
     metafile = compile_to_hardware(seqs, 'StarkEcho/StarkEcho', axis_descriptor=axis_descriptor)
 
@@ -162,7 +188,8 @@ def CavityPumpProbe(qubit: Channels.LogicalChannel,
                     amplitude: IterableType[Union[int,float]],
                     length: Union[int,float] = 1e-6, 
                     wait: Union[int,float] = 2e-6, 
-                    showPlot: bool = False) -> str:
+                    showPlot: bool = False,
+                    cals: bool=True) -> str:
     """
     Time resolved cavity spectroscopy. Applies a coherent displacement to qubit
     readout cavity while sweeping qubit spectroscopy pulse delay. Useful to
@@ -206,8 +233,8 @@ def CavityPumpProbe(qubit: Channels.LogicalChannel,
     if not isinstance(offsets, Iterable):
         offsets = [offsets]
 
-    def cavity_probe(offset):
-        pump_pulse = Utheta(measurement, amp=amplitude, length=length)
+    def cavity_probe(offset, amp):
+        pump_pulse = Utheta(measurement, amp=amp, length=length, frequency=qubit.measure_chan.autodyne_freq) #Modified TB 2/3/23
         x_len = qubit.pulse_params["length"]
         if offset < -1*x_len:
             return [X(qubit), Id(qubit, length=(-x_len-offset)), pump_pulse, Id(qubit, length=wait)]
@@ -224,8 +251,22 @@ def CavityPumpProbe(qubit: Channels.LogicalChannel,
             wait_len = wait - (offset-length+x_len)
             return [pump_pulse, Id(qubit, length=(offset-length)), X(qubit), Id(qubit, length=wait_len)]
 
-    seqs = [[cavity_probe(off), MEAS(qubit)] for off in offsets]
-    axis_descriptor = [delay_descriptor(offsets)]
+    if len(offsets) > 1:
+        assert len(amplitude) == 1
+        seqs = [[cavity_probe(off, amplitude), MEAS(qubit)] for off in offsets]
+        axis_descriptor = [delay_descriptor(offsets)]
+
+    elif len(amplitude)>1:
+        assert len(offsets) == 1
+        seqs = [[cavity_probe(offsets[0], amp), MEAS(qubit)] for amp in amplitude]
+        axis_descriptor = [delay_descriptor(amplitude*1e-6)] #Maybe there's a more appropriate descriptor for amplitudes but this is fine
+
+    #add a cal point 2/3/23 TB
+
+    if cals:
+        seqs = seqs + [[Id(qubit), MEAS(qubit)], [X(qubit), MEAS(qubit)]]
+        axis_descriptor = axis_descriptor + [cal_descriptor([qubit],1)]
+
     metafile = compile_to_hardware(seqs, 'CavityPumpProbe/CavityPumpProbe', axis_descriptor=axis_descriptor)
 
     if showPlot:
