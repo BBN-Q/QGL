@@ -112,7 +112,7 @@ class APSWaveform(object):
     def length(self, value):
         self._length = value
 
-    
+
 
 def preprocess(seqs, shapeLib, T):
     for seq in seqs:
@@ -163,11 +163,11 @@ def compress_sequences(seqs):
                     repl_seq = []
                     while length > MAX_TRIGGER_COUNT:
                         repl_entry = copy(seq[idx+skip])
-                        repl_entry.length = MAX_TRIGGER_COUNT 
+                        repl_entry.length = MAX_TRIGGER_COUNT
                         repl_seq.append(repl_entry)
-                        length -= MAX_TRIGGER_COUNT 
+                        length -= MAX_TRIGGER_COUNT
                     final_entry = copy(seq[idx+skip])
-                    final_entry.length = length 
+                    final_entry.length = length
                     repl_seq.append(final_entry)
                     seq[idx+skip:idx+skip+1] = repl_seq
                     skip += len(repl_seq) - 1
@@ -201,7 +201,7 @@ def wf_sig(wf):
                 wf.frequency)
 
 
-TAZShape = np.zeros(1, dtype=np.complex)
+TAZShape = np.zeros(1, dtype=np.complex128)
 TAZKey = hash_pulse(TAZShape)
 
 
@@ -766,7 +766,7 @@ def read_sequence_file(fileName):
     chanStrs = ['ch1', 'ch2', 'ch3', 'ch4']
     chanStrs2 = ['chan_1', 'chan_2', 'chan_3', 'chan_4']
     mrkStrs = ['ch1m1', 'ch2m1', 'ch3m1', 'ch4m1']
-    
+
     data = {}
     with open(fileName, 'rb') as FID:
         target_hw      = FID.read(4).decode('utf-8')
@@ -781,14 +781,14 @@ def read_sequence_file(fileName):
             data[channel]["isIQMode"] = bool(struct.unpack('?', FID.read(1))[0])
             wf_len   = struct.unpack('<Q', FID.read(8))[0]
             data[channel]["waveformLib"] = np.frombuffer(FID.read(2*wf_len), dtype=np.int16)
-        
+
         has_LLs = [struct.unpack('?', FID.read(1))[0] for i in range(2)]
         for LLexists, chanct in zip(has_LLs, [0,2]):
             if LLexists:
-                
+
                 channel = channels[chanct]
-                numKeys      = struct.unpack('<Q', FID.read(8))[0]  
-                numEntries   = struct.unpack('<Q', FID.read(8))[0]  
+                numKeys      = struct.unpack('<Q', FID.read(8))[0]
+                numEntries   = struct.unpack('<Q', FID.read(8))[0]
                 data[channel]["linkListData"] = {}
                 data[channel]["linkListData"]["numLLEntries"] = numEntries
                 for i in range(numKeys): #key, dataVec in LLDataVecs.items():
