@@ -23,7 +23,7 @@ def gaussian(amp=1, length=0, cutoff=2, sampling_rate=1e9, **params):
     #Rescale so that the maximum equals amp
     amp = (amp / (1 - nextPoint))
     return (amp * (np.exp(-0.5 * (xPts**2)) - np.exp(-0.5 * (
-        (xPts[-1] + xStep)**2)))).astype(np.complex)
+        (xPts[-1] + xStep)**2)))).astype(np.complex128)
 
 
 def delay(length=0, sampling_rate=1e9, **params):
@@ -38,7 +38,7 @@ def constant(amp=1, length=0, sampling_rate=1e9, **params):
     A constant section.
     '''
     numPts = int(np.round(length * sampling_rate))
-    return amp * np.ones(numPts, dtype=np.complex)
+    return amp * np.ones(numPts, dtype=np.complex128)
 
 # square is deprecated but alias square to constant
 square = constant
@@ -80,7 +80,7 @@ def gaussOn(amp=1, length=0, cutoff=2, sampling_rate=1e9, **params):
     nextPoint = np.exp(-0.5 * ((xPts[0] - xStep)**2))
     #Rescale so that it still goes to amp
     amp = (amp / (1 - nextPoint))
-    return (amp * (np.exp(-0.5 * (xPts**2)) - nextPoint)).astype(np.complex)
+    return (amp * (np.exp(-0.5 * (xPts**2)) - nextPoint)).astype(np.complex128)
 
 
 def gaussOff(amp=1, length=0, cutoff=2, sampling_rate=1e9, **params):
@@ -96,7 +96,7 @@ def gaussOff(amp=1, length=0, cutoff=2, sampling_rate=1e9, **params):
     nextPoint = np.exp(-0.5 * ((xPts[-1] + xStep)**2))
     #Rescale so that it still goes to amp
     amp = (amp / (1 - nextPoint))
-    return (amp * (np.exp(-0.5 * (xPts**2)) - nextPoint)).astype(np.complex)
+    return (amp * (np.exp(-0.5 * (xPts**2)) - nextPoint)).astype(np.complex128)
 
 
 def dragGaussOn(amp=1,
@@ -140,7 +140,7 @@ def tanh(amp=1, length=0, sigma=0, cutoff=2, sampling_rate=1e9, **params):
     A rounded constant shape from the sum of two tanh shapes.
     '''
     if length == 0.0:
-        return np.empty(shape=(0,)).astype(np.complex)
+        return np.empty(shape=(0,)).astype(np.complex128)
     else:
         numPts = int(np.round(length * sampling_rate))
         xPts = np.linspace(-length / 2, length / 2, numPts)
@@ -151,7 +151,7 @@ def tanh(amp=1, length=0, sigma=0, cutoff=2, sampling_rate=1e9, **params):
                                    f'(={sigma}s).  Consider '
                                    f'using a Gaussian pulse instead.')
         return amp * 0.5 * (np.tanh((xPts - x1) / sigma) + np.tanh(
-            (x2 - xPts) / sigma)).astype(np.complex)
+            (x2 - xPts) / sigma)).astype(np.complex128)
 
 
 def exp_decay(amp=1, length=0, sigma=0, sampling_rate=1e9, steady_state=0.4, **params):
@@ -161,7 +161,7 @@ def exp_decay(amp=1, length=0, sigma=0, sampling_rate=1e9, steady_state=0.4, **p
     """
     numPts = int(np.round(length * sampling_rate))
     timePts = (1.0 / sampling_rate) * np.arange(numPts)
-    return amp * ((1-steady_state) * np.exp(-timePts / sigma) + steady_state).astype(np.complex)
+    return amp * ((1-steady_state) * np.exp(-timePts / sigma) + steady_state).astype(np.complex128)
 
 def CLEAR(amp=1, length=0, sigma=0, sampling_rate=1e9, **params):
     """
@@ -175,10 +175,10 @@ def CLEAR(amp=1, length=0, sigma=0, sampling_rate=1e9, **params):
     if 'step_length' not in params:
         params['step_length'] = 100e-9
     timePts = (1.0 / sampling_rate) * np.arange(np.round((length-2*params['step_length']) * sampling_rate))
-    flat_step = amp * (0.6 * np.exp(-timePts / sigma) + 0.4).astype(np.complex)
+    flat_step = amp * (0.6 * np.exp(-timePts / sigma) + 0.4).astype(np.complex128)
     numPts_clear_step = int(np.round(params['step_length'] * sampling_rate))
-    clear_step_one = amp * params['amp1'] * np.ones(numPts_clear_step, dtype=np.complex)
-    clear_step_two = amp * params['amp2'] * np.ones(numPts_clear_step, dtype=np.complex)
+    clear_step_one = amp * params['amp1'] * np.ones(numPts_clear_step, dtype=np.complex128)
+    clear_step_two = amp * params['amp2'] * np.ones(numPts_clear_step, dtype=np.complex128)
     return np.append(flat_step, [clear_step_one, clear_step_two])
 
 def autodyne(frequency=10e6, baseShape=constant, **params):

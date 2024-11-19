@@ -240,7 +240,7 @@ def apply_min_pulse_constraints(miniLL, wfLib):
         if curEntry.isZero and not nextEntry.isZero:
             # Concatenate the waveforms
             paddedWF = np.hstack((np.zeros(curEntry.length,
-                                           dtype=np.complex),
+                                           dtype=np.complex128),
                                   wfLib[wf_sig(nextEntry)]))
             # Generate a new key
             nextEntry.key = hash_pulse(paddedWF)
@@ -263,12 +263,12 @@ def apply_min_pulse_constraints(miniLL, wfLib):
                 continue
             elif curEntry.isTimeAmp:  # non-zero
                 paddedWF = np.hstack(
-                    (np.zeros(padLength, dtype=np.complex),
+                    (np.zeros(padLength, dtype=np.complex128),
                      wfLib[wf_sig(curEntry)] * np.ones(curEntry.length)))
                 curEntry.isTimeAmp = False
             else:
                 paddedWF = np.hstack((np.zeros(padLength,
-                                               dtype=np.complex),
+                                               dtype=np.complex128),
                                       wfLib[wf_sig(curEntry)]))
             # Generate a new key
             curEntry.key = hash_pulse(paddedWF)
@@ -291,12 +291,12 @@ def apply_min_pulse_constraints(miniLL, wfLib):
             elif curEntry.isTimeAmp:  #non-zero
                 paddedWF = np.hstack(
                     (wfLib[curEntry.key] * np.ones(curEntry.length),
-                     np.zeros(padLength, dtype=np.complex)))
+                     np.zeros(padLength, dtype=np.complex128)))
                 curEntry.isTimeAmp = False
             else:
                 paddedWF = np.hstack((wfLib[curEntry.key],
                                       np.zeros(padLength,
-                                               dtype=np.complex)))
+                                               dtype=np.complex128)))
             # Generate a new key
             curEntry.key = hash_pulse(paddedWF)
             curEntry.length = paddedWF.size
