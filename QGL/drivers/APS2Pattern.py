@@ -610,16 +610,16 @@ class ModulationCommand(object):
             (nco_select_bits) << NCO_SELECT_OP_OFFSET)
         if self.instruction == "MODULATE":
             #zero-indexed quad count
-            payload |= np.uint64(self.length / ADDRESS_UNIT - 1)
+            payload = np.uint64(payload) | np.uint64(self.length / ADDRESS_UNIT - 1)
         elif self.instruction == "SET_FREQ":
             # frequencies can span -2 to 2 or 0 to 4 in unsigned
-            payload |= np.uint64(
+            payload = np.uint64(payload) | np.uint64(
                 (self.frequency / MODULATION_CLOCK if self.frequency > 0 else
                  self.frequency / MODULATION_CLOCK + 4) * 2**28)
         elif (self.instruction == "SET_PHASE") | (
                 self.instruction == "UPDATE_FRAME"):
             #phases can span -0.5 to 0.5 or 0 to 1 in unsigned
-            payload |= np.uint64(np.mod(self.phase / (2 * np.pi), 1) * 2**28)
+            payload = np.uint64(payload) | np.uint64(np.mod(self.phase / (2 * np.pi), 1) * 2**28)
 
         instr = Instruction(MODULATION << 4, payload, label)
         instr.writeFlag = write_flag
