@@ -28,7 +28,7 @@ jobs:
         touch ~/.condarc
         echo "pkgs_dirs:" >> ~/.condarc
         echo "  - ~/.cache/conda" >> ~/.condarc
-    
+
     - name: pip cache
       uses: actions/cache@v2
       with:
@@ -36,7 +36,7 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-          
+
     - name: conda cache
       uses: actions/cache@v2
       with:
@@ -44,7 +44,7 @@ jobs:
         key: ${{ runner.os }}-conda-${{ hashFiles('**/requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-    
+
     - name: Install dependencies
       run: |
         conda install -yq numpy sqlalchemy jupyter scipy networkx
@@ -58,7 +58,7 @@ jobs:
       run: |
         pip install -e .
         python -m unittest discover -v
-        
+
     - name: Build and deploy documentation
       uses: actions/checkout@v2
       with:
@@ -67,10 +67,8 @@ jobs:
           git pull
           mkdocs gh-deploy
           cp -r site QGL_documentation
-        
+
     - name: Documentation Deploy
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         path: QGL_documentation
-      
-      
