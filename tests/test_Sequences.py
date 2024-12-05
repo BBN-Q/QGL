@@ -566,6 +566,7 @@ class TestAPS1(unittest.TestCase, AWGTestHelper, TestSequences):
 		'''
         awgData = self.read_function(testFile)
         truthData = self.read_function(truthFile)
+        #truthData = self.read_function(testFile)
 
         awgDataLen = len(awgData)
         truthDataLen = len(truthData)

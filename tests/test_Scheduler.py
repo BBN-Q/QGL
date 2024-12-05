@@ -14,6 +14,14 @@ class SchedulerTest(unittest.TestCase):
         self.q3 = QubitFactory('q3')
         self.q4 = QubitFactory('q4')
 
+        ChannelLibraries.channelLib.new_edge(self.q1,self.q2)
+        ChannelLibraries.channelLib.new_edge(self.q2,self.q3)
+        ChannelLibraries.channelLib.new_edge(self.q3,self.q4)
+
+        self.q1q2 = EdgeFactory(self.q1,self.q2)
+        self.q1q2 = EdgeFactory(self.q2,self.q3)
+        self.q3q4 = EdgeFactory(self.q3,self.q4)
+        
     def test_1q_ops(self):
         q1, q2, q3 = self.q1, self.q2, self.q3
 

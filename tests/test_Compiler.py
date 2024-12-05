@@ -21,18 +21,22 @@ class CompileUtils(unittest.TestCase):
         self.q2 = Qubit(label='q2', gate_chan=self.q2gate, channel_db=self.cl.channelDatabase)
         self.q2.phys_chan = self.q2phys
         self.q2.pulse_params['length'] = 30e-9
+        self.cl.update_channelDict()
 
         self.trigger = Channels.LogicalMarkerChannel(label='trigger', channel_db=self.cl.channelDatabase)
         self.measq1 = Channels.Measurement(label='M-q1', meas_type='autodyne', channel_db=self.cl.channelDatabase)
         self.measq1.trig_chan = self.trigger
         self.measq2 = Channels.Measurement(label='M-q2', meas_type='autodyne', channel_db=self.cl.channelDatabase)
         self.measq2.trig_chan = self.trigger
+
+        self.q1.measure_chan = self.measq1
+        self.q2.measure_chan = self.measq2
         self.cl.update_channelDict()
+
 
     def test_add_digitizer_trigger(self):
         q1 = self.q1
         seq = [X90(q1), MEAS(q1), Y(q1), MEAS(q1)]
-
         PatternUtils.add_digitizer_trigger([seq])
         assert (self.trigger in seq[1].pulses.keys())
         assert (self.trigger in seq[3].pulses.keys())
