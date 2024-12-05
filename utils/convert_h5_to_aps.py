@@ -4,7 +4,7 @@ import sys
 import os.path
 
 def write_to_aps1(fileName, data):
-    channelDataFor = np.array([i in data['channelDataFor'] for i in range(1,5)], dtype=np.bool)
+    channelDataFor = np.array([i in data['channelDataFor'] for i in range(1,5)], dtype=bool)
     try:
         with open(fileName, 'wb') as FID:
             FID.write(b'APS1')                     # target hardware
@@ -23,7 +23,7 @@ def write_to_aps1(fileName, data):
                     FID.write(np.uint64(data['channels'][name]['linkListDataLength']).tobytes()) # numEntries
                     for key, dataVec in data['channels'][name]['linkListData'].items():
                         FID.write(key.ljust(32,"#").encode("utf-8")) # Key 32 byte utf-8
-                        FID.write(dataVec.tobytes())           
+                        FID.write(dataVec.tobytes())
     except:
         print(f"Warning: could not write aps1 file {fileName}")
 
@@ -34,7 +34,7 @@ def write_to_aps2(fileName, data):
     wfInfo[1] = data['chan2']
 
     with open(fileName, 'wb') as FID:
-        FID.write(b'APS2')                     # target 
+        FID.write(b'APS2')                     # target
         FID.write(np.float32(data['file_version']).tobytes())   # Version
         FID.write(np.float32(data['fw_version']).tobytes())   # minimum firmware version
         FID.write(np.uint16(2).tobytes())      # number of channels
@@ -102,5 +102,3 @@ if __name__ == '__main__':
         if inst == "APS1":
             data = read_aps1_from_h5(basename+'.h5')
             write_to_aps1(basename+".aps1", data)
-
-

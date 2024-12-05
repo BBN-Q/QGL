@@ -16,6 +16,11 @@ class PulseTypes(unittest.TestCase):
         self.q3 = QubitFactory('q3')
         self.q4 = QubitFactory('q4')
 
+        ChannelLibraries.channelLib.new_edge(self.q1,self.q2)
+        ChannelLibraries.channelLib.new_edge(self.q3,self.q4)
+
+        self.q1q2 = EdgeFactory(self.q1,self.q2)
+        self.q3q4 = EdgeFactory(self.q3,self.q4)
     # This appears to run successfully with the skip commented out;
     # TJR, 07 Nov 2018
     #@unittest.skip("Type promition for CNOT(q1, q2) * X(q3) gives PulseBlock not CompoundGate. Looking into this issue.")

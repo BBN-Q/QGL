@@ -711,7 +711,7 @@ def write_sequence_file(awgData, fileName, miniLLRepeat=1):
         os.remove(fileName)
 
     with open(fileName, 'wb') as FID:
-        channelDataFor = np.array([0,0,0,0], dtype=np.bool)
+        channelDataFor = np.array([0,0,0,0], dtype=bool)
         if LLs12:
             channelDataFor[0:2] = True
         if LLs34:
@@ -722,7 +722,7 @@ def write_sequence_file(awgData, fileName, miniLLRepeat=1):
         FID.write(b'APS1')                     # target hardware
         FID.write(np.float32(2.2).tobytes())   # Version
         FID.write(channelDataFor.tobytes())    # channelDataFor
-        FID.write(np.array(miniLLRepeat-1, dtype=np.bool).tobytes()) # MiniLLRepeat
+        FID.write(np.array(miniLLRepeat-1, dtype=bool).tobytes()) # MiniLLRepeat
 
         #Create the waveform vectors
         wfInfo = []
@@ -771,7 +771,7 @@ def read_sequence_file(fileName):
     with open(fileName, 'rb') as FID:
         target_hw      = FID.read(4).decode('utf-8')
         file_version   = struct.unpack('<f', FID.read(4))[0]
-        channelDataFor = np.frombuffer(FID.read(4), dtype=np.bool)
+        channelDataFor = np.frombuffer(FID.read(4), dtype=bool)
         miniLLRepeat   = struct.unpack('?', FID.read(1))[0]
 
         # channels = [chanStrs2[i] for i in range(4) if channelDataFor[i]]
