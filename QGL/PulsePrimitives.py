@@ -583,13 +583,7 @@ def iSWAP(Q1,Q2, **kwargs):
     p = X(edge, **kwargs)
     return p._replace(label="iSWAP")
 
-def SWAP(Q1,Q2, **kwargs):
-    edge = ChannelLibraries.EdgeFactory(Q1,Q2)
-
-    p = X(edge, **kwargs)
-    return p._replace(label="SWAP")
-
-def SQRTSWAP(Q1,Q2, **kwargs):
+def SQRTiSWAP(Q1,Q2, **kwargs):
     edge = ChannelLibraries.EdgeFactory(Q1,Q2)
 
     p = X90(edge, **kwargs)

@@ -390,11 +390,12 @@ def entangling_seq(gate, q1, q2,swap=False):
                 q2, q1), (X90(q1) + Y90m(q1)) * X90(q2), ZX90_CR(q2, q1)]
     else:
         if gate == "CNOT":
-            return ZX90_CR(q2, q1)
+            return [X90(q1),Z90(q1)*Z90m(q2),iSWAP(q1,q2),X90(q2),iSWAP(q1,q2),Z90(q1)]
         elif gate == "iSWAP":
-            return [ZX90_CR(q2, q1) , Y90m(q1) * Y90m(q2), ZX90_CR(q2, q1)]
+            return [iSWAP(q1,q2)]
         elif gate == "SWAP":
-            return [SWAP(q2,q1)]
+            return [X90(q1),Z90(q1) * Z90m(q2),iSWAP(q1,q2),X90(q2),iSWAP(q1,q2),Z90(q1),
+                Y90(q2),X(q2),Z90m(q1) * Z90m(q2),iSWAP(q1,q2),Y90(q1),X(q1)]
 
 def TwoQubitClifford(q1, q2, cliffNum, kind='std'):
 
