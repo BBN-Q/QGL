@@ -339,8 +339,8 @@ def arb_axis_drag(qubit,
 
 
 def DiatomicPulse(qubit, a, b, c):
-  return (Ztheta(qubit, angle=c) + X90(qubit) + 
-          Ztheta(qubit, angle=b) + X90(qubit) + 
+  return (Ztheta(qubit, angle=c) + X90(qubit) +
+          Ztheta(qubit, angle=b) + X90(qubit) +
           Ztheta(qubit, angle=a))
 
 def ZYZPulse(qubit, a, b, c):
@@ -576,3 +576,21 @@ def TRIG(marker_chan, length):
     if not isinstance(marker_chan, Channels.LogicalMarkerChannel):
         raise ValueError("TRIG pulses can only be generated on LogicalMarkerChannels.")
     return TAPulse("TRIG", marker_chan, length, 1.0, 0., 0.)
+
+def iSWAP(Q1,Q2, **kwargs):
+    edge = ChannelLibraries.EdgeFactory(Q1,Q2)
+
+    p = X(edge, **kwargs)
+    return p._replace(label="iSWAP")
+
+def SWAP(Q1,Q2, **kwargs):
+    edge = ChannelLibraries.EdgeFactory(Q1,Q2)
+
+    p = X(edge, **kwargs)
+    return p._replace(label="SWAP")
+
+def SQRTSWAP(Q1,Q2, **kwargs):
+    edge = ChannelLibraries.EdgeFactory(Q1,Q2)
+
+    p = X90(edge, **kwargs)
+    return p._replace(label="SQRTSWAP")
