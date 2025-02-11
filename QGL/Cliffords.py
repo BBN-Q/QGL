@@ -397,7 +397,7 @@ def entangling_seq(gate, q1, q2,swap=False):
             return [X90(q1),Z90(q1) * Z90m(q2),iSWAP(q1,q2),X90(q2),iSWAP(q1,q2),Z90(q1),
                 Y90(q2),X(q2),Z90m(q1) * Z90m(q2),iSWAP(q1,q2),Y90(q1),X(q1)]
 
-def TwoQubitClifford(q1, q2, cliffNum, kind='std'):
+def TwoQubitClifford(q1, q2, cliffNum, kind='std',swap=False):
 
     if kind.upper() not in clifford_map.keys():
         raise ValueError(f"Unknown clifford type: must be one of {clifford.map.keys()}.")
@@ -405,7 +405,7 @@ def TwoQubitClifford(q1, q2, cliffNum, kind='std'):
     c = C2Seqs[cliffNum]
     seq = [Cx2(c[0][0], c[0][1], q1, q2, kind=kind)]
     if c[1]:
-        seq += entangling_seq(c[1], q1, q2)
+        seq += entangling_seq(c[1], q1, q2,swap)
     if c[2]:
         seq += [Cx2(c[2][0], c[2][1], q1, q2, kind=kind)]
     return seq

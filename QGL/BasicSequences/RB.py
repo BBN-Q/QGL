@@ -91,8 +91,8 @@ def create_RB_seqs(numQubits: int,
 
     return seqs
 
-def SingleQubitRB(qubit: Channels.LogicalChannel, 
-                  seqs: List[List[int]], 
+def SingleQubitRB(qubit: Channels.LogicalChannel,
+                  seqs: List[List[int]],
                   cliff_type: str = 'std',
                   purity: bool = False,
                   showPlot: bool = False,
@@ -166,10 +166,10 @@ def SingleQubitRB(qubit: Channels.LogicalChannel,
         plot_pulse_files(metafile)
     return metafile
 
-def SingleQubitLeakageRB(qubit: Channels.LogicalChannel, 
+def SingleQubitLeakageRB(qubit: Channels.LogicalChannel,
                          seqs: List[List[int]],
-                         pi2args: Mapping[int, str], 
-                         cliff_type: str = 'std', 
+                         pi2args: Mapping[int, str],
+                         cliff_type: str = 'std',
                          showPlot: bool = False) -> str:
     """
     Single qubit randomized benchmarking using 90 and 180 generators to
@@ -254,14 +254,14 @@ def SingleQubitLeakageRB(qubit: Channels.LogicalChannel,
 
 
 
-def TwoQubitRB(q1: Channels.LogicalChannel, 
-               q2: Channels.LogicalChannel, 
-               seqs: List[List[int]], 
+def TwoQubitRB(q1: Channels.LogicalChannel,
+               q2: Channels.LogicalChannel,
+               seqs: List[List[int]],
                meas_qubits: Iterable[Channels.LogicalChannel] = None,
                cliff_type: str = 'std',
                showPlot: bool = False,
                suffix: str = "",
-               add_cals: bool = True) -> str:
+               add_cals: bool = True,swap: bool = False) -> str:
     """
     Two qubit randomized benchmarking using 90 and 180 single qubit generators
     and ZX90.
@@ -303,7 +303,7 @@ def TwoQubitRB(q1: Channels.LogicalChannel,
     seqsBis = []
     for seq in seqs:
         seqsBis.append(reduce(operator.add,
-                              [TwoQubitClifford(q2, q1, c, kind=cliff_type)
+                              [TwoQubitClifford(q2, q1, c, kind=cliff_type,swap)
                                              for c in seq]))
 
     #Add the measurement to all sequences
@@ -324,22 +324,22 @@ def TwoQubitRB(q1: Channels.LogicalChannel,
         seqsBis += create_cal_seqs((q1, q2), 2, measChans = meas_qubits)
         axis_descriptor.append(cal_descriptor((q1, q2), 2))
 
-    metafile = compile_to_hardware(seqsBis, 'RB/RB', 
-                                   axis_descriptor = axis_descriptor, 
-                                   suffix = suffix, 
+    metafile = compile_to_hardware(seqsBis, 'RB/RB',
+                                   axis_descriptor = axis_descriptor,
+                                   suffix = suffix,
                                    extra_meta = {'sequences':seqs})
 
     if showPlot:
         plot_pulse_files(metafile)
     return metafile
 
-def TwoQubitLeakageRB(q1: Channels.LogicalChannel, 
-                      q2: Channels.LogicalChannel, 
-                      meas_qubit: Iterable[Channels.LogicalChannel], 
-                      seqs: List[List[int]], 
-                      pi2args: Mapping[int, str], 
-                      cliff_type: str = 'std', 
-                      showPlot: bool = False) -> str:
+def TwoQubitLeakageRB(q1: Channels.LogicalChannel,
+                      q2: Channels.LogicalChannel,
+                      meas_qubit: Iterable[Channels.LogicalChannel],
+                      seqs: List[List[int]],
+                      pi2args: Mapping[int, str],
+                      cliff_type: str = 'std',
+                      showPlot: bool = False,swap: bool = False) -> str:
     """
     Two qubit randomized benchmarking using 90 and 180 single qubit generators
     and ZX90 to measure leakage outside the qubit subspace.  See https://
@@ -381,7 +381,7 @@ def TwoQubitLeakageRB(q1: Channels.LogicalChannel,
     seqsBis = []
     for seq in seqs:
         combined_seq = reduce(operator.add,
-                              [TwoQubitClifford(q2, q1, c, kind=cliff_type)
+                              [TwoQubitClifford(q2, q1, c, kind=cliff_type,swap)
                               for c in seq])
 
         # Append sequence with tomography ids and measurement
@@ -391,11 +391,11 @@ def TwoQubitLeakageRB(q1: Channels.LogicalChannel,
         seqsBis.append(combined_seq + [X90(meas_qubit), X90(meas_qubit), MEAS(meas_qubit)])
 
     # Add the calibration sequences
-    seqsBis.append([Id(meas_qubit), Id(meas_qubit), Id(meas_qubit), 
+    seqsBis.append([Id(meas_qubit), Id(meas_qubit), Id(meas_qubit),
                     Id(meas_qubit), MEAS(meas_qubit)])
-    seqsBis.append([X90(meas_qubit), X90(meas_qubit), Id(meas_qubit), 
+    seqsBis.append([X90(meas_qubit), X90(meas_qubit), Id(meas_qubit),
                     Id(meas_qubit), MEAS(meas_qubit)])
-    seqsBis.append([X90(meas_qubit), X90(meas_qubit), X90(meas_qubit, **pi2args), 
+    seqsBis.append([X90(meas_qubit), X90(meas_qubit), X90(meas_qubit, **pi2args),
                     X90(meas_qubit, **pi2args), MEAS(meas_qubit)])
 
     axis_descriptor = [
@@ -421,10 +421,10 @@ def TwoQubitLeakageRB(q1: Channels.LogicalChannel,
         plot_pulse_files(metafile)
     return metafile
 
-def SimultaneousRB(qubits: Iterable[Channels.LogicalChannel], 
-                   seqs: List[List[int]], 
-                   showPlot: bool = False, 
-                   cliff_type: str = 'std', 
+def SimultaneousRB(qubits: Iterable[Channels.LogicalChannel],
+                   seqs: List[List[int]],
+                   showPlot: bool = False,
+                   cliff_type: str = 'std',
                    add_cals: bool = True) -> str:
     """
     Simultaneous randomized benchmarking on multiple qubits.
@@ -493,7 +493,7 @@ def SimultaneousRB(qubits: Iterable[Channels.LogicalChannel],
 ######################### Depricated ##########################################
 ###############################################################################
 
-# from stackoverflow: 
+# from stackoverflow:
 # https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python
 class bcolors:
     HEADER = '\033[95m'
@@ -687,7 +687,7 @@ def SingleQubitIRB_AC(qubit, seqFile, showPlot=False):
     >>> mf
     '/path/to/exp/exp-meta.json'
     """
-    
+
     # warn the user
     deprication(unmaintained_str)
 
@@ -755,7 +755,7 @@ def SingleQubitRBT(qubit,
         to compiled machine files
     """
     #Setup a pulse library
-    
+
     # warn the user
     deprication(unmaintained_str)
 
