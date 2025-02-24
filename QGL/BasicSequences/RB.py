@@ -261,7 +261,7 @@ def TwoQubitRB(q1: Channels.LogicalChannel,
                cliff_type: str = 'std',
                showPlot: bool = False,
                suffix: str = "",
-               add_cals: bool = True,swap: bool = False) -> str:
+               add_cals: bool = True,parametric: bool = False) -> str:
     """
     Two qubit randomized benchmarking using 90 and 180 single qubit generators
     and ZX90.
@@ -303,7 +303,7 @@ def TwoQubitRB(q1: Channels.LogicalChannel,
     seqsBis = []
     for seq in seqs:
         seqsBis.append(reduce(operator.add,
-                              [TwoQubitClifford(q2, q1, c, kind=cliff_type,swap)
+                              [TwoQubitClifford(q2, q1, c, kind=cliff_type,parametric)
                                              for c in seq]))
 
     #Add the measurement to all sequences
