@@ -579,12 +579,16 @@ def TRIG(marker_chan, length):
 
 def iSWAP(Q1,Q2, **kwargs):
     edge = ChannelLibraries.EdgeFactory(Q1,Q2)
-
+    edge.pulse_params['piAmp'] = edge.pulse_params['amp']
+    # add "pi2Amp" too so that Utheta can construct its angle2amp lookup table
+    edge.pulse_params['pi2Amp'] = edge.pulse_params['amp'] / 2
     p = X(edge, **kwargs)
     return p._replace(label="iSWAP")
 
 def SQRTiSWAP(Q1,Q2, **kwargs):
     edge = ChannelLibraries.EdgeFactory(Q1,Q2)
-
+    edge.pulse_params['piAmp'] = edge.pulse_params['amp']
+    # add "pi2Amp" too so that Utheta can construct its angle2amp lookup table
+    edge.pulse_params['pi2Amp'] = edge.pulse_params['amp'] / 2
     p = X90(edge, **kwargs)
-    return p._replace(label="SQRTSWAP")
+    return p._replace(label="iSWAP")
