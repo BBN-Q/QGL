@@ -339,7 +339,7 @@ def TwoQubitLeakageRB(q1: Channels.LogicalChannel,
                       seqs: List[List[int]],
                       pi2args: Mapping[int, str],
                       cliff_type: str = 'std',
-                      showPlot: bool = False,swap: bool = False) -> str:
+                      showPlot: bool = False,entangling_seq = None) -> str:
     """
     Two qubit randomized benchmarking using 90 and 180 single qubit generators
     and ZX90 to measure leakage outside the qubit subspace.  See https://
@@ -381,7 +381,7 @@ def TwoQubitLeakageRB(q1: Channels.LogicalChannel,
     seqsBis = []
     for seq in seqs:
         combined_seq = reduce(operator.add,
-                              [TwoQubitClifford(q2, q1, c, kind=cliff_type,swap)
+                              [TwoQubitClifford(q2, q1, c, kind=cliff_type,entangling_sequence = entangling_seq)
                               for c in seq])
 
         # Append sequence with tomography ids and measurement
