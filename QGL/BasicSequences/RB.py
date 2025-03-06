@@ -303,7 +303,7 @@ def TwoQubitRB(q1: Channels.LogicalChannel,
     seqsBis = []
     for seq in seqs:
         seqsBis.append(reduce(operator.add,
-                              [TwoQubitClifford(q2, q1, c, kind=cliff_type,entangling_seq)
+                              [TwoQubitClifford(q2, q1, c, kind=cliff_type,entangling_sequence = entangling_seq)
                                              for c in seq]))
 
     #Add the measurement to all sequences
