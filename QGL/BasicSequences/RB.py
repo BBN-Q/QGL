@@ -474,7 +474,7 @@ def SimultaneousRB(qubits: Iterable[Channels.LogicalChannel],
     axis_descriptor = [{
         'name': 'length',
         'unit': None,
-        'points': list(map(len, seqs)),
+        'points': list(map(len, seqs[0])),
         'partition': 1
     }]
 

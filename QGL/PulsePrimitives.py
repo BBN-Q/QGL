@@ -582,7 +582,15 @@ def iSWAP(Q1,Q2, **kwargs):
     edge.pulse_params['piAmp'] = edge.pulse_params['amp']
     # add "pi2Amp" too so that Utheta can construct its angle2amp lookup table
     edge.pulse_params['pi2Amp'] = edge.pulse_params['amp'] / 2
-    p = X(edge, **kwargs)
+
+    if 'phase' in kwargs:
+
+      p = Utheta(edge,np.pi,**kwargs)
+
+    else:
+       
+      p = Utheta(edge,np.pi, edge.pulse_params['phase'],**kwargs)
+
     return p._replace(label="iSWAP")
 
 def SQRTiSWAP(Q1,Q2, **kwargs):

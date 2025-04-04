@@ -644,6 +644,7 @@ def inject_modulation_cmds(seqs):
                         mod_seq.append(ModulationCommand("RESET_PHASE", 0x3))
                         for nco_ind, freq in enumerate(freqs):
                             mod_seq.append( ModulationCommand("SET_FREQ", nco_ind + 1, frequency = freq) )
+                        #    mod_seq.append(ModulationCommand("RESET_PHASE", nco_ind +1))
                 elif isinstance(entry, ControlFlow.Return):
                     cur_freq = 0 #makes sure that the frequency is set in the first sequence after the definition of subroutines
                 mod_seq.append(copy(entry))

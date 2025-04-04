@@ -395,8 +395,8 @@ def entangling_seq2(gate, q1, q2):
     elif gate == "iSWAP":
         return [iSWAP(q1,q2)]
     elif gate == "SWAP":
-        return [X90(q1),Z90(q1) * Z90m(q2),iSWAP(q1,q2),X90(q2),iSWAP(q1,q2),Z90(q1),
-                Y90(q2),X(q2),Z90m(q1) * Z90m(q2),iSWAP(q1,q2),Y90(q1),X(q1)]
+        return [X90(q1),Z90(q1) * Z90m(q2),iSWAP(q1,q2),X90(q2),iSWAP(q1,q2),
+                Z90(q1)*Z90m(q2),Y90m(q1),Z90(q1),iSWAP(q1,q2),Y90(q2),X(q2)]
 
 def TwoQubitClifford(q1, q2, cliffNum, kind='std',entangling_sequence = None):
 
