@@ -454,7 +454,7 @@ class ChannelLibrary(object):
         for item in items:
             self.session.delete(item)
 
-    def rm_by_id(self, id):
+    def rm_by_id(self, id_num):
         """Remove the channel library with id `id`"""
         item = self.session.query(Channels.ChannelDatabase).filter_by(id=id_num).first()
         self.session.delete(item)
