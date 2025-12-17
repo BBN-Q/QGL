@@ -576,7 +576,7 @@ def find_unique_qubits(seq):
             #print("1")
             continue
         if isinstance(step.channel, Channels.Qubit):
-            
+
             #if hasattr(step.channel.type, 'qubit'):
             #print(step.channel)
             channels.add(step.channel)
@@ -588,20 +588,20 @@ def find_unique_qubits(seq):
     return channels
 
 def propagate_pulse_frame_correction(seq):
-    
+
     qsets = list(find_unique_channels_qubit(seq))
-    
+
     seq_copy = copy(seq)
     total_phase1 = 0
     total_phase2 = 0
     phases = np.zeros(len(qsets))
-    
+
     #Z_pulses = ['Z','Z90','Z90m','Ztheta'] #Need not be specified
     SWAP_pulses = ['iSWAP']
     added_pulse_idx = []
     added_pulse = []
-    
-    
+
+
     for pulse_idx, pulse in enumerate(seq):
         #if pulse.label in Z_pulses or hasattr(pulse , 'frameChange'):
         if hasattr(pulse , 'frameChange'):
@@ -614,7 +614,7 @@ def propagate_pulse_frame_correction(seq):
                     #print(total_phase1)
         if hasattr(pulse,'pulses'):
             for i in range(len(phases)):
-                if qsets[i] in list(pulse.pulses): 
+                if qsets[i] in list(pulse.pulses):
                     #if pulse.pulses[qsets[i]].label in Z_pulses or hasattr(pulse.pulses[qsets[i]], 'frameChange'):
                     if hasattr(pulse.pulses[qsets[i]], 'frameChange'):
                             phases[i] += pulse.pulses[qsets[i]].frameChange
@@ -638,7 +638,7 @@ def propagate_pulse_frame_correction(seq):
             temp = phases[f1]
             phases[f1] = phases[f2]
             phases[f2] = temp
-    
+
     ## Add the propagated pulse frames to the copied sequence from last to first
     for index, element in reversed(list(zip(added_pulse_idx,added_pulse))):
         seq_copy.insert(index,element)
@@ -702,8 +702,8 @@ def compile_sequence(seq, channels=None):
                 continue
             if chan in ChannelLibraries.channelLib.connectivityG.nodes():
                 logger.debug("Doing propagate_node_frame_to_edges()")
-          #      wires = propagate_node_frame_to_edges(
-          #          wires, chan, block.pulses[chan].frameChange)
+                wires = propagate_node_frame_to_edges(
+                    wires, chan, block.pulses[chan].frameChange)
         # drop length 0 blocks but push nonzero frame changes onto previous entries
         if block.length == 0:
             for chan in channels:
@@ -740,52 +740,16 @@ def compile_sequence(seq, channels=None):
 def propagate_node_frame_to_edges(wires, chan, frameChange):
     '''
     Propagate frame change in node to relevant edges (for CR gates)
-    # Added successors loop for parametric gates
     '''
     for predecessor in ChannelLibraries.channelLib.connectivityG.predecessors(
             chan):
         edge = ChannelLibraries.channelLib.connectivityG.edges[predecessor, chan]['channel']
-        #print(wires)
-        if edge in wires:
-            #print("loop 1")
-            #print(edge)
-            # search for last non-TA entry
-            #print(wires[edge])
-            #print(wires[edge][0].isTimeAmp)
-            
-            for ct in range(1,len(wires[edge])):
-                
-                if hasattr(wires[edge][-ct], 'isTimeAmp') and not wires[edge][-ct].isTimeAmp:
-                    #print("predecessor")
-                    #print(wires[edge])
-                    #updated_frameChange = wires[edge][-ct].frameChange - frameChange
-                    #print(updated_frameChange)
-                    #wires[edge][-ct] = wires[edge][-ct]._replace(frameChange=updated_frameChange)
-                    #print(wires[edge][-ct])
-                    break
-
-    for successor in ChannelLibraries.channelLib.connectivityG.successors(
-                chan):
-        edge = ChannelLibraries.channelLib.connectivityG.edges[chan,successor]['channel']
-        #print(wires)
-        if edge in wires:
-            #print("loop 2")
-            #print(edge)
-            #print(wires[edge])
-            #print(wires[edge][4])
-            #print(wires[edge][0].isTimeAmp)
-            #print(wires[edge][-1].isTimeAmp)
-            #print(hasattr(wires[edge][-1], 'isTimeAmp'))
+        if edge in wires and edge.cnot_impl.lower()!='iswap':
             # search for last non-TA entry
             for ct in range(1,len(wires[edge])):
-               
                 if hasattr(wires[edge][-ct], 'isTimeAmp') and not wires[edge][-ct].isTimeAmp:
-                    #print("successor")
-                    #print(wires[edge])
-                    #updated_frameChange = wires[edge][-ct].frameChange + frameChange
-                    #print(updated_frameChange)
-                    #wires[edge][-ct] = wires[edge][-ct]._replace(frameChange=updated_frameChange)
-                    #print(wires[edge][-ct])
+                    updated_frameChange = wires[edge][-ct].frameChange + frameChange
+                    wires[edge][-ct] = wires[edge][-ct]._replace(frameChange=updated_frameChange)
                     break
     return wires
 
