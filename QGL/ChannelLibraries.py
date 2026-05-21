@@ -452,12 +452,12 @@ class ChannelLibrary(object):
         cdb = Channels.ChannelDatabase
         items = self.session.query(cdb).filter(cdb.label==library_name and cdb.id!=keep_id).all()
         for item in items:
-            self.session.delete(item)
+            if item is not None: self.session.delete(item)
 
-    def rm_by_id(self, id):
+    def rm_by_id(self, id_num):
         """Remove the channel library with id `id`"""
         item = self.session.query(Channels.ChannelDatabase).filter_by(id=id_num).first()
-        self.session.delete(item)
+        if item is not None: self.session.delete(item)
 
     def load_obj(self, obj):
         self.clear(create_new=False)
@@ -615,15 +615,15 @@ class ChannelLibrary(object):
 
         chans = []
         for i in range(numtx):
-            chan = Channels.PhysicalQuadratureChannel(label=f"{label}-Tx{i+1:02d}-1", instrument=label, channel=i, 
+            chan = Channels.PhysicalQuadratureChannel(label=f"{label}-Tx{i+1:02d}-1", instrument=label, channel=i,
                 sampling_rate=tx_sampling_rate, translator=translator, channel_db=self.channelDatabase)
             chans.append(chan)
         for i in range(nummark):
-            chan = Channels.PhysicalMarkerChannel(label=f"{label}-Tx{i+1:02d}-M", channel=i, instrument=label, 
+            chan = Channels.PhysicalMarkerChannel(label=f"{label}-Tx{i+1:02d}-M", channel=i, instrument=label,
                 translator=translator, channel_db=self.channelDatabase)
             chans.append(chan)
 
-        transmitter = Channels.Transmitter(label=f"{label}-Tx", model=model, address=address, channels=chans, 
+        transmitter = Channels.Transmitter(label=f"{label}-Tx", model=model, address=address, channels=chans,
             channel_db=self.channelDatabase)
         transmitter.trigger_source = "external"
         transmitter.address = address
@@ -633,14 +633,14 @@ class ChannelLibrary(object):
             chan = Channels.ReceiverChannel(label=f"RecvChan-{label}-{i+1:02d}", channel=i, channel_db=self.channelDatabase)
             chans.append(chan)
 
-        receiver = Channels.Receiver(label=f"{label}-Rx", model=model, address=address, channels=chans, 
+        receiver = Channels.Receiver(label=f"{label}-Rx", model=model, address=address, channels=chans,
             sampling_rate=rx_sampling_rate, reference_freq=reference_freq, record_length=record_length, channel_db=self.channelDatabase)
         receiver.trigger_source = "external"
         receiver.stream_types   = "raw"
         receiver.address    = address
         receiver.stream_sel = stream_sel
 
-        transceiver = Channels.Transceiver(label=label, address=address, model=model, transmitters=[transmitter], 
+        transceiver = Channels.Transceiver(label=label, address=address, model=model, transmitters=[transmitter],
             receivers = [receiver], initialize_separately=False, channel_db=self.channelDatabase)
         transmitter.transceiver = transceiver
         receiver.transceiver    = transceiver

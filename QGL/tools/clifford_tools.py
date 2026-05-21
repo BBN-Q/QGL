@@ -201,6 +201,25 @@ def entangling_mat(gate):
     else:
         raise ValueError("Entangling gate must be one of: CNOT, iSWAP, SWAP.")
 
+def entangling_mat_std(gate):
+    """
+    Alternate helper function to create the entangling gate matrix
+    This implementation is in the standard basis, unlike the entangling_mat function above
+    """
+    echoCR = expm(1j * pi / 4 * np.kron(pX, pZ))
+    iswap = expm(1j * pi / 4 * (np.kron(pX,pX)+np.kron(pY,pY)))
+    if gate == "CNOT":
+        return reduce(lambda x, y: np.dot(y, x),
+                    [np.kron(C1[1],C1[0]),np.kron(C1[7],C1[9]),iswap,np.kron(C1[0],C1[1]),iswap,np.kron(C1[7],C1[0])])
+
+    elif gate == "iSWAP":
+        return iswap
+    elif gate == "SWAP":
+        return reduce(lambda x, y: np.dot(y, x),
+                        [iswap,np.kron(C1[0],C1[3]),iswap,
+                        np.kron(C1[3],C1[0]),iswap,np.kron(C1[0],C1[3])])
+    else:
+        raise ValueError("Entangling gate must be one of: CNOT, iSWAP, SWAP.")
 
 def inverse_clifford(cMat):
     """Return the inverse clifford index."""

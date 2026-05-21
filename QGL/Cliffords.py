@@ -359,16 +359,16 @@ def XYXClifford(qubit, cliff_num):
 
 clifford_map = {}
 clifford_map['STD'] = StdClifford
-clifford_map['DIAC'] = DiAC 
+clifford_map['DIAC'] = DiAC
 clifford_map['ZXZXZ'] = lambda q,c: DiAC(q,c,compiled=False)
-clifford_map['AC'] = AC 
+clifford_map['AC'] = AC
 clifford_map['XYX'] = XYXClifford
 
 def Cx2(c1, c2, q1, q2, kind='std'):
     """
     Helper function to create pulse block for a pair of single-qubit Cliffords
     """
-    
+
     clifford_fun = clifford_map[kind.upper()]
     seq1 = clifford_fun(q1, c1)
     seq2 = clifford_fun(q2, c2)
@@ -386,17 +386,29 @@ def entangling_seq(gate, q1, q2):
         return [ZX90_CR(q2, q1) , Y90m(q1) * Y90m(q2), ZX90_CR(q2, q1)]
     elif gate == "SWAP":
         return [ZX90_CR(q2, q1), Y90m(q1) * Y90m(q2), ZX90_CR(
-            q2, q1), (X90(q1) + Y90m(q1)) * X90(q2), ZX90_CR(q2, q1)]
+                q2, q1), (X90(q1) + Y90m(q1)) * X90(q2), ZX90_CR(q2, q1)]
 
-def TwoQubitClifford(q1, q2, cliffNum, kind='std'):
+def entangling_seq2(gate, q1, q2):
+    #Assuming iswap native gate
+    if gate == "CNOT":
+        return [X90(q1),Z90(q1)*Z90m(q2),iSWAP(q1,q2),X90(q2),iSWAP(q1,q2),Z90(q1)]
+    elif gate == "iSWAP":
+        return [iSWAP(q1,q2)]
+    elif gate == "SWAP":
+        return [iSWAP(q1,q2),X90m(q2),iSWAP(q1,q2),X90m(q1),iSWAP(q1,q2),X90m(q2)]
+
+def TwoQubitClifford(q1, q2, cliffNum, kind='std',entangling_sequence = None):
 
     if kind.upper() not in clifford_map.keys():
         raise ValueError(f"Unknown clifford type: must be one of {clifford.map.keys()}.")
 
+    if entangling_sequence == None:
+        entangling_sequence = entangling_seq
+
     c = C2Seqs[cliffNum]
     seq = [Cx2(c[0][0], c[0][1], q1, q2, kind=kind)]
     if c[1]:
-        seq += entangling_seq(c[1], q1, q2)
+        seq += entangling_sequence(c[1], q1, q2)
     if c[2]:
         seq += [Cx2(c[2][0], c[2][1], q1, q2, kind=kind)]
     return seq

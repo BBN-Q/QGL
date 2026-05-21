@@ -339,8 +339,8 @@ def arb_axis_drag(qubit,
 
 
 def DiatomicPulse(qubit, a, b, c):
-  return (Ztheta(qubit, angle=c) + X90(qubit) + 
-          Ztheta(qubit, angle=b) + X90(qubit) + 
+  return (Ztheta(qubit, angle=c) + X90(qubit) +
+          Ztheta(qubit, angle=b) + X90(qubit) +
           Ztheta(qubit, angle=a))
 
 def ZYZPulse(qubit, a, b, c):
@@ -576,3 +576,24 @@ def TRIG(marker_chan, length):
     if not isinstance(marker_chan, Channels.LogicalMarkerChannel):
         raise ValueError("TRIG pulses can only be generated on LogicalMarkerChannels.")
     return TAPulse("TRIG", marker_chan, length, 1.0, 0., 0.)
+
+def iSWAP(Q1,Q2, **kwargs):
+    edge = ChannelLibraries.EdgeFactory(Q1,Q2)
+    edge.pulse_params['piAmp'] = edge.pulse_params['amp']
+    # add "pi2Amp" too so that Utheta can construct its angle2amp lookup table
+    edge.pulse_params['pi2Amp'] = edge.pulse_params['amp'] / 2
+
+    if 'phase' in kwargs:
+        p = Utheta(edge,np.pi,**kwargs)
+    else:
+       p = Utheta(edge,np.pi, edge.pulse_params['phase'],**kwargs)
+
+    return p._replace(label="iSWAP")
+
+def SQRTiSWAP(Q1,Q2, **kwargs):
+    edge = ChannelLibraries.EdgeFactory(Q1,Q2)
+    edge.pulse_params['piAmp'] = edge.pulse_params['amp']
+    # add "pi2Amp" too so that Utheta can construct its angle2amp lookup table
+    edge.pulse_params['pi2Amp'] = edge.pulse_params['amp'] / 2
+    p = X90(edge, **kwargs)
+    return p._replace(label="SQRTiSWAP")

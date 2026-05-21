@@ -568,6 +568,82 @@ def compile_sequences(seqs, channels=set()):
 
     return wireSeqs
 
+def find_unique_qubits(seq):
+    channels = set()
+    for step in PatternUtils.flatten(seq):
+        #print(step.channel)
+        if not hasattr(step, 'channel') or step.channel is None:
+            #print("1")
+            continue
+        if isinstance(step.channel, Channels.Qubit):
+
+            #if hasattr(step.channel.type, 'qubit'):
+            #print(step.channel)
+            channels.add(step.channel)
+            #print(channels)
+        if not isinstance(step.channel, Channels.Edge) and not isinstance(step.channel, Channels.Qubit):
+            channels |= set(step.channel)
+            #print(step.channel)
+  #          print(channels)
+    return channels
+
+def propagate_pulse_frame_correction(seq):
+
+    qsets = list(find_unique_channels_qubit(seq))
+
+    seq_copy = copy(seq)
+    total_phase1 = 0
+    total_phase2 = 0
+    phases = np.zeros(len(qsets))
+
+    #Z_pulses = ['Z','Z90','Z90m','Ztheta'] #Need not be specified
+    SWAP_pulses = ['iSWAP']
+    added_pulse_idx = []
+    added_pulse = []
+
+
+    for pulse_idx, pulse in enumerate(seq):
+        #if pulse.label in Z_pulses or hasattr(pulse , 'frameChange'):
+        if hasattr(pulse , 'frameChange'):
+            for i in range(len(phases)):
+                if pulse.channel == qsets[i]:
+                    phases[i] += pulse.frameChange
+                    #print(total_phase1)
+                #elif pulse.channel == cl['q2']:
+                #    total_phase2 += pulse.frameChange
+                    #print(total_phase1)
+        if hasattr(pulse,'pulses'):
+            for i in range(len(phases)):
+                if qsets[i] in list(pulse.pulses):
+                    #if pulse.pulses[qsets[i]].label in Z_pulses or hasattr(pulse.pulses[qsets[i]], 'frameChange'):
+                    if hasattr(pulse.pulses[qsets[i]], 'frameChange'):
+                            phases[i] += pulse.pulses[qsets[i]].frameChange
+                            #print(total_phase1)
+                    #if pulse.pulses[cl['q2']].label in Z_pulses or hasattr(pulse.pulses[cl['q2']], 'frameChange'):
+                            #total_phase2 += pulse.pulses[cl['q2']].frameChange
+                            #print(total_phase1)
+        if pulse.label in SWAP_pulses:
+            f1 = 0
+            f2 = 0
+            for i,q in enumerate(qsets):
+                if q == pulse.channel.source:
+                    f1 = i
+                    q1 = q
+                if q == pulse.channel.target:
+                    f2 = i
+                    q2 = q
+            added_pulse_idx.append(pulse_idx)
+            added_pulse.append(Z(q1)._replace(frameChange=phases[f2]-phases[f1])*Z(q2)._replace(frameChange=phases[f1]-phases[f2]))
+            #print(total_phase2)
+            temp = phases[f1]
+            phases[f1] = phases[f2]
+            phases[f2] = temp
+
+    ## Add the propagated pulse frames to the copied sequence from last to first
+    for index, element in reversed(list(zip(added_pulse_idx,added_pulse))):
+        seq_copy.insert(index,element)
+    return seq_copy
+
 def compile_sequence(seq, channels=None):
     '''
     Takes a list of control flow and pulses, and returns aligned blocks
@@ -668,7 +744,7 @@ def propagate_node_frame_to_edges(wires, chan, frameChange):
     for predecessor in ChannelLibraries.channelLib.connectivityG.predecessors(
             chan):
         edge = ChannelLibraries.channelLib.connectivityG.edges[predecessor, chan]['channel']
-        if edge in wires:
+        if edge in wires and edge.cnot_impl and edge.cnot_impl.lower()!='iswap':
             # search for last non-TA entry
             for ct in range(1,len(wires[edge])):
                 if hasattr(wires[edge][-ct], 'isTimeAmp') and not wires[edge][-ct].isTimeAmp:

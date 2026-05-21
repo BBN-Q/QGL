@@ -75,8 +75,8 @@ def create_RB_seqs(numQubits: int,
         newSeqs = []
         for seq in seqs:
             newSeqs.append(np.vstack((np.array(
-                seq, dtype=np.int), interleaveGate * np.ones(
-                    len(seq), dtype=np.int))).flatten(order='F').tolist())
+                seq, dtype=int), interleaveGate * np.ones(
+                    len(seq), dtype=int))).flatten(order='F').tolist())
         seqs = newSeqs
 
     if recovery:
@@ -91,8 +91,8 @@ def create_RB_seqs(numQubits: int,
 
     return seqs
 
-def SingleQubitRB(qubit: Channels.LogicalChannel, 
-                  seqs: List[List[int]], 
+def SingleQubitRB(qubit: Channels.LogicalChannel,
+                  seqs: List[List[int]],
                   cliff_type: str = 'std',
                   purity: bool = False,
                   showPlot: bool = False,
@@ -166,10 +166,10 @@ def SingleQubitRB(qubit: Channels.LogicalChannel,
         plot_pulse_files(metafile)
     return metafile
 
-def SingleQubitLeakageRB(qubit: Channels.LogicalChannel, 
+def SingleQubitLeakageRB(qubit: Channels.LogicalChannel,
                          seqs: List[List[int]],
-                         pi2args: Mapping[int, str], 
-                         cliff_type: str = 'std', 
+                         pi2args: Mapping[int, str],
+                         cliff_type: str = 'std',
                          showPlot: bool = False) -> str:
     """
     Single qubit randomized benchmarking using 90 and 180 generators to
@@ -252,19 +252,39 @@ def SingleQubitLeakageRB(qubit: Channels.LogicalChannel,
         plot_pulse_files(metafile)
     return metafile
 
+from copy import copy
+from ..PatternUtils import flatten
 
+def find_unique_qubits(seq):
+    channels = set()
+    for step in flatten(seq):
+        #print(step.channel)
+        if not hasattr(step, 'channel') or step.channel is None:
+            #print("1")
+            continue
+        if isinstance(step.channel, Channels.Qubit):
 
-def TwoQubitRB(q1: Channels.LogicalChannel, 
-               q2: Channels.LogicalChannel, 
-               seqs: List[List[int]], 
+            #if hasattr(step.channel.type, 'qubit'):
+            #print(step.channel)
+            channels.add(step.channel)
+            #print(channels)
+        if not isinstance(step.channel, Channels.Edge) and not isinstance(step.channel, Channels.Qubit):
+            channels |= set(step.channel)
+            #print(step.channel)
+  #          print(channels)
+    return channels
+
+def TwoQubitRB(q1: Channels.LogicalChannel,
+               q2: Channels.LogicalChannel,
+               seqs: List[List[int]],
                meas_qubits: Iterable[Channels.LogicalChannel] = None,
                cliff_type: str = 'std',
                showPlot: bool = False,
                suffix: str = "",
-               add_cals: bool = True) -> str:
+               add_cals: bool = True,entangling_seq = None ) -> str:
     """
     Two qubit randomized benchmarking using 90 and 180 single qubit generators
-    and ZX90.
+    and ZX90. Extended in Dec 2025 to work with native iSWAP gates and general entangling sequence implementations.
 
     Parameters
     ----------
@@ -302,9 +322,9 @@ def TwoQubitRB(q1: Channels.LogicalChannel,
 
     seqsBis = []
     for seq in seqs:
-        seqsBis.append(reduce(operator.add,
-                              [TwoQubitClifford(q2, q1, c, kind=cliff_type)
-                                             for c in seq]))
+        seqsBis.append(propagate_pulse_frame_correction(reduce(operator.add,
+                              [TwoQubitClifford(q1, q2, c, kind=cliff_type,entangling_sequence = entangling_seq)
+                                             for c in seq])))
 
     #Add the measurement to all sequences
     for seq in seqsBis:
@@ -324,22 +344,22 @@ def TwoQubitRB(q1: Channels.LogicalChannel,
         seqsBis += create_cal_seqs((q1, q2), 2, measChans = meas_qubits)
         axis_descriptor.append(cal_descriptor((q1, q2), 2))
 
-    metafile = compile_to_hardware(seqsBis, 'RB/RB', 
-                                   axis_descriptor = axis_descriptor, 
-                                   suffix = suffix, 
+    metafile = compile_to_hardware(seqsBis, 'RB/RB',
+                                   axis_descriptor = axis_descriptor,
+                                   suffix = suffix,
                                    extra_meta = {'sequences':seqs})
 
     if showPlot:
         plot_pulse_files(metafile)
-    return metafile
+    return metafile, seqsBis
 
-def TwoQubitLeakageRB(q1: Channels.LogicalChannel, 
-                      q2: Channels.LogicalChannel, 
-                      meas_qubit: Iterable[Channels.LogicalChannel], 
-                      seqs: List[List[int]], 
-                      pi2args: Mapping[int, str], 
-                      cliff_type: str = 'std', 
-                      showPlot: bool = False) -> str:
+def TwoQubitLeakageRB(q1: Channels.LogicalChannel,
+                      q2: Channels.LogicalChannel,
+                      meas_qubit: Iterable[Channels.LogicalChannel],
+                      seqs: List[List[int]],
+                      pi2args: Mapping[int, str],
+                      cliff_type: str = 'std',
+                      showPlot: bool = False,entangling_seq = None) -> str:
     """
     Two qubit randomized benchmarking using 90 and 180 single qubit generators
     and ZX90 to measure leakage outside the qubit subspace.  See https://
@@ -381,7 +401,7 @@ def TwoQubitLeakageRB(q1: Channels.LogicalChannel,
     seqsBis = []
     for seq in seqs:
         combined_seq = reduce(operator.add,
-                              [TwoQubitClifford(q2, q1, c, kind=cliff_type)
+                              [TwoQubitClifford(q2, q1, c, kind=cliff_type,entangling_sequence = entangling_seq)
                               for c in seq])
 
         # Append sequence with tomography ids and measurement
@@ -391,11 +411,11 @@ def TwoQubitLeakageRB(q1: Channels.LogicalChannel,
         seqsBis.append(combined_seq + [X90(meas_qubit), X90(meas_qubit), MEAS(meas_qubit)])
 
     # Add the calibration sequences
-    seqsBis.append([Id(meas_qubit), Id(meas_qubit), Id(meas_qubit), 
+    seqsBis.append([Id(meas_qubit), Id(meas_qubit), Id(meas_qubit),
                     Id(meas_qubit), MEAS(meas_qubit)])
-    seqsBis.append([X90(meas_qubit), X90(meas_qubit), Id(meas_qubit), 
+    seqsBis.append([X90(meas_qubit), X90(meas_qubit), Id(meas_qubit),
                     Id(meas_qubit), MEAS(meas_qubit)])
-    seqsBis.append([X90(meas_qubit), X90(meas_qubit), X90(meas_qubit, **pi2args), 
+    seqsBis.append([X90(meas_qubit), X90(meas_qubit), X90(meas_qubit, **pi2args),
                     X90(meas_qubit, **pi2args), MEAS(meas_qubit)])
 
     axis_descriptor = [
@@ -421,10 +441,10 @@ def TwoQubitLeakageRB(q1: Channels.LogicalChannel,
         plot_pulse_files(metafile)
     return metafile
 
-def SimultaneousRB(qubits: Iterable[Channels.LogicalChannel], 
-                   seqs: List[List[int]], 
-                   showPlot: bool = False, 
-                   cliff_type: str = 'std', 
+def SimultaneousRB(qubits: Iterable[Channels.LogicalChannel],
+                   seqs: List[List[int]],
+                   showPlot: bool = False,
+                   cliff_type: str = 'std',
                    add_cals: bool = True) -> str:
     """
     Simultaneous randomized benchmarking on multiple qubits.
@@ -474,7 +494,7 @@ def SimultaneousRB(qubits: Iterable[Channels.LogicalChannel],
     axis_descriptor = [{
         'name': 'length',
         'unit': None,
-        'points': list(map(len, seqs)),
+        'points': list(map(len, seqs[0])),
         'partition': 1
     }]
 
@@ -493,7 +513,7 @@ def SimultaneousRB(qubits: Iterable[Channels.LogicalChannel],
 ######################### Depricated ##########################################
 ###############################################################################
 
-# from stackoverflow: 
+# from stackoverflow:
 # https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python
 class bcolors:
     HEADER = '\033[95m'
@@ -687,7 +707,7 @@ def SingleQubitIRB_AC(qubit, seqFile, showPlot=False):
     >>> mf
     '/path/to/exp/exp-meta.json'
     """
-    
+
     # warn the user
     deprication(unmaintained_str)
 
@@ -755,7 +775,7 @@ def SingleQubitRBT(qubit,
         to compiled machine files
     """
     #Setup a pulse library
-    
+
     # warn the user
     deprication(unmaintained_str)
 
@@ -794,3 +814,56 @@ def SingleQubitRBT(qubit,
     if showPlot:
         plot_pulse_files(metafile)
     return metafile
+
+def propagate_pulse_frame_correction(seq):
+    #Apply virtual Z rotations to a sequence containing native iSWAP propagate_pulse_frame_correction
+
+    qsets = list(find_unique_qubits(seq))
+
+    seq_copy = copy(seq)
+    total_phase1 = 0
+    total_phase2 = 0
+    phases = np.zeros(len(qsets))
+
+    SWAP_pulses = ['iSWAP']
+    added_pulse_idx = []
+    added_pulse = []
+
+
+    for pulse_idx, pulse in enumerate(seq):
+        #if pulse.label in Z_pulses or hasattr(pulse , 'frameChange'):
+        if hasattr(pulse , 'frameChange'):
+            for i in range(len(phases)):
+                if pulse.channel == qsets[i]:
+                    phases[i] += pulse.frameChange
+
+        if hasattr(pulse,'pulses'):
+            for i in range(len(phases)):
+                if qsets[i] in list(pulse.pulses):
+
+                    if hasattr(pulse.pulses[qsets[i]], 'frameChange'):
+                            phases[i] += pulse.pulses[qsets[i]].frameChange
+
+        if pulse.label in SWAP_pulses:
+            f1 = 0
+            f2 = 0
+            for i,q in enumerate(qsets):
+                if q == pulse.channel.source:
+                    f1 = i
+                    q1 = q
+                if q == pulse.channel.target:
+                    f2 = i
+                    q2 = q
+            if round(phases[f2]-phases[f1],3) == 0.0:
+                continue
+            else:
+                added_pulse_idx.append(pulse_idx)
+                added_pulse.append(Z(q1)._replace(frameChange=phases[f2]-phases[f1])*Z(q2)._replace(frameChange=phases[f1]-phases[f2]))
+                temp = phases[f1]
+                phases[f1] = phases[f2]
+                phases[f2] = temp
+
+    ## Add the propagated pulse frames to the copied sequence from last to first
+    for index, element in reversed(list(zip(added_pulse_idx,added_pulse))):
+        seq_copy.insert(index,element)
+    return seq_copy
