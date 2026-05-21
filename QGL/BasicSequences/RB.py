@@ -75,8 +75,8 @@ def create_RB_seqs(numQubits: int,
         newSeqs = []
         for seq in seqs:
             newSeqs.append(np.vstack((np.array(
-                seq, dtype=np.int), interleaveGate * np.ones(
-                    len(seq), dtype=np.int))).flatten(order='F').tolist())
+                seq, dtype=int), interleaveGate * np.ones(
+                    len(seq), dtype=int))).flatten(order='F').tolist())
         seqs = newSeqs
 
     if recovery:

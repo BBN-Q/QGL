@@ -34,7 +34,7 @@ from functools import reduce
 import operator
 
 def hash_pulse(shape):
-    return hashlib.sha1(shape.tostring()).hexdigest()
+    return hashlib.sha1(shape.tobytes()).hexdigest()
 
 
 TAZKey = hash_pulse(np.zeros(1, dtype=np.complex128))

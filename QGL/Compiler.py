@@ -744,7 +744,7 @@ def propagate_node_frame_to_edges(wires, chan, frameChange):
     for predecessor in ChannelLibraries.channelLib.connectivityG.predecessors(
             chan):
         edge = ChannelLibraries.channelLib.connectivityG.edges[predecessor, chan]['channel']
-        if edge in wires and edge.cnot_impl.lower()!='iswap':
+        if edge in wires and edge.cnot_impl and edge.cnot_impl.lower()!='iswap':
             # search for last non-TA entry
             for ct in range(1,len(wires[edge])):
                 if hasattr(wires[edge][-ct], 'isTimeAmp') and not wires[edge][-ct].isTimeAmp:
