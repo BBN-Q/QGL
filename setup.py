@@ -1,5 +1,9 @@
 from setuptools import setup, find_packages
 
+extras = {
+  'with_qasm': ['lark-parser >= 0.11']
+}
+
 setup(name='QGL',
       version='2020.1',
       packages=find_packages(exclude=["tests"]),
@@ -12,13 +16,15 @@ setup(name='QGL',
         "scipy >= 0.17.1",
         "networkx >= 1.11",
         "bqplot >= 0.12.2",
-        "sqlalchemy >= 1.2.15"
+        "sqlalchemy >= 1.2.15",
+        "lark-parser >= 0.11.03"
       ],
       description="Quantum Gate Language (QGL) is a domain specific language embedded in python for specifying pulse sequences.",
       long_description_content_type='text/markdown',
       long_description=open('README.md').read(),
       python_requires='>=3.6',
-      keywords="quantum qubit experiment configuration gate language"
+      keywords="quantum qubit experiment configuration gate language",
+      extras_requier=extras
 )
 
 # python setup.py sdist
